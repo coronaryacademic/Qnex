@@ -5532,6 +5532,80 @@ const Storage = {
     loadTodos();
   }
 
+  // Sticky Notes Management
+  {
+    const stickyNotesTextarea = document.getElementById("stickyNotesTextarea");
+    const stickyNotesStatus = document.getElementById("stickyNotesStatus");
+    const clearStickyNotes = document.getElementById("clearStickyNotes");
+    
+    let saveTimeout = null;
+    const STORAGE_KEY = "devStickyNotes";
+    
+    // Load sticky notes from storage
+    function loadStickyNotes() {
+      if (Storage.isElectron) {
+        // Load from Electron settings
+        const notes = state.settings.stickyNotes || "";
+        stickyNotesTextarea.value = notes;
+      } else {
+        // Load from localStorage
+        const notes = localStorage.getItem(STORAGE_KEY) || "";
+        stickyNotesTextarea.value = notes;
+      }
+    }
+    
+    // Save sticky notes to storage
+    async function saveStickyNotes() {
+      const notes = stickyNotesTextarea.value;
+      
+      if (Storage.isElectron) {
+        state.settings.stickyNotes = notes;
+        await window.electronAPI.writeSettings(state.settings);
+      } else {
+        localStorage.setItem(STORAGE_KEY, notes);
+      }
+      
+      // Update status
+      stickyNotesStatus.textContent = "Auto-saved";
+      setTimeout(() => {
+        stickyNotesStatus.textContent = "Auto-saved";
+      }, 2000);
+    }
+    
+    // Auto-save on input with debounce
+    stickyNotesTextarea.addEventListener("input", () => {
+      stickyNotesStatus.textContent = "Saving...";
+      
+      // Clear existing timeout
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+      
+      // Set new timeout to save after 1 second of no typing
+      saveTimeout = setTimeout(() => {
+        saveStickyNotes();
+      }, 1000);
+    });
+    
+    // Clear button
+    clearStickyNotes.addEventListener("click", async () => {
+      if (stickyNotesTextarea.value.trim() === "") {
+        return;
+      }
+      
+      // Confirm before clearing using custom modal
+      const confirmClear = await modalConfirm("Are you sure you want to clear all notes? This action cannot be undone.");
+      if (confirmClear) {
+        AudioFX.playDelete();
+        stickyNotesTextarea.value = "";
+        saveStickyNotes();
+      }
+    });
+    
+    // Load on startup
+    loadStickyNotes();
+  }
+
   // Sidebar resizer with smart collapse
   {
     const sidebarResizer = document.getElementById("sidebarResizer");
