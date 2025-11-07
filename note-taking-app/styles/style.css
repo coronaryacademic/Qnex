@@ -869,16 +869,47 @@ textarea {
   transition: all 0.2s;
   user-select: none;
 }
-/* Visual hierarchy lines for nested folders */
+/* Visual hierarchy for nested folders */
 .folder-item[style*="padding-left"]:not([style*="padding-left: 10px"]) {
-  border-left: 2px solid var(--border);
-  margin-left: 8px;
+  margin-left: 16px; /* Indent nested folders */
 }
+
+/* Style for notes inside folders */
 .folder-notes {
   position: relative;
-  margin-left: 22px;
-  border-left: 2px solid var(--border);
-  padding-left: 12px;
+  margin-left: 0;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Style for note buttons inside folders */
+.folder-notes > button[data-note-id] {
+  margin-left: 32px !important;  /* Increased from 16px */
+  padding: 8px 12px !important;
+  border-radius: 6px;
+  transform-origin: left center;
+  transition: all 0.2s ease;
+}
+
+/* Style for note buttons in nested subfolders */
+.folder-notes .folder-notes > button[data-note-id] {
+  margin-left: 48px !important;  /* Increased from 32px */
+  padding: 8px 12px !important;
+}
+
+/* Hover effect for notes */
+.sidebar .note-list button:hover {
+  background-color: var(--panel-hover);
+  transform: translateX(4px);
+}
+
+/* Selected note style */
+.sidebar .note-list button.selected {
+  background: var(--accent);
+  color: #fff;
+  border-left-color: var(--accent);
 }
 .folder-item:hover {
   background: var(--panel-2);
@@ -1166,7 +1197,26 @@ textarea {
   box-shadow: var(--shadow);
   padding: 6px;
   min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
   z-index: 1000;
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) transparent;
+}
+
+/* Webkit scrollbar */
+.editor-menu-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.editor-menu-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.editor-menu-list::-webkit-scrollbar-thumb {
+  background-color: var(--muted);
+  border-radius: 3px;
 }
 .editor-menu.open .editor-menu-list {
   display: block;
@@ -3169,13 +3219,13 @@ body.debug-borders div {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transition: all 0.3s ease;
 }
 
 .sticky-notes-container:hover {
   box-shadow: 0 6px 16px rgba(245, 158, 11, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transform: translateY(-2px);
 }
 
@@ -3201,7 +3251,7 @@ body.debug-borders div {
   border-radius: 8px;
   color: #78350f;
   font-size: 15px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.6;
   resize: vertical;
   box-sizing: border-box;
@@ -3244,7 +3294,8 @@ body.debug-borders div {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -3285,12 +3336,12 @@ body.debug-borders div {
   background: linear-gradient(135deg, #854d0e 0%, #713f12 100%);
   border-color: #a16207;
   box-shadow: 0 4px 12px rgba(161, 98, 7, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="dark"] .sticky-notes-container:hover {
   box-shadow: 0 6px 16px rgba(161, 98, 7, 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="dark"] .sticky-notes-container::before {
