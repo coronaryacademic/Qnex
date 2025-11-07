@@ -111,6 +111,31 @@ const Storage = {
     }
   },
 
+  // Firebase deletion methods
+  async deleteNoteFromFirebase(noteId) {
+    if (this.useFirebase) {
+      await firebaseService.deleteNoteFromCollection(noteId);
+    }
+  },
+
+  async deleteFolderFromFirebase(folderId) {
+    if (this.useFirebase) {
+      await firebaseService.deleteFolderFromCollection(folderId);
+    }
+  },
+
+  async deleteTrashItemFromFirebase(itemId) {
+    if (this.useFirebase) {
+      await firebaseService.deleteTrashItem(itemId);
+    }
+  },
+
+  async clearAllTrashFromFirebase() {
+    if (this.useFirebase) {
+      await firebaseService.clearAllTrash();
+    }
+  },
+
   // New Firebase-specific methods for image handling
   async uploadImage(file, noteId) {
     if (this.useFirebase) {
@@ -627,16 +652,24 @@ const Storage = {
             const idx = state.notes.findIndex((n) => n.id === id);
             if (idx >= 0) {
               const [note] = state.notes.splice(idx, 1);
-              state.trash.push({
+              const deletedNote = {
                 ...note,
                 deletedAt: new Date().toISOString(),
-              });
+              };
+              state.trash.push(deletedNote);
+              
+              // Sync with Firebase: Delete from notes collection, add to trash
+              try {
+                await Storage.deleteNoteFromFirebase(id);
+                await Storage.saveTrash(state.trash);
+              } catch (error) {
+                console.error('Firebase sync error:', error);
+              }
             }
             closeTab("left", id);
             closeTab("right", id);
             closeWindow(id);
             saveNotes();
-            saveTrash();
             renderSidebar();
           },
         },
@@ -724,13 +757,26 @@ const Storage = {
           const ix = state.folders.findIndex((x) => x.id === fid);
           if (ix >= 0) {
             const [deletedFolder] = state.folders.splice(ix, 1);
-            state.trash.push({
+            const trashItem = {
               ...deletedFolder,
               type: "folder",
               notes: notesInFolder, // Keep notes nested in folder
               subfolders: subfolders, // Keep subfolders nested
               deletedAt: new Date().toISOString(),
-            });
+            };
+            state.trash.push(trashItem);
+            
+            // Sync with Firebase: Delete folder and notes from collections, add to trash
+            try {
+              await Storage.deleteFolderFromFirebase(fid);
+              // Delete all notes in the folder from Firebase
+              for (const note of notesInFolder) {
+                await Storage.deleteNoteFromFirebase(note.id);
+              }
+              await Storage.saveTrash(state.trash);
+            } catch (error) {
+              console.error('Firebase sync error:', error);
+            }
           }
 
           // Move subfolders to root
@@ -740,7 +786,6 @@ const Storage = {
 
           saveFolders();
           saveNotes();
-          saveTrash();
           renderSidebar();
         };
       }
@@ -3066,7 +3111,14 @@ const Storage = {
         );
         if (ok) {
           state.trash = [];
-          saveTrash();
+          
+          // Sync with Firebase: Clear all trash
+          try {
+            await Storage.clearAllTrashFromFirebase();
+          } catch (error) {
+            console.error('Firebase sync error:', error);
+          }
+          
           closeModal();
           renderSidebar();
         }
@@ -3199,14 +3251,12 @@ const Storage = {
             if (type === "folder") {
               // Restore folder
               state.folders.push(restored);
-              saveFolders();
 
               // Restore all notes that were inside the folder
               if (notes && notes.length > 0) {
                 notes.forEach((note) => {
                   state.notes.push(note);
                 });
-                saveNotes();
               }
 
               // Restore subfolders that were nested
@@ -3214,16 +3264,37 @@ const Storage = {
                 subfolders.forEach((subfolder) => {
                   state.folders.push(subfolder);
                 });
-                saveFolders();
               }
+              
+              // Sync with Firebase: Add back to collections, remove from trash
+              try {
+                await Storage.saveFolders([restored, ...(subfolders || [])]);
+                if (notes && notes.length > 0) {
+                  await Storage.saveNotes(notes);
+                }
+                await Storage.deleteTrashItemFromFirebase(id);
+              } catch (error) {
+                console.error('Firebase sync error:', error);
+              }
+              
+              saveFolders();
+              saveNotes();
             } else {
               // Restore note
               state.notes.push(restored);
+              
+              // Sync with Firebase: Add back to notes, remove from trash
+              try {
+                await Storage.saveNotes([restored]);
+                await Storage.deleteTrashItemFromFirebase(id);
+              } catch (error) {
+                console.error('Firebase sync error:', error);
+              }
+              
               saveNotes();
             }
 
             state.trash = state.trash.filter((t) => t.id !== id);
-            saveTrash();
             closeModal();
             renderSidebar();
           }
@@ -3256,6 +3327,14 @@ const Storage = {
 
             // Restore the note
             state.notes.push(note);
+            
+            // Sync with Firebase: Add note back to notes collection
+            try {
+              await Storage.saveNotes([note]);
+            } catch (error) {
+              console.error('Firebase sync error:', error);
+            }
+            
             saveNotes();
 
             // Remove note from folder's notes array
@@ -3266,7 +3345,12 @@ const Storage = {
               delete folder.notes;
             }
 
-            saveTrash();
+            // Update trash in Firebase
+            try {
+              await Storage.saveTrash(state.trash);
+            } catch (error) {
+              console.error('Firebase sync error:', error);
+            }
             closeModal();
             renderSidebar();
           }
@@ -3283,7 +3367,14 @@ const Storage = {
           );
           if (ok) {
             state.trash = state.trash.filter((t) => t.id !== id);
-            saveTrash();
+            
+            // Sync with Firebase: Delete from trash collection
+            try {
+              await Storage.deleteTrashItemFromFirebase(id);
+            } catch (error) {
+              console.error('Firebase sync error:', error);
+            }
+            
             // Update the modal count and remove item
             modal.querySelector(
               "h2"
@@ -4539,20 +4630,50 @@ const Storage = {
       }
     });
 
+    // Store folder data before deletion for Firebase sync
+    const foldersToDelete = [];
+    
     // Delete selected folders
     selectedFolders.forEach((folderId) => {
       const folder = state.folders.find((f) => f.id === folderId);
       if (folder) {
+        // Get notes in this folder BEFORE removing them
+        const notesInFolder = state.notes.filter((n) => n.folderId === folderId);
+        
         // Move notes in this folder to trash
-        state.notes
-          .filter((n) => n.folderId === folderId)
-          .forEach((note) => {
-            state.trash.push({ ...note, deletedAt: new Date().toISOString() });
-            closeTab("left", note.id);
-            closeTab("right", note.id);
-            closeWindow(note.id);
-          });
+        notesInFolder.forEach((note) => {
+          state.trash.push({ ...note, deletedAt: new Date().toISOString() });
+          closeTab("left", note.id);
+          closeTab("right", note.id);
+          closeWindow(note.id);
+        });
         state.notes = state.notes.filter((n) => n.folderId !== folderId);
+
+        // Get subfolders
+        const getSubfolders = (parentId) => {
+          const subs = state.folders.filter((f) => f.parentId === parentId);
+          let allSubs = [...subs];
+          subs.forEach((sub) => {
+            allSubs = allSubs.concat(getSubfolders(sub.id));
+          });
+          return allSubs;
+        };
+        const subfolders = getSubfolders(folderId);
+
+        // Store for Firebase deletion
+        foldersToDelete.push({
+          folderId: folderId,
+          notesInFolder: notesInFolder
+        });
+
+        // Add folder to trash with nested notes and subfolders
+        state.trash.push({
+          ...folder,
+          type: "folder",
+          notes: notesInFolder,
+          subfolders: subfolders,
+          deletedAt: new Date().toISOString(),
+        });
 
         // Remove the folder
         state.folders = state.folders.filter((f) => f.id !== folderId);
@@ -4569,12 +4690,33 @@ const Storage = {
       }
     });
 
+    // Sync with Firebase: Delete from collections, add to trash
+    try {
+      // Delete notes from Firebase
+      for (const noteId of selectedNotes) {
+        await Storage.deleteNoteFromFirebase(noteId);
+      }
+      
+      // Delete folders and their notes from Firebase
+      for (const folderData of foldersToDelete) {
+        await Storage.deleteFolderFromFirebase(folderData.folderId);
+        // Delete all notes in the folder
+        for (const note of folderData.notesInFolder) {
+          await Storage.deleteNoteFromFirebase(note.id);
+        }
+      }
+      
+      // Save trash to Firebase
+      await Storage.saveTrash(state.trash);
+    } catch (error) {
+      console.error('Firebase sync error:', error);
+    }
+
     // Clear selection
     state.selectedItems.clear();
 
     saveNotes();
     saveFolders();
-    saveTrash();
     renderSidebar();
   }
 

@@ -290,7 +290,7 @@ class FirebaseService {
         const trashRef = doc(db, 'users', userId, 'trash', item.id);
         return setDoc(trashRef, {
           ...item,
-          deletedAt: new Date().toISOString(),
+          deletedAt: item.deletedAt || new Date().toISOString(),
           userId: userId
         }, { merge: true });
       });
@@ -300,6 +300,69 @@ class FirebaseService {
       return true;
     } catch (error) {
       console.error('Error saving trash:', error);
+      throw error;
+    }
+  }
+
+  // Delete a note from Firebase notes collection
+  async deleteNoteFromCollection(noteId) {
+    try {
+      const userId = this.getUserId();
+      const noteRef = doc(db, 'users', userId, 'notes', noteId);
+      await deleteDoc(noteRef);
+      console.log('✅ Firebase: Deleted note from collection:', noteId);
+      return true;
+    } catch (error) {
+      console.error('❌ Firebase: Error deleting note:', error);
+      throw error;
+    }
+  }
+
+  // Delete a folder from Firebase folders collection
+  async deleteFolderFromCollection(folderId) {
+    try {
+      const userId = this.getUserId();
+      const folderRef = doc(db, 'users', userId, 'folders', folderId);
+      await deleteDoc(folderRef);
+      console.log('✅ Firebase: Deleted folder from collection:', folderId);
+      return true;
+    } catch (error) {
+      console.error('❌ Firebase: Error deleting folder:', error);
+      throw error;
+    }
+  }
+
+  // Delete a trash item permanently from Firebase
+  async deleteTrashItem(itemId) {
+    try {
+      const userId = this.getUserId();
+      const trashRef = doc(db, 'users', userId, 'trash', itemId);
+      await deleteDoc(trashRef);
+      console.log('✅ Firebase: Permanently deleted trash item:', itemId);
+      return true;
+    } catch (error) {
+      console.error('❌ Firebase: Error deleting trash item:', error);
+      throw error;
+    }
+  }
+
+  // Clear all trash from Firebase
+  async clearAllTrash() {
+    try {
+      const userId = this.getUserId();
+      const trashRef = collection(db, 'users', userId, 'trash');
+      const snapshot = await getDocs(trashRef);
+      
+      const deletePromises = [];
+      snapshot.forEach((doc) => {
+        deletePromises.push(deleteDoc(doc.ref));
+      });
+
+      await Promise.all(deletePromises);
+      console.log('✅ Firebase: Cleared all trash items');
+      return true;
+    } catch (error) {
+      console.error('❌ Firebase: Error clearing trash:', error);
       throw error;
     }
   }
