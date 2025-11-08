@@ -886,7 +886,7 @@ textarea {
 
 /* Style for note buttons inside folders */
 .folder-notes > button[data-note-id] {
-  margin-left: 32px !important;  /* Increased from 16px */
+  margin-left: 32px !important; /* Increased from 16px */
   padding: 8px 12px !important;
   border-radius: 6px;
   transform-origin: left center;
@@ -897,7 +897,7 @@ textarea {
 
 /* Style for note buttons in nested subfolders */
 .folder-notes .folder-notes > button[data-note-id] {
-  margin-left: 48px !important;  /* Increased from 32px */
+  margin-left: 48px !important; /* Increased from 32px */
   padding: 8px 12px !important;
 }
 
@@ -1543,7 +1543,7 @@ textarea {
 .pane {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 5px;
   display: grid;
   grid-template-rows: auto 1fr;
   min-height: 400px;
