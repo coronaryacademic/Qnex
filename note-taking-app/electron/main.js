@@ -318,6 +318,40 @@ function createServer() {
     }
   });
 
+  // TASKS ENDPOINTS
+  expressApp.get('/api/tasks', async (req, res) => {
+    try {
+      const tasksFile = path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json');
+      
+      if (await fs.pathExists(tasksFile)) {
+        const tasks = await fs.readJson(tasksFile);
+        res.json(tasks);
+      } else {
+        res.json([]);
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      res.status(500).json({ error: 'Failed to load tasks' });
+    }
+  });
+
+  expressApp.post('/api/tasks', async (req, res) => {
+    try {
+      const tasks = req.body;
+      const tasksDir = path.join(NOTES_BASE_DIR, 'tasks');
+      const tasksFile = path.join(tasksDir, 'tasks.json');
+      
+      await fs.ensureDir(tasksDir);
+      await fs.writeJson(tasksFile, tasks, { spaces: 2 });
+      
+      res.json({ success: true, message: 'Tasks saved successfully' });
+    } catch (error) {
+      console.error('Error saving tasks:', error);
+      res.status(500).json({ error: 'Failed to save tasks' });
+    }
+  });
+
+
   // Health check endpoint
   expressApp.get('/api/health', (req, res) => {
     res.json({ 

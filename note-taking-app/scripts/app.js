@@ -5687,24 +5687,50 @@ const Storage = {
 
     // Load todos from storage
     async function loadTodos() {
-      // Use already loaded settings from state (Electron saves todos in settings.json)
-      if (Storage.isElectron) {
+      try {
+        if (Storage.useFileSystem) {
+          // Load from file system: D:\MyNotes\tasks\tasks.json
+          const response = await fileSystemService.makeRequest('/tasks');
+          todos = response || [];
+        } else if (Storage.isElectron) {
+          todos = state.settings.todos || [];
+        } else {
+          // Browser fallback
+          const saved = localStorage.getItem("todos");
+          todos = saved ? JSON.parse(saved) : [];
+        }
+        console.log('✅ Tasks loaded from file system:', todos.length);
+      } catch (error) {
+        console.warn('⚠️ Failed to load tasks from file system, using fallback:', error);
+        // Fallback to settings
         todos = state.settings.todos || [];
-      } else {
-        // Browser fallback
-        const saved = localStorage.getItem("todos");
-        todos = saved ? JSON.parse(saved) : [];
       }
       renderTodos();
       updateEmptyState(); // Update marquee on load
     }
 
     async function saveTodos() {
-      state.settings.todos = todos;
-      if (Storage.isElectron) {
-        await window.electronAPI.writeSettings(state.settings);
-      } else {
-        localStorage.setItem("todos", JSON.stringify(todos));
+      try {
+        if (Storage.useFileSystem) {
+          // Save to file system: D:\MyNotes\tasks\tasks.json
+          await fileSystemService.makeRequest('/tasks', {
+            method: 'POST',
+            body: JSON.stringify(todos)
+          });
+        } else if (Storage.isElectron) {
+          state.settings.todos = todos;
+          await window.electronAPI.writeSettings(state.settings);
+        } else {
+          localStorage.setItem("todos", JSON.stringify(todos));
+        }
+        console.log('✅ Tasks saved to file system');
+      } catch (error) {
+        console.error('❌ Failed to save tasks:', error);
+        // Fallback to settings
+        state.settings.todos = todos;
+        if (Storage.isElectron) {
+          await window.electronAPI.writeSettings(state.settings);
+        }
       }
       // Update marquee to reflect changes
       updateEmptyState();
@@ -5755,13 +5781,25 @@ const Storage = {
       todos.forEach((todo, index) => {
         const item = document.createElement("div");
         item.className = "todo-item" + (todo.completed ? " completed" : "");
+        item.draggable = true;
+        item.dataset.index = index;
         item.innerHTML = `
+          <div class="todo-drag-handle">⋮⋮</div>
           <div class="todo-checkbox ${
             todo.completed ? "checked" : ""
           }" data-index="${index}"></div>
           <div class="todo-text">${escapeHtml(todo.text)}</div>
           <button class="todo-delete" data-index="${index}">×</button>
         `;
+        
+        // Add drag event listeners
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragenter', handleDragEnter);
+        item.addEventListener('dragleave', handleDragLeave);
+        
         todoList.appendChild(item);
       });
 
@@ -5782,6 +5820,98 @@ const Storage = {
 
       // Update progress bar
       updateProgress();
+    }
+
+    // Drag and drop variables
+    let draggedIndex = null;
+    let dropIndicator = null;
+
+    function handleDragStart(e) {
+      draggedIndex = parseInt(e.target.dataset.index);
+      e.target.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', e.target.outerHTML);
+    }
+
+    function handleDragEnd(e) {
+      e.target.classList.remove('dragging');
+      draggedIndex = null;
+      // Remove all drop indicators
+      document.querySelectorAll('.todo-drop-indicator').forEach(el => el.remove());
+      document.querySelectorAll('.todo-item').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+
+    function handleDragEnter(e) {
+      e.preventDefault();
+      if (e.target.classList.contains('todo-item') && draggedIndex !== null) {
+        const targetIndex = parseInt(e.target.dataset.index);
+        if (targetIndex !== draggedIndex) {
+          // Show drop indicator
+          showDropIndicator(e.target, e.clientY);
+        }
+      }
+    }
+
+    function handleDragLeave(e) {
+      // Only remove indicators if we're leaving the todo item entirely
+      if (!e.target.closest('.todo-item')) {
+        removeDropIndicators();
+      }
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      const targetIndex = parseInt(e.target.closest('.todo-item').dataset.index);
+      
+      if (draggedIndex !== null && targetIndex !== draggedIndex) {
+        // Determine if we're dropping above or below
+        const rect = e.target.closest('.todo-item').getBoundingClientRect();
+        const dropAbove = e.clientY < rect.top + rect.height / 2;
+        
+        // Move the todo item
+        const draggedTodo = todos[draggedIndex];
+        todos.splice(draggedIndex, 1);
+        
+        let newIndex = targetIndex;
+        if (draggedIndex < targetIndex) {
+          newIndex = dropAbove ? targetIndex - 1 : targetIndex;
+        } else {
+          newIndex = dropAbove ? targetIndex : targetIndex + 1;
+        }
+        
+        todos.splice(newIndex, 0, draggedTodo);
+        saveTodos();
+        renderTodos();
+      }
+      
+      removeDropIndicators();
+    }
+
+    function showDropIndicator(targetElement, clientY) {
+      removeDropIndicators();
+      
+      const rect = targetElement.getBoundingClientRect();
+      const dropAbove = clientY < rect.top + rect.height / 2;
+      
+      // Add visual indicator
+      if (dropAbove) {
+        targetElement.classList.add('drag-over-top');
+      } else {
+        targetElement.classList.add('drag-over-bottom');
+      }
+    }
+
+    function removeDropIndicators() {
+      document.querySelectorAll('.todo-item').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
     }
 
     function toggleTodo(index) {
@@ -5854,81 +5984,6 @@ const Storage = {
     loadTodos();
   }
 
-  // Sticky Notes Management
-  {
-    const stickyNotesTextarea = document.getElementById("stickyNotesTextarea");
-    const stickyNotesStatus = document.getElementById("stickyNotesStatus");
-    const clearStickyNotes = document.getElementById("clearStickyNotes");
-
-    let saveTimeout = null;
-    const STORAGE_KEY = "devStickyNotes";
-
-    // Load sticky notes from storage
-    function loadStickyNotes() {
-      if (Storage.isElectron) {
-        // Load from Electron settings
-        const notes = state.settings.stickyNotes || "";
-        stickyNotesTextarea.value = notes;
-      } else {
-        // Load from localStorage
-        const notes = localStorage.getItem(STORAGE_KEY) || "";
-        stickyNotesTextarea.value = notes;
-      }
-    }
-
-    // Save sticky notes to storage
-    async function saveStickyNotes() {
-      const notes = stickyNotesTextarea.value;
-
-      if (Storage.isElectron) {
-        state.settings.stickyNotes = notes;
-        await window.electronAPI.writeSettings(state.settings);
-      } else {
-        localStorage.setItem(STORAGE_KEY, notes);
-      }
-
-      // Update status
-      stickyNotesStatus.textContent = "Auto-saved";
-      setTimeout(() => {
-        stickyNotesStatus.textContent = "Auto-saved";
-      }, 2000);
-    }
-
-    // Auto-save on input with debounce
-    stickyNotesTextarea.addEventListener("input", () => {
-      stickyNotesStatus.textContent = "Saving...";
-
-      // Clear existing timeout
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
-      }
-
-      // Set new timeout to save after 1 second of no typing
-      saveTimeout = setTimeout(() => {
-        saveStickyNotes();
-      }, 1000);
-    });
-
-    // Clear button
-    clearStickyNotes.addEventListener("click", async () => {
-      if (stickyNotesTextarea.value.trim() === "") {
-        return;
-      }
-
-      // Confirm before clearing using custom modal
-      const confirmClear = await modalConfirm(
-        "Are you sure you want to clear all notes? This action cannot be undone."
-      );
-      if (confirmClear) {
-        AudioFX.playDelete();
-        stickyNotesTextarea.value = "";
-        saveStickyNotes();
-      }
-    });
-
-    // Load on startup
-    loadStickyNotes();
-  }
 
   // Sidebar resizer with smart collapse
   {
