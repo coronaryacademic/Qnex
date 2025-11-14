@@ -362,193 +362,300 @@ function setupEditorFeatures(container) {
 
   editors.forEach((editor) => {
     // Set up editor tools menu
-    const editorToolsMenu = editor.querySelector('.editor-tools-menu');
-    const editorToolsBtn = editor.querySelector('.editor-tools-btn');
-    if (editorToolsMenu && editorToolsBtn && !editorToolsBtn.hasAttribute('data-tools-handled')) {
-      editorToolsBtn.setAttribute('data-tools-handled', 'true');
-      
-      editorToolsBtn.addEventListener('click', (e) => {
+    const editorToolsMenu = editor.querySelector(".editor-tools-menu");
+    const editorToolsBtn = editor.querySelector(".editor-tools-btn");
+    if (
+      editorToolsMenu &&
+      editorToolsBtn &&
+      !editorToolsBtn.hasAttribute("data-tools-handled")
+    ) {
+      editorToolsBtn.setAttribute("data-tools-handled", "true");
+
+      editorToolsBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        editorToolsMenu.classList.toggle('open');
+        editorToolsMenu.classList.toggle("open");
       });
-      
+
       // Close menu when clicking outside
-      document.addEventListener('click', (e) => {
+      document.addEventListener("click", (e) => {
         if (!editorToolsMenu.contains(e.target)) {
-          editorToolsMenu.classList.remove('open');
+          editorToolsMenu.classList.remove("open");
         }
       });
-      
+
       // Handle tools menu actions
-      const duplicateBtn = editorToolsMenu.querySelector('.editor-duplicate-btn');
+      const duplicateBtn = editorToolsMenu.querySelector(
+        ".editor-duplicate-btn"
+      );
       if (duplicateBtn) {
-        duplicateBtn.addEventListener('click', () => {
-          document.getElementById('duplicateBtn')?.click();
-          editorToolsMenu.classList.remove('open');
+        duplicateBtn.addEventListener("click", () => {
+          document.getElementById("duplicateBtn")?.click();
+          editorToolsMenu.classList.remove("open");
         });
       }
-      
-      const deleteBtn = editorToolsMenu.querySelector('.editor-delete-btn');
+
+      const deleteBtn = editorToolsMenu.querySelector(".editor-delete-btn");
       if (deleteBtn) {
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          editorToolsMenu.classList.remove('open');
-          
+          editorToolsMenu.classList.remove("open");
+
           // Trigger the actual delete button with a proper click event
           setTimeout(() => {
-            const btn = document.getElementById('deleteBtn');
+            const btn = document.getElementById("deleteBtn");
             if (btn) {
               // Create and dispatch a proper mouse event
-              const clickEvent = new MouseEvent('click', {
+              const clickEvent = new MouseEvent("click", {
                 bubbles: true,
                 cancelable: true,
-                view: window
+                view: window,
               });
               btn.dispatchEvent(clickEvent);
             }
           }, 50);
         });
       }
-      
-      const trashBtn = editorToolsMenu.querySelector('.editor-trash-btn');
+
+      const trashBtn = editorToolsMenu.querySelector(".editor-trash-btn");
       if (trashBtn) {
-        trashBtn.addEventListener('click', () => {
-          document.getElementById('trashBtn')?.click();
-          editorToolsMenu.classList.remove('open');
+        trashBtn.addEventListener("click", () => {
+          document.getElementById("trashBtn")?.click();
+          editorToolsMenu.classList.remove("open");
         });
       }
-      
-      const exportNotesBtn = editorToolsMenu.querySelector('.editor-export-notes-btn');
+
+      const exportNotesBtn = editorToolsMenu.querySelector(
+        ".editor-export-notes-btn"
+      );
       if (exportNotesBtn) {
-        exportNotesBtn.addEventListener('click', () => {
-          document.getElementById('exportBtn')?.click();
-          editorToolsMenu.classList.remove('open');
+        exportNotesBtn.addEventListener("click", () => {
+          document.getElementById("exportBtn")?.click();
+          editorToolsMenu.classList.remove("open");
         });
       }
-      
-      const importBtn = editorToolsMenu.querySelector('.editor-import-btn');
+
+      const importBtn = editorToolsMenu.querySelector(".editor-import-btn");
       if (importBtn) {
-        importBtn.addEventListener('click', () => {
-          document.getElementById('importBtn')?.click();
-          editorToolsMenu.classList.remove('open');
+        importBtn.addEventListener("click", () => {
+          document.getElementById("importBtn")?.click();
+          editorToolsMenu.classList.remove("open");
         });
       }
-      
-      const exportHtmlBtn = editorToolsMenu.querySelector('.editor-export-html-btn');
+
+      const exportHtmlBtn = editorToolsMenu.querySelector(
+        ".editor-export-html-btn"
+      );
       if (exportHtmlBtn) {
-        exportHtmlBtn.addEventListener('click', () => {
-          document.getElementById('exportHtmlBtn')?.click();
-          editorToolsMenu.classList.remove('open');
+        exportHtmlBtn.addEventListener("click", () => {
+          document.getElementById("exportHtmlBtn")?.click();
+          editorToolsMenu.classList.remove("open");
         });
       }
-      
-      const exportPdfBtn = editorToolsMenu.querySelector('.editor-export-pdf-btn');
+
+      const exportPdfBtn = editorToolsMenu.querySelector(
+        ".editor-export-pdf-btn"
+      );
       if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', () => {
-          document.getElementById('exportPdfBtn')?.click();
-          editorToolsMenu.classList.remove('open');
+        exportPdfBtn.addEventListener("click", () => {
+          document.getElementById("exportPdfBtn")?.click();
+          editorToolsMenu.classList.remove("open");
         });
       }
     }
 
     // Set up editor menu (three-dot menu)
-    const editorMenu = editor.querySelector('.editor-menu');
-    const editorMenuBtn = editor.querySelector('.editor-menu-btn');
-    if (editorMenu && editorMenuBtn && !editorMenuBtn.hasAttribute('data-menu-handled')) {
-      editorMenuBtn.setAttribute('data-menu-handled', 'true');
-      
-      editorMenuBtn.addEventListener('click', (e) => {
+    const editorMenu = editor.querySelector(".editor-menu");
+    const editorMenuBtn = editor.querySelector(".editor-menu-btn");
+    if (
+      editorMenu &&
+      editorMenuBtn &&
+      !editorMenuBtn.hasAttribute("data-menu-handled")
+    ) {
+      editorMenuBtn.setAttribute("data-menu-handled", "true");
+
+      editorMenuBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        editorMenu.classList.toggle('open');
-      });
-      
-      // Close menu when clicking outside
-      document.addEventListener('click', (e) => {
-        if (!editorMenu.contains(e.target)) {
-          editorMenu.classList.remove('open');
+
+        // Close main settings menu if open
+        const settingsMenu = document.getElementById("settingsMenu");
+        if (settingsMenu) {
+          settingsMenu.classList.remove("open");
+        }
+
+        editorMenu.classList.toggle("open");
+
+        // Position the menu correctly
+        if (editorMenu.classList.contains("open")) {
+          const editorMenuList = editorMenu.querySelector(".editor-menu-list");
+          if (editorMenuList) {
+            // Check if we're inside a windowed note
+            const windowContainer = editorMenuBtn.closest(".window");
+
+            if (windowContainer) {
+              // Inside a window - use absolute positioning relative to window
+              editorMenuList.style.position = "absolute";
+              editorMenuList.style.top = "calc(100% + 4px)";
+              editorMenuList.style.right = "0";
+              editorMenuList.style.left = "auto";
+              editorMenuList.style.zIndex = "1500";
+            } else {
+              // In main panes - use fixed positioning
+              const btnRect = editorMenuBtn.getBoundingClientRect();
+              editorMenuList.style.position = "fixed";
+              editorMenuList.style.top = btnRect.bottom + 4 + "px";
+              editorMenuList.style.right =
+                window.innerWidth - btnRect.right + "px";
+              editorMenuList.style.left = "auto";
+              editorMenuList.style.zIndex = "1500";
+            }
+          }
         }
       });
-      
+
+      // Close menu when clicking outside
+      document.addEventListener("click", (e) => {
+        if (!editorMenu.contains(e.target)) {
+          editorMenu.classList.remove("open");
+        }
+      });
+
       // Prevent menu from closing when clicking inside
-      editorMenu.addEventListener('click', (e) => {
+      editorMenu.addEventListener("click", (e) => {
         // Only stop propagation for font controls and menu items
-        if (e.target.closest('.font-controls-menu') || e.target.closest('.menu-item')) {
+        if (
+          e.target.closest(".font-controls-menu") ||
+          e.target.closest(".menu-item")
+        ) {
           e.stopPropagation();
         }
       });
 
       // Set up font size controls in menu
-      const contentEditable = editor.querySelector('.content.editable');
-      const fontSizeLabel = editorMenu.querySelector('.font-size-label');
-      const fontDecreaseBtn = editorMenu.querySelector('[data-action="font-decrease"]');
-      const fontIncreaseBtn = editorMenu.querySelector('[data-action="font-increase"]');
-      
+      const contentEditable = editor.querySelector(".content.editable");
+      const fontSizeLabel = editorMenu.querySelector(".font-size-label");
+      const fontDecreaseBtn = editorMenu.querySelector(
+        '[data-action="font-decrease"]'
+      );
+      const fontIncreaseBtn = editorMenu.querySelector(
+        '[data-action="font-increase"]'
+      );
+
       let editorFontSize = 16;
-      
+
       if (fontDecreaseBtn && contentEditable) {
-        fontDecreaseBtn.addEventListener('click', (e) => {
+        fontDecreaseBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           editorFontSize = Math.max(12, editorFontSize - 2);
-          contentEditable.style.fontSize = editorFontSize + 'px';
-          if (fontSizeLabel) fontSizeLabel.textContent = editorFontSize + 'px';
+          contentEditable.style.fontSize = editorFontSize + "px";
+          if (fontSizeLabel) fontSizeLabel.textContent = editorFontSize + "px";
         });
       }
-      
+
       if (fontIncreaseBtn && contentEditable) {
-        fontIncreaseBtn.addEventListener('click', (e) => {
+        fontIncreaseBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           editorFontSize = Math.min(32, editorFontSize + 2);
-          contentEditable.style.fontSize = editorFontSize + 'px';
-          if (fontSizeLabel) fontSizeLabel.textContent = editorFontSize + 'px';
+          contentEditable.style.fontSize = editorFontSize + "px";
+          if (fontSizeLabel) fontSizeLabel.textContent = editorFontSize + "px";
         });
       }
 
       // Set up layout toggle in menu
-      const layoutToggleBtn = editorMenu.querySelector('[data-action="toggle-layout"]');
-      const layoutLabel = editorMenu.querySelector('.layout-label');
-      
+      const layoutToggleBtn = editorMenu.querySelector(
+        '[data-action="toggle-layout"]'
+      );
+      const layoutLabel = editorMenu.querySelector(".layout-label");
+      const layoutSvg = layoutToggleBtn
+        ? layoutToggleBtn.querySelector("svg")
+        : null;
+
       if (layoutToggleBtn && contentEditable) {
         // Check current layout state
-        let isFullWidth = contentEditable.classList.contains('layout-full');
-        
-        layoutToggleBtn.addEventListener('click', (e) => {
+        let isFullWidth = contentEditable.classList.contains("layout-full");
+
+        // Function to update the SVG icon based on current state
+        const updateLayoutIcon = () => {
+          if (layoutSvg) {
+            if (isFullWidth) {
+              // Full-width icon - single wide rectangle
+              layoutSvg.innerHTML = `
+                <rect x="2" y="6" width="20" height="12" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"></rect>
+                <line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" stroke-width="2"></line>
+              `;
+            } else {
+              // Centered icon - narrow centered rectangle
+              layoutSvg.innerHTML = `
+                <rect x="6" y="4" width="12" height="16" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"></rect>
+                <line x1="6" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="2"></line>
+                <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2"></line>
+              `;
+            }
+          }
+        };
+
+        // Initialize the icon
+        updateLayoutIcon();
+
+        layoutToggleBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           isFullWidth = !isFullWidth;
-          
+
           if (isFullWidth) {
-            contentEditable.classList.add('layout-full');
-            contentEditable.classList.remove('layout-centered');
+            contentEditable.classList.add("layout-full");
+            contentEditable.classList.remove("layout-centered");
           } else {
-            contentEditable.classList.remove('layout-full');
-            contentEditable.classList.add('layout-centered');
+            contentEditable.classList.remove("layout-full");
+            contentEditable.classList.add("layout-centered");
           }
-          
+
+          // Update both label and icon
           if (layoutLabel) {
-            layoutLabel.textContent = isFullWidth ? "Full-width Layout" : "Centered Layout";
+            layoutLabel.textContent = isFullWidth
+              ? "Full-width Layout"
+              : "Centered Layout";
           }
+          updateLayoutIcon();
+
           console.log("✓ Layout toggled:", isFullWidth ? "full" : "centered");
         });
       }
 
+      // Set up duplicate button in editor menu
+      const duplicateBtn = editorMenu.querySelector(".editor-duplicate-btn");
+      if (duplicateBtn) {
+        duplicateBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          // Trigger the actual duplicate button
+          const mainDuplicateBtn = document.getElementById("duplicateBtn");
+          if (mainDuplicateBtn) {
+            mainDuplicateBtn.click();
+          }
+          editorMenu.classList.remove("open");
+          console.log("✓ Duplicate button clicked from editor menu");
+        });
+      }
+
       // Set up highlight palette in editor menu
-      const editorPalette = editorMenu.querySelector('.editor-palette');
+      const editorPalette = editorMenu.querySelector(".editor-palette");
       if (editorPalette) {
-        editorPalette.querySelectorAll('button[data-color]').forEach((btn) => {
-          btn.addEventListener('click', (e) => {
+        editorPalette.querySelectorAll("button[data-color]").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
             e.stopPropagation();
             if (window.state) {
               window.state.currentHighlightColor = btn.dataset.color;
               // Update active state
-              editorPalette.querySelectorAll('button[data-color]').forEach((b) => b.classList.remove('active'));
-              btn.classList.add('active');
+              editorPalette
+                .querySelectorAll("button[data-color]")
+                .forEach((b) => b.classList.remove("active"));
+              btn.classList.add("active");
             }
           });
         });
         // Set initial active state
-        const firstBtn = editorPalette.querySelector('button[data-color]');
+        const firstBtn = editorPalette.querySelector("button[data-color]");
         if (firstBtn) {
-          firstBtn.classList.add('active');
+          firstBtn.classList.add("active");
           if (window.state) {
             window.state.currentHighlightColor = firstBtn.dataset.color;
           }
@@ -556,15 +663,17 @@ function setupEditorFeatures(container) {
       }
 
       // Set up auto highlight toggle in editor menu
-      const autoHlToggle = editorMenu.querySelector('.editor-auto-hl-toggle');
-      const autoHlLabel = editorMenu.querySelector('.auto-hl-label');
+      const autoHlToggle = editorMenu.querySelector(".editor-auto-hl-toggle");
+      const autoHlLabel = editorMenu.querySelector(".auto-hl-label");
       if (autoHlToggle) {
-        autoHlToggle.addEventListener('click', (e) => {
+        autoHlToggle.addEventListener("click", (e) => {
           e.stopPropagation();
           if (window.state) {
             window.state.autoHighlight = !window.state.autoHighlight;
             if (autoHlLabel) {
-              autoHlLabel.textContent = 'Auto Highlight: ' + (window.state.autoHighlight ? 'ON' : 'OFF');
+              autoHlLabel.textContent =
+                "Auto Highlight: " +
+                (window.state.autoHighlight ? "ON" : "OFF");
             }
           }
         });
@@ -572,62 +681,63 @@ function setupEditorFeatures(container) {
 
       // Set up lock note button in editor menu
       const lockBtn = editorMenu.querySelector('[data-action="lock-note"]');
-      const lockLabel = editorMenu.querySelector('.lock-label');
+      const lockLabel = editorMenu.querySelector(".lock-label");
       if (lockBtn) {
         // Function to update lock button UI based on current state
         const updateLockUI = () => {
-          const contentEditable = editor.querySelector('.content.editable');
+          const contentEditable = editor.querySelector(".content.editable");
           if (contentEditable) {
-            const isLocked = contentEditable.getAttribute('contenteditable') === 'false';
-            const svg = lockBtn.querySelector('svg');
-            
+            const isLocked =
+              contentEditable.getAttribute("contenteditable") === "false";
+            const svg = lockBtn.querySelector("svg");
+
             if (isLocked) {
               // Currently locked - show unlock option with OPEN lock icon
               svg.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
               `;
-              if (lockLabel) lockLabel.textContent = 'Unlock Note (Ctrl+L)';
+              if (lockLabel) lockLabel.textContent = "Unlock Note (Ctrl+L)";
             } else {
               // Currently unlocked - show lock option with CLOSED lock icon
               svg.innerHTML = `
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               `;
-              if (lockLabel) lockLabel.textContent = 'Lock Note (Ctrl+L)';
+              if (lockLabel) lockLabel.textContent = "Lock Note (Ctrl+L)";
             }
           }
         };
-        
+
         // Initial UI update
         updateLockUI();
-        
-        lockBtn.addEventListener('click', (e) => {
+
+        lockBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          
-          console.log('Lock button clicked');
-          
+
+          console.log("Lock button clicked");
+
           // Use the existing toggleNoteLock function
-          if (typeof window.toggleNoteLock === 'function') {
-            console.log('Calling toggleNoteLock');
+          if (typeof window.toggleNoteLock === "function") {
+            console.log("Calling toggleNoteLock");
             window.toggleNoteLock();
-            
+
             // Update UI after a short delay to ensure state has changed
             setTimeout(() => {
-              console.log('Updating lock UI');
+              console.log("Updating lock UI");
               updateLockUI();
             }, 100);
           } else {
-            console.error('toggleNoteLock function not found on window');
+            console.error("toggleNoteLock function not found on window");
           }
-          
+
           // Keep menu open - don't close it
         });
-        
+
         // Update UI when menu opens to reflect current state
-        const editorMenuBtn = editor.querySelector('.editor-menu-btn');
+        const editorMenuBtn = editor.querySelector(".editor-menu-btn");
         if (editorMenuBtn) {
-          editorMenuBtn.addEventListener('click', () => {
+          editorMenuBtn.addEventListener("click", () => {
             setTimeout(() => {
               updateLockUI();
             }, 10);
@@ -636,10 +746,12 @@ function setupEditorFeatures(container) {
       }
 
       // Close menu when opening in window
-      const openWindowBtn = editorMenu.querySelector('[data-action="open-window"]');
+      const openWindowBtn = editorMenu.querySelector(
+        '[data-action="open-window"]'
+      );
       if (openWindowBtn) {
-        openWindowBtn.addEventListener('click', () => {
-          editorMenu.classList.remove('open');
+        openWindowBtn.addEventListener("click", () => {
+          editorMenu.classList.remove("open");
         });
       }
     }
@@ -671,32 +783,38 @@ function setupEditorFeatures(container) {
       });
 
       // Mouse wheel zoom for font size (Ctrl + Scroll)
-      let editorFontSize = parseInt(window.getComputedStyle(contentEditable).fontSize) || 16;
-      contentEditable.addEventListener("wheel", (e) => {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          
-          // Determine zoom direction
-          if (e.deltaY < 0) {
-            // Scroll up - increase font size
-            editorFontSize = Math.min(32, editorFontSize + 2);
-          } else {
-            // Scroll down - decrease font size
-            editorFontSize = Math.max(12, editorFontSize - 2);
-          }
-          
-          contentEditable.style.fontSize = editorFontSize + 'px';
-          
-          // Update font size label in the menu if it exists
-          const editorMenu = editor.querySelector('.editor-menu');
-          if (editorMenu) {
-            const fontSizeLabel = editorMenu.querySelector('.font-size-label');
-            if (fontSizeLabel) {
-              fontSizeLabel.textContent = editorFontSize + 'px';
+      let editorFontSize =
+        parseInt(window.getComputedStyle(contentEditable).fontSize) || 16;
+      contentEditable.addEventListener(
+        "wheel",
+        (e) => {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+
+            // Determine zoom direction
+            if (e.deltaY < 0) {
+              // Scroll up - increase font size
+              editorFontSize = Math.min(32, editorFontSize + 2);
+            } else {
+              // Scroll down - decrease font size
+              editorFontSize = Math.max(12, editorFontSize - 2);
+            }
+
+            contentEditable.style.fontSize = editorFontSize + "px";
+
+            // Update font size label in the menu if it exists
+            const editorMenu = editor.querySelector(".editor-menu");
+            if (editorMenu) {
+              const fontSizeLabel =
+                editorMenu.querySelector(".font-size-label");
+              if (fontSizeLabel) {
+                fontSizeLabel.textContent = editorFontSize + "px";
+              }
             }
           }
-        }
-      }, { passive: false });
+        },
+        { passive: false }
+      );
     }
   });
 }
@@ -775,7 +893,7 @@ function loadCustomSearchPage(iframe, browserMessage) {
 }
 
 function openBrowserTab(pane = "left") {
-  console.log("🌐 Opening browser tab");
+  console.log("🌐 Opening browser window");
 
   // Get the browser template
   const template = document.getElementById("browser-template");
@@ -789,91 +907,130 @@ function openBrowserTab(pane = "left") {
     .cloneNode(true)
     .querySelector(".browser-container");
 
-  // Generate unique ID for browser tab
+  // Generate unique ID for browser window
   const browserId = "browser_" + Date.now();
   browserElement.dataset.browserId = browserId;
 
-  // Get pane and tabs container
-  const paneElement = document.querySelector(`.pane[data-pane="${pane}"]`);
-  const tabsContainer = paneElement.querySelector(".tabs");
-  const paneContent = paneElement.querySelector(".pane-content");
+  // Create windowed browser instead of tab
+  createBrowserWindow(browserId, browserElement);
+}
 
-  // Create tab for browser
-  const tab = document.createElement("div");
-  tab.className = "tab";
-  tab.dataset.browserId = browserId;
-  tab.draggable = true;
-  tab.innerHTML = `
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon">
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="4" />
-      <line x1="21.17" y1="8" x2="12" y2="8" />
-      <line x1="3.95" y1="6.06" x2="8.54" y2="14" />
-      <line x1="10.88" y1="21.94" x2="15.46" y2="14" />
-    </svg>
-    <span class="tab-name">Browser</span>
-    <svg class="pin-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
-      <path d="M12 17v5"></path>
-      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path>
-    </svg>
-    <button class="tab-close">×</button>
+function createBrowserWindow(browserId, browserElement) {
+  console.log("🪟 Creating browser window:", browserId);
+
+  // Create window element
+  const windowEl = document.createElement("div");
+  windowEl.className = "window";
+  windowEl.dataset.windowId = browserId;
+  windowEl.style.width = "800px";
+  windowEl.style.height = "600px";
+  windowEl.style.left = "100px";
+  windowEl.style.top = "100px";
+
+  // Create window header using existing window structure
+  const header = document.createElement("div");
+  header.className = "window-title";
+  header.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        <path d="M2 12h20" />
+      </svg>
+      <span>Browser</span>
+    </div>
+    <div class="window-controls">
+      <button class="window-minimize" title="Minimize">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+      <button class="window-close" title="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
   `;
 
-  // Add tab click handler
-  tab.addEventListener("click", (e) => {
-    if (e.target.classList.contains("tab-close")) {
-      e.stopPropagation();
-      // Close tab
-      closeBrowserTab(browserId, pane);
-    } else {
-      // Switch to this tab
-      switchToBrowserTab(browserId, pane);
-    }
-  });
+  // Create window content
+  const content = document.createElement("div");
+  content.className = "window-content";
+  content.appendChild(browserElement);
 
-  // Add drag handlers for split functionality
-  tab.addEventListener("dragstart", (e) => {
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", browserId);
-    e.dataTransfer.setData("type", "browser");
-    tab.classList.add("dragging");
-  });
+  // Assemble window
+  windowEl.appendChild(header);
+  windowEl.appendChild(content);
 
-  tab.addEventListener("dragend", () => {
-    tab.classList.remove("dragging");
-  });
-
-  // Add context menu for pin/unpin
-  tab.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    showBrowserContextMenu(e, browserId, pane, tab);
-  });
-
-  // Add tab to container
-  tabsContainer.appendChild(tab);
-
-  // Add browser to pane content (don't hide other content yet)
-  paneContent.appendChild(browserElement);
+  // Add to workspace
+  const workspace = document.querySelector(".workspace");
+  workspace.appendChild(windowEl);
 
   // Set up browser controls
   setupBrowserControls(browserElement);
 
-  // Make this tab active
-  switchToBrowserTab(browserId, pane);
-
-  // Set default URL
-  const urlBar = browserElement.querySelector(".browser-url-bar");
-  urlBar.value = "";
-
-  // Store browser window reference
-  browserElement.browserWindow = null;
-  browserElement.currentUrl = "";
-
   // Load custom search page
   const iframe = browserElement.querySelector(".browser-frame");
   const browserMessage = browserElement.querySelector(".browser-message");
-
   loadCustomSearchPage(iframe, browserMessage);
+
+  // Set up window controls
+  const minimizeBtn = header.querySelector(".window-minimize");
+  const closeBtn = header.querySelector(".window-close");
+
+  minimizeBtn.addEventListener("click", () => {
+    // Create dock item
+    windowEl.classList.add("hidden");
+    const dock = document.getElementById("dock");
+    const dockItem = document.createElement("div");
+    dockItem.className = "dock-item";
+    dockItem.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        <path d="M2 12h20" />
+      </svg>
+      Browser
+    `;
+    dockItem.title = "Restore Browser";
+    dockItem.addEventListener("click", () => {
+      windowEl.classList.remove("hidden");
+      dockItem.remove();
+      // Bring to front
+      windowEl.style.zIndex = Date.now();
+    });
+    dock.appendChild(dockItem);
+  });
+
+  closeBtn.addEventListener("click", () => {
+    windowEl.remove();
+  });
+
+  // Make window draggable
+  let isDragging = false;
+  let dragOffset = { x: 0, y: 0 };
+
+  header.addEventListener("mousedown", (e) => {
+    if (e.target.closest(".window-controls")) return;
+    isDragging = true;
+    dragOffset.x = e.clientX - windowEl.offsetLeft;
+    dragOffset.y = e.clientY - windowEl.offsetTop;
+    windowEl.style.zIndex = Date.now();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    windowEl.style.left = e.clientX - dragOffset.x + "px";
+    windowEl.style.top = e.clientY - dragOffset.y + "px";
+  });
+
+  document.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+  // Bring to front
+  windowEl.style.zIndex = Date.now();
 }
 
 function setupBrowserControls(browserElement) {
@@ -1270,7 +1427,7 @@ async function initializeThemeCarousel() {
   let savedTheme = "dark";
   if (window.fileSystemService) {
     try {
-      const response = await window.fileSystemService.makeRequest('/settings');
+      const response = await window.fileSystemService.makeRequest("/settings");
       const settings = response || {};
       savedTheme = settings.theme || "dark";
     } catch (error) {
@@ -1342,11 +1499,11 @@ async function initializeThemeCarousel() {
 // Load saved theme on startup
 async function loadSavedTheme() {
   let savedTheme = "dark";
-  
+
   // Try to get theme from file system service if available
   if (window.fileSystemService) {
     try {
-      const response = await window.fileSystemService.makeRequest('/settings');
+      const response = await window.fileSystemService.makeRequest("/settings");
       const settings = response || {};
       savedTheme = settings.theme || "dark";
     } catch (error) {
@@ -1354,7 +1511,7 @@ async function loadSavedTheme() {
       savedTheme = "dark";
     }
   }
-  
+
   currentThemeIndex = themes.indexOf(savedTheme);
   if (currentThemeIndex === -1) currentThemeIndex = 0;
 

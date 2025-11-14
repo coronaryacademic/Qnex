@@ -282,6 +282,21 @@ function createServer() {
     }
   });
 
+  // Clear all trash
+  expressApp.delete('/api/trash', async (req, res) => {
+    try {
+      const trashFile = path.join(NOTES_BASE_DIR, 'trash', 'trash.json');
+      
+      // Write empty array to clear all trash
+      await fs.writeJson(trashFile, [], { spaces: 2 });
+      
+      res.json({ success: true, message: 'All trash cleared successfully' });
+    } catch (error) {
+      console.error('Error clearing trash:', error);
+      res.status(500).json({ error: 'Failed to clear trash' });
+    }
+  });
+
   // SETTINGS ENDPOINTS
   expressApp.get('/api/settings', async (req, res) => {
     try {

@@ -3653,6 +3653,11 @@ const Storage = {
     e.stopPropagation();
     toggleMenu(el.settingsMenu);
     if (el.toolsMenu) el.toolsMenu.classList.remove("open");
+    
+    // Close all editor menus
+    document.querySelectorAll(".editor-menu.open").forEach(menu => {
+      menu.classList.remove("open");
+    });
   });
   document.addEventListener("click", (e) => {
     // Don't close menus if clicking inside them

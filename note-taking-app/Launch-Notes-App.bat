@@ -2,7 +2,7 @@
 title My Notes App Launcher
 echo.
 echo ========================================
-echo    Starting My Notes App (Electron)
+echo    Welcome Back Momen!  
 echo ========================================
 echo.
 echo Starting embedded server and app...
