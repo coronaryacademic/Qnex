@@ -364,7 +364,7 @@ textarea {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 .sidebar .note-list button.selected .note-icon {
-  stroke: #fff;
+  color: #fff;
 }
 .sidebar .note-list button.selected:hover {
   background: var(--accent-2);
@@ -376,6 +376,13 @@ textarea {
   flex-shrink: 0;
   margin-top: 2px;
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar .note-list button .note-icon svg {
+  width: 16px;
+  height: 16px;
 }
 .sidebar .note-list button > div {
   flex: 1;
@@ -3095,7 +3102,7 @@ body.debug-borders div {
 }
 
 .todo-item.drag-over-top::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   left: 0;
@@ -3107,7 +3114,7 @@ body.debug-borders div {
 }
 
 .todo-item.drag-over-bottom::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   left: 0;
@@ -3756,6 +3763,142 @@ body[data-theme="light"] .workspace-tab.pinned .workspace-tab-name {
 
 body[data-theme="light"] .workspace-tab.pinned .workspace-tab-pin {
   color: #1f2937 !important;
+}
+
+/* Icon Picker Modal */
+.icon-picker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.icon-picker-content {
+  background: var(--panel);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.icon-picker-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.icon-picker-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+.icon-picker-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-sec);
+  padding: 0;
+  line-height: 1;
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.icon-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.icon-option:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent);
+}
+
+.icon-option.selected {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.icon-svg {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.icon-svg svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.icon-label {
+  font-size: 12px;
+  text-align: center;
+  color: var(--text);
+  word-break: break-word;
+  width: 100%;
+}
+
+/* Marquee styles */
+.marquee-content {
+  display: flex;
+  white-space: nowrap;
+  animation: marquee 30s linear infinite;
+  padding: 0 20px;
+}
+
+.marquee-content span {
+  display: inline-block;
+  padding: 0 40px;
+  position: relative;
+  color: var(--text-sec);
+  font-style: italic;
+}
+
+.marquee-content span::after {
+  content: "•";
+  position: absolute;
+  right: 0;
+  color: var(--muted);
+}
+
+.marquee-content span:last-child::after {
+  display: none;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 /* Dark theme specific styling for pinned tabs */

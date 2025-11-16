@@ -1,5 +1,6 @@
 // Import File System Service
 import fileSystemService from "./file-system-service.js";
+import { medicalIcons, getIcon } from "./medical-icons.js";
 
 // Storage adapter: uses File System API, Electron file system, or localStorage
 const Storage = {
@@ -252,61 +253,65 @@ const Storage = {
   // Make modalPrompt globally available for table-utils
   window.modalPrompt = modalPrompt;
 
-  async function modalIconPicker(current = "📁") {
+  async function modalIconPicker(current = "default") {
     return new Promise((res) => {
       const m = modalBase();
       if (!m) return res(null);
+
       m.querySelector(".modal-title").textContent = "Choose Icon";
       const body = m.querySelector(".modal-body");
-      const txt = document.createElement("input");
-      txt.placeholder = "Or type custom icon";
-      txt.value = current;
-      txt.style.marginTop = "8px";
-      const presets = [
-        "📁",
-        "🗂️",
-        "📒",
-        "📝",
-        "⭐",
-        "📌",
-        "🔖",
-        "🧪",
-        "📚",
-        "💡",
-        "✅",
-        "🚀",
-      ];
-      const grid = document.createElement("div");
-      grid.style.display = "grid";
-      grid.style.gridTemplateColumns = "repeat(6, 1fr)";
-      grid.style.gap = "6px";
-      presets.forEach((ic) => {
-        const b = document.createElement("button");
-        b.className = "btn";
-        b.textContent = ic;
-        b.addEventListener("click", () => {
-          txt.value = ic;
-        });
-        grid.appendChild(b);
-      });
-      body.appendChild(grid);
-      body.appendChild(txt);
       const actions = m.querySelector(".modal-actions");
+
+      body.innerHTML = "";
+      actions.innerHTML = "";
+
+      const done = (value) => {
+        m.remove();
+        res(value);
+      };
+
+      const grid = document.createElement("div");
+      grid.className = "icon-grid";
+
+      Object.entries(medicalIcons).forEach(([key, svg]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "icon-option";
+        btn.dataset.icon = key;
+        if (key === current) btn.classList.add("selected");
+
+        const iconWrap = document.createElement("span");
+        iconWrap.className = "icon-svg";
+        iconWrap.innerHTML = svg;
+
+        const label = document.createElement("span");
+        label.className = "icon-label";
+        label.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+
+        btn.appendChild(iconWrap);
+        btn.appendChild(label);
+
+        btn.addEventListener("click", () => done(key));
+
+        grid.appendChild(btn);
+      });
+
+      body.appendChild(grid);
+
       const cancel = document.createElement("button");
       cancel.className = "btn";
       cancel.textContent = "Cancel";
-      const ok = document.createElement("button");
-      ok.className = "btn primary";
-      ok.textContent = "Save";
-      actions.appendChild(cancel);
-      actions.appendChild(ok);
-      const done = (v) => {
-        m.remove();
-        res(v);
-      };
+
+      const reset = document.createElement("button");
+      reset.className = "btn primary";
+      reset.textContent = "Use Default";
+
       cancel.addEventListener("click", () => done(null));
-      ok.addEventListener("click", () => done(txt.value.trim() || null));
+      reset.addEventListener("click", () => done("default"));
       m.querySelector(".modal-x").addEventListener("click", () => done(null));
+
+      actions.appendChild(cancel);
+      actions.appendChild(reset);
     });
   }
   // Paste helpers (images)
@@ -698,6 +703,19 @@ const Storage = {
             refreshOpenTabs(id);
             refreshWindowTitle(id);
           },
+          onChangeNoteIcon: async () => {
+            const note = getNote(id);
+            if (!note) return;
+            const current = note.icon || "default";
+            const chosen = await modalIconPicker(current);
+            if (!chosen) return;
+            note.icon = chosen;
+            note.updatedAt = new Date().toISOString();
+            saveNotes();
+            renderSidebar();
+            refreshOpenTabs(id);
+            refreshWindowTitle(id);
+          },
           onDeleteNote: async () => {
             const ok = await modalConfirm("Delete this note?");
             if (!ok) return;
@@ -762,6 +780,16 @@ const Storage = {
             saveFolders();
             renderSidebar();
           }
+        };
+        handlers.onChangeFolderIcon = async () => {
+          const folder = state.folders.find((f) => f.id === fid);
+          if (!folder) return;
+          const current = folder.icon || "default";
+          const chosen = await modalIconPicker(current);
+          if (!chosen) return;
+          folder.icon = chosen;
+          await saveFolders();
+          renderSidebar();
         };
         handlers.onDeleteFolder = async () => {
           const folder = state.folders.find((f) => f.id === fid);
@@ -1260,7 +1288,10 @@ const Storage = {
               .map((t) => `<span class="sidebar-tag">${escapeHtml(t)}</span>`)
               .join("")
           : "";
-      btn.innerHTML = `<svg class="note-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg><div class="font">${escapeHtml(
+      // Notes use the generic default note emoji when no custom icon is set
+      const iconKey = n.icon || "default";
+      const iconSvg = getIcon(iconKey);
+      btn.innerHTML = `<span class="note-icon">${iconSvg}</span><div class="font">${escapeHtml(
         n.title || "Untitled"
       )}${tags}</div><div class="small">${fmt(n.createdAt)}</div>`;
 
@@ -1347,8 +1378,9 @@ const Storage = {
         caret.textContent = state.foldersOpen.has(f.id) ? "▾" : "▸";
         const icon = document.createElement("span");
         icon.className = "folder-icon";
-        icon.innerHTML =
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+        // Folders use a dedicated folder default emoji when no custom icon is set
+        const folderIconKey = f.icon || "folderDefault";
+        icon.innerHTML = getIcon(folderIconKey);
         const name = document.createElement("span");
         name.textContent = f.name;
         row.appendChild(caret);
@@ -1481,8 +1513,8 @@ const Storage = {
       caret.textContent = state.foldersOpen.has("") ? "▾" : "▸";
       const icon = document.createElement("span");
       icon.className = "folder-icon";
-      icon.innerHTML =
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+      const uncategorizedIconKey = "folderDefault";
+      icon.innerHTML = getIcon(uncategorizedIconKey);
       const name = document.createElement("span");
       name.textContent = "Uncategorized";
       row.appendChild(caret);
@@ -3653,9 +3685,9 @@ const Storage = {
     e.stopPropagation();
     toggleMenu(el.settingsMenu);
     if (el.toolsMenu) el.toolsMenu.classList.remove("open");
-    
+
     // Close all editor menus
-    document.querySelectorAll(".editor-menu.open").forEach(menu => {
+    document.querySelectorAll(".editor-menu.open").forEach((menu) => {
       menu.classList.remove("open");
     });
   });
@@ -4179,10 +4211,22 @@ const Storage = {
         await handlers.onRenameNote?.();
         hideContextMenu();
       });
+    const bCNI = ctxEl.querySelector('[data-cmd="change-note-icon"]');
+    if (bCNI)
+      bCNI.addEventListener("click", async () => {
+        await handlers.onChangeNoteIcon?.();
+        hideContextMenu();
+      });
     const bDF = ctxEl.querySelector('[data-cmd="delete-folder"]');
     if (bDF)
       bDF.addEventListener("click", async () => {
         await handlers.onDeleteFolder?.();
+        hideContextMenu();
+      });
+    const bCFI = ctxEl.querySelector('[data-cmd="change-folder-icon"]');
+    if (bCFI)
+      bCFI.addEventListener("click", async () => {
+        await handlers.onChangeFolderIcon?.();
         hideContextMenu();
       });
     const bCT = ctxEl.querySelector('[data-cmd="close-tab"]');
@@ -4407,6 +4451,20 @@ const Storage = {
 
   // Save session state
   function saveSessionState() {
+    // Save window states
+    const windowStates = {};
+    Object.entries(state.windows).forEach(([id, win]) => {
+      const rect = win.el.getBoundingClientRect();
+      windowStates[id] = {
+        id,
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height,
+        minimized: win.minimized,
+      };
+    });
+
     state.settings.sessionState = {
       leftActive: state.left.active,
       rightActive: state.right.active,
@@ -4414,6 +4472,8 @@ const Storage = {
       rightTabs: state.right.tabs,
       splitMode: state.splitMode,
       pinnedTabs: Array.from(state.pinnedTabs),
+      windows: windowStates,
+      browserWindows: state.browserWindows || [], // Added for browser windows
     };
     Storage.saveSettings(state.settings);
   }
@@ -4442,6 +4502,32 @@ const Storage = {
         state.right.active = session.rightActive;
         enableSplit();
         openInPane(session.rightActive, "right");
+      }
+
+      // Restore windowed notes
+      if (session.windows) {
+        for (const [id, winState] of Object.entries(session.windows)) {
+          if (getNote(id)) {
+            openWindow(id);
+            const win = state.windows[id];
+            if (win) {
+              win.el.style.left = `${winState.x}px`;
+              win.el.style.top = `${winState.y}px`;
+              win.el.style.width = `${winState.width}px`;
+              win.el.style.height = `${winState.height}px`;
+              if (winState.minimized) {
+                minimizeWindow(id);
+              }
+            }
+          }
+        }
+      }
+
+      // Restore browser windows
+      if (Array.isArray(session.browserWindows)) {
+        for (const browserState of session.browserWindows) {
+          openBrowserTab(browserState.pane);
+        }
       }
 
       isRestoringSession = false;
@@ -4473,64 +4559,96 @@ const Storage = {
 
   // Show data directory in Electron
   if (Storage.isElectron) {
-    console.log("Data directory: D:\\MyNotes");
+    console.log("Data directory: D\\MyNotes");
   }
   function updateEmptyState() {
     const anyPane = !!(state.left.active || state.right.active);
     const anyWindow = Object.values(state.windows).some((w) => !w.minimized);
-    if (el.emptyState) {
-      el.emptyState.classList.toggle("hidden", anyPane || anyWindow);
 
-      // Update marquee with tasks status
-      if (!anyPane && !anyWindow) {
-        const marqueeContent = document.getElementById("marquee-content");
-        if (marqueeContent) {
-          // Get todos from settings
-          const allTodos = state.settings.todos || [];
+    if (!el.emptyState) return;
 
-          if (allTodos.length > 0) {
-            const completed = allTodos.filter((t) => t.completed).length;
-            const pending = allTodos.length - completed;
+    // Hide empty state whenever a pane or window is visible
+    el.emptyState.classList.toggle("hidden", anyPane || anyWindow);
 
-            const items = [];
+    const marqueeContent = document.getElementById("marquee-content");
+    if (!marqueeContent) return;
 
-            // Show pending tasks
-            if (pending > 0) {
-              items.push(
-                `<span>${pending} task${
-                  pending > 1 ? "s" : ""
-                } remaining</span>`
-              );
-            }
-
-            // Show completed count
-            if (completed > 0) {
-              items.push(
-                `<span>${completed} task${
-                  completed > 1 ? "s" : ""
-                } completed</span>`
-              );
-            }
-
-            // Show recent tasks
-            const recentTodos = [...allTodos]
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .slice(0, 5);
-
-            recentTodos.forEach((todo) => {
-              const status = todo.completed ? "✓" : "○";
-              items.push(`<span>${status} ${todo.text}</span>`);
-            });
-
-            // Duplicate for seamless loop
-            marqueeContent.innerHTML = items.join("") + items.join("");
-          } else {
-            marqueeContent.innerHTML =
-              "<span>No tasks yet - Add your first task below</span><span>No tasks yet - Add your first task below</span>";
-          }
-        }
-      }
+    // Only show marquee text when nothing is open
+    if (anyPane || anyWindow) {
+      marqueeContent.innerHTML = "";
+      return;
     }
+
+    // Normalize notes array (state.notes is an array)
+    const notesArray = Array.isArray(state.notes)
+      ? state.notes
+      : Object.values(state.notes || {});
+
+    // Get notes that have any content (HTML or plain text)
+    const notesWithContent = notesArray.filter((note) => {
+      const raw = note.contentHtml || note.content || "";
+      return raw && raw.trim();
+    });
+
+    if (notesWithContent.length === 0) {
+      marqueeContent.innerHTML =
+        "<span>No notes with content found. Create some notes to see your memories here!</span>" +
+        "<span>No notes with content found. Create some notes to see your memories here!</span>";
+      return;
+    }
+
+    const allSentences = [];
+
+    notesWithContent.forEach((note) => {
+      const raw = note.contentHtml || note.content || "";
+
+      // Strip HTML tags and normalize whitespace
+      const plain = raw
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!plain) return;
+
+      // Split into sentences on punctuation. Fallback to full text.
+      let parts = plain
+        .split(/[.!?]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 10);
+
+      if (parts.length === 0 && plain.length > 10) {
+        parts = [plain];
+      }
+
+      parts.forEach((sentence) => {
+        allSentences.push({
+          text: sentence,
+          noteTitle: note.title || "Untitled Note",
+          noteId: note.id,
+        });
+      });
+    });
+
+    if (allSentences.length === 0) {
+      marqueeContent.innerHTML =
+        "<span>No sentences found in your notes. Start writing to see your memories here!</span>" +
+        "<span>No sentences found in your notes. Start writing to see your memories here!</span>";
+      return;
+    }
+
+    // Shuffle and take up to 10 sentences
+    const shuffled = [...allSentences].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, Math.min(10, shuffled.length));
+
+    const items = selected.map(
+      (item) =>
+        `<span title="From: ${escapeHtml(item.noteTitle)}">${escapeHtml(
+          item.text
+        )}</span>`
+    );
+
+    // Duplicate for seamless loop
+    marqueeContent.innerHTML = items.join("") + items.join("");
   }
 
   function formatTimeAgo(date) {
@@ -5695,7 +5813,7 @@ const Storage = {
       try {
         if (Storage.useFileSystem) {
           // Load from file system: D:\MyNotes\tasks\tasks.json
-          const response = await fileSystemService.makeRequest('/tasks');
+          const response = await fileSystemService.makeRequest("/tasks");
           todos = response || [];
         } else if (Storage.isElectron) {
           todos = state.settings.todos || [];
@@ -5704,9 +5822,12 @@ const Storage = {
           const saved = localStorage.getItem("todos");
           todos = saved ? JSON.parse(saved) : [];
         }
-        console.log('✅ Tasks loaded from file system:', todos.length);
+        console.log("✅ Tasks loaded from file system:", todos.length);
       } catch (error) {
-        console.warn('⚠️ Failed to load tasks from file system, using fallback:', error);
+        console.warn(
+          "⚠️ Failed to load tasks from file system, using fallback:",
+          error
+        );
         // Fallback to settings
         todos = state.settings.todos || [];
       }
@@ -5718,9 +5839,9 @@ const Storage = {
       try {
         if (Storage.useFileSystem) {
           // Save to file system: D:\MyNotes\tasks\tasks.json
-          await fileSystemService.makeRequest('/tasks', {
-            method: 'POST',
-            body: JSON.stringify(todos)
+          await fileSystemService.makeRequest("/tasks", {
+            method: "POST",
+            body: JSON.stringify(todos),
           });
         } else if (Storage.isElectron) {
           state.settings.todos = todos;
@@ -5728,9 +5849,9 @@ const Storage = {
         } else {
           localStorage.setItem("todos", JSON.stringify(todos));
         }
-        console.log('✅ Tasks saved to file system');
+        console.log("✅ Tasks saved to file system");
       } catch (error) {
-        console.error('❌ Failed to save tasks:', error);
+        console.error("❌ Failed to save tasks:", error);
         // Fallback to settings
         state.settings.todos = todos;
         if (Storage.isElectron) {
@@ -5796,15 +5917,15 @@ const Storage = {
           <div class="todo-text">${escapeHtml(todo.text)}</div>
           <button class="todo-delete" data-index="${index}">×</button>
         `;
-        
+
         // Add drag event listeners
-        item.addEventListener('dragstart', handleDragStart);
-        item.addEventListener('dragend', handleDragEnd);
-        item.addEventListener('dragover', handleDragOver);
-        item.addEventListener('drop', handleDrop);
-        item.addEventListener('dragenter', handleDragEnter);
-        item.addEventListener('dragleave', handleDragLeave);
-        
+        item.addEventListener("dragstart", handleDragStart);
+        item.addEventListener("dragend", handleDragEnd);
+        item.addEventListener("dragover", handleDragOver);
+        item.addEventListener("drop", handleDrop);
+        item.addEventListener("dragenter", handleDragEnter);
+        item.addEventListener("dragleave", handleDragLeave);
+
         todoList.appendChild(item);
       });
 
@@ -5833,29 +5954,31 @@ const Storage = {
 
     function handleDragStart(e) {
       draggedIndex = parseInt(e.target.dataset.index);
-      e.target.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/html', e.target.outerHTML);
+      e.target.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/html", e.target.outerHTML);
     }
 
     function handleDragEnd(e) {
-      e.target.classList.remove('dragging');
+      e.target.classList.remove("dragging");
       draggedIndex = null;
       // Remove all drop indicators
-      document.querySelectorAll('.todo-drop-indicator').forEach(el => el.remove());
-      document.querySelectorAll('.todo-item').forEach(el => {
-        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      document
+        .querySelectorAll(".todo-drop-indicator")
+        .forEach((el) => el.remove());
+      document.querySelectorAll(".todo-item").forEach((el) => {
+        el.classList.remove("drag-over-top", "drag-over-bottom");
       });
     }
 
     function handleDragOver(e) {
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
+      e.dataTransfer.dropEffect = "move";
     }
 
     function handleDragEnter(e) {
       e.preventDefault();
-      if (e.target.classList.contains('todo-item') && draggedIndex !== null) {
+      if (e.target.classList.contains("todo-item") && draggedIndex !== null) {
         const targetIndex = parseInt(e.target.dataset.index);
         if (targetIndex !== draggedIndex) {
           // Show drop indicator
@@ -5866,56 +5989,58 @@ const Storage = {
 
     function handleDragLeave(e) {
       // Only remove indicators if we're leaving the todo item entirely
-      if (!e.target.closest('.todo-item')) {
+      if (!e.target.closest(".todo-item")) {
         removeDropIndicators();
       }
     }
 
     function handleDrop(e) {
       e.preventDefault();
-      const targetIndex = parseInt(e.target.closest('.todo-item').dataset.index);
-      
+      const targetIndex = parseInt(
+        e.target.closest(".todo-item").dataset.index
+      );
+
       if (draggedIndex !== null && targetIndex !== draggedIndex) {
         // Determine if we're dropping above or below
-        const rect = e.target.closest('.todo-item').getBoundingClientRect();
+        const rect = e.target.closest(".todo-item").getBoundingClientRect();
         const dropAbove = e.clientY < rect.top + rect.height / 2;
-        
+
         // Move the todo item
         const draggedTodo = todos[draggedIndex];
         todos.splice(draggedIndex, 1);
-        
+
         let newIndex = targetIndex;
         if (draggedIndex < targetIndex) {
           newIndex = dropAbove ? targetIndex - 1 : targetIndex;
         } else {
           newIndex = dropAbove ? targetIndex : targetIndex + 1;
         }
-        
+
         todos.splice(newIndex, 0, draggedTodo);
         saveTodos();
         renderTodos();
       }
-      
+
       removeDropIndicators();
     }
 
     function showDropIndicator(targetElement, clientY) {
       removeDropIndicators();
-      
+
       const rect = targetElement.getBoundingClientRect();
       const dropAbove = clientY < rect.top + rect.height / 2;
-      
+
       // Add visual indicator
       if (dropAbove) {
-        targetElement.classList.add('drag-over-top');
+        targetElement.classList.add("drag-over-top");
       } else {
-        targetElement.classList.add('drag-over-bottom');
+        targetElement.classList.add("drag-over-bottom");
       }
     }
 
     function removeDropIndicators() {
-      document.querySelectorAll('.todo-item').forEach(el => {
-        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      document.querySelectorAll(".todo-item").forEach((el) => {
+        el.classList.remove("drag-over-top", "drag-over-bottom");
       });
     }
 
@@ -5988,7 +6113,6 @@ const Storage = {
     // Load todos on startup
     loadTodos();
   }
-
 
   // Sidebar resizer with smart collapse
   {

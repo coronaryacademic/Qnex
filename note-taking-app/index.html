@@ -147,7 +147,9 @@
                 stroke-width="2"
               >
                 <circle cx="12" cy="12" r="10" />
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                <path
+                  d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+                />
                 <path d="M2 12h20" />
               </svg>
             </button>
@@ -480,7 +482,6 @@
                     </div>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
@@ -656,6 +657,24 @@
             </svg>
             Rename Note…
           </button>
+          <button data-cmd="change-note-icon">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M3 7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
+              ></path>
+              <path
+                d="M12 10.5 13.5 13l2.5.5-1.75 2 0.25 2.5L12 17l-2.5 1 .25-2.5L8 13.5 10.5 13Z"
+              ></path>
+            </svg>
+            Change Icon
+          </button>
           <button data-cmd="delete-note">
             <svg
               width="14"
@@ -715,6 +734,24 @@
               ></path>
             </svg>
             Rename Folder
+          </button>
+          <button data-cmd="change-folder-icon">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M3 7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
+              ></path>
+              <path
+                d="M12 10.5 13.5 13l2.5.5-1.75 2 0.25 2.5L12 17l-2.5 1 .25-2.5L8 13.5 10.5 13Z"
+              ></path>
+            </svg>
+            Change Icon
           </button>
           <button data-cmd="delete-folder">
             <svg
@@ -1417,25 +1454,25 @@
         };
 
         // Show verification in console
-        console.log('🔒 ANTI-PRANK PROTECTION ACTIVE:');
-        console.log('✅ Notes saved ONLY to D:\\MyNotes (not browser cache)');
-        console.log('✅ Run window.verifyFileSystemStorage() to verify');
-        console.log('✅ Browser storage cleared on each verification');
+        console.log("🔒 ANTI-PRANK PROTECTION ACTIVE:");
+        console.log("✅ Notes saved ONLY to D:\\MyNotes (not browser cache)");
+        console.log("✅ Run window.verifyFileSystemStorage() to verify");
+        console.log("✅ Browser storage cleared on each verification");
 
         // Apply theme early to prevent flash
         async function applyEarlyTheme() {
           try {
             // Clear old localStorage theme data to prevent conflicts
-            localStorage.removeItem('notes.theme');
-            
-            const response = await fileSystemService.makeRequest('/settings');
+            localStorage.removeItem("notes.theme");
+
+            const response = await fileSystemService.makeRequest("/settings");
             const settings = response || {};
-            const theme = settings.theme || 'dark';
-            
+            const theme = settings.theme || "dark";
+
             // Remove all theme classes
             document.body.classList.remove(
               "theme-light",
-              "theme-ocean", 
+              "theme-ocean",
               "theme-forest",
               "theme-sunset",
               "theme-purple",
@@ -1448,29 +1485,29 @@
               "theme-onedark",
               "theme-aero"
             );
-            
+
             // Apply theme (dark is default, no class needed)
             if (theme !== "dark") {
               document.body.classList.add(`theme-${theme}`);
             }
-            
-            console.log('🎨 Theme applied early:', theme);
+
+            console.log("🎨 Theme applied early:", theme);
           } catch (error) {
-            console.log('🎨 Using default theme (dark)');
+            console.log("🎨 Using default theme (dark)");
             // Default is dark theme, no class needed
           }
         }
-        
+
         // Apply theme before loading the app
         await applyEarlyTheme();
 
         // Make updateNoteCount globally available
         window.updateNoteCount = updateNoteCount;
-        
+
         // Now load the main app
-        await import('./scripts/app.js');
-})();
-</script>
-<script src="scripts/custom-features.js"></script>
-</body>
+        await import("./scripts/app.js");
+      })();
+    </script>
+    <script src="scripts/custom-features.js"></script>
+  </body>
 </html>
