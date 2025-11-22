@@ -9,6 +9,69 @@
       href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect rx="12" ry="12" width="64" height="64" fill="%23fbbf24"/><path d="M18 20h28v4H18zm0 10h28v4H18zm0 10h18v4H18z" fill="%231f2937"/></svg>'
     />
     <link rel="stylesheet" href="./styles/style.css" />
+    <link rel="stylesheet" href="./styles/two-base.css" />
+    <style>
+      /* View Options Menu */
+      .view-options-menu {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        min-width: 200px;
+        z-index: 1001;
+        overflow: hidden;
+      }
+
+      .view-options-section {
+        padding: 0.5rem;
+      }
+
+      .view-options-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .view-option-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        text-align: left;
+      }
+
+      .view-option-btn:hover {
+        background: var(--hover);
+      }
+
+      .view-option-btn.active {
+        background: var(--accent-bg);
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      .view-option-btn svg {
+        flex-shrink: 0;
+      }
+
+      .view-options-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0.5rem 0;
+      }
+    </style>
     <title>My Notes</title>
   </head>
   <body>
@@ -59,11 +122,45 @@
 
     <div id="app">
       <aside id="sidebar" class="sidebar">
+        <!-- Sidebar Header with New Button on Right -->
         <div class="sidebar-header">
-          <span class="muted">All Notes</span>
           <button id="newNoteBtn" class="primary">+ New</button>
         </div>
-        <div id="noteList" class="note-list"></div>
+
+        <!-- Scrollable Content Area -->
+        <div class="sidebar-content">
+          <!-- Notebooks Section -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header-text">
+              <svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+              </svg>
+              <span>Notebooks</span>
+            </div>
+            <div class="sidebar-section-content" id="notebooksContent">
+              <!-- Notebooks will be dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Folders Section -->
+          <div class="sidebar-section">
+            <div class="sidebar-section-header-text">
+              <svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Folders</span>
+            </div>
+            <div class="sidebar-section-content" id="foldersContent">
+              <!-- Folders will be dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Original Note List (hidden by default, used for search results) -->
+          <div id="noteList" class="note-list" style="display: none;"></div>
+        </div>
+
+        <!-- Search Bar at Bottom (Sticky) -->
         <div class="sidebar-search">
           <input
             type="text"
@@ -85,6 +182,12 @@
       <main class="main">
         <div class="topbar">
           <div class="topbar-left">
+            <button id="homeBtn" class="icon-btn" title="Home">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+            </button>
             <button
               id="toggleSidebarBtn"
               class="icon-btn"
@@ -102,22 +205,6 @@
                 <line x1="9" y1="3" x2="9" y2="21"></line>
               </svg>
             </button>
-            <button id="homeBtn" class="icon-btn" title="Go to home">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </button>
-            <div class="brand">My Notes</div>
             <div id="dock" class="dock" title="Minimized windows"></div>
           </div>
           <div class="top-actions">
@@ -384,22 +471,123 @@
           </div>
         </div>
 
-        <section class="workspace">
-          <div class="pane" data-pane="left">
-            <div class="tabs-container">
-              <div class="tabs" id="tabs-left"></div>
+        <!-- MAIN BASE: Workspace Split for browsing folders/notes -->
+        <section class="workspace-split" id="workspaceSplit">
+          <!-- Breadcrumb Navigation -->
+          <div class="breadcrumb-nav">
+            <div class="breadcrumb-left">
+              <button id="breadcrumbBack" class="breadcrumb-back" style="display: none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Back
+              </button>
+              <div class="breadcrumb-path" id="breadcrumbPath">All Notes</div>
             </div>
-            <div class="pane-content" id="pane-left"></div>
-          </div>
-          <div id="resizer" class="resizer" title="Drag to split"></div>
-          <div class="pane" data-pane="right">
-            <div class="tabs-container">
-              <div class="tabs" id="tabs-right"></div>
+            
+            <!-- Toolbar Actions -->
+            <div class="breadcrumb-actions">
+              <!-- Search Button -->
+              <button id="searchBtn" class="icon-btn" title="Search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </button>
+              
+              <!-- Multi-Selection Button -->
+              <button id="multiSelectBtn" class="icon-btn" title="Multi-select">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 11l3 3L22 4"></path>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                </svg>
+              </button>
+              
+              <!-- Sort Button (A-Z / Z-A) -->
+              <button id="sortBtn" class="icon-btn" title="Sort A-Z" data-sort="asc">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m3 8 4-4 4 4"></path>
+                  <path d="M7 4v16"></path>
+                  <path d="M11 12h10"></path>
+                  <path d="M11 16h7"></path>
+                  <path d="M11 20h4"></path>
+                </svg>
+              </button>
+              
+              <!-- View Toggle Button -->
+              <button id="viewToggleBtn" class="icon-btn" title="Grid view" data-view="grid">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                </svg>
+              </button>
+              
+              <!-- Open Notes Drawer Button (replaces view options) -->
+              <button id="openNotesDrawerBtn" class="icon-btn" title="Open notes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="9" y1="3" x2="9" y2="21"></line>
+                  <line x1="16" y1="8" x2="21" y2="8"></line>
+                  <line x1="16" y1="12" x2="21" y2="12"></line>
+                  <line x1="16" y1="16" x2="21" y2="16"></line>
+                </svg>
+              </button>
             </div>
-            <div class="pane-content" id="pane-right"></div>
           </div>
-          <div id="float-layer" class="float-layer"></div>
-          <div id="empty-state" class="empty-state hidden">
+          
+          <!-- Workspace Content (folder/note grid) -->
+          <div class="workspace-content" id="workspaceContent">
+            <!-- Dynamically populated with folders and notes -->
+          </div>
+        </section>
+
+        <!-- NOTE BASE: Fullscreen overlay for editing notes -->
+        <section class="note-base hidden" id="noteBase">
+          <!-- Note Header with tabs and back button -->
+          <div class="note-header">
+            <div class="note-header-left">
+              <button id="backToMain" class="icon-btn" title="Back to Notes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+              <div class="note-tabs" id="noteTabs"></div>
+            </div>
+            
+            <div class="note-header-right">
+              <!-- Toolbar buttons -->
+              <div class="note-toolbar" id="noteToolbar">
+                <!-- Formatting tools will be added here by buildEditor -->
+              </div>
+              
+              <button id="splitNoteBtn" class="icon-btn" title="Split view">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="12" y1="3" x2="12" y2="21"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Note Editors Container (supports split view) -->
+          <div class="note-editors" id="noteEditors">
+            <div class="note-pane" data-pane="left" id="notePane-left">
+              <div class="note-pane-content"></div>
+            </div>
+            <div id="noteResizer" class="note-resizer hidden" title="Drag to resize"></div>
+            <div class="note-pane hidden" data-pane="right" id="notePane-right">
+              <div class="note-pane-content"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Float layer for windows -->
+        <div id="float-layer" class="float-layer"></div>
+        
+        <!-- Empty state -->
+        <div id="empty-state" class="empty-state hidden">
             <div class="empty-frame">
               <div
                 class="empty-scroll-container"
@@ -434,7 +622,7 @@
                     </div>
                   </div>
                   <div class="marquee-container">
-                    <div class="marquee-label">Task Overview:</div>
+                    <div class="marquee-label">Notes Overview:</div>
                     <div class="marquee-wrapper">
                       <div id="marquee-content" class="marquee-content"></div>
                     </div>
@@ -857,6 +1045,33 @@
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                       </svg>
                     </button>
+                  </div>
+                </div>
+                <div class="editor-menu-section">
+                  <div class="label">Font Family</div>
+                  <div class="font-controls-menu">
+                    <select
+                      class="font-family-select"
+                      title="Change editor font"
+                    >
+                      <option
+                        value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                      >
+                        System Default
+                      </option>
+                      <option value="Arial, sans-serif" selected>Arial</option>
+                      <option
+                        value="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+                      >
+                        Segoe UI
+                      </option>
+                      <option value="'Georgia', 'Times New Roman', serif">
+                        Georgia
+                      </option>
+                      <option value="'Courier New', Courier, monospace">
+                        Monospace
+                      </option>
+                    </select>
                   </div>
                 </div>
                 <hr />
@@ -1508,6 +1723,8 @@
         await import("./scripts/app.js");
       })();
     </script>
+    <script src="scripts/markdown.js"></script>
+    <script src="scripts/two-base.js"></script>
     <script src="scripts/custom-features.js"></script>
   </body>
 </html>

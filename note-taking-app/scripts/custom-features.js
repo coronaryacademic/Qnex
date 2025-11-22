@@ -135,12 +135,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Setup workspace bar toggle
   setupWorkspaceBarToggle();
 
-  // Setup workspace footer hover (always active) - DISABLED
-  // setupWorkspaceFooterHover();
-
-  // Setup Notion-style markdown headers
-  setupNotionHeaders();
-
   // Setup browser feature
   setupBrowserFeature();
 
@@ -540,6 +534,7 @@ function setupEditorFeatures(container) {
       const fontIncreaseBtn = editorMenu.querySelector(
         '[data-action="font-increase"]'
       );
+      const fontFamilySelect = editorMenu.querySelector(".font-family-select");
 
       let editorFontSize = 16;
 
@@ -549,6 +544,56 @@ function setupEditorFeatures(container) {
           editorFontSize = Math.max(12, editorFontSize - 2);
           contentEditable.style.fontSize = editorFontSize + "px";
           if (fontSizeLabel) fontSizeLabel.textContent = editorFontSize + "px";
+        });
+      }
+
+      // Set up font family selector
+      if (fontFamilySelect && contentEditable) {
+        // Initialize dropdown to match current font if possible
+        const currentFont = window.getComputedStyle(contentEditable).fontFamily;
+        let matchedOption = null;
+        Array.from(fontFamilySelect.options).forEach((opt) => {
+          if (
+            currentFont &&
+            currentFont.indexOf(
+              opt.value.split(",")[0].replace(/['\"]+/g, "")
+            ) !== -1
+          ) {
+            matchedOption = opt;
+          }
+        });
+        if (matchedOption) {
+          fontFamilySelect.value = matchedOption.value;
+        }
+
+        fontFamilySelect.addEventListener("change", (e) => {
+          e.stopPropagation();
+          const value = fontFamilySelect.value;
+          if (value) {
+            contentEditable.style.fontFamily = value;
+          } else {
+            contentEditable.style.fontFamily = "";
+          }
+        });
+
+        // Allow cycling fonts with left/right arrow keys
+        fontFamilySelect.addEventListener("keydown", (e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          e.preventDefault();
+
+          const dir = e.key === "ArrowRight" ? 1 : -1;
+          const options = fontFamilySelect.options;
+          if (!options || options.length === 0) return;
+
+          let idx = fontFamilySelect.selectedIndex;
+          if (idx < 0) idx = 0;
+          const next = Math.min(options.length - 1, Math.max(0, idx + dir));
+          if (next === idx) return;
+
+          fontFamilySelect.selectedIndex = next;
+          // Trigger the change handler so the font updates immediately
+          const changeEvent = new Event("change", { bubbles: true });
+          fontFamilySelect.dispatchEvent(changeEvent);
         });
       }
 
@@ -1623,56 +1668,6 @@ function setupWorkspaceBarToggle() {
       workspaceBar.classList.toggle("collapsed");
     });
   }
-}
-
-// Setup workspace footer hover - DISABLED
-/*
-function setupWorkspaceFooterHover() {
-  const footer = document.querySelector(".workspace-footer");
-  if (!footer) return;
-
-  // Create hover zone at bottom
-  const hoverZone = document.createElement("div");
-  hoverZone.className = "workspace-footer-hover-zone";
-  hoverZone.style.cssText = `
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 20px;
-    z-index: 999;
-    pointer-events: all;
-  `;
-  document.body.appendChild(hoverZone);
-
-  let hideTimeout;
-
-  const showFooter = () => {
-    clearTimeout(hideTimeout);
-    footer.classList.add("visible");
-  };
-
-  const hideFooter = () => {
-    clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
-      if (!footer.matches(":hover")) {
-        footer.classList.remove("visible");
-      }
-    }, 300);
-  };
-
-  hoverZone.addEventListener("mouseenter", showFooter);
-  footer.addEventListener("mouseenter", showFooter);
-  footer.addEventListener("mouseleave", hideFooter);
-
-  console.log("✓ Workspace footer hover initialized");
-}
-*/
-
-// Setup Notion-style markdown headers
-function setupNotionHeaders() {
-  // This would handle markdown-style headers like # Header
-  console.log("✓ Notion headers initialized");
 }
 
 // Setup browser feature

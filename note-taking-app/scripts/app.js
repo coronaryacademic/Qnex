@@ -1,6 +1,6 @@
-// Import File System Service
 import fileSystemService from "./file-system-service.js";
 import { medicalIcons, getIcon } from "./medical-icons.js";
+import { BlockEditor } from "./editor-core.js";
 
 // Storage adapter: uses File System API, Electron file system, or localStorage
 const Storage = {
@@ -1635,6 +1635,13 @@ const Storage = {
   }
   function renderTabs(side) {
     const tabsEl = side === "left" ? el.tabsLeft : el.tabsRight;
+    
+    // Safety check for two-base architecture
+    if (!tabsEl) {
+      console.log(`renderTabs: ${side} tabs element not found (two-base architecture active)`);
+      return;
+    }
+    
     const s = state[side];
     tabsEl.innerHTML = "";
     const ordered = s.tabs.slice().sort((a, b) => {
@@ -1790,6 +1797,13 @@ const Storage = {
   // Pane content
   function renderPane(side) {
     const paneEl = side === "left" ? el.paneLeft : el.paneRight;
+    
+    // Safety check for two-base architecture
+    if (!paneEl) {
+      console.log(`renderPane: ${side} pane element not found (two-base architecture active)`);
+      return;
+    }
+    
     const s = state[side];
     paneEl.innerHTML = "";
 
@@ -1832,111 +1846,12 @@ const Storage = {
     const chipsWrap = node.querySelector(".tags-dropdown.chips");
     const tagInput = node.querySelector(".tag-input-dropdown");
 
-    // Undo/Redo history
-    if (!note.history) note.history = [];
-    if (!note.historyIndex) note.historyIndex = -1;
-    let isUndoRedo = false;
-
-    // Helper to get cursor position
-    function getCursorPosition() {
-      const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0) return null;
-
-      const range = sel.getRangeAt(0);
-      const preCaretRange = range.cloneRange();
-      preCaretRange.selectNodeContents(content);
-      preCaretRange.setEnd(range.endContainer, range.endOffset);
-      const caretOffset = preCaretRange.toString().length;
-
-      return {
-        offset: caretOffset,
-        isCollapsed: range.collapsed,
-      };
-    }
-
-    // Helper to restore cursor position
-    function setCursorPosition(cursorPos) {
-      if (!cursorPos || typeof cursorPos.offset !== "number") return;
-
-      try {
-        const sel = window.getSelection();
-        const range = document.createRange();
-
-        let currentOffset = 0;
-        let found = false;
-
-        function findOffset(node) {
-          if (found) return;
-
-          if (node.nodeType === Node.TEXT_NODE) {
-            const nodeLength = node.textContent.length;
-            if (currentOffset + nodeLength >= cursorPos.offset) {
-              const localOffset = cursorPos.offset - currentOffset;
-              range.setStart(node, Math.min(localOffset, nodeLength));
-              range.setEnd(node, Math.min(localOffset, nodeLength));
-              found = true;
-              return;
-            }
-            currentOffset += nodeLength;
-          } else if (node.nodeType === Node.ELEMENT_NODE) {
-            for (let i = 0; i < node.childNodes.length; i++) {
-              findOffset(node.childNodes[i]);
-              if (found) return;
-            }
-          }
-        }
-
-        findOffset(content);
-
-        if (found) {
-          sel.removeAllRanges();
-          sel.addRange(range);
-        } else {
-          // Fallback: place cursor at the end if offset not found
-          const lastTextNode = getLastTextNode(content);
-          if (lastTextNode) {
-            range.setStart(
-              lastTextNode,
-              Math.min(cursorPos.offset, lastTextNode.textContent.length)
-            );
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
-          }
-        }
-      } catch (e) {
-        console.warn("Cursor position restoration failed:", e);
-      }
-    }
-
-    // Helper to find last text node
-    function getLastTextNode(node) {
-      if (node.nodeType === Node.TEXT_NODE) return node;
-      const children = node.childNodes;
-      for (let i = children.length - 1; i >= 0; i--) {
-        const last = getLastTextNode(children[i]);
-        if (last) return last;
-      }
-      return null;
-    }
-
-    function saveToHistory() {
-      if (isUndoRedo) return;
-      const currentState = {
-        html: content.innerHTML,
-        images: note.images ? JSON.parse(JSON.stringify(note.images)) : [],
-        cursor: getCursorPosition(), // Save cursor position
-      };
-      // Remove any redo history
-      note.history = note.history.slice(0, note.historyIndex + 1);
-      note.history.push(currentState);
-      // Limit history to 50 states
-      if (note.history.length > 50) {
-        note.history.shift();
-      } else {
-        note.historyIndex++;
-      }
-    }
+    // Initialize BlockEditor
+    const editor = new BlockEditor(content, note.contentHtml || note.content || "", (newHtml) => {
+        note.contentHtml = newHtml;
+        markUnsaved();
+    });
+    node._blockEditor = editor;
 
     function syncDates() {
       // Update title status
@@ -1950,41 +1865,10 @@ const Storage = {
     }
 
     title.value = note.title || "";
-    // Load HTML content if present; fallback to escaped text
-    if (note.contentHtml) {
-      content.innerHTML = note.contentHtml;
-
-      // Initialize existing tables with controls and event handlers
-      // Use requestAnimationFrame to ensure DOM is ready and table-utils.js is loaded
-      requestAnimationFrame(() => {
-        initializeTables(content);
-      });
-    } else {
-      content.textContent = note.content || "";
-    }
-
-    // Initialize history if empty
-    if (note.history.length === 0) {
-      saveToHistory();
-    }
-
-    // Ensure existing images are draggable
-    content.querySelectorAll("img").forEach(setupImgDnD);
-
-    // Initialize images array if missing (for imported notes)
-    if (!note.images) {
-      note.images = [];
-    }
-
-    // Restore image placeholder click handlers
-    attachImagePlaceholderHandlers(content, note);
-
-    // Clear the flag since we've restored handlers
-    if (note._needsImageHandlerRestore) {
-      delete note._needsImageHandlerRestore;
-    }
+    
     // folders
     renderFolderOptions(folderSel, note.folderId);
+    
     // tags (chips UI)
     function renderChips() {
       chipsWrap.innerHTML = "";
@@ -2048,6 +1932,7 @@ const Storage = {
 
     function saveNote() {
       note.updatedAt = new Date().toISOString();
+      note.contentHtml = editor.getHTML();
       saveNotes();
       syncDates();
       renderSidebar();
@@ -2074,26 +1959,6 @@ const Storage = {
       }
     }
 
-    // Simplified undo: only track content, don't trigger saves
-    let historyTimer = null;
-    let lastContentForHistory = content.innerHTML;
-    let isTypingWord = false;
-
-    function saveHistoryIfChanged() {
-      if (content.innerHTML !== lastContentForHistory) {
-        saveToHistory();
-        lastContentForHistory = content.innerHTML;
-        isTypingWord = false;
-      }
-    }
-
-    function scheduleHistorySave() {
-      if (historyTimer) clearTimeout(historyTimer);
-      historyTimer = setTimeout(() => {
-        saveHistoryIfChanged();
-      }, 1500); // Save to history after 1.5s of no typing
-    }
-
     title.addEventListener("input", () => {
       note.title = title.value;
       markUnsaved();
@@ -2101,7 +1966,6 @@ const Storage = {
 
     // Ctrl+S to save manually
     content.addEventListener("keydown", (e) => {
-      // Manual save with Ctrl+S or Cmd+S
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         if (hasUnsavedChanges) {
@@ -2109,293 +1973,19 @@ const Storage = {
         }
         return;
       }
-
-      // Simplified word boundary detection for undo
-      const wordBoundaryKeys = [" ", "Enter", "Tab"];
-      const punctuationKeys = [".", ",", "!", "?", ";", ":", "-"];
-
-      if (wordBoundaryKeys.includes(e.key) || punctuationKeys.includes(e.key)) {
-        if (isTypingWord) {
-          setTimeout(() => saveHistoryIfChanged(), 0);
-        }
-      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-        isTypingWord = true;
-      }
     });
-
-    content.addEventListener("input", (e) => {
-      note.contentHtml = content.innerHTML;
-      markUnsaved();
-
-      // Save to history for undo/redo
-      if (e.isFormatting) {
-        saveHistoryIfChanged(); // Immediate for formatting
-      } else {
-        scheduleHistorySave(); // Delayed for typing
-      }
-    });
+    
+    // Preserve existing paste logic for images/tables but refresh editor
     content.addEventListener("paste", async (e) => {
-      const clipboardData = e.clipboardData || window.clipboardData;
-      const items = clipboardData.items;
-      if (!items) return;
-
-      // Check for custom image placeholder data first
-      try {
-        const customData = clipboardData.getData("application/x-image-data");
-        if (customData) {
-          const { id, data } = JSON.parse(customData);
-          if (id && data) {
-            e.preventDefault();
-            insertImageAtSelection(content, data, note, id);
-            note.contentHtml = content.innerHTML;
-            saveToHistory();
-            saveNote();
-            return;
-          }
-        }
-      } catch (e) {
-        console.log("No custom image data found, trying HTML fallback");
-      }
-
-      // Fallback to HTML parsing if custom data not available
-      try {
-        const html = clipboardData.getData("text/html");
-        if (html && html.includes("data-is-image-placeholder")) {
-          e.preventDefault();
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, "text/html");
-          const placeholder = doc.querySelector("[data-is-image-placeholder]");
-
-          if (placeholder) {
-            const imgId = placeholder.dataset.imageId;
-            // Try to find the image in the current note first
-            let imgData = note.images.find((img) => img.id === imgId);
-
-            // If not found, try to get it from the clipboard's custom data
-            if (!imgData) {
-              try {
-                const customData = JSON.parse(
-                  clipboardData.getData("application/x-image-data")
-                );
-                if (customData && customData.id === imgId) {
-                  imgData = { id: imgId, data: customData.data };
-                  if (!note.images.find((img) => img.id === imgId)) {
-                    note.images.push(imgData);
-                  }
-                }
-              } catch (e) {
-                console.log("Could not load image data from clipboard");
-              }
-            }
-
-            if (imgData) {
-              insertImageAtSelection(content, imgData.data, note, imgId);
-              note.contentHtml = content.innerHTML;
-              saveToHistory();
-              saveNote();
-            }
-          }
-          return;
-        }
-      } catch (e) {
-        console.error("Error processing HTML paste:", e);
-      }
-
-      // Check for text first (for table detection)
-      const text = e.clipboardData.getData("text/plain");
-      if (text) {
-        const tableData = parsePastedTable(text);
-        if (tableData && tableData.length > 0) {
-          e.preventDefault();
-          const table = createTableFromData
-            ? createTableFromData(tableData)
-            : null;
-          if (table) {
-            // Ensure table has proper attributes
-            table.className = "note-table";
-            table.contentEditable = "false";
-            table.querySelectorAll("td, th").forEach((cell) => {
-              cell.contentEditable = "true";
-            });
-
-            // Add table controls
-            if (typeof addTableControls === "function") {
-              addTableControls(table);
-            }
-
-            // Add input event listener
-            table.addEventListener("input", (e) => {
-              if (e.target.tagName === "TD" || e.target.tagName === "TH") {
-                note.contentHtml = content.innerHTML;
-                markUnsaved();
-                scheduleHistorySave();
-              }
-            });
-
-            const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-              const range = sel.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(table);
-              range.setStartAfter(table);
-              range.collapse(true);
-              sel.removeAllRanges();
-              sel.addRange(range);
-            } else {
-              content.appendChild(table);
-            }
-
-            // Initialize the pasted table
-            setTimeout(() => initializeTables(content), 100);
-
-            note.contentHtml = content.innerHTML;
-            saveToHistory();
-            saveNote();
-            return;
-          }
-        }
-      }
-
-      // Handle images
-      for (const it of items) {
-        if (it.type && it.type.startsWith("image/")) {
-          e.preventDefault();
-          const file = it.getAsFile();
-          if (!file) continue;
-          const dataUrl = await fileToDataURL(file);
-          insertImageAtSelection(content, dataUrl, note);
-          note.contentHtml = content.innerHTML;
-          saveToHistory();
-          saveNote();
-        }
-      }
+        // Allow default paste or existing handlers to run first
+        // Then refresh editor state
+        setTimeout(() => {
+            editor.refresh();
+            note.contentHtml = editor.getHTML();
+            markUnsaved();
+        }, 100);
     });
 
-    content.addEventListener("keydown", (e) => {
-      // Undo: Ctrl+Z
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        if (note.historyIndex > 0) {
-          note.historyIndex--;
-          isUndoRedo = true;
-          const prevState = note.history[note.historyIndex];
-          content.innerHTML = prevState.html;
-          note.images = JSON.parse(JSON.stringify(prevState.images));
-          note.contentHtml = content.innerHTML;
-          // Restore image click handlers
-          attachImagePlaceholderHandlers(content, note);
-          // Restore cursor position - wait for DOM to fully update
-          if (prevState.cursor) {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                setCursorPosition(prevState.cursor);
-                content.focus();
-              });
-            });
-          }
-          // Don't save during undo
-          setTimeout(() => {
-            isUndoRedo = false;
-          }, 50);
-        }
-      }
-      // Redo: Ctrl+Y or Ctrl+Shift+Z
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key === "y" || (e.key === "z" && e.shiftKey))
-      ) {
-        e.preventDefault();
-        if (note.historyIndex < note.history.length - 1) {
-          note.historyIndex++;
-          isUndoRedo = true;
-          const nextState = note.history[note.historyIndex];
-          content.innerHTML = nextState.html;
-          note.images = JSON.parse(JSON.stringify(nextState.images));
-          note.contentHtml = content.innerHTML;
-          // Restore image click handlers
-          attachImagePlaceholderHandlers(content, note);
-          // Restore cursor position - wait for DOM to fully update
-          if (nextState.cursor) {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                setCursorPosition(nextState.cursor);
-                content.focus();
-              });
-            });
-          }
-          // Don't save during redo
-          setTimeout(() => {
-            isUndoRedo = false;
-          }, 50);
-        }
-      }
-
-      // Ctrl+A: Select all content properly (fix glitchy behavior)
-      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
-        e.preventDefault();
-        const range = document.createRange();
-        range.selectNodeContents(content);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-
-      // Ctrl+X: Cut current line (like VS Code)
-      if ((e.ctrlKey || e.metaKey) && e.key === "x") {
-        const sel = window.getSelection();
-        if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
-          e.preventDefault();
-          const range = sel.getRangeAt(0);
-          const node = range.startContainer;
-
-          // Find the line element (could be P, DIV, LI, etc)
-          let lineElement =
-            node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-          while (
-            lineElement &&
-            lineElement !== content &&
-            !["P", "DIV", "LI", "H1", "H2", "H3", "H4", "H5", "H6"].includes(
-              lineElement.tagName
-            )
-          ) {
-            lineElement = lineElement.parentElement;
-          }
-
-          if (lineElement && lineElement !== content) {
-            // Copy line to clipboard
-            const text = lineElement.textContent || "";
-            navigator.clipboard.writeText(text).then(() => {
-              // Delete the line
-              lineElement.remove();
-              note.contentHtml = content.innerHTML;
-              saveToHistory();
-              saveNote();
-            });
-          }
-        }
-      }
-    });
-    content.addEventListener("keydown", (e) => {
-      // Rich text shortcuts
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
-        if (e.key.toLowerCase() === "b") {
-          e.preventDefault();
-          document.execCommand("bold");
-          return;
-        }
-        if (e.key.toLowerCase() === "i") {
-          e.preventDefault();
-          document.execCommand("italic");
-          return;
-        }
-        if (e.key.toLowerCase() === "u") {
-          e.preventDefault();
-          document.execCommand("underline");
-          return;
-        }
-      }
-      handleListKeys(e, content);
-    });
     folderSel.addEventListener("change", () => {
       note.folderId = folderSel.value || null;
       saveNote();
@@ -2424,99 +2014,6 @@ const Storage = {
     settingsDropdown.addEventListener("click", (e) => {
       e.stopPropagation();
     });
-    // no plain input change; chips handle it
-
-    // Highlighting handlers
-    content.addEventListener("mouseup", () => {
-      // Don't auto-highlight if note is locked
-      if (!state.autoHighlight) return;
-      if (content.getAttribute("contenteditable") === "false") return;
-
-      applyHighlightToSelection(state.currentHighlightColor);
-      note.contentHtml = content.innerHTML;
-      saveHistoryIfChanged();
-      markUnsaved();
-    });
-    // Table context menu
-    content.addEventListener("contextmenu", (e) => {
-      const target = e.target;
-      if (
-        target.tagName === "TD" ||
-        target.tagName === "TH" ||
-        target.tagName === "TR" ||
-        target.tagName === "TABLE" ||
-        target.closest("table")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (typeof showTableContextMenu === "function") {
-          showTableContextMenu(e, target);
-        }
-      }
-    });
-
-    // Make sure tables stay properly formatted and draggable
-    content.addEventListener("input", () => {
-      const tables = content.querySelectorAll("table.note-table, table");
-      tables.forEach((table) => {
-        if (!table.classList.contains("note-table")) {
-          table.classList.add("note-table");
-        }
-        table.contentEditable = "false";
-        table.querySelectorAll("td, th").forEach((cell) => {
-          if (cell.contentEditable !== "true") {
-            cell.contentEditable = "true";
-          }
-        });
-
-        if (
-          !table.querySelector(".table-wrapper") &&
-          typeof addTableControls === "function"
-        ) {
-          addTableControls(table);
-        }
-        if (!table.getAttribute("draggable")) {
-          makeTableDraggable(table);
-        }
-      });
-    });
-
-    // Image tools: click image to show tools; hide on scroll/blur
-    content.addEventListener("click", (e) => {
-      const img = e.target && e.target.tagName === "IMG" ? e.target : null;
-      if (img) {
-        showImgToolsFor(img);
-      } else {
-        hideImgTools();
-      }
-    });
-    // Image DnD within editor
-    content.addEventListener("dragover", (e) => {
-      if (draggedImg) {
-        e.preventDefault();
-        showEditorDropIndicator(content, e.clientX, e.clientY);
-      }
-    });
-    content.addEventListener("drop", (e) => {
-      if (draggedImg) {
-        e.preventDefault();
-        const r = caretRangeAtPoint(e.clientX, e.clientY);
-        if (r) {
-          r.insertNode(draggedImg);
-        }
-        removeEditorDropIndicator();
-        draggedImg = null;
-        note.contentHtml = content.innerHTML;
-        saveHistoryIfChanged();
-        markUnsaved();
-      }
-    });
-    content.addEventListener("dragleave", (e) => {
-      if (e.target === content) removeEditorDropIndicator();
-    });
-    content.addEventListener("scroll", hideImgTools);
-    content.addEventListener("blur", hideImgTools, true);
-    // Per-editor context is handled by global context menu
 
     // left/right open buttons removed in new split model
     node
@@ -3516,6 +3013,11 @@ const Storage = {
 
   // Split helper functions
   function enableSplit() {
+    // Safety check for two-base architecture
+    if (!el.workspace) {
+      console.log('enableSplit: workspace element not found (two-base architecture active)');
+      return;
+    }
     state.splitMode = true;
     el.workspace.classList.remove("split-off");
     el.workspace.style.gridTemplateColumns = "1fr 4px 1fr";
@@ -4024,7 +3526,7 @@ const Storage = {
             </div>
             <div class="about-description">
               <p>Built to show that anyone can create their own tools. Freedom is always an option to go for.</p>
-              <p style="margin-top: 8px; font-style: italic; color: var(--muted);">A powerful note-taking application with markdown support, themes, and workspaces.</p>
+              <p style="margin-top: 8px; font-style: italic; color: var(--muted);">A powerful note-taking application with themes and workspaces.</p>
             </div>
           </div>
         </div>
@@ -4537,24 +4039,31 @@ const Storage = {
   // Boot
   await initializeData();
   renderSidebar();
-  ["left", "right"].forEach(renderPane);
+  // OLD PANE SYSTEM - Disabled for two-base architecture
+  // ["left", "right"].forEach(renderPane);
 
   // Initialize tables in both panes after a short delay to ensure everything is loaded
+  // OLD PANE SYSTEM - Disabled for two-base architecture
+  /*
   setTimeout(() => {
     const leftContent = el.paneLeft?.querySelector(".content");
     const rightContent = el.paneRight?.querySelector(".content");
     if (leftContent) initializeTables(leftContent);
     if (rightContent) initializeTables(rightContent);
   }, 500);
+  */
+
 
   // Restore previous session if user had notes open
   await restoreSessionState();
 
-  // start with split off
-  el.workspace.style.gridTemplateColumns = state.splitMode
-    ? "1fr 4px 1fr"
-    : "1fr 0fr";
-  if (!state.splitMode) el.workspace.classList.add("split-off");
+  // start with split off (only if workspace exists - old pane system)
+  if (el.workspace) {
+    el.workspace.style.gridTemplateColumns = state.splitMode
+      ? "1fr 4px 1fr"
+      : "1fr 0fr";
+    if (!state.splitMode) el.workspace.classList.add("split-off");
+  }
   updateEmptyState();
 
   // Show data directory in Electron
@@ -5163,7 +4672,23 @@ const Storage = {
   // Expose state for custom features
   window.state = state;
   window.enableSplit = enableSplit;
-  window.openInPane = openInPane;
+  window.escapeHtml = escapeHtml; // Make available for two-base.js
+  
+  // Redirect openInPane to two-base system
+  window.openInPane = function(noteId, side) {
+    console.log(`openInPane redirecting to two-base system: ${noteId}`);
+    if (window.TwoBase && typeof window.TwoBase.openNoteFromWorkspace === 'function') {
+      window.TwoBase.openNoteFromWorkspace(noteId);
+    } else {
+      console.warn('TwoBase not available yet, note will open when ready');
+      // Fallback: wait for TwoBase to initialize
+      setTimeout(() => {
+        if (window.TwoBase) {
+          window.TwoBase.openNoteFromWorkspace(noteId);
+        }
+      }, 500);
+    }
+  };
 
   // Toggle note lock (view mode) - locks only the active/focused note
   function toggleNoteLock() {

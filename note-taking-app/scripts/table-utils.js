@@ -3,7 +3,7 @@
 // Helper function to trigger table save
 function triggerTableSave(table) {
   if (!table) return;
-  
+
   // Find the content container
   const content = table.closest(".content");
   if (content) {
@@ -24,7 +24,7 @@ function createTable(rows, cols, existingData = null) {
     for (let j = 0; j < cols; j++) {
       const td = document.createElement("td");
       td.contentEditable = "true";
-      
+
       // Restore content and styles if existingData is provided
       if (existingData && existingData[i] && existingData[i][j]) {
         const cellData = existingData[i][j];
@@ -40,7 +40,7 @@ function createTable(rows, cols, existingData = null) {
       } else {
         td.innerHTML = "&nbsp;";
       }
-      
+
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
@@ -50,7 +50,7 @@ function createTable(rows, cols, existingData = null) {
 
   // Add table controls
   addTableControls(table);
-  
+
   // Add input event listener for cell changes
   table.addEventListener("input", (e) => {
     if (e.target.tagName === "TD" || e.target.tagName === "TH") {
@@ -75,9 +75,9 @@ function addTableControls(table) {
       removeTableAddButtons(table);
     }
   });
-  
+
   // Restore cell styles from data attributes
-  table.querySelectorAll("td, th").forEach(cell => {
+  table.querySelectorAll("td, th").forEach((cell) => {
     const bgcolor = cell.getAttribute("data-bgcolor");
     const color = cell.getAttribute("data-color");
     if (bgcolor) {
@@ -159,7 +159,7 @@ function addTableRow(table, afterRow = null) {
   } else {
     tbody.appendChild(tr);
   }
-  
+
   // Trigger save
   triggerTableSave(table);
 }
@@ -188,7 +188,7 @@ function addTableColumn(table, afterCol = null) {
       row.appendChild(td);
     }
   });
-  
+
   // Trigger save
   triggerTableSave(table);
 }
@@ -620,7 +620,7 @@ async function insertNestedTable(cell) {
   nestedTable.style.margin = "0";
   cell.innerHTML = "";
   cell.appendChild(nestedTable);
-  
+
   // Trigger save on the main table
   const mainTable = cell.closest("table");
   if (mainTable && !nestedTable.contains(mainTable)) {
@@ -632,9 +632,14 @@ async function insertNestedTable(cell) {
 function parsePastedTable(text) {
   // Try to detect table format
 
-  // Markdown table
+  // Pipe-delimited table (e.g., | a | b |)
   if (text.includes("|") && text.includes("\n")) {
-    return parseMarkdownTable(text);
+    if (
+      window.Markdown &&
+      typeof window.Markdown.parseMarkdownTable === "function"
+    ) {
+      return window.Markdown.parseMarkdownTable(text);
+    }
   }
 
   // Tab-separated (Excel, ChatGPT)
@@ -648,29 +653,6 @@ function parsePastedTable(text) {
   }
 
   return null;
-}
-
-function parseMarkdownTable(text) {
-  const lines = text.trim().split("\n");
-  const rows = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    // Skip separator line (e.g., |---|---|)
-    if (line.match(/^\|?[\s\-:|]+\|?$/)) continue;
-
-    // Parse row
-    const cells = line
-      .split("|")
-      .map((c) => c.trim())
-      .filter((c) => c);
-    if (cells.length > 0) {
-      rows.push(cells);
-    }
-  }
-
-  return rows;
 }
 
 function parseTSVTable(text) {
@@ -708,7 +690,7 @@ function createTableFromData(data) {
 
   table.appendChild(tbody);
   addTableControls(table);
-  
+
   // Add input event listener for cell changes
   table.addEventListener("input", (e) => {
     if (e.target.tagName === "TD" || e.target.tagName === "TH") {
@@ -752,13 +734,13 @@ function extractTableData(table) {
         content: cell.innerHTML,
         style: cell.getAttribute("style") || "",
       };
-      
+
       // Save color attributes
       const bgcolor = cell.getAttribute("data-bgcolor");
       const color = cell.getAttribute("data-color");
       if (bgcolor) cellData.bgcolor = bgcolor;
       if (color) cellData.color = color;
-      
+
       row.push(cellData);
     });
     rows.push(row);
@@ -801,7 +783,7 @@ function splitCellIntoRows(cell, numRows) {
     e.stopPropagation();
     showTableContextMenu(e, e.target);
   });
-  
+
   // Add input handler for nested table cells
   nestedTable.addEventListener("input", (e) => {
     const mainTable = cell.closest("table");
@@ -809,7 +791,7 @@ function splitCellIntoRows(cell, numRows) {
       triggerTableSave(mainTable);
     }
   });
-  
+
   // Trigger save on the main table
   const mainTable = cell.closest("table");
   if (mainTable && !nestedTable.contains(mainTable)) {
