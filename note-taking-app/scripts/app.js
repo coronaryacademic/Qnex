@@ -981,9 +981,17 @@ const Storage = {
     if (state.backupHandle) {
       writeBackup().catch(() => {});
     }
+    // Instant sidebar refresh
+    if (typeof window.TwoBase !== 'undefined' && typeof window.TwoBase.refreshSidebar === 'function') {
+      window.TwoBase.refreshSidebar();
+    }
   }
   function saveFolders() {
     Storage.saveFolders(state.folders);
+    // Instant sidebar refresh
+    if (typeof window.TwoBase !== 'undefined' && typeof window.TwoBase.refreshSidebar === 'function') {
+      window.TwoBase.refreshSidebar();
+    }
   }
   function saveFoldersOpen() {
     state.settings.foldersOpen = Array.from(state.foldersOpen);
@@ -993,6 +1001,11 @@ const Storage = {
     Storage.saveTrash(state.trash);
     updateTrashButton();
   }
+
+  // Expose storage functions to window for two-base.js
+  window.saveNotes = saveNotes;
+  window.saveFolders = saveFolders;
+  window.saveTrash = saveTrash;
 
   function updateTrashButton() {
     if (el.trashBtn) {

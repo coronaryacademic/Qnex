@@ -275,9 +275,9 @@ textarea {
 }
 .sidebar button {
   background: transparent;
-  border: 1px solid var(--border);
   color: var(--text);
   padding: 6px 10px;
+  padding-left: 30px;
   border-radius: 8px;
   cursor: pointer;
 }
@@ -286,6 +286,7 @@ textarea {
   border-color: var(--accent);
   color: #ffffff;
   font-weight: 700;
+  padding: 6px 10px;
 }
 
 /* Scrollable content area */
@@ -309,6 +310,12 @@ textarea {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+}
+.sidebar-section-header-text:hover {
+  color: var(--text);
 }
 .sidebar-section-header-text .section-icon {
   width: 14px;
@@ -316,10 +323,31 @@ textarea {
   color: var(--muted);
   flex-shrink: 0;
 }
+.sidebar-section-header-text .section-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+.sidebar-section-header-text:hover .section-chevron {
+  color: var(--text);
+}
+.sidebar-section.collapsed .section-chevron {
+  transform: rotate(-90deg);
+}
 .sidebar-section-content {
   padding: 0 8px 8px 8px;
   max-height: none;
   overflow-y: auto;
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+}
+.sidebar-section.collapsed .sidebar-section-content {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 8px;
+  overflow: hidden;
 }
 .sidebar-item {
   width: 100%;
@@ -381,6 +409,159 @@ textarea {
   background: var(--panel-2);
   border: 1px dashed var(--accent);
 }
+
+/* Expandable Folder Tree Structure */
+.folder-tree-item {
+  margin-bottom: 4px;
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.folder-header:hover {
+  background: var(--panel-hover);
+}
+
+.folder-header.drag-over {
+  background: var(--panel-2);
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+}
+
+.folder-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+}
+
+.folder-tree-item.expanded .folder-chevron {
+  transform: rotate(90deg);
+}
+
+.folder-header svg:not(.folder-chevron) {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.folder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.folder-icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.folder-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.folder-notes-list {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  padding: 0 0 0 28px;
+}
+
+.folder-tree-item.expanded .folder-notes-list {
+  max-height: 1000px;
+  opacity: 1;
+  padding: 4px 0 4px 28px;
+}
+
+.folder-note-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+  user-select: none;
+}
+
+.folder-note-item:hover {
+  background: var(--panel-hover);
+}
+
+.folder-note-item.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.folder-note-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.note-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note-icon svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.folder-note-item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.folder-note-item.active svg {
+  color: #fff;
+}
+
+.folder-note-item .note-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-empty-message {
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+}
+
 
 .sidebar .note-list {
   flex: 1;

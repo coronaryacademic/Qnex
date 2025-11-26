@@ -9,7 +9,10 @@
     "dev": "cross-env NODE_ENV=development electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "dist:win": "electron-builder --win --x64"
+    "dist:win": "electron-builder --win --x64",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "type-check": "tsc --noEmit"
   },
   "build": {
     "appId": "com.mynotes.app",
@@ -41,8 +44,10 @@
     "serve-handler": "^6.1.6"
   },
   "devDependencies": {
+    "@types/node": "^24.10.1",
     "cross-env": "^7.0.3",
     "electron": "^39.0.0",
-    "electron-builder": "^24.6.4"
+    "electron-builder": "^24.6.4",
+    "typescript": "^5.9.3"
   }
 }

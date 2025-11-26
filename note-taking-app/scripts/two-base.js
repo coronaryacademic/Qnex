@@ -665,6 +665,39 @@
     // Populate notebooks and folders sections
     populateNotebooksSection();
     populateFoldersSection();
+    
+    // Setup collapse/expand functionality
+    setupSectionToggle();
+  }
+  
+  function setupSectionToggle() {
+    const sectionHeaders = document.querySelectorAll('.sidebar-section-header-text');
+    
+    sectionHeaders.forEach(header => {
+      header.addEventListener('click', () => {
+        const section = header.closest('.sidebar-section');
+        section.classList.toggle('collapsed');
+        
+        // Save collapsed state to localStorage
+        const sectionName = header.dataset.section;
+        if (sectionName) {
+          const isCollapsed = section.classList.contains('collapsed');
+          localStorage.setItem(`sidebar-section-${sectionName}-collapsed`, isCollapsed);
+        }
+      });
+    });
+    
+    // Restore collapsed states from localStorage
+    sectionHeaders.forEach(header => {
+      const sectionName = header.dataset.section;
+      if (sectionName) {
+        const isCollapsed = localStorage.getItem(`sidebar-section-${sectionName}-collapsed`) === 'true';
+        if (isCollapsed) {
+          const section = header.closest('.sidebar-section');
+          section.classList.add('collapsed');
+        }
+      }
+    });
   }
 
   function populateNotebooksSection() {
@@ -815,104 +848,289 @@
 
     foldersContent.innerHTML = '';
 
-    // Add "Uncategorized" folder
-    const uncategorizedCount = window.state.notes.filter(n => !n.folderId).length;
-    const uncategorizedBtn = document.createElement('button');
-    uncategorizedBtn.className = 'sidebar-item';
-    uncategorizedBtn.dataset.folderId = '';
-    uncategorizedBtn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-      </svg>
-      <span>Uncategorized</span>
-      <span class="item-count">${uncategorizedCount}</span>
-    `;
-    
-    // Click handler
-    uncategorizedBtn.addEventListener('click', () => {
-      showUncategorized();
-    });
-    
-    // Drag handlers - allow notes to be dropped to remove from folders
-    uncategorizedBtn.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      
-      const draggedId = e.dataTransfer.types.includes('text/note-id');
-      if (!draggedId) return;
-      
-      uncategorizedBtn.classList.add('drag-over');
-    });
-    
-    uncategorizedBtn.addEventListener('dragleave', () => {
-      uncategorizedBtn.classList.remove('drag-over');
-    });
-    
-    uncategorizedBtn.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uncategorizedBtn.classList.remove('drag-over');
-      
-      const draggedNoteId = e.dataTransfer.getData('text/note-id');
-      if (!draggedNoteId) return;
-      
-      moveNoteToFolder(draggedNoteId, null);
-    });
-    
-    foldersContent.appendChild(uncategorizedBtn);
+    // Add "Uncategorized" folder with expandable note list
+    const uncategorizedNotes = window.state.notes.filter(n => !n.folderId);
+    const uncategorizedFolder = createExpandableFolderItem({
+      id: 'uncategorized',
+      name: 'Uncategorized',
+      isSpecial: true
+    }, uncategorizedNotes, 0);
+    foldersContent.appendChild(uncategorizedFolder);
 
-    // Add all folders
+    // Add all root-level custom folders with their notes and subfolders
     const rootFolders = window.state.folders.filter(f => !f.parentId);
     rootFolders.forEach(folder => {
-      const folderBtn = createFolderButton(folder);
-      foldersContent.appendChild(folderBtn);
+      const folderElement = renderFolderWithSubfolders(folder, 0);
+      foldersContent.appendChild(folderElement);
     });
   }
 
-  function createFolderButton(folder) {
-    const notesInFolder = window.state.notes.filter(n => n.folderId === folder.id).length;
-    const btn = document.createElement('button');
-    btn.className = 'sidebar-item';
-    btn.dataset.folderId = folder.id;
-    btn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-      </svg>
-      <span>${window.escapeHtml ? window.escapeHtml(folder.name) : folder.name}</span>
-      <span class="item-count">${notesInFolder}</span>
-    `;
+  function renderFolderWithSubfolders(folder, depth) {
+    const folderNotes = window.state.notes.filter(n => n.folderId === folder.id);
+    const container = createExpandableFolderItem(folder, folderNotes, depth);
     
-    // Click handler
-    btn.addEventListener('click', () => {
-      navigateToFolderFromSidebar(folder.id);
+    // Get subfolders
+    const subfolders = window.state.folders.filter(f => f.parentId === folder.id);
+    
+    if (subfolders.length > 0) {
+      // Create a container for subfolders within the notes list
+      const notesList = container.querySelector('.folder-notes-list');
+      
+      subfolders.forEach(subfolder => {
+        const subfolderElement = renderFolderWithSubfolders(subfolder, depth + 1);
+        notesList.appendChild(subfolderElement);
+      });
+    }
+    
+    return container;
+  }
+
+  function createExpandableFolderItem(folder, notes, depth = 0) {
+    const container = document.createElement('div');
+    container.className = 'folder-tree-item';
+    container.dataset.folderId = folder.id;
+    container.style.marginLeft = (depth * 12) + 'px'; // Indent based on depth
+    
+    // Check if folder should be expanded (from localStorage)
+    const isExpanded = localStorage.getItem(`folder-expanded-${folder.id}`) === 'true';
+    if (isExpanded) {
+      container.classList.add('expanded');
+    }
+
+    // Folder header (clickable to expand/collapse)
+    const header = document.createElement('div');
+    header.className = 'folder-header';
+    
+    // Chevron icon
+    const chevron = document.createElement('svg');
+    chevron.className = 'folder-chevron';
+    chevron.setAttribute('width', '14');
+    chevron.setAttribute('height', '14');
+    chevron.setAttribute('viewBox', '0 0 24 24');
+    chevron.setAttribute('fill', 'none');
+    chevron.setAttribute('stroke', 'currentColor');
+    chevron.setAttribute('stroke-width', '2');
+    chevron.innerHTML = '<polyline points="9 18 15 12 9 6"></polyline>';
+    
+    // Folder icon
+    const folderIconDiv = document.createElement('div');
+    folderIconDiv.className = 'folder-icon';
+    folderIconDiv.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+    
+    // Folder name
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'folder-name';
+    nameSpan.textContent = folder.name;
+    
+    // Note count badge
+    const countBadge = document.createElement('span');
+    countBadge.className = 'item-count';
+    countBadge.textContent = notes.length;
+    
+    // Assemble header
+    header.appendChild(chevron);
+    header.appendChild(folderIconDiv);
+    header.appendChild(nameSpan);
+    header.appendChild(countBadge);
+    
+    // Click to expand/collapse AND show workspace preview
+    header.addEventListener('click', (e) => {
+      // Don't toggle if clicking on a note inside
+      if (e.target.closest('.folder-note-item')) return;
+      
+      // Toggle expansion
+      toggleFolderExpansion(folder.id, container);
+      
+      // Also navigate to this folder in the workspace (base layer preview)
+      if (folder.id === 'uncategorized') {
+        // For uncategorized, show root view with no folder filter
+        renderWorkspaceSplit(null);
+      } else {
+        // For custom folders, show that folder's contents
+        renderWorkspaceSplit(folder.id);
+      }
     });
     
-    // Drag over handler - allow notes to be dropped
-    btn.addEventListener('dragover', (e) => {
+    // Right-click context menu for folders - use existing system
+    header.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      
+      // Don't show menu for uncategorized
+      if (folder.id === 'uncategorized') return;
+      
+      // Add folder-item class temporarily so app.js context menu system can detect it
+      header.classList.add('folder-item');
+      header.dataset.folderId = folder.id;
+    });
+    
+    // Drag-and-drop on folder header
+    setupFolderDropZone(header, folder.id);
+    
+    // Make folder draggable (except uncategorized)
+    if (folder.id !== 'uncategorized') {
+      header.draggable = true;
+      
+      header.addEventListener('dragstart', (e) => {
+        e.stopPropagation();
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/folder-id', folder.id);
+        header.classList.add('dragging');
+      });
+      
+      header.addEventListener('dragend', () => {
+        header.classList.remove('dragging');
+      });
+    }
+    
+    // Notes list (expandable)
+    const notesList = document.createElement('div');
+    notesList.className = 'folder-notes-list';
+    
+    if (notes.length > 0) {
+      notes.forEach(note => {
+        const noteItem = createFolderNoteItem(note, folder.id);
+        notesList.appendChild(noteItem);
+      });
+    } else {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.className = 'folder-empty-message';
+      emptyMsg.textContent = 'No notes in this folder';
+      notesList.appendChild(emptyMsg);
+    }
+    
+    container.appendChild(header);
+    container.appendChild(notesList);
+    
+    return container;
+  }
+
+  function createFolderNoteItem(note, folderId) {
+    const item = document.createElement('div');
+    item.className = 'folder-note-item';
+    item.dataset.noteId = note.id;
+    item.draggable = true;
+    
+    // Note icon
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'note-icon';
+    iconDiv.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+    
+    // Note title
+    const title = document.createElement('span');
+    title.className = 'note-title';
+    title.textContent = note.title || 'Untitled';
+    
+    item.appendChild(iconDiv);
+    item.appendChild(title);
+    
+    // Click to open note
+    item.addEventListener('click', () => {
+      openNoteFromSidebar(note.id);
+    });
+    
+    // Drag handlers
+    item.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/note-id', note.id);
+      item.classList.add('dragging');
+    });
+    
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+    });
+    
+    return item;
+  }
+
+  function toggleFolderExpansion(folderId, container) {
+    const isExpanded = container.classList.toggle('expanded');
+    
+    // Save state to localStorage
+    localStorage.setItem(`folder-expanded-${folderId}`, isExpanded);
+  }
+
+  function setupFolderDropZone(element, folderId) {
+    element.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       e.dataTransfer.dropEffect = 'move';
       
-      const draggedId = e.dataTransfer.types.includes('text/note-id');
-      if (!draggedId) return;
+      const hasNote = e.dataTransfer.types.includes('text/note-id');
+      const hasFolder = e.dataTransfer.types.includes('text/folder-id');
       
-      btn.classList.add('drag-over');
+      if (!hasNote && !hasFolder) return;
+      
+      // Don't allow dropping a folder into itself or its children
+      if (hasFolder) {
+        // We can't easily check children here without more state access, 
+        // but we can prevent self-drop in the drop handler
+      }
+      
+      element.classList.add('drag-over');
     });
     
-    btn.addEventListener('dragleave', () => {
-      btn.classList.remove('drag-over');
+    element.addEventListener('dragleave', (e) => {
+      // Only remove if actually leaving the element
+      if (!element.contains(e.relatedTarget)) {
+        element.classList.remove('drag-over');
+      }
     });
     
-    // Drop handler - move note to this folder
-    btn.addEventListener('drop', (e) => {
+    element.addEventListener('drop', (e) => {
       e.preventDefault();
-      btn.classList.remove('drag-over');
+      e.stopPropagation();
+      element.classList.remove('drag-over');
       
       const draggedNoteId = e.dataTransfer.getData('text/note-id');
-      if (!draggedNoteId) return;
+      const draggedFolderId = e.dataTransfer.getData('text/folder-id');
       
-      moveNoteToFolder(draggedNoteId, folder.id);
+      if (draggedNoteId) {
+        // Move note to this folder (null for uncategorized)
+        const targetFolderId = folderId === 'uncategorized' ? null : folderId;
+        moveNoteToFolder(draggedNoteId, targetFolderId);
+      } else if (draggedFolderId) {
+        // Move folder to this folder
+        // Prevent self-drop
+        if (draggedFolderId === folderId) return;
+        
+        // Target is null if uncategorized (root level)
+        const targetFolderId = folderId === 'uncategorized' ? null : folderId;
+        moveFolderToFolder(draggedFolderId, targetFolderId);
+      }
     });
+  }
+
+  function moveFolderToFolder(folderId, targetParentId) {
+    const folder = window.state.folders.find(f => f.id === folderId);
+    if (!folder) return;
     
-    return btn;
+    // Prevent circular dependency (dropping parent into child)
+    if (targetParentId) {
+      let current = window.state.folders.find(f => f.id === targetParentId);
+      while (current) {
+        if (current.id === folderId) {
+          console.warn('Cannot move folder into its own child');
+          return;
+        }
+        current = window.state.folders.find(f => f.id === current.parentId);
+      }
+    }
+    
+    // Update folder's parent
+    folder.parentId = targetParentId;
+    
+    // Save changes
+    if (typeof window.saveFolders === 'function') {
+      window.saveFolders();
+    }
+    
+    // Refresh both sections instantly
+    populateFoldersSection();
+    
+    // Show feedback
+    console.log(`Moved folder "${folder.name}"`);
   }
 
   function moveNoteToFolder(noteId, folderId) {
@@ -927,23 +1145,36 @@
       window.saveNotes();
     }
     
-    // Refresh both sections
+    // Refresh both sections instantly
     populateNotebooksSection();
     populateFoldersSection();
+    
+    // Refresh workspace view if needed
+    renderWorkspaceSplit(TwoBaseState.currentFolder);
     
     // Show feedback
     console.log(`Moved note "${note.title}" to folder`);
   }
 
   function showUncategorized() {
-    document.querySelectorAll('.sidebar-item').forEach(item => {
-      item.classList.remove('active');
-    });
-    document.querySelector('[data-folder-id=""]')?.classList.add('active');
-
-    // Show uncategorized notes
-    TwoBaseState.currentFolder = 'uncategorized';
-    renderUncategorizedNotes();
+    // Check if uncategorized is already active
+    const isAlreadyActive = TwoBaseState.currentFolder === 'uncategorized';
+    
+    if (isAlreadyActive) {
+      // If clicking uncategorized again, go back to base layer (root view)
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      renderWorkspaceSplit(null); // null = root view
+    } else {
+      // Show uncategorized notes
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      document.querySelector('[data-folder-id=""]')?.classList.add('active');
+      TwoBaseState.currentFolder = 'uncategorized';
+      renderUncategorizedNotes();
+    }
   }
 
   function renderUncategorizedNotes() {
@@ -980,12 +1211,23 @@
   }
 
   function navigateToFolderFromSidebar(folderId) {
-    document.querySelectorAll('.sidebar-item').forEach(item => {
-      item.classList.remove('active');
-    });
-    document.querySelector(`[data-folder-id="${folderId}"]`)?.classList.add('active');
-
-    renderWorkspaceSplit(folderId);
+    // Check if this folder is already active (currently viewing)
+    const isAlreadyActive = TwoBaseState.currentFolder === folderId;
+    
+    if (isAlreadyActive) {
+      // If clicking the same folder again, go back to base layer (root view)
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      renderWorkspaceSplit(null); // null = root view
+    } else {
+      // Navigate to the folder
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      document.querySelector(`[data-folder-id="${folderId}"]`)?.classList.add('active');
+      renderWorkspaceSplit(folderId);
+    }
   }
 
   // ===================================
@@ -1175,6 +1417,13 @@
     }
   }
 
+  
+  // Function to refresh sidebar sections - called by app.js after note/folder changes
+  function refreshSidebar() {
+    populateNotebooksSection();
+    populateFoldersSection();
+  }
+
   // Export functions to global scope
   window.TwoBase = {
     init,
@@ -1185,6 +1434,7 @@
     openNoteInNoteBase,
     closeNoteTab,
     refreshWorkspace,
+    refreshSidebar,  // Export sidebar refresh function
   };
 
   // Auto-initialize when DOM is ready
