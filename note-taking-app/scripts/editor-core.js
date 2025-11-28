@@ -292,7 +292,21 @@ export class BlockEditor {
   }
   
   handleClick(e) {
-      // Handle clicks on placeholders or specific block UI elements
+      // If clicking the container background (not a block), focus the last block
+      if (e.target === this.container) {
+          const lastBlock = this.blocks[this.blocks.length - 1];
+          if (lastBlock) {
+              this.focusBlock(lastBlock.id, true); // Focus at end
+          }
+      }
+  }
+  
+  focus() {
+      // Public method to focus the editor (focuses last block)
+      const lastBlock = this.blocks[this.blocks.length - 1];
+      if (lastBlock) {
+          this.focusBlock(lastBlock.id, true);
+      }
   }
 
   checkMarkdownShortcuts(block, el) {

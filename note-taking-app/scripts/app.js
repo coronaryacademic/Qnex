@@ -206,6 +206,9 @@ const Storage = {
   },
 };
 
+// Expose Storage globally for other modules
+window.Storage = Storage;
+
 (async () => {
   // Elements
   const el = {
@@ -596,6 +599,9 @@ const Storage = {
   }
 
   function ensureSplitState() {
+    // Skip if workspace element not available (e.g., in two-base mode)
+    if (!el.workspace) return;
+    
     const hasLeftContent = state.left.tabs.length > 0;
     const hasRightContent = state.right.tabs.length > 0;
 
@@ -635,8 +641,8 @@ const Storage = {
     const target = e.target;
     // Sidebar space → show sidebar context
     const inSidebar = el.sidebar.contains(target);
-    const onNoteBtn = target.closest("button[data-note-id]");
-    const onFolderRow = target.closest(".folder-item");
+    const onNoteBtn = target.closest("button[data-note-id], .folder-note-item");
+    const onFolderRow = target.closest(".folder-item, .folder-header");
     if (inSidebar && !onNoteBtn && !onFolderRow) {
       return showContextMenu(
         e.clientX,
@@ -678,81 +684,164 @@ const Storage = {
         "sidebar"
       );
     }
-    // Note row
-    const noteBtn = target.closest("button[data-note-id]");
+    // Note row - support both button[data-note-id] (old) and .folder-note-item (two-base sidebar)
+    const noteBtn = target.closest("button[data-note-id], .folder-note-item");
     if (noteBtn) {
       const id = noteBtn.dataset.noteId;
-      return showContextMenu(
-        e.clientX,
-        e.clientY,
-        {
-          onOpenWindow: () => openWindow(id),
-          onRenameNote: async () => {
-            const note = getNote(id);
-            if (!note) return;
-            const name = await modalPrompt(
-              "Rename Note",
-              "Title",
-              note.title || ""
-            );
-            if (name == null) return;
-            note.title = name;
-            note.updatedAt = new Date().toISOString();
-            saveNotes();
-            renderSidebar();
-            refreshOpenTabs(id);
-            refreshWindowTitle(id);
-          },
-          onChangeNoteIcon: async () => {
-            const note = getNote(id);
-            if (!note) return;
-            const current = note.icon || "default";
-            const chosen = await modalIconPicker(current);
-            if (!chosen) return;
-            note.icon = chosen;
-            note.updatedAt = new Date().toISOString();
-            saveNotes();
-            renderSidebar();
-            refreshOpenTabs(id);
-            refreshWindowTitle(id);
-          },
-          onDeleteNote: async () => {
-            const ok = await modalConfirm("Delete this note?");
-            if (!ok) return;
-            const idx = state.notes.findIndex((n) => n.id === id);
-            if (idx >= 0) {
-              const [note] = state.notes.splice(idx, 1);
-              const deletedNote = {
-                ...note,
-                deletedAt: new Date().toISOString(),
-              };
-              state.trash.push(deletedNote);
-
-              // Sync with File System: Delete from notes collection, add to trash
-              try {
-                await Storage.deleteNoteFromFileSystem(id);
-                await Storage.saveTrash(state.trash);
-              } catch (error) {
-                console.error("File system sync error:", error);
+      
+      // Check if multiple items are selected
+      const isMultiSelect = state.selectedItems && state.selectedItems.size > 1 && state.selectedItems.has(id);
+      
+      if (isMultiSelect) {
+        // Multi-select context menu: only export and delete
+        return showContextMenu(
+          e.clientX,
+          e.clientY,
+          {
+            onExportNotes: async () => {
+              const selectedIds = Array.from(state.selectedItems);
+              const selectedNotes = state.notes.filter(n => selectedIds.includes(n.id));
+              
+              // Export as HTML
+              let html = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Exported Notes</title>\n<style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;}.note{margin-bottom:40px;border-bottom:2px solid #ccc;padding-bottom:20px;}.note h2{color:#333;}.note .meta{color:#666;font-size:0.9em;margin-bottom:10px;}</style>\n</head>\n<body>\n';
+              
+              selectedNotes.forEach(note => {
+                const date = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : '';
+                html += `<div class="note">\n<h2>${note.title || 'Untitled'}</h2>\n<div class="meta">Last updated: ${date}</div>\n<div class="content">${note.contentHtml || ''}</div>\n</div>\n`;
+              });
+              
+              html += '</body>\n</html>';
+              
+              // Download the HTML file
+              const blob = new Blob([html], { type: 'text/html' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `exported-notes-${Date.now()}.html`;
+              a.click();
+              URL.revokeObjectURL(url);
+            },
+            onDeleteNotes: async () => {
+              const selectedIds = Array.from(state.selectedItems);
+              const count = selectedIds.length;
+              const ok = await modalConfirm(`Delete ${count} selected note${count > 1 ? 's' : ''}?`);
+              if (!ok) return;
+              
+              // Delete all selected notes
+              for (const noteId of selectedIds) {
+                const idx = state.notes.findIndex(n => n.id === noteId);
+                if (idx >= 0) {
+                  const [note] = state.notes.splice(idx, 1);
+                  const deletedNote = {
+                    ...note,
+                    deletedAt: new Date().toISOString(),
+                  };
+                  state.trash.push(deletedNote);
+                  
+                  // Delete from backend
+                  if (Storage.useFileSystem) {
+                    try {
+                      await fileSystemService.deleteNoteFromCollection(noteId);
+                    } catch (error) {
+                      console.error("Error deleting note from backend:", noteId, error);
+                    }
+                  }
+                  
+                  // Close tabs and windows
+                  try {
+                    closeTab("left", noteId);
+                    closeTab("right", noteId);
+                    closeWindow(noteId);
+                  } catch (error) {
+                    console.warn("Error closing tabs for note:", noteId, error);
+                  }
+                }
               }
-            }
-            // Close tabs and windows for this note (do this first)
-            try {
-              closeTab("left", id);
-              closeTab("right", id);
-              closeWindow(id);
-            } catch (error) {
-              console.warn("Error closing tabs for note:", id, error);
-            }
-            saveNotes();
-            renderSidebar();
+              
+              // Clear selection
+              state.selectedItems.clear();
+              
+              saveNotes();
+              Storage.saveTrash(state.trash);
+              renderSidebar();
+            },
           },
-        },
-        "note"
-      );
+          "multi-note"
+        );
+      } else {
+        // Single note context menu: all options
+        return showContextMenu(
+          e.clientX,
+          e.clientY,
+          {
+            onOpenWindow: () => openWindow(id),
+            onRenameNote: async () => {
+              const note = getNote(id);
+              if (!note) return;
+              const name = await modalPrompt(
+                "Rename Note",
+                "Title",
+                note.title || ""
+              );
+              if (name == null) return;
+              note.title = name;
+              note.updatedAt = new Date().toISOString();
+              saveNotes();
+              renderSidebar();
+              refreshOpenTabs(id);
+              refreshWindowTitle(id);
+            },
+            onChangeNoteIcon: async () => {
+              const note = getNote(id);
+              if (!note) return;
+              const current = note.icon || "default";
+              const chosen = await modalIconPicker(current);
+              if (!chosen) return;
+              note.icon = chosen;
+              note.updatedAt = new Date().toISOString();
+              saveNotes();
+              renderSidebar();
+              refreshOpenTabs(id);
+              refreshWindowTitle(id);
+            },
+            onDeleteNote: async () => {
+              const ok = await modalConfirm("Delete this note?");
+              if (!ok) return;
+              const idx = state.notes.findIndex((n) => n.id === id);
+              if (idx >= 0) {
+                const [note] = state.notes.splice(idx, 1);
+                const deletedNote = {
+                  ...note,
+                  deletedAt: new Date().toISOString(),
+                };
+                state.trash.push(deletedNote);
+
+                // Sync with File System: Delete from notes collection, add to trash
+                try {
+                  await Storage.deleteNoteFromFileSystem(id);
+                  await Storage.saveTrash(state.trash);
+                } catch (error) {
+                  console.error("File system sync error:", error);
+                }
+              }
+              // Close tabs and windows for this note (do this first)
+              try {
+                closeTab("left", id);
+                closeTab("right", id);
+                closeWindow(id);
+              } catch (error) {
+                console.warn("Error closing tabs for note:", id, error);
+              }
+              saveNotes();
+              renderSidebar();
+            },
+          },
+          "note"
+        );
+      }
     }
-    // Folder row
-    const folderRow = target.closest(".folder-item");
+    // Folder row - support both .folder-item (old) and .folder-header (two-base sidebar)
+    const folderRow = target.closest(".folder-item, .folder-header");
     if (folderRow && folderRow.dataset.folderId !== undefined) {
       const fid = folderRow.dataset.folderId;
       const isUncat = fid === "";
@@ -791,6 +880,17 @@ const Storage = {
           await saveFolders();
           renderSidebar();
         };
+
+        // Add Move to Root option if folder is nested
+        const folderObj = state.folders.find((f) => f.id === fid);
+        if (folderObj && folderObj.parentId) {
+          handlers.onMoveToRoot = async () => {
+            folderObj.parentId = null;
+            await saveFolders();
+            renderSidebar();
+          };
+        }
+
         handlers.onDeleteFolder = async () => {
           const folder = state.folders.find((f) => f.id === fid);
           if (!folder) return;
@@ -913,9 +1013,13 @@ const Storage = {
         res();
       };
       ok.addEventListener("click", close);
-      m.querySelector(".modal-x").addEventListener("click", close);
+      const closeBtn = m.querySelector(".modal-x");
+      if (closeBtn) {
+        closeBtn.addEventListener("click", close);
+      }
     });
   }
+  
   function modalConfirm(message) {
     return new Promise((res) => {
       const m = modalBase();
@@ -937,9 +1041,13 @@ const Storage = {
       };
       cancel.addEventListener("click", () => done(false));
       yes.addEventListener("click", () => done(true));
-      m.querySelector(".modal-x").addEventListener("click", () => done(false));
+      const closeBtn = m.querySelector(".modal-x");
+      if (closeBtn) {
+        closeBtn.addEventListener("click", () => done(false));
+      }
     });
   }
+  
   function modalPrompt(title, placeholder, value = "") {
     return new Promise((res) => {
       const m = modalBase();
@@ -966,13 +1074,22 @@ const Storage = {
       };
       cancel.addEventListener("click", () => done(null));
       ok.addEventListener("click", () => done(inp.value.trim() || null));
-      m.querySelector(".modal-x").addEventListener("click", () => done(null));
+      const closeBtn = m.querySelector(".modal-x");
+      if (closeBtn) {
+        closeBtn.addEventListener("click", () => done(null));
+      }
       inp.addEventListener("keydown", (e) => {
         if (e.key === "Enter") ok.click();
         if (e.key === "Escape") cancel.click();
       });
     });
   }
+  
+  // Expose modal functions globally for use in two-base.js
+  window.modalConfirm = modalConfirm;
+  window.modalPrompt = modalPrompt;
+  window.modalAlert = modalAlert;
+
 
   // Storage
   // Data persistence functions
@@ -1954,6 +2071,9 @@ const Storage = {
       hasUnsavedChanges = false;
       updateSaveStatus(true);
     }
+    
+    // Expose saveNote on the node for external access (e.g., two-base.js)
+    node._saveNote = saveNote;
 
     function markUnsaved() {
       if (!hasUnsavedChanges) {
@@ -2045,6 +2165,7 @@ const Storage = {
 
     return node;
   }
+  window.buildEditor = buildEditor; // Expose globally for two-base.js
 
   function refreshOpenTabs(id) {
     ["left", "right"].forEach((side) => {
@@ -2562,7 +2683,12 @@ const Storage = {
         const header = document.createElement("div");
         header.className = "search-result-header";
         header.innerHTML = `
-          <span class="search-result-icon">📄</span>
+          <span class="search-result-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </span>
           <span class="search-result-title">${highlightText(
             note.title || "Untitled",
             query
@@ -2585,7 +2711,12 @@ const Storage = {
         if (folderMatch) {
           const folderDiv = document.createElement("div");
           folderDiv.className = "search-result-folder";
-          folderDiv.innerHTML = `📁 ${folderMatch.highlight}`;
+          folderDiv.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            ${folderMatch.highlight}
+          `;
           item.appendChild(folderDiv);
         }
 
@@ -2603,9 +2734,15 @@ const Storage = {
           item.appendChild(tagsDiv);
         }
 
-        // Click to open note and scroll to match
+        // Click to open note in two-base system
         item.addEventListener("click", () => {
-          openInPane(note.id, "left");
+          // Use two-base system to open note
+          if (typeof window.TwoBase !== 'undefined' && typeof window.TwoBase.openNoteInNoteBase === 'function') {
+            window.TwoBase.openNoteInNoteBase(note.id);
+          } else if (typeof openInPane === 'function') {
+            // Fallback to old system
+            openInPane(note.id, "left");
+          }
           closeModal();
 
           // Wait for note to load, then scroll to match
@@ -2614,7 +2751,7 @@ const Storage = {
             if (contentMatch) {
               // Find and scroll to the matched text in the content
               const paneContent = document.querySelector(
-                '[data-pane="left"] .pane-content'
+                '.note-pane .note-pane-content'
               );
               if (paneContent) {
                 const contentEditor =
@@ -3038,9 +3175,11 @@ const Storage = {
   }
   function disableSplit() {
     state.splitMode = false;
-    el.workspace.classList.add("split-off");
-    // Remove inline style and let CSS handle it
-    el.workspace.style.gridTemplateColumns = "";
+    if (el.workspace) {
+      el.workspace.classList.add("split-off");
+      // Remove inline style and let CSS handle it
+      el.workspace.style.gridTemplateColumns = "";
+    }
     updateEmptyState();
   }
 
@@ -3652,6 +3791,7 @@ const Storage = {
 
   // Context menu helpers
   let ctxEl = null;
+  window.showContextMenu = showContextMenu; // Make globally available
   function showContextMenu(x, y, handlers, scope) {
     hideContextMenu();
     if (!el.ctxTemplate) return;
@@ -3702,24 +3842,53 @@ const Storage = {
         handlers.onOpenWindow && handlers.onOpenWindow();
         hideContextMenu();
       });
+    
     const bDN = ctxEl.querySelector('[data-cmd="delete-note"]');
     if (bDN)
       bDN.addEventListener("click", async () => {
         await handlers.onDeleteNote?.();
         hideContextMenu();
       });
+    
+    // Multi-note handlers
+    const bExportNotes = ctxEl.querySelector('[data-cmd="export-notes"]');
+    if (bExportNotes)
+      bExportNotes.addEventListener("click", async () => {
+        await handlers.onExportNotes?.();
+        hideContextMenu();
+      });
+    
+    const bDeleteNotes = ctxEl.querySelector('[data-cmd="delete-notes"]');
+    if (bDeleteNotes)
+      bDeleteNotes.addEventListener("click", async () => {
+        await handlers.onDeleteNotes?.();
+        hideContextMenu();
+      });
+    
     const bNSF = ctxEl.querySelector('[data-cmd="new-subfolder"]');
     if (bNSF)
       bNSF.addEventListener("click", async () => {
         await handlers.onNewSubfolder?.();
         hideContextMenu();
       });
+    
     const bRF = ctxEl.querySelector('[data-cmd="rename-folder"]');
     if (bRF)
       bRF.addEventListener("click", async () => {
         await handlers.onRenameFolder?.();
         hideContextMenu();
       });
+    const bMTR = ctxEl.querySelector('[data-cmd="move-to-root"]');
+    if (bMTR) {
+      if (!handlers.onMoveToRoot) {
+        bMTR.style.display = "none";
+      } else {
+        bMTR.addEventListener("click", async () => {
+          await handlers.onMoveToRoot?.();
+          hideContextMenu();
+        });
+      }
+    }
     const bRN = ctxEl.querySelector('[data-cmd="rename-note"]');
     if (bRN)
       bRN.addEventListener("click", async () => {
@@ -5730,52 +5899,6 @@ const Storage = {
   el.noteList.addEventListener("drop", (e) => {
     const folderId = e.dataTransfer.getData("text/folder-id");
     if (folderId && !e.target.closest(".folder-item")) {
-      e.preventDefault();
-      const folder = state.folders.find((f) => f.id === folderId);
-      if (folder && folder.parentId !== null) {
-        folder.parentId = null;
-        saveFolders();
-        renderSidebar();
-      }
-    }
-  });
-
-  // Home button - close all tabs and show welcome pane
-  el.homeBtn.addEventListener("click", () => {
-    // Close all tabs in both panes
-    state.left.tabs = [];
-    state.left.active = null;
-    state.right.tabs = [];
-    state.right.active = null;
-
-    // Disable split mode
-    if (state.splitMode) {
-      disableSplit();
-    }
-
-    // Re-render to show welcome pane
-    renderTabs("left");
-    renderPane("left");
-    renderTabs("right");
-    renderPane("right");
-    updateEmptyState();
-
-    // Save session state
-    if (typeof saveSessionState === "function") {
-      saveSessionState();
-    }
-  });
-
-  // Toggle sidebar button
-  el.toggleSidebarBtn.addEventListener("click", () => {
-    const sidebar = el.sidebar;
-    const isCollapsed = sidebar.classList.contains("collapsed");
-
-    if (isCollapsed) {
-      // Expand
-      sidebar.style.width = (state.settings.sidebarWidth || 280) + "px";
-      sidebar.classList.remove("collapsed");
-      sidebar.classList.remove("narrow");
       state.settings.sidebarCollapsed = false;
       el.toggleSidebarBtn.title = "Hide sidebar";
     } else {

@@ -294,6 +294,11 @@ textarea {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none; 
+}
+
+.sidebar-content::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 /* Sidebar Sections (Notebooks, Folders) */
@@ -415,11 +420,18 @@ textarea {
   margin-bottom: 4px;
 }
 
+/* Nested folders inside folder-notes-list should not have extra left margin */
+.folder-notes-list .folder-tree-item {
+  margin-left: 0 !important; /* Override the depth-based margin for nested folders */
+}
+
 .folder-header {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
+  padding-left: 30px;
+  padding-right: 30px; /* Make room for absolute positioned chevron */
   background: transparent;
   border-radius: 6px;
   color: var(--text);
@@ -427,6 +439,7 @@ textarea {
   font-size: 13px;
   transition: all 0.15s;
   user-select: none;
+  position: relative; /* For absolute positioning of chevron */
 }
 
 .folder-header:hover {
@@ -439,22 +452,43 @@ textarea {
   border-radius: 6px;
 }
 
+.folder-header.drop-line-top {
+  box-shadow: 0 -2px 0 var(--accent);
+  background: transparent;
+  border: none;
+}
+
+.folder-header.drop-line-bottom {
+  box-shadow: 0 2px 0 var(--accent);
+  background: transparent;
+  border: none;
+}
+
 .folder-chevron {
-  width: 14px;
-  height: 14px;
-  color: var(--muted);
-  flex-shrink: 0;
+  position: absolute;
+  right: 8px;
   transition: transform 0.2s ease;
-  transform: rotate(0deg);
+  cursor: pointer;
+  user-select: none;
+  z-index: 10; /* Ensure chevron is above all other folder elements */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px; /* Add padding for easier clicking */
+}
+
+.folder-chevron svg {
+  pointer-events: none; /* Prevent SVG from capturing clicks */
+  display: block;
 }
 
 .folder-tree-item.expanded .folder-chevron {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 
 .folder-header svg:not(.folder-chevron) {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   color: var(--muted);
   flex-shrink: 0;
 }
@@ -485,13 +519,14 @@ textarea {
   overflow: hidden;
   opacity: 0;
   transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
-  padding: 0 0 0 28px;
+  padding: 0;
 }
 
-.folder-tree-item.expanded .folder-notes-list {
-  max-height: 1000px;
+.folder-tree-item.expanded > .folder-notes-list {
+  max-height: 5000px; /* Increased to support deeply nested folders */
   opacity: 1;
-  padding: 4px 0 4px 28px;
+  padding: 4px 0;
+  overflow: visible; /* Allow nested folders to be fully visible */
 }
 
 .folder-note-item {
@@ -552,6 +587,17 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Selected state for sidebar notes (Ctrl+click) */
+.folder-note-item.selected {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+}
+
+.folder-note-item.selected svg {
+  color: #fff;
 }
 
 .folder-empty-message {
@@ -1284,6 +1330,7 @@ textarea {
   overflow: hidden;
   position: relative;
 }
+
 .topbar {
   display: flex;
   align-items: center;

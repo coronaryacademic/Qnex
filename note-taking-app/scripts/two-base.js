@@ -18,6 +18,11 @@
     sortOrder: 'asc', // 'asc' or 'desc'
     multiSelectMode: false, // Whether multi-select is enabled
     selectedItems: [], // Selected item IDs in multi-select mode
+    currentEditor: null, // Current BlockEditor instance
+    currentEditorElement: null, // Current editable content element
+    currentSaveFunction: null, // Current note's save function
+    toolbarPosition: 'top', // Toolbar position: 'top', 'right', 'bottom', 'left'
+    toolbarAlignment: 'center', // Toolbar alignment: 'left', 'center', 'right'
   };
 
   // DOM Elements
@@ -38,6 +43,9 @@
     notePaneLeft: null,
     notePaneRight: null,
     noteResizer: null,
+    toolbarOptionsBtn: null,
+    toolbarOptionsMenu: null,
+    noteToolbarSection: null,
   };
 
   // Initialize DOM elements
@@ -56,7 +64,15 @@
     el.notePaneLeft = document.getElementById('notePane-left');
     el.notePaneRight = document.getElementById('notePane-right');
     el.noteResizer = document.getElementById('noteResizer');
+    el.toolbarOptionsBtn = document.getElementById('toolbarOptionsBtn');
+    el.toolbarOptionsMenu = document.getElementById('toolbarOptionsMenu');
+    el.noteToolbarSection = document.querySelector('.note-toolbar-section');
   }
+
+  // Module-level state reference
+  let state = null;
+  let getIcon = null;
+  let escapeHtml = null;
 
   // ===================================
   // MAIN BASE: Workspace Functions
@@ -64,6 +80,14 @@
 
   function renderWorkspaceSplit(folderId = null) {
     TwoBaseState.currentFolder = folderId;
+    TwoBaseState.currentBase = 'main';
+    
+    // Show workspace, hide note base and empty state
+    if (el.workspaceSplit) el.workspaceSplit.style.display = 'flex';
+    if (el.noteBase) el.noteBase.classList.add('hidden');
+    
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) emptyState.classList.add('hidden');
     
     // Update breadcrumb
     renderBreadcrumb();
@@ -179,7 +203,11 @@
     if (subfolders.length === 0 && folderNotes.length === 0) {
       el.workspaceContent.innerHTML = `
         <div class="workspace-empty">
-          <div class="workspace-empty-icon">📁</div>
+          <div class="workspace-empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); opacity: 0.5;">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
           <div class="workspace-empty-text">This folder is empty</div>
         </div>
       `;
@@ -192,6 +220,12 @@
     const item = document.createElement('div');
     item.className = 'workspace-item folder';
     item.dataset.folderId = folder.id;
+    item.dataset.itemType = 'folder';
+    
+    // Check if selected
+    if (TwoBaseState.selectedItems.includes(folder.id)) {
+      item.classList.add('selected');
+    }
     
     const icon = getIcon('folder');
     
@@ -201,7 +235,158 @@
       <div class="workspace-item-meta">Folder</div>
     `;
     
-    item.addEventListener('click', () => navigateToFolder(folder.id));
+    // Click handler - only multi-select button enables multi-selection
+    item.addEventListener('click', (e) => {
+      if (TwoBaseState.multiSelectMode) {
+        // Multi-select mode: toggle selection
+        e.stopPropagation();
+        toggleItemSelection(folder.id, 'folder');
+      } else {
+        // Normal mode: navigate to folder
+        navigateToFolder(folder.id);
+      }
+    });
+    
+    // Right-click context menu
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showWorkspaceContextMenu(e, folder.id, 'folder');
+    });
+    
+    // Drag and drop support
+    item.draggable = true;
+    
+    item.addEventListener('dragstart', (e) => {
+      // If this item is part of multi-selection, drag all selected items
+      if (TwoBaseState.selectedItems.includes(folder.id) && TwoBaseState.selectedItems.length > 1) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/multi-drag', 'true');
+        e.dataTransfer.setData('text/item-ids', JSON.stringify(TwoBaseState.selectedItems));
+        item.classList.add('dragging');
+      } else {
+        // Single item drag
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/folder-id', folder.id);
+        item.classList.add('dragging');
+      }
+    });
+    
+    item.addEventListener('dragend', (e) => {
+      item.classList.remove('dragging');
+    });
+    
+    // Make folder a drop zone
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      item.classList.add('drag-over');
+    });
+    
+    item.addEventListener('dragleave', (e) => {
+      e.stopPropagation();
+      item.classList.remove('drag-over');
+    });
+    
+    item.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      item.classList.remove('drag-over');
+      
+      // Check if multi-drag
+      const isMultiDrag = e.dataTransfer.types.includes('text/multi-drag');
+      
+      if (isMultiDrag) {
+        // Handle multi-item drop
+        const itemIds = JSON.parse(e.dataTransfer.getData('text/item-ids'));
+        
+        for (const id of itemIds) {
+          // Check if it's a note
+          const note = state.notes.find(n => n.id === id);
+          if (note) {
+            note.folderId = folder.id;
+            note.updatedAt = new Date().toISOString();
+          } else {
+            // Check if it's a folder
+            const draggedFolder = state.folders.find(f => f.id === id);
+            if (draggedFolder && draggedFolder.id !== folder.id) {
+              // Prevent circular nesting
+              let parent = folder;
+              let isCircular = false;
+              while (parent) {
+                if (parent.id === draggedFolder.id) {
+                  isCircular = true;
+                  break;
+                }
+                parent = state.folders.find(f => f.id === parent.parentId);
+              }
+              
+              if (!isCircular) {
+                draggedFolder.parentId = folder.id;
+              }
+            }
+          }
+        }
+        
+        // Clear selection after move
+        TwoBaseState.selectedItems = [];
+        if (window.state && window.state.selectedItems) {
+          window.state.selectedItems.clear();
+        }
+        
+        // Save to backend
+        if (typeof window.saveNotes === 'function') {
+          window.saveNotes();
+        }
+        if (typeof window.saveFolders === 'function') {
+          window.saveFolders();
+        }
+      } else {
+        // Handle single item drop
+        const noteId = e.dataTransfer.getData('text/note-id');
+        const folderId = e.dataTransfer.getData('text/folder-id');
+        
+        if (noteId) {
+          const note = state.notes.find(n => n.id === noteId);
+          if (note) {
+            note.folderId = folder.id;
+            note.updatedAt = new Date().toISOString();
+            
+            // Save to backend
+            if (typeof window.saveNotes === 'function') {
+              window.saveNotes();
+            }
+          }
+        } else if (folderId && folderId !== folder.id) {
+          const draggedFolder = state.folders.find(f => f.id === folderId);
+          if (draggedFolder) {
+            // Prevent circular nesting
+            let parent = folder;
+            let isCircular = false;
+            while (parent) {
+              if (parent.id === draggedFolder.id) {
+                isCircular = true;
+                break;
+              }
+              parent = state.folders.find(f => f.id === parent.parentId);
+            }
+            
+            if (!isCircular) {
+              draggedFolder.parentId = folder.id;
+              
+              // Save to backend
+              if (typeof window.saveFolders === 'function') {
+                window.saveFolders();
+              }
+            }
+          }
+        }
+      }
+      
+      // Refresh view
+      renderWorkspaceSplit(TwoBaseState.currentFolder);
+    });
     
     return item;
   }
@@ -210,8 +395,14 @@
     const item = document.createElement('div');
     item.className = 'workspace-item note';
     item.dataset.noteId = note.id;
+    item.dataset.itemType = 'note';
     
-    const icon = getIcon('default');
+    // Check if selected
+    if (TwoBaseState.selectedItems.includes(note.id)) {
+      item.classList.add('selected');
+    }
+    
+    const icon = getIcon(note.icon || 'default');
     const date = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : '';
     
     item.innerHTML = `
@@ -220,7 +411,46 @@
       <div class="workspace-item-meta">${date}</div>
     `;
     
-    item.addEventListener('click', () => openNoteFromWorkspace(note.id));
+    // Click handler - only multi-select button enables multi-selection
+    item.addEventListener('click', (e) => {
+      if (TwoBaseState.multiSelectMode) {
+        // Multi-select mode: toggle selection
+        e.stopPropagation();
+        toggleItemSelection(note.id, 'note');
+      } else {
+        // Normal mode: open note
+        openNoteFromWorkspace(note.id);
+      }
+    });
+    
+    // Right-click context menu
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showWorkspaceContextMenu(e, note.id, 'note');
+    });
+    
+    // Drag and drop support
+    item.draggable = true;
+    
+    item.addEventListener('dragstart', (e) => {
+      // If this item is part of multi-selection, drag all selected items
+      if (TwoBaseState.selectedItems.includes(note.id) && TwoBaseState.selectedItems.length > 1) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/multi-drag', 'true');
+        e.dataTransfer.setData('text/item-ids', JSON.stringify(TwoBaseState.selectedItems));
+        item.classList.add('dragging');
+      } else {
+        // Single item drag
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/note-id', note.id);
+        item.classList.add('dragging');
+      }
+    });
+    
+    item.addEventListener('dragend', (e) => {
+      item.classList.remove('dragging');
+    });
     
     return item;
   }
@@ -238,6 +468,348 @@
   function openNoteFromWorkspace(noteId) {
     switchToNoteBase();
     openNoteInNoteBase(noteId);
+  }
+
+  function toggleItemSelection(itemId, itemType) {
+    const index = TwoBaseState.selectedItems.indexOf(itemId);
+    
+    if (index > -1) {
+      // Deselect
+      TwoBaseState.selectedItems.splice(index, 1);
+      if (window.state && window.state.selectedItems) {
+        window.state.selectedItems.delete(itemId);
+      }
+    } else {
+      // Select
+      TwoBaseState.selectedItems.push(itemId);
+      if (window.state && window.state.selectedItems) {
+        window.state.selectedItems.add(itemId);
+      }
+    }
+    
+    // Re-render to update visual state
+    if (TwoBaseState.currentFolder) {
+      renderFolderContents(TwoBaseState.currentFolder);
+    } else {
+      renderRootView();
+    }
+  }
+
+  function showWorkspaceContextMenu(event, itemId, itemType) {
+    // Use the global showContextMenu from app.js
+    console.log('[BASE LAYER] showWorkspaceContextMenu called:', { itemId, itemType, selectedCount: TwoBaseState.selectedItems.length });
+    if (typeof window.showContextMenu !== 'function') {
+      console.error('[BASE LAYER] showContextMenu not available');
+      return;
+    }
+    
+    // Check for multi-selection
+    if (TwoBaseState.selectedItems.length > 1 && TwoBaseState.selectedItems.includes(itemId)) {
+      // Show multi-select context menu
+      window.showContextMenu(
+        event.clientX,
+        event.clientY,
+        {
+          onDeleteNotes: async () => {
+            console.log('[BASE LAYER] Multi-delete triggered, items:', TwoBaseState.selectedItems);
+            if (typeof window.modalConfirm !== 'function') {
+              console.error('[BASE LAYER] modalConfirm not available');
+              return;
+            }
+            const count = TwoBaseState.selectedItems.length;
+            const ok = await window.modalConfirm(`Delete ${count} selected item${count > 1 ? 's' : ''}?`);
+            console.log('[BASE LAYER] User confirmed delete:', ok);
+            if (!ok) return;
+            
+            // Delete all selected items (notes and folders)
+            for (const id of TwoBaseState.selectedItems) {
+              // Try to find in notes first
+              const noteIdx = state.notes.findIndex(n => n.id === id);
+              if (noteIdx >= 0) {
+                const [deletedNote] = state.notes.splice(noteIdx, 1);
+                const trashItem = {
+                  ...deletedNote,
+                  deletedAt: new Date().toISOString()
+                };
+                state.trash.push(trashItem);
+                
+                // Delete from backend
+                if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                  try {
+                    if (typeof window.fileSystemService !== 'undefined') {
+                      await window.fileSystemService.deleteNoteFromCollection(id);
+                    }
+                  } catch (error) {
+                    console.error("Error deleting note from backend:", id, error);
+                  }
+                }
+                
+                // Close tabs
+                if (typeof window.closeTab === 'function') {
+                  window.closeTab("left", id);
+                  window.closeTab("right", id);
+                }
+              } else {
+                // Try to find in folders
+                const folderIdx = state.folders.findIndex(f => f.id === id);
+                if (folderIdx >= 0) {
+                  const folder = state.folders[folderIdx];
+                  const notesInFolder = state.notes.filter(n => n.folderId === id);
+                  
+                  // Remove folder
+                  state.folders.splice(folderIdx, 1);
+                  
+                  // Move folder to trash with its notes
+                  const trashItem = {
+                    ...folder,
+                    type: 'folder',
+                    notes: notesInFolder,
+                    deletedAt: new Date().toISOString()
+                  };
+                  state.trash.push(trashItem);
+                  
+                  // Remove notes in folder
+                  state.notes = state.notes.filter(n => n.folderId !== id);
+                  
+                  // Delete from backend
+                  if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                    try {
+                      if (typeof window.fileSystemService !== 'undefined') {
+                        await window.fileSystemService.deleteFolderFromCollection(id);
+                      }
+                    } catch (error) {
+                      console.error("Error deleting folder from backend:", id, error);
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Clear selection
+            TwoBaseState.selectedItems = [];
+            if (window.state && window.state.selectedItems) {
+              window.state.selectedItems.clear();
+            }
+            
+            // Save changes to backend
+            if (typeof window.saveNotes === 'function') {
+              window.saveNotes();
+            }
+            if (typeof window.saveFolders === 'function') {
+              window.saveFolders();
+            }
+            if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+              window.Storage.saveTrash(state.trash);
+            }
+            
+            // Refresh view and sidebar
+            if (typeof window.renderSidebar === 'function') {
+              window.renderSidebar();
+            }
+            if (TwoBaseState.currentFolder === 'uncategorized') {
+              renderUncategorizedNotes();
+            } else {
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+            }
+          },
+          onExportNotes: async () => {
+             // Use app.js handler if available, or implement basic export
+             console.log('Exporting selected notes...');
+          }
+        },
+        "multi-note"
+      );
+      return;
+    }
+    
+    if (itemType === 'note') {
+      const note = state.notes.find(n => n.id === itemId);
+      if (!note) return;
+      
+      // Show note context menu
+      window.showContextMenu(
+        event.clientX,
+        event.clientY,
+        {
+          onOpenWindow: () => {
+            if (typeof window.openWindow === 'function') {
+              window.openWindow(itemId);
+            }
+          },
+          onRenameNote: async () => {
+            if (typeof window.modalPrompt !== 'function') return;
+            const name = await window.modalPrompt('Rename Note', 'Title', note.title || '');
+            if (name == null) return;
+            note.title = name;
+            note.updatedAt = new Date().toISOString();
+            if (typeof window.saveNotes === 'function') {
+              window.saveNotes();
+            }
+            // Re-render workspace
+            renderWorkspaceSplit(TwoBaseState.currentFolder);
+          },
+          onChangeNoteIcon: async () => {
+            if (typeof window.modalIconPicker !== 'function') return;
+            const current = note.icon || 'default';
+            const chosen = await window.modalIconPicker(current);
+            if (!chosen) return;
+            note.icon = chosen;
+            note.updatedAt = new Date().toISOString();
+            if (typeof window.saveNotes === 'function') {
+              window.saveNotes();
+            }
+            renderWorkspaceSplit(TwoBaseState.currentFolder);
+          },
+          onDeleteNote: async () => {
+            console.log('[BASE LAYER] Single note delete triggered for:', itemId);
+            if (typeof window.modalConfirm !== 'function') {
+              console.error('[BASE LAYER] modalConfirm not available');
+              return;
+            }
+            const ok = await window.modalConfirm('Delete this note?');
+            console.log('[BASE LAYER] User confirmed delete:', ok);
+            if (!ok) return;
+            
+            const idx = state.notes.findIndex(n => n.id === itemId);
+            if (idx >= 0) {
+              const [deletedNote] = state.notes.splice(idx, 1);
+              const trashItem = {
+                ...deletedNote,
+                deletedAt: new Date().toISOString()
+              };
+              state.trash.push(trashItem);
+              
+              // Delete from backend
+              if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                try {
+                  if (typeof window.fileSystemService !== 'undefined') {
+                    await window.fileSystemService.deleteNoteFromCollection(itemId);
+                  }
+                } catch (error) {
+                  console.error("Error deleting note from backend:", itemId, error);
+                }
+              }
+              
+              // Save changes
+              if (typeof window.saveNotes === 'function') {
+                window.saveNotes();
+              }
+              if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+                window.Storage.saveTrash(state.trash);
+              }
+              
+              // Re-render workspace and sidebar
+              if (typeof window.renderSidebar === 'function') {
+                window.renderSidebar();
+              }
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+            }
+          }
+        },
+        "note"
+      );
+    } else if (itemType === 'folder') {
+      const folder = state.folders.find(f => f.id === itemId);
+      if (!folder) return;
+      
+      const handlers = {};
+      
+      handlers.onNewSubfolder = async () => {
+        if (typeof window.modalPrompt !== 'function') return;
+        const name = await window.modalPrompt('New Subfolder', 'Folder name');
+        if (!name) return;
+        const f = { 
+          id: typeof window.uid === 'function' ? window.uid() : Date.now().toString(), 
+          name, 
+          parentId: itemId 
+        };
+        state.folders.push(f);
+        if (typeof window.saveFolders === 'function') {
+          window.saveFolders();
+        }
+        renderWorkspaceSplit(TwoBaseState.currentFolder);
+      };
+      
+      handlers.onRenameFolder = async () => {
+        if (typeof window.modalPrompt !== 'function') return;
+        const name = await window.modalPrompt('Rename Folder', 'Folder name', folder.name);
+        if (!name) return;
+        folder.name = name;
+        if (typeof window.saveFolders === 'function') {
+          window.saveFolders();
+        }
+        renderWorkspaceSplit(TwoBaseState.currentFolder);
+      };
+      
+      handlers.onChangeFolderIcon = async () => {
+        if (typeof window.modalIconPicker !== 'function') return;
+        const current = folder.icon || 'default';
+        const chosen = await window.modalIconPicker(current);
+        if (!chosen) return;
+        folder.icon = chosen;
+        if (typeof window.saveFolders === 'function') {
+          window.saveFolders();
+        }
+        renderWorkspaceSplit(TwoBaseState.currentFolder);
+      };
+      
+      if (folder.parentId) {
+        handlers.onMoveToRoot = async () => {
+          folder.parentId = null;
+          if (typeof window.saveFolders === 'function') {
+            window.saveFolders();
+          }
+          renderWorkspaceSplit(TwoBaseState.currentFolder);
+        };
+      }
+      
+      handlers.onDeleteFolder = async () => {
+        if (typeof window.modalConfirm !== 'function') return;
+        
+        // Get notes in folder
+        const notesInFolder = state.notes.filter(n => n.folderId === itemId);
+        const noteCount = notesInFolder.length;
+        
+        const ok = await window.modalConfirm(
+          `Delete folder "${folder.name}"?${noteCount > 0 ? `\n\n${noteCount} note${noteCount !== 1 ? 's' : ''} inside will be moved to trash.` : ''}\n\nYou can restore from trash later.`
+        );
+        if (!ok) return;
+        
+        // Remove notes
+        state.notes = state.notes.filter(n => n.folderId !== itemId);
+        
+        // Move folder to trash
+        const ix = state.folders.findIndex(f => f.id === itemId);
+        if (ix >= 0) {
+          const [deletedFolder] = state.folders.splice(ix, 1);
+          const trashItem = {
+            ...deletedFolder,
+            type: 'folder',
+            notes: notesInFolder,
+            deletedAt: new Date().toISOString()
+          };
+          state.trash.push(trashItem);
+        }
+        
+        if (typeof window.saveFolders === 'function') {
+          window.saveFolders();
+        }
+        if (typeof window.saveNotes === 'function') {
+          window.saveNotes();
+        }
+        if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+          window.Storage.saveTrash(state.trash);
+        }
+        
+        // Refresh sidebar and workspace
+        if (typeof window.renderSidebar === 'function') {
+          window.renderSidebar();
+        }
+        renderWorkspaceSplit(TwoBaseState.currentFolder);
+      };
+      
+      window.showContextMenu(event.clientX, event.clientY, handlers, 'folder');
+    }
   }
 
   // ===================================
@@ -275,24 +847,30 @@
     // Render tabs and editor
     renderNoteTabs();
     renderNoteEditor(noteId);
+    
+    // Save session state
+    saveTwoBaseSession();
   }
 
   function renderNoteTabs() {
     el.noteTabs.innerHTML = '';
     
-    TwoBaseState.openNotes.forEach(noteId => {
+    TwoBaseState.openNotes.forEach((noteId, index) => {
       const note = state.notes.find(n => n.id === noteId);
       if (!note) return;
       
       const tab = document.createElement('div');
       tab.className = 'note-tab' + (noteId === TwoBaseState.activeNote ? ' active' : '');
       tab.dataset.noteId = noteId;
+      tab.dataset.index = index;
+      tab.draggable = true;
       
       tab.innerHTML = `
         <span class="note-tab-title">${escapeHtml(note.title || 'Untitled')}</span>
         <span class="note-tab-close">×</span>
       `;
       
+      // Click handler
       tab.addEventListener('click', (e) => {
         if (e.target.classList.contains('note-tab-close')) {
           closeNoteTab(noteId);
@@ -301,9 +879,203 @@
         }
       });
       
+      // Drag and drop handlers
+      tab.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/note-tab-id', noteId);
+        tab.classList.add('dragging');
+      });
+      
+      tab.addEventListener('dragend', (e) => {
+        tab.classList.remove('dragging');
+        document.querySelectorAll('.note-tab').forEach(t => t.classList.remove('drag-over'));
+      });
+      
+      tab.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const draggingTab = document.querySelector('.note-tab.dragging');
+        if (draggingTab && draggingTab !== tab) {
+          tab.classList.add('drag-over');
+        }
+      });
+      
+      tab.addEventListener('dragleave', (e) => {
+        tab.classList.remove('drag-over');
+      });
+      
+      tab.addEventListener('drop', (e) => {
+        e.preventDefault();
+        tab.classList.remove('drag-over');
+        
+        const draggedNoteId = e.dataTransfer.getData('text/note-tab-id');
+        if (draggedNoteId && draggedNoteId !== noteId) {
+          reorderTabs(draggedNoteId, noteId);
+        }
+      });
+      
+      // Right-click context menu
+      tab.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showTabContextMenu(e, noteId);
+      });
+      
       el.noteTabs.appendChild(tab);
     });
   }
+  
+  function reorderTabs(draggedNoteId, targetNoteId) {
+    const draggedIndex = TwoBaseState.openNotes.indexOf(draggedNoteId);
+    const targetIndex = TwoBaseState.openNotes.indexOf(targetNoteId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    // Remove dragged note from array
+    TwoBaseState.openNotes.splice(draggedIndex, 1);
+    
+    // Insert at new position
+    const newTargetIndex = TwoBaseState.openNotes.indexOf(targetNoteId);
+    TwoBaseState.openNotes.splice(newTargetIndex, 0, draggedNoteId);
+    
+    // Re-render tabs
+    renderNoteTabs();
+    
+    // Save session state
+    saveTwoBaseSession();
+  }
+  
+  function showTabContextMenu(event, noteId) {
+    // Remove any existing context menu
+    const existingMenu = document.querySelector('.tab-context-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    // Create context menu
+    const menu = document.createElement('div');
+    menu.className = 'tab-context-menu';
+    menu.style.position = 'fixed';
+    menu.style.left = event.clientX + 'px';
+    menu.style.top = event.clientY + 'px';
+    
+    const note = state.notes.find(n => n.id === noteId);
+    const noteTitle = note ? (note.title || 'Untitled') : 'Untitled';
+    
+    menu.innerHTML = `
+      <div class="context-menu-item" data-action="close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span>Close Tab</span>
+      </div>
+      <div class="context-menu-item" data-action="close-others">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="8" height="12" rx="1"></rect>
+          <rect x="14" y="6" width="8" height="12" rx="1"></rect>
+          <line x1="5" y1="10" x2="7" y2="12"></line>
+          <line x1="7" y1="10" x2="5" y2="12"></line>
+          <line x1="17" y1="10" x2="19" y2="12"></line>
+          <line x1="19" y1="10" x2="17" y2="12"></line>
+        </svg>
+        <span>Close Other Tabs</span>
+      </div>
+      <div class="context-menu-item" data-action="close-all">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        <span>Close All Tabs</span>
+      </div>
+    `;
+    
+    // Add click handlers
+    menu.addEventListener('click', (e) => {
+      const item = e.target.closest('.context-menu-item');
+      if (!item) return;
+      
+      const action = item.dataset.action;
+      
+      if (action === 'close') {
+        closeNoteTab(noteId);
+      } else if (action === 'close-others') {
+        const otherNotes = TwoBaseState.openNotes.filter(id => id !== noteId);
+        otherNotes.forEach(id => closeNoteTab(id));
+      } else if (action === 'close-all') {
+        const allNotes = [...TwoBaseState.openNotes];
+        allNotes.forEach(id => closeNoteTab(id));
+      }
+      
+      menu.remove();
+    });
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', () => menu.remove(), { once: true });
+    }, 0);
+    
+    document.body.appendChild(menu);
+  }
+  
+  function saveTwoBaseSession() {
+    // Create a serializable version of the state
+    const sessionState = {
+      activeNote: TwoBaseState.activeNote,
+      openNotes: TwoBaseState.openNotes,
+      currentBase: TwoBaseState.currentBase,
+      currentFolder: TwoBaseState.currentFolder,
+      toolbarPosition: TwoBaseState.toolbarPosition,
+      toolbarAlignment: TwoBaseState.toolbarAlignment
+    };
+    
+    // Save to settings
+    if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveSettings === 'function') {
+      window.Storage.saveSettings({ ...state.settings, twoBaseSession: sessionState });
+    }
+  }
+  
+  function restoreTwoBaseSession() {
+    if (!state || !state.settings || !state.settings.twoBaseSession) return;
+    
+    const savedSession = state.settings.twoBaseSession;
+    
+    // Restore state
+    if (savedSession.openNotes && Array.isArray(savedSession.openNotes)) {
+      TwoBaseState.openNotes = savedSession.openNotes;
+    }
+    
+    if (savedSession.activeNote) {
+      TwoBaseState.activeNote = savedSession.activeNote;
+    }
+    
+    if (savedSession.currentFolder) {
+      TwoBaseState.currentFolder = savedSession.currentFolder;
+    }
+    
+    // Restore toolbar preferences
+    if (savedSession.toolbarPosition) {
+      TwoBaseState.toolbarPosition = savedSession.toolbarPosition;
+      setToolbarPosition(savedSession.toolbarPosition);
+    }
+    
+    if (savedSession.toolbarAlignment) {
+      TwoBaseState.toolbarAlignment = savedSession.toolbarAlignment;
+      setToolbarAlignment(savedSession.toolbarAlignment);
+    }
+    
+    // Restore view
+    if (savedSession.currentBase === 'note' && TwoBaseState.openNotes.length > 0) {
+      switchToNoteBase();
+      renderNoteTabs();
+      if (TwoBaseState.activeNote) {
+        renderNoteEditor(TwoBaseState.activeNote);
+      }
+    } else {
+      renderWorkspaceSplit(TwoBaseState.currentFolder);
+    }
+  }
+
 
   function renderNoteEditor(noteId) {
     const note = state.notes.find(n => n.id === noteId);
@@ -313,11 +1085,46 @@
     const paneContent = el.notePaneLeft.querySelector('.note-pane-content');
     paneContent.innerHTML = '';
     
-    // buildEditor returns a DOM node, so we need to append it
+    // buildEditor returns a DOM node with the editor, so we need to append it
     if (typeof window.buildEditor === 'function') {
       const editorNode = window.buildEditor(note);
       paneContent.appendChild(editorNode);
+      
+      // Store reference to the BlockEditor instance for toolbar use
+      const blockEditor = editorNode._blockEditor;
+      const saveFunction = editorNode._saveNote;
+      
+      if (blockEditor) {
+        // Store the editor instance globally for toolbar access
+        TwoBaseState.currentEditor = blockEditor;
+        TwoBaseState.currentEditorElement = editorNode.querySelector('.content.editable');
+        TwoBaseState.currentSaveFunction = saveFunction;
+        
+        // Make sure the editor is visible and functional
+        setTimeout(() => {
+          if (TwoBaseState.currentEditor) {
+            TwoBaseState.currentEditor.focus();
+          }
+        }, 100);
+      }
     }
+    
+    // Add click listener to pane content to focus editor when clicking empty space
+    paneContent.addEventListener('click', (e) => {
+      if (e.target === paneContent && TwoBaseState.currentEditor) {
+        TwoBaseState.currentEditor.focus();
+      }
+    });
+    
+    // Add Ctrl+S keyboard shortcut for saving
+    paneContent.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (TwoBaseState.currentSaveFunction) {
+          TwoBaseState.currentSaveFunction();
+        }
+      }
+    });
     
     // Populate toolbar in note header
     populateNoteToolbar();
@@ -328,27 +1135,52 @@
     if (!toolbar) return;
     
     toolbar.innerHTML = `
-      <button class="icon-btn" data-action="bold" title="Bold (Ctrl+B)">
+      <button class="icon-btn" data-action="bold" title="Bold (Ctrl+B)" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
           <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
         </svg>
       </button>
-      <button class="icon-btn" data-action="italic" title="Italic (Ctrl+I)">
+      <button class="icon-btn" data-action="italic" title="Italic (Ctrl+I)" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="19" y1="4" x2="10" y2="4"></line>
           <line x1="14" y1="20" x2="5" y2="20"></line>
           <line x1="15" y1="4" x2="9" y2="20"></line>
         </svg>
       </button>
-      <button class="icon-btn" data-action="underline" title="Underline (Ctrl+U)">
+      <button class="icon-btn" data-action="underline" title="Underline (Ctrl+U)" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
           <line x1="4" y1="21" x2="20" y2="21"></line>
         </svg>
       </button>
       <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-      <button class="icon-btn" data-action="h1" title="Heading 1">
+      
+      <!-- Highlight Color Picker -->
+      <div class="color-picker-container" style="position: relative; display: inline-block;">
+        <button class="icon-btn" id="highlightBtn" title="Highlight Color" onmousedown="event.preventDefault()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 1 1 3.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+            <line x1="3" y1="22" x2="21" y2="22"></line>
+          </svg>
+        </button>
+        <div id="highlightMenu" class="color-palette hidden" style="position: absolute; top: 100%; left: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 120px;">
+          <button class="color-swatch" data-color="#ffff00" title="Yellow" style="background: #ffff00; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="#00ff00" title="Green" style="background: #00ff00; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="#00ffff" title="Blue" style="background: #00ffff; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="#ff00ff" title="Pink" style="background: #ff00ff; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="#ff0000" title="Red" style="background: #ff0000; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="#ff8000" title="Orange" style="background: #ff8000; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="#8000ff" title="Purple" style="background: #8000ff; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="#cccccc" title="Gray" style="background: #cccccc; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
+          <button class="color-swatch" data-color="transparent" title="No Highlight" style="background: white; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; grid-column: span 4; width: 100%;">
+            <span style="font-size: 10px; color: black;">None</span>
+          </button>
+        </div>
+      </div>
+
+      <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
+      <button class="icon-btn" data-action="h1" title="Heading 1" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 12h8"></path>
           <path d="M4 18V6"></path>
@@ -357,7 +1189,7 @@
           <path d="M19 6v12"></path>
         </svg>
       </button>
-      <button class="icon-btn" data-action="h2" title="Heading 2">
+      <button class="icon-btn" data-action="h2" title="Heading 2" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 12h8"></path>
           <path d="M4 18V6"></path>
@@ -366,7 +1198,7 @@
         </svg>
       </button>
       <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-      <button class="icon-btn" data-action="ul" title="Bullet List">
+      <button class="icon-btn" data-action="ul" title="Bullet List" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="8" y1="6" x2="21" y2="6"></line>
           <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -376,7 +1208,7 @@
           <line x1="3" y1="18" x2="3.01" y2="18"></line>
         </svg>
       </button>
-      <button class="icon-btn" data-action="ol" title="Numbered List">
+      <button class="icon-btn" data-action="ol" title="Numbered List" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="10" y1="6" x2="21" y2="6"></line>
           <line x1="10" y1="12" x2="21" y2="12"></line>
@@ -387,7 +1219,7 @@
         </svg>
       </button>
       <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-      <button class="icon-btn" data-action="table" title="Insert Table">
+      <button class="icon-btn" data-action="table" title="Insert Table" onmousedown="event.preventDefault()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="3" y1="9" x2="21" y2="9"></line>
@@ -397,28 +1229,102 @@
       </button>
     `;
     
-    // Add click handlers
+    // Highlight menu toggle
+    const highlightBtn = document.getElementById('highlightBtn');
+    const highlightMenu = document.getElementById('highlightMenu');
+    
+    if (highlightBtn && highlightMenu) {
+      highlightBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        highlightMenu.classList.toggle('hidden');
+      });
+      
+      // Close menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!highlightMenu.contains(e.target) && e.target !== highlightBtn) {
+          highlightMenu.classList.add('hidden');
+        }
+      });
+      
+      // Color selection
+      highlightMenu.addEventListener('click', (e) => {
+        const swatch = e.target.closest('.color-swatch');
+        if (!swatch) return;
+        
+        e.stopPropagation();
+        const color = swatch.dataset.color;
+        
+        // Apply highlight
+        document.execCommand('hiliteColor', false, color);
+        highlightMenu.classList.add('hidden');
+        
+        // Trigger change
+        if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === 'function') {
+          TwoBaseState.currentEditor.triggerChange();
+        }
+      });
+    }
+    
+    // Add click handlers for toolbar buttons
     toolbar.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
       
       const action = btn.dataset.action;
-      const content = el.notePaneLeft.querySelector('.content.editable');
-      if (!content) return;
+      const contentElement = TwoBaseState.currentEditorElement;
       
-      content.focus();
+      if (!contentElement) {
+        console.warn('No active editor element found');
+        return;
+      }
       
-      if (action === 'bold') document.execCommand('bold');
-      else if (action === 'italic') document.execCommand('italic');
-      else if (action === 'underline') document.execCommand('underline');
-      else if (action === 'h1') document.execCommand('formatBlock', false, 'h1');
-      else if (action === 'h2') document.execCommand('formatBlock', false, 'h2');
-      else if (action === 'ul') document.execCommand('insertUnorderedList');
-      else if (action === 'ol') document.execCommand('insertOrderedList');
-      else if (action === 'table') {
-        if (typeof insertTablePlaceholder === 'function') {
-          insertTablePlaceholder();
-        }
+      // Ensure focus is on the editor before executing command
+      // This is crucial for the commands to work on the selection
+      if (document.activeElement !== contentElement) {
+        // If we lost focus, we might have lost selection. 
+        // Ideally, we should have saved selection on blur, but for now let's try to focus.
+        // contentElement.focus(); 
+        // Note: focusing might clear selection if not handled carefully.
+        // Since we used onmousedown=preventDefault, focus should still be in editor.
+      }
+      
+      // Execute formatting commands
+      if (action === 'bold') {
+        document.execCommand('bold');
+      } else if (action === 'italic') {
+        document.execCommand('italic');
+      } else if (action === 'underline') {
+        document.execCommand('underline');
+      } else if (action === 'h1') {
+        document.execCommand('formatBlock', false, 'h1');
+      } else if (action === 'h2') {
+        document.execCommand('formatBlock', false, 'h2');
+      } else if (action === 'ul') {
+        document.execCommand('insertUnorderedList');
+      } else if (action === 'ol') {
+        document.execCommand('insertOrderedList');
+      } else if (action === 'table') {
+        // Insert a simple table structure
+        const tableHTML = `
+          <table style="border-collapse: collapse; width: 100%; margin: 1rem 0;">
+            <tr>
+              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 1</td>
+              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 2</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 3</td>
+              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 4</td>
+            </tr>
+          </table>
+        `;
+        document.execCommand('insertHTML', false, tableHTML);
+      }
+      
+      // Trigger change event if BlockEditor is available
+      if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === 'function') {
+        setTimeout(() => {
+          TwoBaseState.currentEditor.triggerChange();
+        }, 10);
       }
     });
   }
@@ -427,6 +1333,7 @@
     TwoBaseState.activeNote = noteId;
     renderNoteTabs();
     renderNoteEditor(noteId);
+    saveTwoBaseSession();
   }
 
   function closeNoteTab(noteId) {
@@ -436,7 +1343,7 @@
     }
     
     // If this was the active note, switch to another or go back to main
-    if (noteId === TwoBaseState.activeNote) {
+    if (TwoBaseState.activeNote === noteId) {
       if (TwoBaseState.openNotes.length > 0) {
         // Switch to the previous tab or first tab
         const newActiveIndex = Math.max(0, index - 1);
@@ -449,6 +1356,9 @@
       // Just update tabs
       renderNoteTabs();
     }
+    
+    // Save session state
+    saveTwoBaseSession();
   }
 
   function toggleSplitView() {
@@ -464,8 +1374,6 @@
       el.splitNoteBtn.classList.remove('active');
     }
   }
-
-  // ===================================
   // View Options & Context Menu
   // ===================================
 
@@ -596,6 +1504,129 @@
   }
 
   // ===================================
+  // Toolbar Options
+  // ===================================
+
+  function setupToolbarOptions() {
+    if (!el.toolbarOptionsBtn || !el.toolbarOptionsMenu) return;
+    
+    // Toggle menu visibility
+    el.toolbarOptionsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      el.toolbarOptionsMenu.classList.toggle('hidden');
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!el.toolbarOptionsMenu.contains(e.target) && e.target !== el.toolbarOptionsBtn) {
+        el.toolbarOptionsMenu.classList.add('hidden');
+      }
+    });
+    
+    // Position buttons
+    const positionBtns = el.toolbarOptionsMenu.querySelectorAll('.toolbar-position-btn');
+    positionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const position = btn.dataset.position;
+        setToolbarPosition(position);
+        
+        // Update active state
+        positionBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+    
+    // Alignment buttons
+    const alignBtns = el.toolbarOptionsMenu.querySelectorAll('.toolbar-align-btn');
+    alignBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const alignment = btn.dataset.align;
+        setToolbarAlignment(alignment);
+        
+        // Update active state
+        alignBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+    
+    // Load saved preferences
+    loadToolbarPreferences();
+  }
+  
+  function setToolbarPosition(position) {
+    // Remove all position classes
+    el.noteBase.classList.remove('toolbar-position-top', 'toolbar-position-right', 'toolbar-position-bottom', 'toolbar-position-left');
+    
+    // Add new position class (except for 'top' which is default)
+    if (position !== 'top') {
+      el.noteBase.classList.add(`toolbar-position-${position}`);
+    }
+    
+    // Update state
+    TwoBaseState.toolbarPosition = position;
+    
+    // Save to settings
+    saveToolbarPreferences();
+  }
+  
+  function setToolbarAlignment(alignment) {
+    // Remove all alignment classes
+    el.noteToolbarSection.classList.remove('toolbar-align-left', 'toolbar-align-center', 'toolbar-align-right');
+    
+    // Add new alignment class
+    el.noteToolbarSection.classList.add(`toolbar-align-${alignment}`);
+    
+    // Update state
+    TwoBaseState.toolbarAlignment = alignment;
+    
+    // Save to settings
+    saveToolbarPreferences();
+  }
+  
+  function loadToolbarPreferences() {
+    if (!state || !state.settings) return;
+    
+    // Load position
+    const savedPosition = state.settings.toolbarPosition || 'top';
+    TwoBaseState.toolbarPosition = savedPosition;
+    setToolbarPosition(savedPosition);
+    
+    // Load alignment
+    const savedAlignment = state.settings.toolbarAlignment || 'center';
+    TwoBaseState.toolbarAlignment = savedAlignment;
+    setToolbarAlignment(savedAlignment);
+    
+    // Update active states in menu
+    const positionBtn = el.toolbarOptionsMenu.querySelector(`[data-position="${savedPosition}"]`);
+    if (positionBtn) {
+      el.toolbarOptionsMenu.querySelectorAll('.toolbar-position-btn').forEach(b => b.classList.remove('active'));
+      positionBtn.classList.add('active');
+    }
+    
+    const alignBtn = el.toolbarOptionsMenu.querySelector(`[data-align="${savedAlignment}"]`);
+    if (alignBtn) {
+      el.toolbarOptionsMenu.querySelectorAll('.toolbar-align-btn').forEach(b => b.classList.remove('active'));
+      alignBtn.classList.add('active');
+    }
+  }
+  
+  function saveToolbarPreferences() {
+    if (!state || !state.settings) return;
+    
+    state.settings.toolbarPosition = TwoBaseState.toolbarPosition;
+    state.settings.toolbarAlignment = TwoBaseState.toolbarAlignment;
+    
+    if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveSettings === 'function') {
+      window.Storage.saveSettings(state.settings).then(() => {
+        console.log('Toolbar preferences saved');
+      }).catch(err => {
+        console.error('Failed to save toolbar preferences:', err);
+      });
+    }
+  }
+
+
+  // ===================================
   // Event Listeners
   // ===================================
 
@@ -649,12 +1680,117 @@
     }
     
     // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
+    // Keyboard shortcuts
+    document.addEventListener('keydown', async (e) => {
       // Escape to go back to main base
       if (e.key === 'Escape' && TwoBaseState.currentBase === 'note') {
         switchToMainBase();
       }
+      
+      // Delete selected items
+      if (e.key === 'Delete' && TwoBaseState.selectedItems.length > 0) {
+        // Don't delete if typing in input or editor
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+          return;
+        }
+        
+        if (typeof window.modalConfirm !== 'function') return;
+        const count = TwoBaseState.selectedItems.length;
+        const ok = await window.modalConfirm(`Delete ${count} selected item${count > 1 ? 's' : ''}?`);
+        if (!ok) return;
+        
+        // Delete all selected items (notes and folders)
+        for (const id of TwoBaseState.selectedItems) {
+          // Try to find in notes first
+          const noteIdx = state.notes.findIndex(n => n.id === id);
+          if (noteIdx >= 0) {
+            const [deletedNote] = state.notes.splice(noteIdx, 1);
+            const trashItem = {
+              ...deletedNote,
+              deletedAt: new Date().toISOString()
+            };
+            state.trash.push(trashItem);
+            
+            // Delete from backend
+            if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+              try {
+                if (typeof window.fileSystemService !== 'undefined') {
+                  await window.fileSystemService.deleteNoteFromCollection(id);
+                }
+              } catch (error) {
+                console.error("Error deleting note from backend:", id, error);
+              }
+            }
+            
+            // Close tabs
+            if (typeof window.closeTab === 'function') {
+              window.closeTab("left", id);
+              window.closeTab("right", id);
+            }
+          } else {
+            // Try to find in folders
+            const folderIdx = state.folders.findIndex(f => f.id === id);
+            if (folderIdx >= 0) {
+              const folder = state.folders[folderIdx];
+              const notesInFolder = state.notes.filter(n => n.folderId === id);
+              
+              // Remove folder
+              state.folders.splice(folderIdx, 1);
+              
+              // Move folder to trash with its notes
+              const trashItem = {
+                ...folder,
+                type: 'folder',
+                notes: notesInFolder,
+                deletedAt: new Date().toISOString()
+              };
+              state.trash.push(trashItem);
+              
+              // Remove notes in folder
+              state.notes = state.notes.filter(n => n.folderId !== id);
+              
+              // Delete from backend
+              if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                try {
+                  if (typeof window.fileSystemService !== 'undefined') {
+                    await window.fileSystemService.deleteFolderFromCollection(id);
+                  }
+                } catch (error) {
+                  console.error("Error deleting folder from backend:", id, error);
+                }
+              }
+            }
+          }
+        }
+        
+        // Clear selection
+        TwoBaseState.selectedItems = [];
+        if (window.state && window.state.selectedItems) {
+          window.state.selectedItems.clear();
+        }
+        
+        // Save changes to backend
+        if (typeof window.saveNotes === 'function') {
+          window.saveNotes();
+        }
+        if (typeof window.saveFolders === 'function') {
+          window.saveFolders();
+        }
+        if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+          window.Storage.saveTrash(state.trash);
+        }
+        
+        // Refresh view
+        if (TwoBaseState.currentFolder === 'uncategorized') {
+          renderUncategorizedNotes();
+        } else {
+          renderWorkspaceSplit(TwoBaseState.currentFolder);
+        }
+      }
     });
+    
+    // Setup toolbar options
+    setupToolbarOptions();
   }
 
   // ===================================
@@ -832,14 +1968,25 @@
   }
 
   function openNoteFromSidebar(noteId) {
-    // Set active state
-    document.querySelectorAll('.sidebar-item').forEach(item => {
-      item.classList.remove('active');
-    });
-    document.querySelector(`[data-note-id="${noteId}"]`)?.classList.add('active');
-
-    // Open note in note base
+    // Open note in note base (no active state - that's for multi-selection only)
     openNoteFromWorkspace(noteId);
+  }
+
+  // Helper function to calculate folder item count (notes + direct subfolders)
+  function calculateFolderItemCount(folderId) {
+    // Handle Uncategorized folder special case
+    if (folderId === 'uncategorized') {
+      return window.state.notes.filter(n => !n.folderId).length;
+    }
+
+    // Count direct notes in this folder
+    const directNotes = window.state.notes.filter(n => n.folderId === folderId).length;
+    
+    // Count direct subfolders (not recursive, just immediate children)
+    const directSubfolders = window.state.folders.filter(f => f.parentId === folderId).length;
+    
+    // Total = direct notes + direct subfolders
+    return directNotes + directSubfolders;
   }
 
   function populateFoldersSection() {
@@ -889,10 +2036,16 @@
     const container = document.createElement('div');
     container.className = 'folder-tree-item';
     container.dataset.folderId = folder.id;
-    container.style.marginLeft = (depth * 12) + 'px'; // Indent based on depth
+    // container.style.marginLeft = (depth * 12) + 'px'; // Indent based on depth - REMOVED for right alignment
     
-    // Check if folder should be expanded (from localStorage)
-    const isExpanded = localStorage.getItem(`folder-expanded-${folder.id}`) === 'true';
+    // Check if folder should be expanded (from backend settings or localStorage)
+    let isExpanded = false;
+    if (window.state && window.state.settings && window.state.settings.foldersExpanded) {
+      isExpanded = window.state.settings.foldersExpanded[folder.id] === true;
+    } else {
+      // Fallback to localStorage
+      isExpanded = localStorage.getItem(`folder-expanded-${folder.id}`) === 'true';
+    }
     if (isExpanded) {
       container.classList.add('expanded');
     }
@@ -900,17 +2053,14 @@
     // Folder header (clickable to expand/collapse)
     const header = document.createElement('div');
     header.className = 'folder-header';
+    header.style.paddingLeft = (30 + depth * 12) + 'px';
+    // Set data-folder-id for context menu detection (app.js looks for this)
+    header.dataset.folderId = folder.id;
     
-    // Chevron icon
-    const chevron = document.createElement('svg');
+    // Chevron icon - using same SVG as section headers
+    const chevron = document.createElement('div');
     chevron.className = 'folder-chevron';
-    chevron.setAttribute('width', '14');
-    chevron.setAttribute('height', '14');
-    chevron.setAttribute('viewBox', '0 0 24 24');
-    chevron.setAttribute('fill', 'none');
-    chevron.setAttribute('stroke', 'currentColor');
-    chevron.setAttribute('stroke-width', '2');
-    chevron.innerHTML = '<polyline points="9 18 15 12 9 6"></polyline>';
+    chevron.innerHTML = '<svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>';
     
     // Folder icon
     const folderIconDiv = document.createElement('div');
@@ -922,46 +2072,54 @@
     nameSpan.className = 'folder-name';
     nameSpan.textContent = folder.name;
     
-    // Note count badge
+    // Note count badge - show total items (notes + subfolders)
     const countBadge = document.createElement('span');
     countBadge.className = 'item-count';
-    countBadge.textContent = notes.length;
+    countBadge.textContent = calculateFolderItemCount(folder.id);
     
-    // Assemble header
-    header.appendChild(chevron);
+    // Assemble header: [Icon] [Name] [Count] ......... [Chevron]
     header.appendChild(folderIconDiv);
     header.appendChild(nameSpan);
     header.appendChild(countBadge);
+    header.appendChild(chevron);
     
-    // Click to expand/collapse AND show workspace preview
+    // Chevron click - ONLY toggle expansion
+    chevron.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault(); // Prevent any default behavior
+      toggleFolderExpansion(folder.id, container);
+    });
+    
+    // Header click (except chevron) - open workspace preview
     header.addEventListener('click', (e) => {
+      // Don't do anything if clicking on chevron
+      if (e.target.closest('.folder-chevron')) {
+        e.stopPropagation();
+        return;
+      }
+      
       // Don't toggle if clicking on a note inside
       if (e.target.closest('.folder-note-item')) return;
       
-      // Toggle expansion
-      toggleFolderExpansion(folder.id, container);
-      
-      // Also navigate to this folder in the workspace (base layer preview)
+      // Navigate to this folder in the workspace (base layer preview)
       if (folder.id === 'uncategorized') {
-        // For uncategorized, show root view with no folder filter
         renderWorkspaceSplit(null);
       } else {
-        // For custom folders, show that folder's contents
         renderWorkspaceSplit(folder.id);
       }
     });
     
-    // Right-click context menu for folders - use existing system
+    // Right-click context menu for folders
     header.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
       // Don't show menu for uncategorized
-      if (folder.id === 'uncategorized') return;
+      if (folder.id === 'uncategorized') {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       
-      // Add folder-item class temporarily so app.js context menu system can detect it
-      header.classList.add('folder-item');
-      header.dataset.folderId = folder.id;
+      // Allow event to bubble to document so app.js can handle it
+      // app.js has the global context menu handler
     });
     
     // Drag-and-drop on folder header
@@ -989,7 +2147,7 @@
     
     if (notes.length > 0) {
       notes.forEach(note => {
-        const noteItem = createFolderNoteItem(note, folder.id);
+        const noteItem = createFolderNoteItem(note, folder.id, depth + 1);
         notesList.appendChild(noteItem);
       });
     } else {
@@ -1005,10 +2163,11 @@
     return container;
   }
 
-  function createFolderNoteItem(note, folderId) {
+  function createFolderNoteItem(note, folderId, depth = 1) {
     const item = document.createElement('div');
     item.className = 'folder-note-item';
     item.dataset.noteId = note.id;
+    item.style.paddingLeft = (30 + depth * 12) + 'px';
     item.draggable = true;
     
     // Note icon
@@ -1024,21 +2183,52 @@
     item.appendChild(iconDiv);
     item.appendChild(title);
     
-    // Click to open note
-    item.addEventListener('click', () => {
-      openNoteFromSidebar(note.id);
+    // Click to open note (or select if Ctrl is held)
+    item.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+click: toggle selection instead of opening
+        e.stopPropagation();
+        const index = state.selectedItems.has(note.id) ? 
+          (state.selectedItems.delete(note.id), -1) : 
+          (state.selectedItems.add(note.id), 1);
+        
+        // Toggle visual selection
+        item.classList.toggle('selected');
+      } else {
+        // Normal click: open note
+        openNoteFromSidebar(note.id);
+      }
     });
     
-    // Drag handlers
+    // Drag handlers - support dragging multiple selected items
     item.addEventListener('dragstart', (e) => {
       e.stopPropagation();
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/note-id', note.id);
-      item.classList.add('dragging');
+      
+      // If this note is selected and there are multiple selections, drag all
+      if (state.selectedItems.has(note.id) && state.selectedItems.size > 1) {
+        // Drag all selected notes
+        const selectedIds = Array.from(state.selectedItems);
+        e.dataTransfer.setData('text/note-ids', JSON.stringify(selectedIds));
+        e.dataTransfer.setData('text/multi-drag', 'true');
+        
+        // Add dragging class to all selected items
+        document.querySelectorAll('.folder-note-item.selected').forEach(el => {
+          el.classList.add('dragging');
+        });
+      } else {
+        // Drag single note
+        e.dataTransfer.setData('text/note-id', note.id);
+        item.classList.add('dragging');
+      }
     });
     
     item.addEventListener('dragend', () => {
+      // Remove dragging class from all items
       item.classList.remove('dragging');
+      document.querySelectorAll('.folder-note-item.dragging').forEach(el => {
+        el.classList.remove('dragging');
+      });
     });
     
     return item;
@@ -1047,8 +2237,25 @@
   function toggleFolderExpansion(folderId, container) {
     const isExpanded = container.classList.toggle('expanded');
     
-    // Save state to localStorage
+    console.log(`Toggling folder ${folderId}: ${isExpanded ? 'EXPANDED' : 'COLLAPSED'}`);
+    
+    // Save state to localStorage for immediate persistence
     localStorage.setItem(`folder-expanded-${folderId}`, isExpanded);
+    
+    // Save to backend settings
+    if (window.state && window.state.settings) {
+      if (!window.state.settings.foldersExpanded) {
+        window.state.settings.foldersExpanded = {};
+      }
+      window.state.settings.foldersExpanded[folderId] = isExpanded;
+      
+      // Save settings to backend
+      if (typeof window.Storage !== 'undefined' && window.Storage.saveSettings) {
+        window.Storage.saveSettings(window.state.settings).catch(err => {
+          console.error('Failed to save folder expansion state:', err);
+        });
+      }
+    }
   }
 
   function setupFolderDropZone(element, folderId) {
@@ -1062,42 +2269,116 @@
       
       if (!hasNote && !hasFolder) return;
       
-      // Don't allow dropping a folder into itself or its children
-      if (hasFolder) {
-        // We can't easily check children here without more state access, 
-        // but we can prevent self-drop in the drop handler
-      }
+      const rect = element.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const height = rect.height;
       
-      element.classList.add('drag-over');
+      element.classList.remove('drag-over', 'drop-line-top', 'drop-line-bottom');
+      
+      // For folders, allow reordering/moving to sibling level
+      if (hasFolder) {
+        // Top 25% -> Insert before (sibling)
+        if (y < height * 0.25) {
+          element.classList.add('drop-line-top');
+        } 
+        // Bottom 25% -> Insert after (sibling)
+        else if (y > height * 0.75) {
+          element.classList.add('drop-line-bottom');
+        } 
+        // Middle -> Nest inside
+        else {
+          element.classList.add('drag-over');
+        }
+      } else {
+        // Notes can only be dropped INTO folders
+        element.classList.add('drag-over');
+      }
     });
     
     element.addEventListener('dragleave', (e) => {
       // Only remove if actually leaving the element
       if (!element.contains(e.relatedTarget)) {
-        element.classList.remove('drag-over');
+        element.classList.remove('drag-over', 'drop-line-top', 'drop-line-bottom');
       }
     });
     
     element.addEventListener('drop', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      element.classList.remove('drag-over');
       
+      const isTop = element.classList.contains('drop-line-top');
+      const isBottom = element.classList.contains('drop-line-bottom');
+      const isInside = element.classList.contains('drag-over');
+      
+      element.classList.remove('drag-over', 'drop-line-top', 'drop-line-bottom');
+      
+      // Check for multi-drag first
+      const isMultiDrag = e.dataTransfer.getData('text/multi-drag') === 'true';
       const draggedNoteId = e.dataTransfer.getData('text/note-id');
       const draggedFolderId = e.dataTransfer.getData('text/folder-id');
       
-      if (draggedNoteId) {
-        // Move note to this folder (null for uncategorized)
+      if (isMultiDrag) {
+        // Handle multiple notes being dragged
+        const noteIdsJson = e.dataTransfer.getData('text/note-ids');
+        if (noteIdsJson) {
+          try {
+            const noteIds = JSON.parse(noteIdsJson);
+            const targetFolderId = folderId === 'uncategorized' ? null : folderId;
+            
+            // Move all selected notes to target folder
+            noteIds.forEach(noteId => {
+              const note = state.notes.find(n => n.id === noteId);
+              if (note) {
+                note.folderId = targetFolderId;
+                note.updatedAt = new Date().toISOString();
+              }
+            });
+            
+            // Save to backend
+            if (typeof window.saveNotes === 'function') {
+              window.saveNotes();
+            }
+            renderSidebar();
+          } catch (error) {
+            console.error('Error parsing multi-drag note IDs:', error);
+          }
+        }
+      } else if (draggedNoteId) {
+        // Move single note to this folder (null for uncategorized)
         const targetFolderId = folderId === 'uncategorized' ? null : folderId;
-        moveNoteToFolder(draggedNoteId, targetFolderId);
+        const note = state.notes.find(n => n.id === draggedNoteId);
+        if (note) {
+          note.folderId = targetFolderId;
+          note.updatedAt = new Date().toISOString();
+          
+          // Save to backend
+          if (typeof window.saveNotes === 'function') {
+            window.saveNotes();
+          }
+          renderSidebar();
+        }
       } else if (draggedFolderId) {
-        // Move folder to this folder
-        // Prevent self-drop
+        // Move folder
         if (draggedFolderId === folderId) return;
         
-        // Target is null if uncategorized (root level)
-        const targetFolderId = folderId === 'uncategorized' ? null : folderId;
-        moveFolderToFolder(draggedFolderId, targetFolderId);
+        if (isInside) {
+          // Move INTO target folder
+          const targetFolderId = folderId === 'uncategorized' ? null : folderId;
+          moveFolderToFolder(draggedFolderId, targetFolderId);
+        } else if (isTop || isBottom) {
+          // Move to SIBLING level (same parent as target)
+          // If target is Uncategorized, parent is null (root)
+          let targetParentId = null;
+          if (folderId !== 'uncategorized') {
+            const targetFolder = window.state.folders.find(f => f.id === folderId);
+            if (targetFolder) {
+              targetParentId = targetFolder.parentId || null;
+            }
+          }
+          moveFolderToFolder(draggedFolderId, targetParentId);
+          // Note: Full reordering support would require updating sort order/index
+          // For now, we just update the parentId, which effectively moves it to that level
+        }
       }
     });
   }
@@ -1133,100 +2414,76 @@
     console.log(`Moved folder "${folder.name}"`);
   }
 
-  function moveNoteToFolder(noteId, folderId) {
-    const note = window.state.notes.find(n => n.id === noteId);
-    if (!note) return;
-    
-    // Update note's folder
-    note.folderId = folderId;
-    
-    // Save changes
-    if (typeof window.saveNotes === 'function') {
-      window.saveNotes();
-    }
-    
-    // Refresh both sections instantly
-    populateNotebooksSection();
-    populateFoldersSection();
-    
-    // Refresh workspace view if needed
-    renderWorkspaceSplit(TwoBaseState.currentFolder);
-    
-    // Show feedback
-    console.log(`Moved note "${note.title}" to folder`);
-  }
+  function toggleSort() {
+    const sortBtn = document.getElementById('sortBtn');
+    const currentSort = sortBtn.dataset.sort || 'asc';
+    const newSort = currentSort === 'asc' ? 'desc' : 'asc';
 
-  function showUncategorized() {
-    // Check if uncategorized is already active
-    const isAlreadyActive = TwoBaseState.currentFolder === 'uncategorized';
-    
-    if (isAlreadyActive) {
-      // If clicking uncategorized again, go back to base layer (root view)
-      document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      renderWorkspaceSplit(null); // null = root view
-    } else {
-      // Show uncategorized notes
-      document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      document.querySelector('[data-folder-id=""]')?.classList.add('active');
-      TwoBaseState.currentFolder = 'uncategorized';
+    sortBtn.dataset.sort = newSort;
+    sortBtn.title = newSort === 'asc' ? 'Sort A-Z' : 'Sort Z-A';
+
+    // Update icon rotation
+    const svg = sortBtn.querySelector('svg');
+    if (svg) {
+      svg.style.transform = newSort === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    TwoBaseState.sortOrder = newSort;
+
+    // Re-render current view with new sort
+    if (TwoBaseState.currentFolder === 'uncategorized') {
       renderUncategorizedNotes();
+    } else {
+      renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
   }
 
-  function renderUncategorizedNotes() {
-    const grid = document.createElement('div');
-    grid.className = TwoBaseState.viewMode === 'list' ? 'workspace-list' : 'workspace-grid';
+  function toggleViewMode() {
+    const viewToggleBtn = document.getElementById('viewToggleBtn');
+    const currentView = viewToggleBtn.dataset.view || 'grid';
+    const newView = currentView === 'grid' ? 'list' : 'grid';
 
-    let uncategorizedNotes = window.state.notes.filter(n => !n.folderId);
+    viewToggleBtn.dataset.view = newView;
+    viewToggleBtn.title = newView === 'grid' ? 'Grid view' : 'List view';
 
-    // Apply sorting
-    if (TwoBaseState.sortOrder === 'asc') {
-      uncategorizedNotes.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    } else {
-      uncategorizedNotes.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+    // Update icon
+    const svg = viewToggleBtn.querySelector('svg');
+    if (svg) {
+      if (newView === 'list') {
+        svg.innerHTML = `
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        `;
+      } else {
+        svg.innerHTML = `
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+        `;
+      }
     }
 
-    uncategorizedNotes.forEach(note => {
-      grid.appendChild(createNoteItem(note));
-    });
-
-    el.workspaceContent.innerHTML = '';
-    el.breadcrumbPath.textContent = 'Uncategorized';
-    el.breadcrumbBack.style.display = 'flex';
-
-    if (uncategorizedNotes.length === 0) {
-      el.workspaceContent.innerHTML = `
-        <div class="workspace-empty">
-          <div class="workspace-empty-icon">📝</div>
-          <div class="workspace-empty-text">No uncategorized notes</div>
-        </div>
-      `;
-    } else {
-      el.workspaceContent.appendChild(grid);
-    }
-  }
-
-  function navigateToFolderFromSidebar(folderId) {
-    // Check if this folder is already active (currently viewing)
-    const isAlreadyActive = TwoBaseState.currentFolder === folderId;
+    TwoBaseState.viewMode = newView;
     
-    if (isAlreadyActive) {
-      // If clicking the same folder again, go back to base layer (root view)
-      document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      renderWorkspaceSplit(null); // null = root view
+    // Save to backend settings
+    if (window.state && window.state.settings) {
+      window.state.settings.workspaceViewMode = newView;
+      
+      // Save settings to backend
+      if (typeof window.Storage !== 'undefined' && window.Storage.saveSettings) {
+        window.Storage.saveSettings(window.state.settings).catch(err => {
+          console.error('Failed to save view mode:', err);
+        });
+      }
+    }
+
+    // Re-render current view with new layout
+    if (TwoBaseState.currentFolder === 'uncategorized') {
+      renderUncategorizedNotes();
     } else {
-      // Navigate to the folder
-      document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      document.querySelector(`[data-folder-id="${folderId}"]`)?.classList.add('active');
-      renderWorkspaceSplit(folderId);
+      renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
   }
 
@@ -1239,9 +2496,21 @@
     const searchBtn = document.getElementById('searchBtn');
     if (searchBtn) {
       searchBtn.addEventListener('click', () => {
+        // Open sidebar if closed
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && sidebar.classList.contains('collapsed')) {
+          // Trigger the toggle button to ensure state is consistent
+          const toggleBtn = document.getElementById('toggleSidebarBtn');
+          if (toggleBtn) {
+            toggleBtn.click();
+          } else {
+            sidebar.classList.remove('collapsed');
+          }
+        }
+
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
-          searchInput.focus();
+          setTimeout(() => searchInput.focus(), 100); // Small delay to allow sidebar transition
         }
       });
     }
@@ -1285,6 +2554,26 @@
     }
   }
 
+  function openNoteInNoteBase(noteId) {
+    // Switch to note base
+    switchToNoteBase();
+    
+    // Check if note is already open
+    if (!TwoBaseState.openNotes.includes(noteId)) {
+      TwoBaseState.openNotes.push(noteId);
+    }
+    
+    // Set as active
+    TwoBaseState.activeNote = noteId;
+    
+    // Render tabs and editor
+    renderNoteTabs();
+    renderNoteEditor(noteId);
+    
+    // Save session
+    saveTwoBaseSession();
+  }
+
   function toggleMultiSelect() {
     const multiSelectBtn = document.getElementById('multiSelectBtn');
     const isActive = multiSelectBtn.classList.toggle('active');
@@ -1311,70 +2600,6 @@
     }
   }
 
-  function toggleSort() {
-    const sortBtn = document.getElementById('sortBtn');
-    const currentSort = sortBtn.dataset.sort || 'asc';
-    const newSort = currentSort === 'asc' ? 'desc' : 'asc';
-
-    sortBtn.dataset.sort = newSort;
-    sortBtn.title = newSort === 'asc' ? 'Sort A-Z' : 'Sort Z-A';
-
-    // Update icon rotation
-    const svg = sortBtn.querySelector('svg');
-    if (svg) {
-      svg.style.transform = newSort === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)';
-    }
-
-    TwoBaseState.sortOrder = newSort;
-
-    // Re-render current view with new sort
-    if (TwoBaseState.currentFolder === 'uncategorized') {
-      renderUncategorizedNotes();
-    } else {
-      renderWorkspaceSplit(TwoBaseState.currentFolder);
-    }
-  }
-
-  function toggleViewMode() {
-    const viewToggleBtn = document.getElementById('viewToggleBtn');
-    const currentView = viewToggleBtn.dataset.view || 'grid';
-    const newView = currentView === 'grid' ? 'list' : 'grid';
-
-    viewToggleBtn.dataset.view = newView;
-    viewToggleBtn.title = newView === 'grid' ? 'Grid view' : 'List view';
-
-    // Update icon
-    const svg = viewToggleBtn.querySelector('svg');
-    if (svg) {
-      if (newView === 'list') {
-        svg.innerHTML = `
-          <line x1="8" y1="6" x2="21" y2="6"></line>
-          <line x1="8" y1="12" x2="21" y2="12"></line>
-          <line x1="8" y1="18" x2="21" y2="18"></line>
-          <line x1="3" y1="6" x2="3.01" y2="6"></line>
-          <line x1="3" y1="12" x2="3.01" y2="12"></line>
-          <line x1="3" y1="18" x2="3.01" y2="18"></line>
-        `;
-      } else {
-        svg.innerHTML = `
-          <rect x="3" y="3" width="7" height="7"></rect>
-          <rect x="14" y="3" width="7" height="7"></rect>
-          <rect x="3" y="14" width="7" height="7"></rect>
-          <rect x="14" y="14" width="7" height="7"></rect>
-        `;
-      }
-    }
-
-    TwoBaseState.viewMode = newView;
-
-    // Re-render current view with new layout
-    if (TwoBaseState.currentFolder === 'uncategorized') {
-      renderUncategorizedNotes();
-    } else {
-      renderWorkspaceSplit(TwoBaseState.currentFolder);
-    }
-  }
-
   // ===================================
   // Initialization
   // ===================================
@@ -1389,13 +2614,40 @@
       return;
     }
     
-    // Use global references
-    const state = window.state;
-    const getIcon = window.getIcon;
-    const escapeHtml = window.escapeHtml;
+    // Assign global references to module-level variables
+    state = window.state;
+    getIcon = window.getIcon;
+    escapeHtml = window.escapeHtml;
     
     console.log('Two-Base: Initializing...');
     initElements();
+    
+    // Home button - show welcome pane
+    const homeBtn = document.getElementById('homeBtn');
+    if (homeBtn) {
+      // Add our handler first with capture phase to run before app.js
+      homeBtn.addEventListener('click', (e) => {
+        e.stopImmediatePropagation(); // Prevent app.js handler from running
+        
+        // Clear app.js state to prevent errors
+        if (window.state) {
+          window.state.left = { tabs: [], active: null };
+          window.state.right = { tabs: [], active: null };
+        }
+        
+        // Reset TwoBase state
+        TwoBaseState.currentFolder = null;
+        TwoBaseState.currentBase = 'home';
+        
+        // Hide workspace and note base
+        if (el.workspaceSplit) el.workspaceSplit.style.display = 'none';
+        if (el.noteBase) el.noteBase.classList.add('hidden');
+        
+        // Show empty state (welcome pane)
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.classList.remove('hidden');
+      }, true); // Use capture phase
+    }
     
     if (!el.workspaceSplit || !el.noteBase) {
       console.error('Two-Base: Required DOM elements not found');
@@ -1404,8 +2656,34 @@
     
     setupEventListeners();
     
+    // Load saved view mode from backend settings
+    if (window.state && window.state.settings && window.state.settings.workspaceViewMode) {
+      const savedViewMode = window.state.settings.workspaceViewMode;
+      TwoBaseState.viewMode = savedViewMode;
+      
+      // Update the view toggle button to reflect saved state
+      const viewToggleBtn = document.getElementById('viewToggleBtn');
+      if (viewToggleBtn) {
+        viewToggleBtn.dataset.view = savedViewMode;
+        viewToggleBtn.title = savedViewMode === 'grid' ? 'Grid view' : 'List view';
+        
+        // Update icon to match saved view mode
+        const svg = viewToggleBtn.querySelector('svg');
+        if (svg && savedViewMode === 'list') {
+          svg.innerHTML = `
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          `;
+        }
+      }
+    }
+    
     // Start with main base showing root view
     renderWorkspaceSplit();
+    
+    // Restore previous session (open tabs)
+    restoreTwoBaseSession();
     
     console.log('Two-Base: Initialized successfully');
   }

@@ -494,7 +494,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
-                Back
+                
               </button>
               <div class="breadcrumb-path" id="breadcrumbPath">All Notes</div>
             </div>
@@ -560,7 +560,89 @@
             </div>
             
             <div class="note-header-right">
-              <!-- Toolbar buttons -->
+              <!-- Toolbar Options Button -->
+              <button id="toolbarOptionsBtn" class="icon-btn" title="Toolbar Options">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="4" y1="21" x2="4" y2="14"></line>
+                  <line x1="4" y1="10" x2="4" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12" y2="3"></line>
+                  <line x1="20" y1="21" x2="20" y2="16"></line>
+                  <line x1="20" y1="12" x2="20" y2="3"></line>
+                  <line x1="1" y1="14" x2="7" y2="14"></line>
+                  <line x1="9" y1="8" x2="15" y2="8"></line>
+                  <line x1="17" y1="16" x2="23" y2="16"></line>
+                </svg>
+              </button>
+              
+              <!-- Toolbar Options Dropdown -->
+              <div id="toolbarOptionsMenu" class="toolbar-options-menu hidden">
+                <div class="toolbar-options-section">
+                  <div class="toolbar-options-label">Toolbar Position</div>
+                  <div class="toolbar-position-grid">
+                    <button class="toolbar-position-btn" data-position="top" title="Top">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="2" y="2" width="20" height="4" rx="1"></rect>
+                        <rect x="2" y="8" width="20" height="14" rx="1" opacity="0.3"></rect>
+                      </svg>
+                    </button>
+                    <button class="toolbar-position-btn" data-position="right" title="Right">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="18" y="2" width="4" height="20" rx="1"></rect>
+                        <rect x="2" y="2" width="14" height="20" rx="1" opacity="0.3"></rect>
+                      </svg>
+                    </button>
+                    <button class="toolbar-position-btn" data-position="bottom" title="Bottom">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="2" y="2" width="20" height="14" rx="1" opacity="0.3"></rect>
+                        <rect x="2" y="18" width="20" height="4" rx="1"></rect>
+                      </svg>
+                    </button>
+                    <button class="toolbar-position-btn" data-position="left" title="Left">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="2" y="2" width="4" height="20" rx="1"></rect>
+                        <rect x="8" y="2" width="14" height="20" rx="1" opacity="0.3"></rect>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="toolbar-options-divider"></div>
+                
+                <div class="toolbar-options-section">
+                  <div class="toolbar-options-label">Toolbar Alignment</div>
+                  <div class="toolbar-align-buttons">
+                    <button class="toolbar-align-btn" data-align="left" title="Align Left">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="15" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="15" y2="18"></line>
+                      </svg>
+                    </button>
+                    <button class="toolbar-align-btn" data-align="center" title="Align Center">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="6" y1="6" x2="18" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="6" y1="18" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                    <button class="toolbar-align-btn" data-align="right" title="Align Right">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="9" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="9" y1="18" x2="21" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Content Container (toolbar + editors) -->
+          <div class="note-content-container">
+            <!-- Note Toolbar Section (separate from tabs) -->
+            <div class="note-toolbar-section">
               <div class="note-toolbar" id="noteToolbar">
                 <!-- Formatting tools will be added here by buildEditor -->
               </div>
@@ -572,16 +654,16 @@
                 </svg>
               </button>
             </div>
-          </div>
-          
-          <!-- Note Editors Container (supports split view) -->
-          <div class="note-editors" id="noteEditors">
+            
+            <!-- Note Editors Container (supports split view) -->
+            <div class="note-editors" id="noteEditors">
             <div class="note-pane" data-pane="left" id="notePane-left">
               <div class="note-pane-content"></div>
             </div>
             <div id="noteResizer" class="note-resizer hidden" title="Drag to resize"></div>
             <div class="note-pane hidden" data-pane="right" id="notePane-right">
               <div class="note-pane-content"></div>
+            </div>
             </div>
           </div>
         </section>
@@ -865,6 +947,39 @@
             Delete Note
           </button>
         </div>
+        <div class="ctx-section" data-scope="multi-note">
+          <button data-cmd="export-notes">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export as HTML
+          </button>
+          <button data-cmd="delete-notes">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path
+                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+              ></path>
+            </svg>
+            Delete Selected Notes
+          </button>
+        </div>
         <div class="ctx-section" data-scope="folder">
           <button data-cmd="new-subfolder">
             <svg
@@ -908,6 +1023,20 @@
             </svg>
             Rename Folder
           </button>
+          <button data-cmd="move-to-root">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="9 14 4 9 9 4"></polyline>
+              <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+            </svg>
+            Move to Root
+          </button>
           <button data-cmd="delete-folder">
             <svg
               width="14"
@@ -933,7 +1062,6 @@
         <div class="modal">
           <div class="modal-header">
             <span class="modal-title"></span>
-            <button class="modal-x" aria-label="Close">×</button>
           </div>
           <div class="modal-body"></div>
           <div class="modal-actions"></div>
