@@ -255,6 +255,8 @@ window.Storage = Storage;
   };
   // Make modalPrompt globally available for table-utils
   window.modalPrompt = modalPrompt;
+  // Expose modalIconPicker globally for two-base.js
+  window.modalIconPicker = null; // Will be set after function is defined
 
   async function modalIconPicker(current = "default") {
     return new Promise((res) => {
@@ -317,6 +319,8 @@ window.Storage = Storage;
       actions.appendChild(reset);
     });
   }
+  // Assign modalIconPicker to window after definition
+  window.modalIconPicker = modalIconPicker;
   // Paste helpers (images)
   function fileToDataURL(file) {
     return new Promise((res, rej) => {
@@ -857,15 +861,15 @@ window.Storage = Storage;
           renderSidebar();
         };
         handlers.onRenameFolder = async () => {
+          const folder = state.folders.find((x) => x.id === fid);
           const name = await modalPrompt(
             "Rename Folder",
             "Folder name",
-            getFolderName(fid)
+            folder ? folder.name : ""
           );
           if (!name) return;
-          const f = state.folders.find((x) => x.id === fid);
-          if (f) {
-            f.name = name;
+          if (folder) {
+            folder.name = name;
             saveFolders();
             renderSidebar();
           }
@@ -1735,6 +1739,8 @@ window.Storage = Storage;
       el.noteList.appendChild(emptyMsg);
     }
   }
+  // Expose renderSidebar globally for two-base.js
+  window.renderSidebar = renderSidebar;
 
   // Tabs
   let isRestoringSession = false;

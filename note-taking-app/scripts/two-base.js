@@ -1660,6 +1660,40 @@
     // New Toolbar Events
     setupToolbarControls();
     
+    // Sidebar toggle button
+    const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+    const sidebar = document.getElementById('sidebar');
+    if (toggleSidebarBtn && sidebar) {
+      toggleSidebarBtn.addEventListener('click', () => {
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        
+        if (isCollapsed) {
+          // Expand sidebar
+          const sidebarWidth = (state.settings && state.settings.sidebarWidth) || 280;
+          sidebar.style.width = sidebarWidth + 'px';
+          sidebar.classList.remove('collapsed');
+          sidebar.classList.remove('narrow');
+          if (state.settings) {
+            state.settings.sidebarCollapsed = false;
+          }
+          toggleSidebarBtn.title = 'Hide sidebar';
+        } else {
+          // Collapse sidebar
+          sidebar.classList.add('collapsed');
+          sidebar.classList.remove('narrow');
+          if (state.settings) {
+            state.settings.sidebarCollapsed = true;
+          }
+          toggleSidebarBtn.title = 'Show sidebar';
+        }
+        
+        // Save settings
+        if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveSettings === 'function' && state.settings) {
+          window.Storage.saveSettings(state.settings);
+        }
+      });
+    }
+    
     // Home button - navigate to main workspace view
     const homeBtn = document.getElementById('homeBtn');
     if (homeBtn) {

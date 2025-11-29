@@ -679,6 +679,13 @@
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
+  background: #f8f8f8 !important;
+  color: #000000 !important;
+}
+
+/* Ensure all text and titles in editor are black */
+.note-pane-content * {
+  color: #000000 !important;
 }
 
 .note-resizer {

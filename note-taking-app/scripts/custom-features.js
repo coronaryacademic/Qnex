@@ -20,20 +20,9 @@ let currentFontSize = 16;
 
 // Theme management
 const themes = [
-  "dark",
-  "light",
-  "ocean",
-  "forest",
-  "sunset",
-  "purple",
-  "nord",
-  "monokai",
-  "dracula",
-  "gruvbox",
-  "solarized",
-  "material",
-  "onedark",
-  "aero",
+  { name: "Dark", class: "" }, // Default (no class needed for :root)
+  { name: "Light", class: "theme-light" },
+  { name: "Classic", class: "theme-classic" },
 ];
 let currentThemeIndex = 0;
 
@@ -1479,7 +1468,9 @@ async function initializeThemeCarousel() {
       savedTheme = "dark";
     }
   }
-  currentThemeIndex = themes.indexOf(savedTheme);
+  
+  // Find theme index by name (case-insensitive)
+  currentThemeIndex = themes.findIndex(t => t.name.toLowerCase() === savedTheme.toLowerCase());
   if (currentThemeIndex === -1) currentThemeIndex = 0;
 
   updateThemeDisplay();
@@ -1497,34 +1488,27 @@ async function initializeThemeCarousel() {
   });
 
   function updateThemeDisplay() {
-    const themeName = themes[currentThemeIndex];
-    themeNameEl.textContent =
-      themeName.charAt(0).toUpperCase() + themeName.slice(1);
+    const themeNameEl = themeCarousel.querySelector(".theme-name");
+    if (themeNameEl) {
+      const theme = themes[currentThemeIndex];
+      themeNameEl.textContent = theme.name;
+    }
   }
 
   async function applyCurrentTheme() {
-    const themeName = themes[currentThemeIndex];
+    const theme = themes[currentThemeIndex];
+    const themeName = theme.name.toLowerCase();
+    const themeClass = theme.class;
 
     // Remove all theme classes
     document.body.classList.remove(
       "theme-light",
-      "theme-ocean",
-      "theme-forest",
-      "theme-sunset",
-      "theme-purple",
-      "theme-nord",
-      "theme-monokai",
-      "theme-dracula",
-      "theme-gruvbox",
-      "theme-solarized",
-      "theme-material",
-      "theme-onedark",
-      "theme-aero"
+      "theme-classic"
     );
 
     // Apply new theme (dark is default, no class needed)
-    if (themeName !== "dark") {
-      document.body.classList.add(`theme-${themeName}`);
+    if (themeClass) {
+      document.body.classList.add(themeClass);
     }
 
     // Save theme to file system if available
