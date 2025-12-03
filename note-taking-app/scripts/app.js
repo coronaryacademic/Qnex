@@ -728,11 +728,12 @@ window.Storage = Storage;
             onDeleteNotes: async () => {
               const selectedIds = Array.from(state.selectedItems);
               const count = selectedIds.length;
-              const ok = await modalConfirm(`Delete ${count} selected note${count > 1 ? 's' : ''}?`);
-              if (!ok) return;
               
-              // Delete all selected notes
-              for (const noteId of selectedIds) {
+              // Use custom delete dialog from two-base.js
+              if (typeof window.TwoBase !== 'undefined' && window.TwoBase.showDeleteConfirmation) {
+                window.TwoBase.showDeleteConfirmation(count, async () => {
+                  // Delete all selected notes
+                  for (const noteId of selectedIds) {
                 const idx = state.notes.findIndex(n => n.id === noteId);
                 if (idx >= 0) {
                   const [note] = state.notes.splice(idx, 1);
@@ -768,6 +769,8 @@ window.Storage = Storage;
               saveNotes();
               Storage.saveTrash(state.trash);
               renderSidebar();
+                }); // Close showDeleteConfirmation callback
+              }
             },
           },
           "multi-note"
@@ -809,12 +812,12 @@ window.Storage = Storage;
               refreshWindowTitle(id);
             },
             onDeleteNote: async () => {
-              const ok = await modalConfirm("Delete this note?");
-              if (!ok) return;
-              const idx = state.notes.findIndex((n) => n.id === id);
-              if (idx >= 0) {
-                const [note] = state.notes.splice(idx, 1);
-                const deletedNote = {
+              if (typeof window.TwoBase !== 'undefined' && window.TwoBase.showDeleteConfirmation) {
+                window.TwoBase.showDeleteConfirmation(1, async () => {
+                  const idx = state.notes.findIndex((n) => n.id === id);
+                  if (idx >= 0) {
+                    const [note] = state.notes.splice(idx, 1);
+                    const deletedNote = {
                   ...note,
                   deletedAt: new Date().toISOString(),
                 };
@@ -838,6 +841,8 @@ window.Storage = Storage;
               }
               saveNotes();
               renderSidebar();
+                }); // Close showDeleteConfirmation callback
+              }
             },
           },
           "note"
@@ -1024,32 +1029,13 @@ window.Storage = Storage;
     });
   }
   
+  
   function modalConfirm(message) {
-    return new Promise((res) => {
-      const m = modalBase();
-      if (!m) return res(false);
-      m.querySelector(".modal-title").textContent = "Confirm";
-      m.querySelector(".modal-body").textContent = message;
-      const actions = m.querySelector(".modal-actions");
-      const cancel = document.createElement("button");
-      cancel.className = "btn";
-      cancel.textContent = "Cancel";
-      const yes = document.createElement("button");
-      yes.className = "btn danger";
-      yes.textContent = "Delete";
-      actions.appendChild(cancel);
-      actions.appendChild(yes);
-      const done = (v) => {
-        m.remove();
-        res(v);
-      };
-      cancel.addEventListener("click", () => done(false));
-      yes.addEventListener("click", () => done(true));
-      const closeBtn = m.querySelector(".modal-x");
-      if (closeBtn) {
-        closeBtn.addEventListener("click", () => done(false));
-      }
-    });
+    // DISABLED: This function is replaced by custom showDeleteConfirmation dialog
+    // Returning false immediately prevents the old modal from showing
+    // All delete confirmations now use the custom dialog from two-base.js
+    console.log('[modalConfirm] Disabled - using custom delete dialog instead');
+    return Promise.resolve(false);
   }
   
   function modalPrompt(title, placeholder, value = "") {
@@ -3664,7 +3650,6 @@ window.Storage = Storage;
       <div class="modal about-modal">
         <div class="modal-header">
           <span class="modal-title">About My Notes</span>
-          <button class="modal-x" aria-label="Close">×</button>
         </div>
         <div class="modal-body">
           <div class="about-content">
@@ -3697,14 +3682,20 @@ window.Storage = Storage;
     document.body.appendChild(modal);
 
     // Close handlers
-    const closeBtn = modal.querySelector(".modal-x");
     const closeActionBtn = modal.querySelector(".modal-close");
     const overlay = modal;
+    const modalDialog = modal.querySelector(".modal");
 
     const closeModal = () => modal.remove();
 
-    closeBtn.addEventListener("click", closeModal);
     closeActionBtn.addEventListener("click", closeModal);
+    
+    // Prevent modal from closing when clicking inside it
+    modalDialog.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+    
+    // Only close when clicking outside the modal
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) closeModal();
     });
@@ -4264,8 +4255,10 @@ window.Storage = Storage;
 
     if (!el.emptyState) return;
 
-    // Hide empty state whenever a pane or window is visible
-    el.emptyState.classList.toggle("hidden", anyPane || anyWindow);
+    // Always show welcome pane - removed auto-hide logic
+    // const shouldShowWelcome = !anyPane && !anyWindow;
+    // el.emptyState.classList.toggle("hidden", !shouldShowWelcome);
+    el.emptyState.classList.remove("hidden");
 
     const marqueeContent = document.getElementById("marquee-content");
     if (!marqueeContent) return;
@@ -5571,8 +5564,7 @@ window.Storage = Storage;
           await window.electronAPI.writeSettings(state.settings);
         }
       }
-      // Update marquee to reflect changes
-      updateEmptyState();
+      // Note: updateEmptyState removed here as it was causing welcome pane to disappear
     }
 
     function updateProgress() {
@@ -5628,6 +5620,11 @@ window.Storage = Storage;
             todo.completed ? "checked" : ""
           }" data-index="${index}"></div>
           <div class="todo-text">${escapeHtml(todo.text)}</div>
+          <button class="todo-edit" data-index="${index}" title="Edit task">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+          </button>
           <button class="todo-delete" data-index="${index}">×</button>
         `;
 
@@ -5654,6 +5651,16 @@ window.Storage = Storage;
         btn.addEventListener("click", (e) => {
           const index = parseInt(e.target.dataset.index);
           deleteTodo(index);
+        });
+      });
+
+      todoList.querySelectorAll(".todo-edit").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          // Get the button element (might be clicking on SVG child)
+          const button = e.target.closest('.todo-edit');
+          const index = parseInt(button.dataset.index);
+          editTodo(index);
         });
       });
 
@@ -5781,6 +5788,80 @@ window.Storage = Storage;
       todos.splice(index, 1);
       saveTodos();
       renderTodos();
+    }
+
+    function editTodo(index) {
+      AudioFX.playClick();
+      const todoItem = todoList.children[index];
+      const todoTextDiv = todoItem.querySelector('.todo-text');
+      const currentText = todos[index].text;
+      
+      // Create input field
+      const inputField = document.createElement('input');
+      inputField.type = 'text';
+      inputField.value = currentText;
+      inputField.className = 'todo-edit-input';
+      inputField.style.cssText = 'flex: 1; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 13px; outline: none;';
+      
+      // Create save button
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = '✓';
+      saveBtn.className = 'todo-save';
+      saveBtn.title = 'Save';
+      saveBtn.style.cssText = 'padding: 4px 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;';
+      
+      // Create cancel button
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = '✕';
+      cancelBtn.className = 'todo-cancel';
+      cancelBtn.title = 'Cancel';
+      cancelBtn.style.cssText = 'padding: 4px 8px; background: var(--panel-2); color: var(--text); border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;';
+      
+      // Save function
+      const saveEdit = async () => {
+        try {
+          const newText = inputField.value.trim();
+          if (newText && newText !== currentText) {
+            todos[index].text = newText;
+            await saveTodos();
+          }
+          renderTodos();
+        } catch (error) {
+          console.error('Error saving todo edit:', error);
+          // Fallback: just re-render without saving
+          renderTodos();
+        }
+      };
+      
+      // Cancel function
+      const cancelEdit = () => {
+        renderTodos();
+      };
+      
+      // Event listeners
+      saveBtn.addEventListener('click', saveEdit);
+      cancelBtn.addEventListener('click', cancelEdit);
+      inputField.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          cancelEdit();
+        }
+      });
+      
+      // Replace text div with input and buttons
+      todoTextDiv.replaceWith(inputField);
+      
+      const editBtn = todoItem.querySelector('.todo-edit');
+      const deleteBtn = todoItem.querySelector('.todo-delete');
+      
+      if (editBtn) editBtn.replaceWith(saveBtn);
+      if (deleteBtn) deleteBtn.replaceWith(cancelBtn);
+      
+      // Focus the input
+      inputField.focus();
+      inputField.select();
     }
 
     function addTodo() {

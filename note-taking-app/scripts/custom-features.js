@@ -301,9 +301,7 @@ function createHoverZones() {
     if (topbar && topbar.contains(e.target)) {
       showHeader();
     }
-    if (sidebar && sidebar.contains(e.target)) {
-      showSidebar();
-    }
+    // Sidebar visibility is handled by hover zones
     // Footer disabled
     // if (footer && footer.contains(e.target)) {
     //   showFooter();

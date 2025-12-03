@@ -43,7 +43,7 @@ body {
 }
 /* Dark Theme - Pure black background with dark gray panels */
 :root {
-  --bg: #000000;
+  --bg: #0c0c0c;
   --panel: #1a1a1a;
   --panel-2: #2a2a2a;
   --text: #e5e7eb;
@@ -58,7 +58,7 @@ body {
 
 /* Light Theme - Clean white/light gray */
 body.theme-light {
-  --bg: #f5f5f5;
+  --bg: #e9e9e9;
   --panel: #ffffff;
   --panel-2: #fafafa;
   --text: #1f2937;
@@ -124,6 +124,8 @@ textarea {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sidebar .sidebar-header {
   display: flex;
@@ -169,13 +171,26 @@ textarea {
 .sidebar-section {
   flex-shrink: 0;
 }
+.sidebar-section:not(:first-child) {
+  margin-top: 10px;
+  position: relative;
+}
+.sidebar-section:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 75%;
+  border-top: 1px solid var(--border);
+}
 .sidebar-section-header-text {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 16px 8px 16px;
-  color: var(--muted);
+  padding: 20px 16px 8px 16px;
   font-size: 11px;
+  color: var(--muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -208,7 +223,7 @@ textarea {
 }
 .sidebar-section-content {
   padding: 0 8px 8px 8px;
-  max-height: none;
+  max-height: 1000px; /* Explicit value for smooth animation */
   overflow-y: auto;
   transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
 }
@@ -240,6 +255,18 @@ textarea {
 .sidebar-item.active {
   background: var(--accent);
   color: #fff;
+}
+.sidebar-item.selected {
+  background: var(--panel-hover);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.sidebar-item.selected:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent);
+}
+.sidebar-item.selected svg {
+  color: var(--accent);
 }
 .sidebar-item svg {
   width: 16px;
@@ -330,7 +357,7 @@ textarea {
 
 .folder-chevron {
   position: absolute;
-  right: 8px;
+  right: 3.7px;
   transition: transform 0.2s ease;
   cursor: pointer;
   user-select: none;
@@ -344,10 +371,12 @@ textarea {
 .folder-chevron svg {
   pointer-events: none; /* Prevent SVG from capturing clicks */
   display: block;
+  transform: rotate(-90deg); /* Default: point right when collapsed */
+  transition: transform 0.2s ease;
 }
 
-.folder-tree-item.expanded .folder-chevron {
-  transform: rotate(180deg);
+.folder-tree-item.expanded > .folder-header .folder-chevron svg {
+  transform: rotate(0deg) !important; /* Expanded: point down, only for direct child */
 }
 
 .folder-header svg:not(.folder-chevron) {
@@ -455,13 +484,18 @@ textarea {
 
 /* Selected state for sidebar notes (Ctrl+click) */
 .folder-note-item.selected {
-  background: var(--accent);
-  color: #fff;
-  border: 1px solid var(--accent);
+  background: var(--panel-hover);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.folder-note-item.selected:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent);
 }
 
 .folder-note-item.selected svg {
-  color: #fff;
+  color: var(--accent);
 }
 
 .folder-empty-message {
@@ -1147,7 +1181,7 @@ textarea {
 }
 
 .sidebar.collapsed {
-  width: 0 !important;
+  width: 0;
   min-width: 0;
   border: none;
   overflow: hidden;
@@ -2202,21 +2236,6 @@ textarea {
 
 .editor .content.editable hr {
   border: none;
-  border-top: 1px solid var(--border);
-  margin: 16px 0;
-}
-
-/* Modern text layout - centered with proper margins */
-.editor .content.editable.layout-centered {
-  max-width: 800px;
-  margin: 0 auto;
-  padding-left: 60px;
-  padding-right: 60px;
-}
-
-/* Full-width layout with margins */
-.editor .content.editable.layout-full {
-  max-width: 100%;
   padding-left: 80px;
   padding-right: 80px;
 }
@@ -2976,12 +2995,10 @@ body.debug-borders div {
   inset: 0;
   display: grid;
   place-items: center;
-  pointer-events: none;
 }
 .empty-frame {
   width: 100%;
   height: 100%;
-  border: 1px solid var(--border);
   border-radius: 12px;
   display: flex;
   align-items: flex-start;
@@ -2989,7 +3006,7 @@ body.debug-borders div {
   overflow: hidden;
   padding: 20px;
   box-sizing: border-box;
-  background: var(--panel);
+  background: var(--bg);
   box-shadow: var(--shadow);
 }
 .empty-scroll-container {
@@ -3033,8 +3050,8 @@ body.debug-borders div {
   width: 100%;
   max-width: 650px;
   text-align: center;
-  padding: 0 0 40px 0;
   box-sizing: border-box;
+  background: var(--bg);
 }
 .ai-greeting {
   font-size: clamp(36px, 6vw, 48px);
@@ -3077,7 +3094,7 @@ body.debug-borders div {
   margin-bottom: 24px;
 }
 .welcome-shortcuts {
-  background: var(--panel-2);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
@@ -3141,13 +3158,17 @@ body.debug-borders div {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
+  margin-top: 12px;
+
 }
 .marquee-wrapper {
   width: 100%;
   overflow: hidden;
-  background: var(--panel-2);
+  background: var(--panel);
   border-radius: 8px;
+  border: 1px solid var(--border);
   padding: 12px 0;
+  padding-bottom: 5px;
   position: relative;
   box-sizing: border-box;
 }
@@ -3163,11 +3184,11 @@ body.debug-borders div {
 }
 .marquee-wrapper::before {
   left: 0;
-  background: linear-gradient(to right, var(--panel-2), transparent);
+  background: linear-gradient(to right, var(--panel), transparent);
 }
 .marquee-wrapper::after {
   right: 0;
-  background: linear-gradient(to left, var(--panel-2), transparent);
+  background: linear-gradient(to left, var(--panel), transparent);
 }
 .marquee-content {
   display: inline-flex;
@@ -3236,7 +3257,7 @@ body.debug-borders div {
 .progress-bar-wrapper {
   width: 100%;
   height: 12px;
-  background: var(--panel-2);
+  background: var(--panel);
   border-radius: 999px;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -3414,6 +3435,27 @@ body.debug-borders div {
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
+.todo-edit {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer !important;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.todo-edit:hover {
+  background: var(--panel-hover);
+  color: var(--accent);
+}
+.todo-edit svg {
+  width: 14px;
+  height: 14px;
+}
+
 .todo-delete {
   background: transparent;
   border: none;

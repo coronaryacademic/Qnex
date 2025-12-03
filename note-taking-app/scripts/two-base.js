@@ -512,22 +512,18 @@
         {
           onDeleteNotes: async () => {
             console.log('[BASE LAYER] Multi-delete triggered, items:', TwoBaseState.selectedItems);
-            if (typeof window.modalConfirm !== 'function') {
-              console.error('[BASE LAYER] modalConfirm not available');
-              return;
-            }
             const count = TwoBaseState.selectedItems.length;
-            const ok = await window.modalConfirm(`Delete ${count} selected item${count > 1 ? 's' : ''}?`);
-            console.log('[BASE LAYER] User confirmed delete:', ok);
-            if (!ok) return;
             
-            // Delete all selected items (notes and folders)
-            for (const id of TwoBaseState.selectedItems) {
-              // Try to find in notes first
-              const noteIdx = state.notes.findIndex(n => n.id === id);
-              if (noteIdx >= 0) {
-                const [deletedNote] = state.notes.splice(noteIdx, 1);
-                const trashItem = {
+            showDeleteConfirmation(count, async () => {
+              console.log('[BASE LAYER] User confirmed delete');
+              
+              // Delete all selected items (notes and folders)
+              for (const id of TwoBaseState.selectedItems) {
+                // Try to find in notes first
+                const noteIdx = state.notes.findIndex(n => n.id === id);
+                if (noteIdx >= 0) {
+                  const [deletedNote] = state.notes.splice(noteIdx, 1);
+                  const trashItem = {
                   ...deletedNote,
                   deletedAt: new Date().toISOString()
                 };
@@ -611,6 +607,7 @@
             } else {
               renderWorkspaceSplit(TwoBaseState.currentFolder);
             }
+            }); // Close showDeleteConfirmation callback
           },
           onExportNotes: async () => {
              // Use app.js handler if available, or implement basic export
@@ -662,25 +659,21 @@
           },
           onDeleteNote: async () => {
             console.log('[BASE LAYER] Single note delete triggered for:', itemId);
-            if (typeof window.modalConfirm !== 'function') {
-              console.error('[BASE LAYER] modalConfirm not available');
-              return;
-            }
-            const ok = await window.modalConfirm('Delete this note?');
-            console.log('[BASE LAYER] User confirmed delete:', ok);
-            if (!ok) return;
             
-            const idx = state.notes.findIndex(n => n.id === itemId);
-            if (idx >= 0) {
-              const [deletedNote] = state.notes.splice(idx, 1);
-              const trashItem = {
-                ...deletedNote,
-                deletedAt: new Date().toISOString()
-              };
-              state.trash.push(trashItem);
+            showDeleteConfirmation(1, async () => {
+              console.log('[BASE LAYER] User confirmed delete');
               
-              // Delete from backend
-              if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+              const idx = state.notes.findIndex(n => n.id === itemId);
+              if (idx >= 0) {
+                const [deletedNote] = state.notes.splice(idx, 1);
+                const trashItem = {
+                  ...deletedNote,
+                  deletedAt: new Date().toISOString()
+                };
+                state.trash.push(trashItem);
+                
+                // Delete from backend
+                if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
                 try {
                   if (typeof window.fileSystemService !== 'undefined') {
                     await window.fileSystemService.deleteNoteFromCollection(itemId);
@@ -704,6 +697,7 @@
               }
               renderWorkspaceSplit(TwoBaseState.currentFolder);
             }
+            }); // Close showDeleteConfirmation callback
           }
         },
         "note"
@@ -1064,18 +1058,26 @@
       setToolbarAlignment(savedSession.toolbarAlignment);
     }
     
-    // Restore view
-    if (savedSession.currentBase === 'note' && TwoBaseState.openNotes.length > 0) {
+    // Restore view based on saved state
+    if (savedSession.currentBase === 'home') {
+      // Show welcome page
+      TwoBaseState.currentBase = 'home';
+      if (el.workspaceSplit) el.workspaceSplit.style.display = 'none';
+      if (el.noteBase) el.noteBase.classList.add('hidden');
+      const emptyState = document.getElementById('empty-state');
+      if (emptyState) emptyState.classList.remove('hidden');
+    } else if (savedSession.currentBase === 'note' && TwoBaseState.openNotes.length > 0) {
+      // Show note editor
       switchToNoteBase();
       renderNoteTabs();
       if (TwoBaseState.activeNote) {
         renderNoteEditor(TwoBaseState.activeNote);
       }
     } else {
+      // Show workspace
       renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
   }
-
 
   function renderNoteEditor(noteId) {
     const note = state.notes.find(n => n.id === noteId);
@@ -1657,6 +1659,19 @@
     // New Sidebar Section Events
     setupSidebarSections();
     
+    // Clean up any old modal elements that might be lingering in the DOM
+    const cleanupOldModals = () => {
+      const oldModals = document.querySelectorAll('.modal-overlay, .modal');
+      oldModals.forEach(modal => {
+        if (modal.parentElement) {
+          modal.remove();
+        }
+      });
+    };
+    cleanupOldModals();
+    // Run cleanup periodically to catch any dynamically created old modals
+    setInterval(cleanupOldModals, 1000);
+    
     // New Toolbar Events
     setupToolbarControls();
     
@@ -1679,6 +1694,7 @@
           toggleSidebarBtn.title = 'Hide sidebar';
         } else {
           // Collapse sidebar
+          sidebar.style.width = ''; // Remove inline width to let CSS class take over
           sidebar.classList.add('collapsed');
           sidebar.classList.remove('narrow');
           if (state.settings) {
@@ -1721,106 +1737,21 @@
         switchToMainBase();
       }
       
-      // Delete selected items
+      // Delete selected items - DISABLED: Now handled by unified Delete handler below (line 3029)
+      // This prevents duplicate delete modals from appearing
+      /*
       if (e.key === 'Delete' && TwoBaseState.selectedItems.length > 0) {
         // Don't delete if typing in input or editor
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
           return;
         }
         
-        if (typeof window.modalConfirm !== 'function') return;
         const count = TwoBaseState.selectedItems.length;
-        const ok = await window.modalConfirm(`Delete ${count} selected item${count > 1 ? 's' : ''}?`);
-        if (!ok) return;
-        
-        // Delete all selected items (notes and folders)
-        for (const id of TwoBaseState.selectedItems) {
-          // Try to find in notes first
-          const noteIdx = state.notes.findIndex(n => n.id === id);
-          if (noteIdx >= 0) {
-            const [deletedNote] = state.notes.splice(noteIdx, 1);
-            const trashItem = {
-              ...deletedNote,
-              deletedAt: new Date().toISOString()
-            };
-            state.trash.push(trashItem);
-            
-            // Delete from backend
-            if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
-              try {
-                if (typeof window.fileSystemService !== 'undefined') {
-                  await window.fileSystemService.deleteNoteFromCollection(id);
-                }
-              } catch (error) {
-                console.error("Error deleting note from backend:", id, error);
-              }
-            }
-            
-            // Close tabs
-            if (typeof window.closeTab === 'function') {
-              window.closeTab("left", id);
-              window.closeTab("right", id);
-            }
-          } else {
-            // Try to find in folders
-            const folderIdx = state.folders.findIndex(f => f.id === id);
-            if (folderIdx >= 0) {
-              const folder = state.folders[folderIdx];
-              const notesInFolder = state.notes.filter(n => n.folderId === id);
-              
-              // Remove folder
-              state.folders.splice(folderIdx, 1);
-              
-              // Move folder to trash with its notes
-              const trashItem = {
-                ...folder,
-                type: 'folder',
-                notes: notesInFolder,
-                deletedAt: new Date().toISOString()
-              };
-              state.trash.push(trashItem);
-              
-              // Remove notes in folder
-              state.notes = state.notes.filter(n => n.folderId !== id);
-              
-              // Delete from backend
-              if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
-                try {
-                  if (typeof window.fileSystemService !== 'undefined') {
-                    await window.fileSystemService.deleteFolderFromCollection(id);
-                  }
-                } catch (error) {
-                  console.error("Error deleting folder from backend:", id, error);
-                }
-              }
-            }
-          }
-        }
-        
-        // Clear selection
-        TwoBaseState.selectedItems = [];
-        if (window.state && window.state.selectedItems) {
-          window.state.selectedItems.clear();
-        }
-        
-        // Save changes to backend
-        if (typeof window.saveNotes === 'function') {
-          window.saveNotes();
-        }
-        if (typeof window.saveFolders === 'function') {
-          window.saveFolders();
-        }
-        if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
-          window.Storage.saveTrash(state.trash);
-        }
-        
-        // Refresh view
-        if (TwoBaseState.currentFolder === 'uncategorized') {
-          renderUncategorizedNotes();
-        } else {
-          renderWorkspaceSplit(TwoBaseState.currentFolder);
-        }
+        showDeleteConfirmation(count, async () => {
+          // ... delete logic moved to unified handler ...
+        });
       }
+      */
     });
     
     // Setup toolbar options
@@ -1874,12 +1805,107 @@
     const notebooksContent = document.getElementById('notebooksContent');
     if (!notebooksContent || !window.state) return;
 
-    notebooksContent.innerHTML = '';
+    // Get the empty state message
+    const emptyState = notebooksContent.querySelector('.sidebar-empty-state');
+    
+    // Clear all notebook items (but keep the empty state element)
+    const items = notebooksContent.querySelectorAll('.sidebar-item');
+    items.forEach(item => item.remove());
+
+    // Show/hide empty state based on notes count
+    if (window.state.notes.length === 0) {
+      if (emptyState) emptyState.style.display = 'block';
+      return;
+    } else {
+      if (emptyState) emptyState.style.display = 'none';
+    }
 
     // Add each note as a notebook item
     window.state.notes.forEach(note => {
       const noteBtn = createNotebookButton(note);
       notebooksContent.appendChild(noteBtn);
+    });
+    
+    // Add click-to-deselect on empty space
+    notebooksContent.addEventListener('click', (e) => {
+      if (e.target === notebooksContent) {
+        // Clicked on empty space - deselect all
+        document.querySelectorAll('#notebooksContent .sidebar-item.selected').forEach(item => {
+          item.classList.remove('selected');
+        });
+      }
+    });
+    
+    // Add right-click context menu for multi-selected items
+    notebooksContent.addEventListener('contextmenu', (e) => {
+      // Get selected items from both NOTEBOOKS and FOLDERS (synced selections)
+      const selectedNotebooks = document.querySelectorAll('#notebooksContent .sidebar-item.selected');
+      const selectedFolderNotes = document.querySelectorAll('.folder-note-item.selected');
+      
+      // Combine and deduplicate note IDs
+      const allSelectedElements = [...selectedNotebooks, ...selectedFolderNotes];
+      const noteIds = [...new Set(allSelectedElements.map(item => item.dataset.noteId).filter(id => id))];
+      
+      if (noteIds.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const handlers = {
+          onDeleteNotes: () => {
+            showDeleteConfirmation(noteIds.length, () => {
+              noteIds.forEach(noteId => {
+                const noteIndex = window.state.notes.findIndex(n => n.id === noteId);
+                if (noteIndex !== -1) {
+                  const deletedNote = window.state.notes.splice(noteIndex, 1)[0];
+                  
+                  // Move to trash
+                  if (window.state.trash) {
+                    window.state.trash.push({
+                      ...deletedNote,
+                      deletedAt: new Date().toISOString()
+                    });
+                  }
+                  
+                  // Delete from backend
+                  if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                    try {
+                      if (typeof window.fileSystemService !== 'undefined') {
+                        window.fileSystemService.deleteNoteFromCollection(noteId);
+                      }
+                    } catch (error) {
+                      console.error("Error deleting note from backend:", noteId, error);
+                    }
+                  }
+                }
+              });
+              
+              // Save to backend
+              if (typeof window.saveNotes === 'function') {
+                window.saveNotes();
+              }
+              if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+                window.Storage.saveTrash(window.state.trash);
+              }
+              
+              refreshSidebar();
+              if (typeof renderWorkspaceSplit === 'function') {
+                renderWorkspaceSplit(TwoBaseState.currentFolder);
+              }
+            });
+          },
+          onExportNotes: () => {
+            // Use existing export functionality
+            if (typeof window.exportNotes === 'function') {
+              const notesToExport = window.state.notes.filter(n => noteIds.includes(n.id));
+              window.exportNotes(notesToExport);
+            }
+          }
+        };
+        
+        if (typeof window.showContextMenu === 'function') {
+          window.showContextMenu(e.clientX, e.clientY, handlers, 'multi-note');
+        }
+      }
     });
   }
 
@@ -1896,9 +1922,109 @@
       <span>${window.escapeHtml ? window.escapeHtml(note.title || 'Untitled') : (note.title || 'Untitled')}</span>
     `;
     
-    // Click handler
-    btn.addEventListener('click', () => {
-      openNoteFromSidebar(note.id);
+    // Click handler with Ctrl+click multi-select support
+    btn.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        // Multi-select mode
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.toggle('selected');
+        
+        // Sync selection with folder section (for ALL notes, not just uncategorized)
+        const folderNoteItem = document.querySelector(`.folder-note-item[data-note-id="${note.id}"]`);
+        if (folderNoteItem) {
+          if (btn.classList.contains('selected')) {
+            folderNoteItem.classList.add('selected');
+          } else {
+            folderNoteItem.classList.remove('selected');
+          }
+        }
+      } else {
+        // Check if clicking on already selected item - if so, deselect all
+        const selectedItems = document.querySelectorAll('#notebooksContent .sidebar-item.selected');
+        if (selectedItems.length > 0) {
+          selectedItems.forEach(item => item.classList.remove('selected'));
+          // Also deselect in folders section
+          document.querySelectorAll('.folder-note-item.selected').forEach(item => {
+            item.classList.remove('selected');
+          });
+        }
+        // Single select - open note
+        openNoteFromSidebar(note.id);
+      }
+    });
+    
+    // Right-click context menu
+    btn.addEventListener('contextmenu', (e) => {
+      // Get selected items from both NOTEBOOKS and FOLDERS (synced selections)
+      const selectedNotebooks = document.querySelectorAll('#notebooksContent .sidebar-item.selected');
+      const selectedFolderNotes = document.querySelectorAll('.folder-note-item.selected');
+      
+      // Combine and deduplicate note IDs
+      const allSelectedElements = [...selectedNotebooks, ...selectedFolderNotes];
+      const noteIds = [...new Set(allSelectedElements.map(item => item.dataset.noteId).filter(id => id))];
+      
+      // If this button is selected and there are selections, show multi-select menu
+      if (btn.classList.contains('selected') && noteIds.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const handlers = {
+          onDeleteNotes: () => {
+            showDeleteConfirmation(noteIds.length, () => {
+              noteIds.forEach(noteId => {
+                const noteIndex = window.state.notes.findIndex(n => n.id === noteId);
+                if (noteIndex !== -1) {
+                  const deletedNote = window.state.notes.splice(noteIndex, 1)[0];
+                  
+                  // Move to trash
+                  if (window.state.trash) {
+                    window.state.trash.push({
+                      ...deletedNote,
+                      deletedAt: new Date().toISOString()
+                    });
+                  }
+                  
+                  // Delete from backend
+                  if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                    try {
+                      if (typeof window.fileSystemService !== 'undefined') {
+                        window.fileSystemService.deleteNoteFromCollection(noteId);
+                      }
+                    } catch (error) {
+                      console.error("Error deleting note from backend:", noteId, error);
+                    }
+                  }
+                }
+              });
+              
+              // Save to backend
+              if (typeof window.saveNotes === 'function') {
+                window.saveNotes();
+              }
+              if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+                window.Storage.saveTrash(window.state.trash);
+              }
+              
+              refreshSidebar();
+              if (typeof renderWorkspaceSplit === 'function') {
+                renderWorkspaceSplit(TwoBaseState.currentFolder);
+              }
+            });
+          },
+          onExportNotes: () => {
+            if (typeof window.exportNotes === 'function') {
+              const notesToExport = window.state.notes.filter(n => noteIds.includes(n.id));
+              window.exportNotes(notesToExport);
+            }
+          }
+        };
+        
+        if (typeof window.showContextMenu === 'function') {
+          window.showContextMenu(e.clientX, e.clientY, handlers, 'multi-note');
+        }
+      }
+      // Otherwise, let the default single-note context menu from app.js handle it
     });
     
     // Drag handlers
@@ -2044,6 +2170,24 @@
       const folderElement = renderFolderWithSubfolders(folder, 0);
       foldersContent.appendChild(folderElement);
     });
+    
+    // Setup simple root drop zone
+    setupRootDropZone(foldersContent);
+    
+    // Add click-to-deselect on empty space
+    foldersContent.addEventListener('click', (e) => {
+      if (e.target === foldersContent) {
+        // Clicked on empty space - deselect all folder notes
+        document.querySelectorAll('.folder-note-item.selected').forEach(item => {
+          item.classList.remove('selected');
+        });
+      }
+    });
+    
+    // Update base layer to reflect sidebar changes
+    if (typeof renderWorkspaceSplit === 'function' && TwoBaseState) {
+      renderWorkspaceSplit(TwoBaseState.currentFolder);
+    }
   }
 
   function renderFolderWithSubfolders(folder, depth) {
@@ -2228,10 +2372,93 @@
         
         // Toggle visual selection
         item.classList.toggle('selected');
+        
+        // Sync selection with notebooks section (for ALL notes, not just uncategorized)
+        const notebookBtn = document.querySelector(`#notebooksContent .sidebar-item[data-note-id="${note.id}"]`);
+        if (notebookBtn) {
+          if (item.classList.contains('selected')) {
+            notebookBtn.classList.add('selected');
+          } else {
+            notebookBtn.classList.remove('selected');
+          }
+        }
       } else {
         // Normal click: open note
         openNoteFromSidebar(note.id);
       }
+    });
+    
+    // Right-click context menu for multi-selection
+    item.addEventListener('contextmenu', (e) => {
+      // Get selected items from both NOTEBOOKS and FOLDERS (synced selections)
+      const selectedNotebooks = document.querySelectorAll('#notebooksContent .sidebar-item.selected');
+      const selectedFolderNotes = document.querySelectorAll('.folder-note-item.selected');
+      
+      // Combine and deduplicate note IDs
+      const allSelectedElements = [...selectedNotebooks, ...selectedFolderNotes];
+      const noteIds = [...new Set(allSelectedElements.map(el => el.dataset.noteId).filter(id => id))];
+      
+      // If this item is selected and there are selections, show multi-select menu
+      if (item.classList.contains('selected') && noteIds.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const handlers = {
+          onDeleteNotes: () => {
+            showDeleteConfirmation(noteIds.length, () => {
+              noteIds.forEach(noteId => {
+                const noteIndex = window.state.notes.findIndex(n => n.id === noteId);
+                if (noteIndex !== -1) {
+                  const deletedNote = window.state.notes.splice(noteIndex, 1)[0];
+                  
+                  // Move to trash
+                  if (window.state.trash) {
+                    window.state.trash.push({
+                      ...deletedNote,
+                      deletedAt: new Date().toISOString()
+                    });
+                  }
+                  
+                  // Delete from backend
+                  if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                    try {
+                      if (typeof window.fileSystemService !== 'undefined') {
+                        window.fileSystemService.deleteNoteFromCollection(noteId);
+                      }
+                    } catch (error) {
+                      console.error("Error deleting note from backend:", noteId, error);
+                    }
+                  }
+                }
+              });
+              
+              // Save to backend
+              if (typeof window.saveNotes === 'function') {
+                window.saveNotes();
+              }
+              if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+                window.Storage.saveTrash(window.state.trash);
+              }
+              
+              refreshSidebar();
+              if (typeof renderWorkspaceSplit === 'function') {
+                renderWorkspaceSplit(TwoBaseState.currentFolder);
+              }
+            });
+          },
+          onExportNotes: () => {
+            if (typeof window.exportNotes === 'function') {
+              const notesToExport = window.state.notes.filter(n => noteIds.includes(n.id));
+              window.exportNotes(notesToExport);
+            }
+          }
+        };
+        
+        if (typeof window.showContextMenu === 'function') {
+          window.showContextMenu(e.clientX, e.clientY, handlers, 'multi-note');
+        }
+      }
+      // Otherwise, let the default single-note context menu from app.js handle it
     });
     
     // Drag handlers - support dragging multiple selected items
@@ -2303,36 +2530,46 @@
       
       if (!hasNote && !hasFolder) return;
       
-      const rect = element.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const height = rect.height;
-      
-      element.classList.remove('drag-over', 'drop-line-top', 'drop-line-bottom');
-      
-      // For folders, allow reordering/moving to sibling level
+      // For folders, allow reordering
       if (hasFolder) {
-        // Top 25% -> Insert before (sibling)
-        if (y < height * 0.25) {
-          element.classList.add('drop-line-top');
-        } 
-        // Bottom 25% -> Insert after (sibling)
-        else if (y > height * 0.75) {
-          element.classList.add('drop-line-bottom');
-        } 
-        // Middle -> Nest inside
+        const rect = element.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const height = rect.height;
+        
+        // Clear previous states
+        element.classList.remove('drag-over', 'drop-before', 'drop-after');
+        element.style.background = '';
+        element.style.borderTop = '';
+        element.style.borderBottom = '';
+        
+        // Top 30% = insert before
+        if (y < height * 0.3) {
+          element.classList.add('drop-before');
+          element.style.borderTop = '2px solid var(--accent)';
+        }
+        // Bottom 30% = insert after
+        else if (y > height * 0.7) {
+          element.classList.add('drop-after');
+          element.style.borderBottom = '2px solid var(--accent)';
+        }
+        // Middle = nest inside
         else {
           element.classList.add('drag-over');
+          element.style.background = 'rgba(34, 197, 94, 0.1)';
         }
       } else {
-        // Notes can only be dropped INTO folders
+        // Notes just nest inside
         element.classList.add('drag-over');
+        element.style.background = 'rgba(34, 197, 94, 0.1)';
       }
     });
     
     element.addEventListener('dragleave', (e) => {
-      // Only remove if actually leaving the element
       if (!element.contains(e.relatedTarget)) {
-        element.classList.remove('drag-over', 'drop-line-top', 'drop-line-bottom');
+        element.classList.remove('drag-over', 'drop-before', 'drop-after');
+        element.style.background = '';
+        element.style.borderTop = '';
+        element.style.borderBottom = '';
       }
     });
     
@@ -2340,26 +2577,26 @@
       e.preventDefault();
       e.stopPropagation();
       
-      const isTop = element.classList.contains('drop-line-top');
-      const isBottom = element.classList.contains('drop-line-bottom');
+      const isBefore = element.classList.contains('drop-before');
+      const isAfter = element.classList.contains('drop-after');
       const isInside = element.classList.contains('drag-over');
       
-      element.classList.remove('drag-over', 'drop-line-top', 'drop-line-bottom');
+      element.classList.remove('drag-over', 'drop-before', 'drop-after');
+      element.style.background = '';
+      element.style.borderTop = '';
+      element.style.borderBottom = '';
       
-      // Check for multi-drag first
       const isMultiDrag = e.dataTransfer.getData('text/multi-drag') === 'true';
       const draggedNoteId = e.dataTransfer.getData('text/note-id');
       const draggedFolderId = e.dataTransfer.getData('text/folder-id');
       
       if (isMultiDrag) {
-        // Handle multiple notes being dragged
         const noteIdsJson = e.dataTransfer.getData('text/note-ids');
         if (noteIdsJson) {
           try {
             const noteIds = JSON.parse(noteIdsJson);
             const targetFolderId = folderId === 'uncategorized' ? null : folderId;
             
-            // Move all selected notes to target folder
             noteIds.forEach(noteId => {
               const note = state.notes.find(n => n.id === noteId);
               if (note) {
@@ -2368,7 +2605,6 @@
               }
             });
             
-            // Save to backend
             if (typeof window.saveNotes === 'function') {
               window.saveNotes();
             }
@@ -2378,40 +2614,53 @@
           }
         }
       } else if (draggedNoteId) {
-        // Move single note to this folder (null for uncategorized)
         const targetFolderId = folderId === 'uncategorized' ? null : folderId;
         const note = state.notes.find(n => n.id === draggedNoteId);
         if (note) {
           note.folderId = targetFolderId;
           note.updatedAt = new Date().toISOString();
           
-          // Save to backend
           if (typeof window.saveNotes === 'function') {
             window.saveNotes();
           }
           renderSidebar();
         }
       } else if (draggedFolderId) {
-        // Move folder
         if (draggedFolderId === folderId) return;
         
         if (isInside) {
-          // Move INTO target folder
+          // Nest inside
           const targetFolderId = folderId === 'uncategorized' ? null : folderId;
           moveFolderToFolder(draggedFolderId, targetFolderId);
-        } else if (isTop || isBottom) {
-          // Move to SIBLING level (same parent as target)
-          // If target is Uncategorized, parent is null (root)
-          let targetParentId = null;
-          if (folderId !== 'uncategorized') {
-            const targetFolder = window.state.folders.find(f => f.id === folderId);
-            if (targetFolder) {
-              targetParentId = targetFolder.parentId || null;
-            }
+        } else if (isBefore || isAfter) {
+          // Reorder as sibling
+          const draggedFolder = window.state.folders.find(f => f.id === draggedFolderId);
+          const targetFolder = window.state.folders.find(f => f.id === folderId);
+          
+          if (!draggedFolder || !targetFolder) return;
+          
+          // Set same parent
+          const targetParentId = targetFolder.parentId || null;
+          draggedFolder.parentId = targetParentId;
+          
+          // Reorder in array
+          const draggedIndex = window.state.folders.indexOf(draggedFolder);
+          const targetIndex = window.state.folders.indexOf(targetFolder);
+          
+          // Remove from current position
+          window.state.folders.splice(draggedIndex, 1);
+          
+          // Insert at new position
+          const newTargetIndex = window.state.folders.indexOf(targetFolder);
+          const insertIndex = isAfter ? newTargetIndex + 1 : newTargetIndex;
+          window.state.folders.splice(insertIndex, 0, draggedFolder);
+          
+          // Save changes
+          if (typeof window.saveFolders === 'function') {
+            window.saveFolders();
           }
-          moveFolderToFolder(draggedFolderId, targetParentId);
-          // Note: Full reordering support would require updating sort order/index
-          // For now, we just update the parentId, which effectively moves it to that level
+          
+          populateFoldersSection();
         }
       }
     });
@@ -2446,6 +2695,58 @@
     
     // Show feedback
     console.log(`Moved folder "${folder.name}"`);
+  }
+
+  function setupRootDropZone(foldersContent) {
+    // Create invisible drop zone
+    const dropZone = document.createElement('div');
+    dropZone.className = 'root-drop-zone';
+    dropZone.style.cssText = 'min-height: 40px; margin: 8px; display: none; background: rgba(59, 130, 246, 0.03);';
+    foldersContent.appendChild(dropZone);
+    
+    // Show/hide drop zone when dragging folders
+    foldersContent.addEventListener('dragover', (e) => {
+      const hasFolder = e.dataTransfer.types.includes('text/folder-id');
+      if (!hasFolder) return;
+      
+      // Check if over a folder
+      const overFolder = e.target.closest('.folder-header');
+      if (!overFolder) {
+        e.preventDefault();
+        dropZone.style.display = 'block';
+      } else {
+        dropZone.style.display = 'none';
+      }
+    });
+    
+    foldersContent.addEventListener('dragleave', (e) => {
+      if (!foldersContent.contains(e.relatedTarget)) {
+        dropZone.style.display = 'none';
+      }
+    });
+    
+    // Handle drop on the zone
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const draggedFolderId = e.dataTransfer.getData('text/folder-id');
+      if (draggedFolderId) {
+        moveFolderToFolder(draggedFolderId, null); // null = root level
+      }
+      
+      dropZone.style.display = 'none';
+    });
+    
+    // Hide on drag end
+    document.addEventListener('dragend', () => {
+      dropZone.style.display = 'none';
+    });
   }
 
   function toggleSort() {
@@ -2680,6 +2981,9 @@
         // Show empty state (welcome pane)
         const emptyState = document.getElementById('empty-state');
         if (emptyState) emptyState.classList.remove('hidden');
+        
+        // Save session state so it persists on refresh
+        saveTwoBaseSession();
       }, true); // Use capture phase
     }
     
@@ -2713,10 +3017,8 @@
       }
     }
     
-    // Start with main base showing root view
-    renderWorkspaceSplit();
-    
-    // Restore previous session (open tabs)
+    // Restore previous session (open tabs and view state)
+    // This will handle showing the correct view (main base, note base, or welcome)
     restoreTwoBaseSession();
     
     console.log('Two-Base: Initialized successfully');
@@ -2736,6 +3038,144 @@
     populateFoldersSection();
   }
 
+  // Custom delete confirmation dialog
+  function showDeleteConfirmation(count, onConfirm) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+    
+    // Create dialog
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'background: var(--panel); border-radius: 12px; padding: 24px; min-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);';
+    
+    // Title
+    const title = document.createElement('h3');
+    title.style.cssText = 'margin: 0 0 12px 0; color: var(--text); font-size: 18px;';
+    title.textContent = 'Delete Notes';
+    
+    // Message
+    const message = document.createElement('p');
+    message.style.cssText = 'margin: 0 0 20px 0; color: var(--muted); font-size: 14px;';
+    message.textContent = `Delete ${count} selected note${count > 1 ? 's' : ''}?`;
+    
+    // Buttons container
+    const buttons = document.createElement('div');
+    buttons.style.cssText = 'display: flex; gap: 8px; justify-content: flex-end;';
+    
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'padding: 8px 16px; border: none; border-radius: 6px; background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 14px;';
+    
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.style.cssText = 'padding: 8px 16px; border: none; border-radius: 6px; background: #ef4444; color: white; cursor: pointer; font-size: 14px; font-weight: 500;';
+    
+    buttons.appendChild(cancelBtn);
+    buttons.appendChild(deleteBtn);
+    
+    dialog.appendChild(title);
+    dialog.appendChild(message);
+    dialog.appendChild(buttons);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    // Focus delete button
+    deleteBtn.focus();
+    
+    // Event handlers
+    const close = () => document.body.removeChild(overlay);
+    
+    cancelBtn.addEventListener('click', close);
+    deleteBtn.addEventListener('click', () => {
+      close();
+      onConfirm();
+    });
+    
+    // Keyboard support
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        close();
+        onConfirm();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      }
+    });
+    
+    // Click overlay to cancel
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+  }
+
+  // Add keyboard handler for Delete key to work with selected items
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Delete') {
+      // Check for selected items in notebooks
+      const selectedNotebooks = document.querySelectorAll('#notebooksContent .sidebar-item.selected');
+      // Check for selected items in folders
+      const selectedFolderNotes = document.querySelectorAll('.folder-note-item.selected');
+      
+      const allSelected = [...selectedNotebooks, ...selectedFolderNotes];
+      
+      if (allSelected.length > 0) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent other Delete handlers from firing
+        
+        // Get unique note IDs (deduplicate in case same note selected in both sections)
+        const noteIds = [...new Set(allSelected.map(el => el.dataset.noteId).filter(id => id))];
+        
+        if (noteIds.length === 0) return;
+        
+        showDeleteConfirmation(noteIds.length, () => {
+          // Delete all selected notes
+          noteIds.forEach(noteId => {
+            const noteIndex = window.state.notes.findIndex(n => n.id === noteId);
+            if (noteIndex !== -1) {
+              const deletedNote = window.state.notes.splice(noteIndex, 1)[0];
+              
+              // Move to trash
+              if (window.state.trash) {
+                window.state.trash.push({
+                  ...deletedNote,
+                  deletedAt: new Date().toISOString()
+                });
+              }
+              
+              // Delete from backend
+              if (typeof window.Storage !== 'undefined' && window.Storage.useFileSystem) {
+                try {
+                  if (typeof window.fileSystemService !== 'undefined') {
+                    window.fileSystemService.deleteNoteFromCollection(noteId);
+                  }
+                } catch (error) {
+                  console.error("Error deleting note from backend:", noteId, error);
+                }
+              }
+            }
+          });
+          
+          // Save to backend
+          if (typeof window.saveNotes === 'function') {
+            window.saveNotes();
+          }
+          if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveTrash === 'function') {
+            window.Storage.saveTrash(window.state.trash);
+          }
+          
+          // Refresh UI
+          refreshSidebar();
+          if (typeof renderWorkspaceSplit === 'function') {
+            renderWorkspaceSplit(TwoBaseState.currentFolder);
+          }
+        });
+      }
+    }
+  });
+
   // Export functions to global scope
   window.TwoBase = {
     init,
@@ -2747,6 +3187,7 @@
     closeNoteTab,
     refreshWorkspace,
     refreshSidebar,  // Export sidebar refresh function
+    showDeleteConfirmation,  // Export custom delete dialog
   };
 
   // Auto-initialize when DOM is ready
