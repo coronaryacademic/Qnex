@@ -253,10 +253,81 @@ window.Storage = Storage;
       window: document.getElementById("window-template"),
     },
   };
-  // Make modalPrompt globally available for table-utils
-  window.modalPrompt = modalPrompt;
-  // Expose modalIconPicker globally for two-base.js
-  window.modalIconPicker = null; // Will be set after function is defined
+  // Modern modal system - matches two-base.js design
+  function createModernModal(title, message, buttons = []) {
+    // Close all context menus when opening a dialog
+    const contextMenus = document.querySelectorAll(
+      '[role="menu"], .context-menu, .editor-menu'
+    );
+    contextMenus.forEach((menu) => {
+      if (menu.classList) {
+        menu.classList.remove("open");
+      }
+      menu.remove?.();
+    });
+
+    // Close settings menu if open
+    const settingsMenu = document.getElementById("settingsMenu");
+    if (settingsMenu && settingsMenu.classList.contains("open")) {
+      settingsMenu.classList.remove("open");
+    }
+
+    // Close tools menu if open
+    const toolsMenu = document.getElementById("toolsMenu");
+    if (toolsMenu && toolsMenu.classList.contains("open")) {
+      toolsMenu.classList.remove("open");
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "active-modal";
+    overlay.style.cssText =
+      "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;";
+
+    const dialog = document.createElement("div");
+    dialog.style.cssText =
+      "background: var(--panel); border-radius: 12px; padding: 24px; min-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);";
+
+    const titleEl = document.createElement("h3");
+    titleEl.style.cssText =
+      "margin: 0 0 12px 0; color: var(--text); font-size: 18px;";
+    titleEl.textContent = title;
+
+    const messageEl = document.createElement("p");
+    messageEl.style.cssText =
+      "margin: 0 0 20px 0; color: var(--muted); font-size: 14px;";
+    messageEl.textContent = message;
+
+    const buttonsContainer = document.createElement("div");
+    buttonsContainer.style.cssText =
+      "display: flex; gap: 8px; justify-content: flex-end;";
+
+    buttons.forEach((btn) => {
+      const button = document.createElement("button");
+      button.textContent = btn.text;
+      button.style.cssText = `padding: 8px 16px; border: none; border-radius: 6px; background: ${
+        btn.bg
+      }; color: ${btn.color}; cursor: pointer; font-size: 14px; font-weight: ${
+        btn.weight || "normal"
+      };`;
+      button.addEventListener("click", () => {
+        overlay.remove();
+        btn.callback();
+      });
+      buttonsContainer.appendChild(button);
+    });
+
+    dialog.appendChild(titleEl);
+    dialog.appendChild(messageEl);
+    dialog.appendChild(buttonsContainer);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    return overlay;
+  }
 
   async function modalIconPicker(current = "default") {
     return new Promise((res) => {
@@ -313,7 +384,6 @@ window.Storage = Storage;
 
       cancel.addEventListener("click", () => done(null));
       reset.addEventListener("click", () => done("default"));
-      m.querySelector(".modal-x").addEventListener("click", () => done(null));
 
       actions.appendChild(cancel);
       actions.appendChild(reset);
@@ -605,7 +675,7 @@ window.Storage = Storage;
   function ensureSplitState() {
     // Skip if workspace element not available (e.g., in two-base mode)
     if (!el.workspace) return;
-    
+
     const hasLeftContent = state.left.tabs.length > 0;
     const hasRightContent = state.right.tabs.length > 0;
 
@@ -692,10 +762,13 @@ window.Storage = Storage;
     const noteBtn = target.closest("button[data-note-id], .folder-note-item");
     if (noteBtn) {
       const id = noteBtn.dataset.noteId;
-      
+
       // Check if multiple items are selected
-      const isMultiSelect = state.selectedItems && state.selectedItems.size > 1 && state.selectedItems.has(id);
-      
+      const isMultiSelect =
+        state.selectedItems &&
+        state.selectedItems.size > 1 &&
+        state.selectedItems.has(id);
+
       if (isMultiSelect) {
         // Multi-select context menu: only export and delete
         return showContextMenu(
@@ -704,22 +777,31 @@ window.Storage = Storage;
           {
             onExportNotes: async () => {
               const selectedIds = Array.from(state.selectedItems);
-              const selectedNotes = state.notes.filter(n => selectedIds.includes(n.id));
-              
+              const selectedNotes = state.notes.filter((n) =>
+                selectedIds.includes(n.id)
+              );
+
               // Export as HTML
-              let html = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Exported Notes</title>\n<style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;}.note{margin-bottom:40px;border-bottom:2px solid #ccc;padding-bottom:20px;}.note h2{color:#333;}.note .meta{color:#666;font-size:0.9em;margin-bottom:10px;}</style>\n</head>\n<body>\n';
-              
-              selectedNotes.forEach(note => {
-                const date = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : '';
-                html += `<div class="note">\n<h2>${note.title || 'Untitled'}</h2>\n<div class="meta">Last updated: ${date}</div>\n<div class="content">${note.contentHtml || ''}</div>\n</div>\n`;
+              let html =
+                '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Exported Notes</title>\n<style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;}.note{margin-bottom:40px;border-bottom:2px solid #ccc;padding-bottom:20px;}.note h2{color:#333;}.note .meta{color:#666;font-size:0.9em;margin-bottom:10px;}</style>\n</head>\n<body>\n';
+
+              selectedNotes.forEach((note) => {
+                const date = note.updatedAt
+                  ? new Date(note.updatedAt).toLocaleDateString()
+                  : "";
+                html += `<div class="note">\n<h2>${
+                  note.title || "Untitled"
+                }</h2>\n<div class="meta">Last updated: ${date}</div>\n<div class="content">${
+                  note.contentHtml || ""
+                }</div>\n</div>\n`;
               });
-              
-              html += '</body>\n</html>';
-              
+
+              html += "</body>\n</html>";
+
               // Download the HTML file
-              const blob = new Blob([html], { type: 'text/html' });
+              const blob = new Blob([html], { type: "text/html" });
               const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
+              const a = document.createElement("a");
               a.href = url;
               a.download = `exported-notes-${Date.now()}.html`;
               a.click();
@@ -728,47 +810,60 @@ window.Storage = Storage;
             onDeleteNotes: async () => {
               const selectedIds = Array.from(state.selectedItems);
               const count = selectedIds.length;
-              
+
               // Use custom delete dialog from two-base.js
-              if (typeof window.TwoBase !== 'undefined' && window.TwoBase.showDeleteConfirmation) {
+              if (
+                typeof window.TwoBase !== "undefined" &&
+                window.TwoBase.showDeleteConfirmation
+              ) {
                 window.TwoBase.showDeleteConfirmation(count, async () => {
                   // Delete all selected notes
                   for (const noteId of selectedIds) {
-                const idx = state.notes.findIndex(n => n.id === noteId);
-                if (idx >= 0) {
-                  const [note] = state.notes.splice(idx, 1);
-                  const deletedNote = {
-                    ...note,
-                    deletedAt: new Date().toISOString(),
-                  };
-                  state.trash.push(deletedNote);
-                  
-                  // Delete from backend
-                  if (Storage.useFileSystem) {
-                    try {
-                      await fileSystemService.deleteNoteFromCollection(noteId);
-                    } catch (error) {
-                      console.error("Error deleting note from backend:", noteId, error);
+                    const idx = state.notes.findIndex((n) => n.id === noteId);
+                    if (idx >= 0) {
+                      const [note] = state.notes.splice(idx, 1);
+                      const deletedNote = {
+                        ...note,
+                        deletedAt: new Date().toISOString(),
+                      };
+                      state.trash.push(deletedNote);
+
+                      // Delete from backend
+                      if (Storage.useFileSystem) {
+                        try {
+                          await fileSystemService.deleteNoteFromCollection(
+                            noteId
+                          );
+                        } catch (error) {
+                          console.error(
+                            "Error deleting note from backend:",
+                            noteId,
+                            error
+                          );
+                        }
+                      }
+
+                      // Close tabs and windows
+                      try {
+                        closeTab("left", noteId);
+                        closeTab("right", noteId);
+                        closeWindow(noteId);
+                      } catch (error) {
+                        console.warn(
+                          "Error closing tabs for note:",
+                          noteId,
+                          error
+                        );
+                      }
                     }
                   }
-                  
-                  // Close tabs and windows
-                  try {
-                    closeTab("left", noteId);
-                    closeTab("right", noteId);
-                    closeWindow(noteId);
-                  } catch (error) {
-                    console.warn("Error closing tabs for note:", noteId, error);
-                  }
-                }
-              }
-              
-              // Clear selection
-              state.selectedItems.clear();
-              
-              saveNotes();
-              Storage.saveTrash(state.trash);
-              renderSidebar();
+
+                  // Clear selection
+                  state.selectedItems.clear();
+
+                  saveNotes();
+                  Storage.saveTrash(state.trash);
+                  renderSidebar();
                 }); // Close showDeleteConfirmation callback
               }
             },
@@ -812,35 +907,38 @@ window.Storage = Storage;
               refreshWindowTitle(id);
             },
             onDeleteNote: async () => {
-              if (typeof window.TwoBase !== 'undefined' && window.TwoBase.showDeleteConfirmation) {
+              if (
+                typeof window.TwoBase !== "undefined" &&
+                window.TwoBase.showDeleteConfirmation
+              ) {
                 window.TwoBase.showDeleteConfirmation(1, async () => {
                   const idx = state.notes.findIndex((n) => n.id === id);
                   if (idx >= 0) {
                     const [note] = state.notes.splice(idx, 1);
                     const deletedNote = {
-                  ...note,
-                  deletedAt: new Date().toISOString(),
-                };
-                state.trash.push(deletedNote);
+                      ...note,
+                      deletedAt: new Date().toISOString(),
+                    };
+                    state.trash.push(deletedNote);
 
-                // Sync with File System: Delete from notes collection, add to trash
-                try {
-                  await Storage.deleteNoteFromFileSystem(id);
-                  await Storage.saveTrash(state.trash);
-                } catch (error) {
-                  console.error("File system sync error:", error);
-                }
-              }
-              // Close tabs and windows for this note (do this first)
-              try {
-                closeTab("left", id);
-                closeTab("right", id);
-                closeWindow(id);
-              } catch (error) {
-                console.warn("Error closing tabs for note:", id, error);
-              }
-              saveNotes();
-              renderSidebar();
+                    // Sync with File System: Delete from notes collection, add to trash
+                    try {
+                      await Storage.deleteNoteFromFileSystem(id);
+                      await Storage.saveTrash(state.trash);
+                    } catch (error) {
+                      console.error("File system sync error:", error);
+                    }
+                  }
+                  // Close tabs and windows for this note (do this first)
+                  try {
+                    closeTab("left", id);
+                    closeTab("right", id);
+                    closeWindow(id);
+                  } catch (error) {
+                    console.warn("Error closing tabs for note:", id, error);
+                  }
+                  saveNotes();
+                  renderSidebar();
                 }); // Close showDeleteConfirmation callback
               }
             },
@@ -1000,86 +1098,181 @@ window.Storage = Storage;
 
   // In-app modal helpers
   function modalBase() {
+    console.log("🔧 modalBase: Creating new modal");
     const tpl = document.getElementById("modal-template");
-    if (!tpl) return null;
+    if (!tpl) {
+      console.error("❌ modalBase: Template not found");
+      return null;
+    }
     const node = tpl.content.firstElementChild.cloneNode(true);
     document.body.appendChild(node);
+
+    // Add a class to mark this as a valid modal to prevent cleanup
+    node.classList.add("active-modal");
+    console.log("✅ modalBase: Modal added to DOM with active-modal class");
+
+    // Add overlay click handler to close modal when clicking outside
+    // Add delay to prevent immediate closing from the click that opened it
+    const overlay = node.querySelector(".modal-overlay");
+    if (overlay) {
+      setTimeout(() => {
+        console.log("🔧 modalBase: Adding overlay click handler");
+        overlay.addEventListener("click", (e) => {
+          console.log(
+            "🖱️ modalBase: Overlay clicked",
+            e.target,
+            e.target === overlay
+          );
+          if (e.target === overlay) {
+            // Only close if clicking on the overlay itself, not the modal content
+            console.log("❌ modalBase: Closing modal via overlay click");
+            node.remove();
+          }
+        });
+      }, 100);
+    }
+
     return node;
   }
   function modalAlert(message) {
+    console.log("🚨 modalAlert called with:", message);
     return new Promise((res) => {
-      const m = modalBase();
-      if (!m) return res();
-      m.querySelector(".modal-title").textContent = "Notice";
-      m.querySelector(".modal-body").textContent = message;
-      const actions = m.querySelector(".modal-actions");
-      const ok = document.createElement("button");
-      ok.className = "btn primary";
-      ok.textContent = "OK";
-      actions.appendChild(ok);
-      const close = () => {
-        m.remove();
-        res();
-      };
-      ok.addEventListener("click", close);
-      const closeBtn = m.querySelector(".modal-x");
-      if (closeBtn) {
-        closeBtn.addEventListener("click", close);
-      }
+      createModernModal("Notice", message, [
+        {
+          text: "OK",
+          bg: "#3b82f6",
+          color: "white",
+          weight: "500",
+          callback: () => res(),
+        },
+      ]);
     });
   }
-  
-  
+
   function modalConfirm(message) {
-    // DISABLED: This function is replaced by custom showDeleteConfirmation dialog
-    // Returning false immediately prevents the old modal from showing
-    // All delete confirmations now use the custom dialog from two-base.js
-    console.log('[modalConfirm] Disabled - using custom delete dialog instead');
-    return Promise.resolve(false);
+    console.log("❓ modalConfirm called with:", message);
+    return new Promise((resolve) => {
+      createModernModal("Confirm", message, [
+        {
+          text: "Cancel",
+          bg: "var(--panel-2)",
+          color: "var(--text)",
+          callback: () => resolve(false),
+        },
+        {
+          text: "Confirm",
+          bg: "#ef4444",
+          color: "white",
+          weight: "500",
+          callback: () => resolve(true),
+        },
+      ]);
+    });
   }
-  
+
   function modalPrompt(title, placeholder, value = "") {
+    console.log("⌨️ modalPrompt called with:", { title, placeholder, value });
     return new Promise((res) => {
-      const m = modalBase();
-      if (!m) return res(null);
-      m.querySelector(".modal-title").textContent = title;
-      const body = m.querySelector(".modal-body");
+      // Close all context menus when opening a dialog
+      const contextMenus = document.querySelectorAll('[role="menu"], .context-menu, .editor-menu');
+      contextMenus.forEach(menu => {
+        if (menu.classList) {
+          menu.classList.remove('open');
+        }
+        menu.remove?.();
+      });
+      
+      // Close settings menu if open
+      const settingsMenu = document.getElementById('settingsMenu');
+      if (settingsMenu && settingsMenu.classList.contains('open')) {
+        settingsMenu.classList.remove('open');
+      }
+      
+      // Close tools menu if open
+      const toolsMenu = document.getElementById('toolsMenu');
+      if (toolsMenu && toolsMenu.classList.contains('open')) {
+        toolsMenu.classList.remove('open');
+      }
+
+      const overlay = document.createElement("div");
+      overlay.className = "active-modal";
+      overlay.style.cssText =
+        "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;";
+
+      const dialog = document.createElement("div");
+      dialog.style.cssText =
+        "background: var(--panel); border-radius: 12px; padding: 24px; min-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);";
+
+      const titleEl = document.createElement("h3");
+      titleEl.style.cssText =
+        "margin: 0 0 12px 0; color: var(--text); font-size: 18px;";
+      titleEl.textContent = title;
+
       const inp = document.createElement("input");
       inp.placeholder = placeholder;
       inp.value = value;
-      body.appendChild(inp);
-      inp.focus();
-      const actions = m.querySelector(".modal-actions");
-      const cancel = document.createElement("button");
-      cancel.className = "btn";
-      cancel.textContent = "Cancel";
-      const ok = document.createElement("button");
-      ok.className = "btn primary";
-      ok.textContent = "Save";
-      actions.appendChild(cancel);
-      actions.appendChild(ok);
-      const done = (v) => {
-        m.remove();
-        res(v);
+      inp.style.cssText =
+        "width: 100%; padding: 8px 12px; margin: 0 0 20px 0; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2); color: var(--text); font-size: 14px; box-sizing: border-box;";
+
+      const buttonsContainer = document.createElement("div");
+      buttonsContainer.style.cssText =
+        "display: flex; gap: 8px; justify-content: flex-end;";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancel";
+      cancelBtn.style.cssText =
+        "padding: 8px 16px; border: none; border-radius: 6px; background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 14px;";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.textContent = "Save";
+      saveBtn.style.cssText =
+        "padding: 8px 16px; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 14px; font-weight: 500;";
+
+      const close = () => {
+        console.log("❌ modalPrompt: Modal closed");
+        overlay.remove();
       };
-      cancel.addEventListener("click", () => done(null));
-      ok.addEventListener("click", () => done(inp.value.trim() || null));
-      const closeBtn = m.querySelector(".modal-x");
-      if (closeBtn) {
-        closeBtn.addEventListener("click", () => done(null));
-      }
+
+      cancelBtn.addEventListener("click", () => {
+        close();
+        res(null);
+      });
+
+      saveBtn.addEventListener("click", () => {
+        close();
+        res(inp.value.trim() || null);
+      });
+
       inp.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") ok.click();
-        if (e.key === "Escape") cancel.click();
+        if (e.key === "Enter") saveBtn.click();
+        if (e.key === "Escape") cancelBtn.click();
+      });
+
+      buttonsContainer.appendChild(cancelBtn);
+      buttonsContainer.appendChild(saveBtn);
+
+      dialog.appendChild(titleEl);
+      dialog.appendChild(inp);
+      dialog.appendChild(buttonsContainer);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      inp.focus();
+      inp.select();
+
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+          close();
+          res(null);
+        }
       });
     });
   }
-  
+
   // Expose modal functions globally for use in two-base.js
   window.modalConfirm = modalConfirm;
   window.modalPrompt = modalPrompt;
   window.modalAlert = modalAlert;
-
 
   // Storage
   // Data persistence functions
@@ -1089,14 +1282,20 @@ window.Storage = Storage;
       writeBackup().catch(() => {});
     }
     // Instant sidebar refresh
-    if (typeof window.TwoBase !== 'undefined' && typeof window.TwoBase.refreshSidebar === 'function') {
+    if (
+      typeof window.TwoBase !== "undefined" &&
+      typeof window.TwoBase.refreshSidebar === "function"
+    ) {
       window.TwoBase.refreshSidebar();
     }
   }
   function saveFolders() {
     Storage.saveFolders(state.folders);
     // Instant sidebar refresh
-    if (typeof window.TwoBase !== 'undefined' && typeof window.TwoBase.refreshSidebar === 'function') {
+    if (
+      typeof window.TwoBase !== "undefined" &&
+      typeof window.TwoBase.refreshSidebar === "function"
+    ) {
       window.TwoBase.refreshSidebar();
     }
   }
@@ -1757,13 +1956,15 @@ window.Storage = Storage;
   }
   function renderTabs(side) {
     const tabsEl = side === "left" ? el.tabsLeft : el.tabsRight;
-    
+
     // Safety check for two-base architecture
     if (!tabsEl) {
-      console.log(`renderTabs: ${side} tabs element not found (two-base architecture active)`);
+      console.log(
+        `renderTabs: ${side} tabs element not found (two-base architecture active)`
+      );
       return;
     }
-    
+
     const s = state[side];
     tabsEl.innerHTML = "";
     const ordered = s.tabs.slice().sort((a, b) => {
@@ -1919,13 +2120,15 @@ window.Storage = Storage;
   // Pane content
   function renderPane(side) {
     const paneEl = side === "left" ? el.paneLeft : el.paneRight;
-    
+
     // Safety check for two-base architecture
     if (!paneEl) {
-      console.log(`renderPane: ${side} pane element not found (two-base architecture active)`);
+      console.log(
+        `renderPane: ${side} pane element not found (two-base architecture active)`
+      );
       return;
     }
-    
+
     const s = state[side];
     paneEl.innerHTML = "";
 
@@ -1969,10 +2172,14 @@ window.Storage = Storage;
     const tagInput = node.querySelector(".tag-input-dropdown");
 
     // Initialize BlockEditor
-    const editor = new BlockEditor(content, note.contentHtml || note.content || "", (newHtml) => {
+    const editor = new BlockEditor(
+      content,
+      note.contentHtml || note.content || "",
+      (newHtml) => {
         note.contentHtml = newHtml;
         markUnsaved();
-    });
+      }
+    );
     node._blockEditor = editor;
 
     function syncDates() {
@@ -1987,10 +2194,10 @@ window.Storage = Storage;
     }
 
     title.value = note.title || "";
-    
+
     // folders
     renderFolderOptions(folderSel, note.folderId);
-    
+
     // tags (chips UI)
     function renderChips() {
       chipsWrap.innerHTML = "";
@@ -2063,7 +2270,7 @@ window.Storage = Storage;
       hasUnsavedChanges = false;
       updateSaveStatus(true);
     }
-    
+
     // Expose saveNote on the node for external access (e.g., two-base.js)
     node._saveNote = saveNote;
 
@@ -2099,16 +2306,16 @@ window.Storage = Storage;
         return;
       }
     });
-    
+
     // Preserve existing paste logic for images/tables but refresh editor
     content.addEventListener("paste", async (e) => {
-        // Allow default paste or existing handlers to run first
-        // Then refresh editor state
-        setTimeout(() => {
-            editor.refresh();
-            note.contentHtml = editor.getHTML();
-            markUnsaved();
-        }, 100);
+      // Allow default paste or existing handlers to run first
+      // Then refresh editor state
+      setTimeout(() => {
+        editor.refresh();
+        note.contentHtml = editor.getHTML();
+        markUnsaved();
+      }, 100);
     });
 
     folderSel.addEventListener("change", () => {
@@ -2729,9 +2936,12 @@ window.Storage = Storage;
         // Click to open note in two-base system
         item.addEventListener("click", () => {
           // Use two-base system to open note
-          if (typeof window.TwoBase !== 'undefined' && typeof window.TwoBase.openNoteInNoteBase === 'function') {
+          if (
+            typeof window.TwoBase !== "undefined" &&
+            typeof window.TwoBase.openNoteInNoteBase === "function"
+          ) {
             window.TwoBase.openNoteInNoteBase(note.id);
-          } else if (typeof openInPane === 'function') {
+          } else if (typeof openInPane === "function") {
             // Fallback to old system
             openInPane(note.id, "left");
           }
@@ -2743,7 +2953,7 @@ window.Storage = Storage;
             if (contentMatch) {
               // Find and scroll to the matched text in the content
               const paneContent = document.querySelector(
-                '.note-pane .note-pane-content'
+                ".note-pane .note-pane-content"
               );
               if (paneContent) {
                 const contentEditor =
@@ -3157,7 +3367,9 @@ window.Storage = Storage;
   function enableSplit() {
     // Safety check for two-base architecture
     if (!el.workspace) {
-      console.log('enableSplit: workspace element not found (two-base architecture active)');
+      console.log(
+        "enableSplit: workspace element not found (two-base architecture active)"
+      );
       return;
     }
     state.splitMode = true;
@@ -3338,10 +3550,11 @@ window.Storage = Storage;
     });
   });
   document.addEventListener("click", (e) => {
-    // Don't close menus if clicking inside them
+    // Don't close menus if clicking inside them or inside modals
     if (
       (el.toolsMenu && el.toolsMenu.contains(e.target)) ||
-      el.settingsMenu.contains(e.target)
+      el.settingsMenu.contains(e.target) ||
+      e.target.closest(".modal-overlay")
     ) {
       return;
     }
@@ -3637,68 +3850,56 @@ window.Storage = Storage;
   // About App button
   const aboutAppBtn = document.getElementById("aboutAppBtn");
   if (aboutAppBtn) {
-    aboutAppBtn.addEventListener("click", () => {
+    aboutAppBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       el.settingsMenu.classList.remove("open");
       showAboutModal();
     });
   }
 
   function showAboutModal() {
-    const modal = document.createElement("div");
-    modal.className = "modal-overlay";
-    modal.innerHTML = `
-      <div class="modal about-modal">
-        <div class="modal-header">
-          <span class="modal-title">About My Notes</span>
-        </div>
-        <div class="modal-body">
-          <div class="about-content">
-            <div class="about-icon">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                <path d="M2 17l10 5 10-5"></path>
-                <path d="M2 12l10 5 10-5"></path>
-              </svg>
+    console.log("ℹ️ showAboutModal called");
+    createModernModal("About My Notes", "", [
+      {
+        text: "Close",
+        bg: "#3b82f6",
+        color: "white",
+        weight: "500",
+        callback: () => console.log("❌ showAboutModal: Modal closed"),
+      },
+    ]);
+
+    // Find the dialog and add custom content
+    const overlay = document.querySelector(".active-modal");
+    if (overlay) {
+      const dialog = overlay.querySelector("div:nth-child(1)");
+      if (dialog) {
+        const messageEl = dialog.querySelector("p");
+        if (messageEl) {
+          messageEl.innerHTML = `
+            <div style="text-align: center;">
+              <div style="margin-bottom: 16px;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto; display: block;">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                  <path d="M2 17l10 5 10-5"></path>
+                  <path d="M2 12l10 5 10-5"></path>
+                </svg>
+              </div>
+              <h2 style="margin: 0 0 12px 0; color: var(--text);">My Notes</h2>
+              <p style="margin: 0 0 12px 0; color: var(--muted); font-size: 13px;">
+                <strong>Version:</strong> 8.0<br>
+                <strong>Build:</strong> 8<br>
+                <strong>Last Updated:</strong> November 6, 2025<br>
+                <strong>Created by:</strong> Momen
+              </p>
+              <p style="margin: 0; color: var(--muted); font-size: 13px; font-style: italic;">
+                Built to show that anyone can create their own tools. Freedom is always an option to go for.
+              </p>
             </div>
-            <h2>My Notes</h2>
-            <div class="about-info">
-              <p><strong>Version:</strong> 8.0</p>
-              <p><strong>Build:</strong> 8</p>
-              <p><strong>Last Updated:</strong> November 6, 2025</p>
-              <p><strong>Created by:</strong> Momen</p>
-            </div>
-            <div class="about-description">
-              <p>Built to show that anyone can create their own tools. Freedom is always an option to go for.</p>
-              <p style="margin-top: 8px; font-style: italic; color: var(--muted);">A powerful note-taking application with themes and workspaces.</p>
-            </div>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn primary modal-close">Close</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Close handlers
-    const closeActionBtn = modal.querySelector(".modal-close");
-    const overlay = modal;
-    const modalDialog = modal.querySelector(".modal");
-
-    const closeModal = () => modal.remove();
-
-    closeActionBtn.addEventListener("click", closeModal);
-    
-    // Prevent modal from closing when clicking inside it
-    modalDialog.addEventListener("click", (e) => {
-      e.stopPropagation();
-    });
-    
-    // Only close when clicking outside the modal
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) closeModal();
-    });
+          `;
+        }
+      }
+    }
   }
 
   // Highlight palette & toggle
@@ -3805,73 +4006,84 @@ window.Storage = Storage;
     document.body.appendChild(ctxEl);
     const btnH = ctxEl.querySelector('[data-cmd="highlight"]');
     if (btnH)
-      btnH.addEventListener("click", () => {
+      btnH.addEventListener("click", (e) => {
+        e.stopPropagation();
         handlers.onHighlight && handlers.onHighlight();
         hideContextMenu();
       });
     const bSN = ctxEl.querySelector('[data-cmd="new-note"]');
     if (bSN)
-      bSN.addEventListener("click", async () => {
+      bSN.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onNewNote?.();
         hideContextMenu();
       });
     const bSF = ctxEl.querySelector('[data-cmd="new-folder"]');
     if (bSF)
-      bSF.addEventListener("click", async () => {
+      bSF.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onNewFolder?.();
         hideContextMenu();
       });
     const bOL = ctxEl.querySelector('[data-cmd="open-left"]');
     if (bOL)
-      bOL.addEventListener("click", () => {
+      bOL.addEventListener("click", (e) => {
+        e.stopPropagation();
         handlers.onOpenLeft && handlers.onOpenLeft();
         hideContextMenu();
       });
     const bOR = ctxEl.querySelector('[data-cmd="open-right"]');
     if (bOR)
-      bOR.addEventListener("click", () => {
+      bOR.addEventListener("click", (e) => {
+        e.stopPropagation();
         handlers.onOpenRight && handlers.onOpenRight();
         hideContextMenu();
       });
     const bOW = ctxEl.querySelector('[data-cmd="open-window"]');
     if (bOW)
-      bOW.addEventListener("click", () => {
+      bOW.addEventListener("click", (e) => {
+        e.stopPropagation();
         handlers.onOpenWindow && handlers.onOpenWindow();
         hideContextMenu();
       });
-    
+
     const bDN = ctxEl.querySelector('[data-cmd="delete-note"]');
     if (bDN)
-      bDN.addEventListener("click", async () => {
+      bDN.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onDeleteNote?.();
         hideContextMenu();
       });
-    
+
     // Multi-note handlers
     const bExportNotes = ctxEl.querySelector('[data-cmd="export-notes"]');
     if (bExportNotes)
-      bExportNotes.addEventListener("click", async () => {
+      bExportNotes.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onExportNotes?.();
         hideContextMenu();
       });
-    
+
     const bDeleteNotes = ctxEl.querySelector('[data-cmd="delete-notes"]');
     if (bDeleteNotes)
-      bDeleteNotes.addEventListener("click", async () => {
+      bDeleteNotes.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onDeleteNotes?.();
         hideContextMenu();
       });
-    
+
     const bNSF = ctxEl.querySelector('[data-cmd="new-subfolder"]');
     if (bNSF)
-      bNSF.addEventListener("click", async () => {
+      bNSF.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onNewSubfolder?.();
         hideContextMenu();
       });
-    
+
     const bRF = ctxEl.querySelector('[data-cmd="rename-folder"]');
     if (bRF)
-      bRF.addEventListener("click", async () => {
+      bRF.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onRenameFolder?.();
         hideContextMenu();
       });
@@ -3880,7 +4092,8 @@ window.Storage = Storage;
       if (!handlers.onMoveToRoot) {
         bMTR.style.display = "none";
       } else {
-        bMTR.addEventListener("click", async () => {
+        bMTR.addEventListener("click", async (e) => {
+          e.stopPropagation();
           await handlers.onMoveToRoot?.();
           hideContextMenu();
         });
@@ -3888,43 +4101,50 @@ window.Storage = Storage;
     }
     const bRN = ctxEl.querySelector('[data-cmd="rename-note"]');
     if (bRN)
-      bRN.addEventListener("click", async () => {
+      bRN.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onRenameNote?.();
         hideContextMenu();
       });
     const bCNI = ctxEl.querySelector('[data-cmd="change-note-icon"]');
     if (bCNI)
-      bCNI.addEventListener("click", async () => {
+      bCNI.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onChangeNoteIcon?.();
         hideContextMenu();
       });
     const bDF = ctxEl.querySelector('[data-cmd="delete-folder"]');
     if (bDF)
-      bDF.addEventListener("click", async () => {
+      bDF.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onDeleteFolder?.();
         hideContextMenu();
       });
     const bCFI = ctxEl.querySelector('[data-cmd="change-folder-icon"]');
     if (bCFI)
-      bCFI.addEventListener("click", async () => {
+      bCFI.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onChangeFolderIcon?.();
         hideContextMenu();
       });
     const bCT = ctxEl.querySelector('[data-cmd="close-tab"]');
     if (bCT)
-      bCT.addEventListener("click", async () => {
+      bCT.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onCloseTab?.();
         hideContextMenu();
       });
     const bCOT = ctxEl.querySelector('[data-cmd="close-other-tabs"]');
     if (bCOT)
-      bCOT.addEventListener("click", async () => {
+      bCOT.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onCloseOtherTabs?.();
         hideContextMenu();
       });
     const bCAT = ctxEl.querySelector('[data-cmd="close-all-tabs"]');
     if (bCAT)
-      bCAT.addEventListener("click", async () => {
+      bCAT.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onCloseAllTabs?.();
         hideContextMenu();
       });
@@ -3966,7 +4186,8 @@ window.Storage = Storage;
         document.createTextNode(isPinned ? "Unpin Tab" : "Pin Tab")
       );
 
-      bPT.addEventListener("click", async () => {
+      bPT.addEventListener("click", async (e) => {
+        e.stopPropagation();
         await handlers.onPinTab?.();
         hideContextMenu();
       });
@@ -4231,7 +4452,6 @@ window.Storage = Storage;
     if (rightContent) initializeTables(rightContent);
   }, 500);
   */
-
 
   // Restore previous session if user had notes open
   await restoreSessionState();
@@ -4543,21 +4763,44 @@ window.Storage = Storage;
 
   // Delete selected items function
   async function deleteSelectedItems() {
-    if (state.selectedItems.size === 0) return;
+    console.log(
+      "🗑️ deleteSelectedItems called, selectedItems:",
+      Array.from(state.selectedItems)
+    );
+    if (state.selectedItems.size === 0) {
+      console.log("❌ No items selected");
+      return;
+    }
 
-    const selectedNotes = Array.from(state.selectedItems)
-      .filter((id) => id.startsWith("note-"))
-      .map((id) => id.replace("note-", ""));
-    const selectedFolders = Array.from(state.selectedItems)
-      .filter((id) => id.startsWith("folder-"))
-      .map((id) => id.replace("folder-", ""));
+    // Items are stored as plain IDs, not with prefixes
+    const selectedIds = Array.from(state.selectedItems);
+    console.log("📋 Selected IDs:", selectedIds);
+
+    const selectedNotes = selectedIds.filter((id) => {
+      const note = state.notes.find((n) => n.id === id);
+      return !!note;
+    });
+
+    const selectedFolders = selectedIds.filter((id) => {
+      const folder = state.folders.find((f) => f.id === id);
+      return !!folder;
+    });
 
     const totalCount = selectedNotes.length + selectedFolders.length;
+    console.log(
+      `📊 Total count: ${totalCount} (notes: ${selectedNotes.length}, folders: ${selectedFolders.length})`
+    );
+
     const confirmed = await modalConfirm(
       `Delete ${totalCount} selected item${totalCount > 1 ? "s" : ""}?`
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      console.log("❌ User cancelled deletion");
+      return;
+    }
+
+    console.log("✅ User confirmed deletion");
 
     // Delete selected notes
     selectedNotes.forEach((noteId) => {
@@ -4854,14 +5097,17 @@ window.Storage = Storage;
   window.state = state;
   window.enableSplit = enableSplit;
   window.escapeHtml = escapeHtml; // Make available for two-base.js
-  
+
   // Redirect openInPane to two-base system
-  window.openInPane = function(noteId, side) {
+  window.openInPane = function (noteId, side) {
     console.log(`openInPane redirecting to two-base system: ${noteId}`);
-    if (window.TwoBase && typeof window.TwoBase.openNoteFromWorkspace === 'function') {
+    if (
+      window.TwoBase &&
+      typeof window.TwoBase.openNoteFromWorkspace === "function"
+    ) {
       window.TwoBase.openNoteFromWorkspace(noteId);
     } else {
-      console.warn('TwoBase not available yet, note will open when ready');
+      console.warn("TwoBase not available yet, note will open when ready");
       // Fallback: wait for TwoBase to initialize
       setTimeout(() => {
         if (window.TwoBase) {
@@ -5396,9 +5642,32 @@ window.Storage = Storage;
     }
 
     // Delete key: Delete selected items
-    if (e.key === "Delete" && !isTyping && state.selectedItems.size > 0) {
-      e.preventDefault();
-      deleteSelectedItems();
+    if (e.key === "Delete" && !isTyping) {
+      // Check both selection systems
+      const appSelectedCount = state.selectedItems.size;
+      const twoBaseSelectedCount =
+        typeof window.TwoBase !== "undefined" && window.TwoBase.TwoBaseState
+          ? window.TwoBase.TwoBaseState.selectedItems.length
+          : 0;
+
+      if (appSelectedCount > 0) {
+        e.preventDefault();
+        deleteSelectedItems();
+      } else if (twoBaseSelectedCount > 0) {
+        e.preventDefault();
+        // Use TwoBase deletion
+        if (
+          typeof window.TwoBase !== "undefined" &&
+          window.TwoBase.showDeleteConfirmation
+        ) {
+          window.TwoBase.showDeleteConfirmation(
+            twoBaseSelectedCount,
+            async () => {
+              // TwoBase handles the deletion internally
+            }
+          );
+        }
+      }
     }
   });
 
@@ -5658,7 +5927,7 @@ window.Storage = Storage;
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           // Get the button element (might be clicking on SVG child)
-          const button = e.target.closest('.todo-edit');
+          const button = e.target.closest(".todo-edit");
           const index = parseInt(button.dataset.index);
           editTodo(index);
         });
@@ -5793,30 +6062,33 @@ window.Storage = Storage;
     function editTodo(index) {
       AudioFX.playClick();
       const todoItem = todoList.children[index];
-      const todoTextDiv = todoItem.querySelector('.todo-text');
+      const todoTextDiv = todoItem.querySelector(".todo-text");
       const currentText = todos[index].text;
-      
+
       // Create input field
-      const inputField = document.createElement('input');
-      inputField.type = 'text';
+      const inputField = document.createElement("input");
+      inputField.type = "text";
       inputField.value = currentText;
-      inputField.className = 'todo-edit-input';
-      inputField.style.cssText = 'flex: 1; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 13px; outline: none;';
-      
+      inputField.className = "todo-edit-input";
+      inputField.style.cssText =
+        "flex: 1; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 13px; outline: none;";
+
       // Create save button
-      const saveBtn = document.createElement('button');
-      saveBtn.textContent = '✓';
-      saveBtn.className = 'todo-save';
-      saveBtn.title = 'Save';
-      saveBtn.style.cssText = 'padding: 4px 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;';
-      
+      const saveBtn = document.createElement("button");
+      saveBtn.textContent = "✓";
+      saveBtn.className = "todo-save";
+      saveBtn.title = "Save";
+      saveBtn.style.cssText =
+        "padding: 4px 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;";
+
       // Create cancel button
-      const cancelBtn = document.createElement('button');
-      cancelBtn.textContent = '✕';
-      cancelBtn.className = 'todo-cancel';
-      cancelBtn.title = 'Cancel';
-      cancelBtn.style.cssText = 'padding: 4px 8px; background: var(--panel-2); color: var(--text); border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;';
-      
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "✕";
+      cancelBtn.className = "todo-cancel";
+      cancelBtn.title = "Cancel";
+      cancelBtn.style.cssText =
+        "padding: 4px 8px; background: var(--panel-2); color: var(--text); border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;";
+
       // Save function
       const saveEdit = async () => {
         try {
@@ -5827,38 +6099,38 @@ window.Storage = Storage;
           }
           renderTodos();
         } catch (error) {
-          console.error('Error saving todo edit:', error);
+          console.error("Error saving todo edit:", error);
           // Fallback: just re-render without saving
           renderTodos();
         }
       };
-      
+
       // Cancel function
       const cancelEdit = () => {
         renderTodos();
       };
-      
+
       // Event listeners
-      saveBtn.addEventListener('click', saveEdit);
-      cancelBtn.addEventListener('click', cancelEdit);
-      inputField.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+      saveBtn.addEventListener("click", saveEdit);
+      cancelBtn.addEventListener("click", cancelEdit);
+      inputField.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
           e.preventDefault();
           saveEdit();
-        } else if (e.key === 'Escape') {
+        } else if (e.key === "Escape") {
           cancelEdit();
         }
       });
-      
+
       // Replace text div with input and buttons
       todoTextDiv.replaceWith(inputField);
-      
-      const editBtn = todoItem.querySelector('.todo-edit');
-      const deleteBtn = todoItem.querySelector('.todo-delete');
-      
+
+      const editBtn = todoItem.querySelector(".todo-edit");
+      const deleteBtn = todoItem.querySelector(".todo-delete");
+
       if (editBtn) editBtn.replaceWith(saveBtn);
       if (deleteBtn) deleteBtn.replaceWith(cancelBtn);
-      
+
       // Focus the input
       inputField.focus();
       inputField.select();

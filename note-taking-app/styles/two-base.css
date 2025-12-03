@@ -52,7 +52,8 @@
   color: var(--text);
 }
 
-.breadcrumb-actions .icon-btn.active {
+.breadcrumb-actions .icon-btn.active,
+.breadcrumb-actions .icon-btn.ctrl-active {
   background: var(--accent);
   color: #fff;
 }
