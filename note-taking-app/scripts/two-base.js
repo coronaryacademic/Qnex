@@ -2230,6 +2230,19 @@
     document.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && !ctrlPressed) {
         ctrlPressed = true;
+        
+        // Close context menu when Ctrl is pressed (without clearing active element)
+        const contextMenu = document.querySelector(".ctx-menu");
+        if (contextMenu) {
+          contextMenu.remove();
+        }
+        
+        // Clear the active element highlight
+        if (window.ctxActiveElement) {
+          window.ctxActiveElement.classList.remove("context-active");
+          window.ctxActiveElement = null;
+        }
+        
         // Activate multi-select button visual state AND enable multi-select mode
         if (multiSelectBtn) {
           multiSelectBtn.classList.add("ctrl-active");
