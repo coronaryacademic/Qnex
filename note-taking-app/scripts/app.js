@@ -1174,24 +1174,26 @@ window.Storage = Storage;
     console.log("⌨️ modalPrompt called with:", { title, placeholder, value });
     return new Promise((res) => {
       // Close all context menus when opening a dialog
-      const contextMenus = document.querySelectorAll('[role="menu"], .context-menu, .editor-menu');
-      contextMenus.forEach(menu => {
+      const contextMenus = document.querySelectorAll(
+        '[role="menu"], .context-menu, .editor-menu'
+      );
+      contextMenus.forEach((menu) => {
         if (menu.classList) {
-          menu.classList.remove('open');
+          menu.classList.remove("open");
         }
         menu.remove?.();
       });
-      
+
       // Close settings menu if open
-      const settingsMenu = document.getElementById('settingsMenu');
-      if (settingsMenu && settingsMenu.classList.contains('open')) {
-        settingsMenu.classList.remove('open');
+      const settingsMenu = document.getElementById("settingsMenu");
+      if (settingsMenu && settingsMenu.classList.contains("open")) {
+        settingsMenu.classList.remove("open");
       }
-      
+
       // Close tools menu if open
-      const toolsMenu = document.getElementById('toolsMenu');
-      if (toolsMenu && toolsMenu.classList.contains('open')) {
-        toolsMenu.classList.remove('open');
+      const toolsMenu = document.getElementById("toolsMenu");
+      if (toolsMenu && toolsMenu.classList.contains("open")) {
+        toolsMenu.classList.remove("open");
       }
 
       const overlay = document.createElement("div");
@@ -2856,7 +2858,7 @@ window.Storage = Storage;
     state.notes.forEach((note) => {
       // Prevent duplicates if state.notes has duplicates
       if (seenIds.has(`note-${note.id}`)) return;
-      
+
       const matches = [];
       const title = note.title || "Untitled";
       const content = note.contentHtml || note.content || "";
@@ -2925,27 +2927,37 @@ window.Storage = Storage;
 
       // Prevent duplicates if state.folders has duplicates
       if (seenIds.has(`folder-${folder.id}`)) {
-        console.log(`[SEARCH] Skipping duplicate folder: ${folder.name} (${folder.id})`);
+        console.log(
+          `[SEARCH] Skipping duplicate folder: ${folder.name} (${folder.id})`
+        );
         return;
       }
 
       if (folder.name.toLowerCase().includes(lowerQuery)) {
-        console.log(`[SEARCH] Adding folder result: ${folder.name} (${folder.id})`);
-        
+        console.log(
+          `[SEARCH] Adding folder result: ${folder.name} (${folder.id})`
+        );
+
         // Check if we already have a folder with this name
-        const existingFolder = results.find(r => r.folder && r.folder.name === folder.name);
+        const existingFolder = results.find(
+          (r) => r.folder && r.folder.name === folder.name
+        );
         if (existingFolder) {
-          console.warn(`[SEARCH] WARNING: Found duplicate folder name "${folder.name}" with different IDs: ${existingFolder.folder.id} and ${folder.id}`);
+          console.warn(
+            `[SEARCH] WARNING: Found duplicate folder name "${folder.name}" with different IDs: ${existingFolder.folder.id} and ${folder.id}`
+          );
         }
-        
+
         seenIds.add(`folder-${folder.id}`);
         results.push({
           folder,
-          matches: [{
-            type: "FOLDER_NAME",
-            text: folder.name,
-            highlight: highlightText(folder.name, query)
-          }]
+          matches: [
+            {
+              type: "FOLDER_NAME",
+              text: folder.name,
+              highlight: highlightText(folder.name, query),
+            },
+          ],
         });
       }
     });
@@ -3050,7 +3062,6 @@ window.Storage = Storage;
               openInPane(note.id, "left");
             }
           });
-
         } else if (folder) {
           // Folder Result
           const header = document.createElement("div");
@@ -3072,12 +3083,12 @@ window.Storage = Storage;
             let currentId = folder.id;
             while (currentId) {
               state.foldersOpen.add(currentId);
-              const f = state.folders.find(x => x.id === currentId);
+              const f = state.folders.find((x) => x.id === currentId);
               currentId = f ? f.parentId : null;
             }
             saveFoldersOpen();
             renderSidebar();
-            
+
             // Navigate in base layer
             if (window.TwoBase && window.TwoBase.renderWorkspaceSplit) {
               window.TwoBase.renderWorkspaceSplit(folder.id);
@@ -3085,9 +3096,14 @@ window.Storage = Storage;
 
             // Scroll to folder
             setTimeout(() => {
-              const folderEl = document.querySelector(`.folder-item[data-folder-id="${folder.id}"]`);
+              const folderEl = document.querySelector(
+                `.folder-item[data-folder-id="${folder.id}"]`
+              );
               if (folderEl) {
-                folderEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                folderEl.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
                 state.selectedItems.clear();
                 state.selectedItems.add(`folder-${folder.id}`);
                 renderSidebar();
@@ -6257,23 +6273,22 @@ window.Storage = Storage;
     loadTodos();
   }
 
-  // Sidebar resizer with smart collapse
+  // Sidebar resizer - drag to resize between 280px (min) and 900px (max)
   {
     const sidebarResizer = document.getElementById("sidebarResizer");
     const sidebar = document.getElementById("sidebar");
-    let resizing = false;
+    const MIN_WIDTH = 280;
+    const MAX_WIDTH = 900;
+    let isResizing = false;
     let startX = 0;
     let startWidth = 0;
-    const collapseThreshold = 100;
-    const collapsedWidth = 40;
-    const minWidth = 150;
-    const maxWidth = 600;
 
     const onMouseDown = (e) => {
-      resizing = true;
+      isResizing = true;
       startX = e.clientX;
       startWidth = sidebar.offsetWidth;
       sidebarResizer.classList.add("resizing");
+      sidebar.classList.add("resizing");
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
       document.addEventListener("mousemove", onMouseMove);
@@ -6282,43 +6297,28 @@ window.Storage = Storage;
     };
 
     const onMouseMove = (e) => {
-      if (!resizing) return;
+      if (!isResizing) return;
       const deltaX = e.clientX - startX;
-      let newWidth = startWidth + deltaX;
-
-      // If dragging to collapse
-      if (newWidth < collapseThreshold) {
-        sidebar.classList.add("collapsed");
-        sidebar.classList.remove("narrow");
-      } else {
-        // Normal resize range
-        newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
-        sidebar.style.width = newWidth + "px";
-        sidebar.classList.remove("collapsed");
-
-        // Add narrow class when width is between minWidth and 150px
-        if (newWidth <= 150) {
-          sidebar.classList.add("narrow");
-        } else {
-          sidebar.classList.remove("narrow");
-        }
-      }
+      const newWidth = Math.max(
+        MIN_WIDTH,
+        Math.min(MAX_WIDTH, startWidth + deltaX)
+      );
+      sidebar.style.width = newWidth + "px";
     };
 
     const onMouseUp = () => {
-      if (!resizing) return;
-      resizing = false;
+      if (!isResizing) return;
+      isResizing = false;
       sidebarResizer.classList.remove("resizing");
+      sidebar.classList.remove("resizing");
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
 
-      // Save sidebar state
-      const isCollapsed = sidebar.classList.contains("collapsed");
-      const width = parseInt(sidebar.style.width) || 280;
-      state.settings.sidebarWidth = isCollapsed ? 280 : width;
-      state.settings.sidebarCollapsed = isCollapsed;
+      // Save sidebar width
+      const width = parseInt(sidebar.style.width) || MIN_WIDTH;
+      state.settings.sidebarWidth = width;
       Storage.saveSettings(state.settings);
     };
 
