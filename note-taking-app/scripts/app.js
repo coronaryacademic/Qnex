@@ -718,6 +718,11 @@ window.Storage = Storage;
     const onNoteBtn = target.closest("button[data-note-id], .folder-note-item");
     const onFolderRow = target.closest(".folder-item, .folder-header");
     if (inSidebar && !onNoteBtn && !onFolderRow) {
+      // Clear active element if exists when clicking empty sidebar space
+      if (window.ctxActiveElement) {
+        window.ctxActiveElement.classList.remove("context-active");
+        window.ctxActiveElement = null;
+      }
       return showContextMenu(
         e.clientX,
         e.clientY,
@@ -754,6 +759,86 @@ window.Storage = Storage;
             saveFolders();
             renderSidebar();
           },
+          onImportRoot: async () => {
+            // Create file input
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "application/json";
+            input.onchange = async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+
+              try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                if (data.type === "folder") {
+                  // Import the folder as a new root folder
+                  const newFolderId = uid();
+                  const idMap = new Map();
+                  idMap.set(data.folder.id, newFolderId);
+
+                  // Create the main folder
+                  const newFolder = {
+                    ...data.folder,
+                    id: newFolderId,
+                    parentId: null, // Root level
+                  };
+                  state.folders.push(newFolder);
+
+                  // Import subfolders with new IDs
+                  const importedSubfolders = data.subfolders || [];
+                  importedSubfolders.forEach((subfolder) => {
+                    const newSubId = uid();
+                    idMap.set(subfolder.id, newSubId);
+                    const newSub = {
+                      ...subfolder,
+                      id: newSubId,
+                      parentId: idMap.get(subfolder.parentId) || newFolderId,
+                    };
+                    state.folders.push(newSub);
+                  });
+
+                  // Import notes with new IDs
+                  const importedNotes = data.notes || [];
+                  importedNotes.forEach((note) => {
+                    const newNote = {
+                      ...note,
+                      id: uid(),
+                      folderId: idMap.get(note.folderId) || newFolderId,
+                    };
+                    state.notes.push(newNote);
+                  });
+
+                  state.foldersOpen.add(newFolderId); // Auto-expand
+                  await saveNotes();
+                  await saveFolders();
+                  renderSidebar();
+
+                  console.log(`Imported folder "${newFolder.name}" to root`);
+                } else if (data.type === "note") {
+                  // Import single note to uncategorized
+                  const newNote = {
+                    ...data.note,
+                    id: uid(),
+                    folderId: null, // Uncategorized
+                  };
+                  state.notes.push(newNote);
+                  await saveNotes();
+                  renderSidebar();
+
+                  console.log(`Imported note "${newNote.title}" to uncategorized`);
+                } else {
+                  alert("Unknown import format");
+                }
+              } catch (error) {
+                console.error("Error importing:", error);
+                alert("Error importing file. Please check the file format.");
+              }
+            };
+
+            input.click();
+          },
         },
         "sidebar"
       );
@@ -762,6 +847,12 @@ window.Storage = Storage;
     const noteBtn = target.closest("button[data-note-id], .folder-note-item");
     if (noteBtn) {
       const id = noteBtn.dataset.noteId;
+
+      // Clear old active element first
+      if (window.ctxActiveElement && window.ctxActiveElement !== noteBtn) {
+        window.ctxActiveElement.classList.remove("context-active");
+      }
+
       window.ctxActiveElement = noteBtn;
       noteBtn.classList.add("context-active");
 
@@ -778,7 +869,9 @@ window.Storage = Storage;
           // Check if this ID is a folder ID (starts with "folder-" or exists in folders array)
           return (
             itemId.startsWith("folder-") ||
-            state.folders.some((f) => f.id === itemId || `folder-${f.id}` === itemId)
+            state.folders.some(
+              (f) => f.id === itemId || `folder-${f.id}` === itemId
+            )
           );
         });
 
@@ -802,63 +895,63 @@ window.Storage = Storage;
             const selectedIds = Array.from(state.selectedItems);
             const count = selectedIds.length;
 
-              // Use custom delete dialog from two-base.js
-              if (
-                typeof window.TwoBase !== "undefined" &&
-                window.TwoBase.showDeleteConfirmation
-              ) {
-                window.TwoBase.showDeleteConfirmation(count, async () => {
-                  // Delete all selected notes
-                  for (const noteId of selectedIds) {
-                    const idx = state.notes.findIndex((n) => n.id === noteId);
-                    if (idx >= 0) {
-                      const [note] = state.notes.splice(idx, 1);
-                      const deletedNote = {
-                        ...note,
-                        deletedAt: new Date().toISOString(),
-                      };
-                      state.trash.push(deletedNote);
+            // Use custom delete dialog from two-base.js
+            if (
+              typeof window.TwoBase !== "undefined" &&
+              window.TwoBase.showDeleteConfirmation
+            ) {
+              window.TwoBase.showDeleteConfirmation(count, async () => {
+                // Delete all selected notes
+                for (const noteId of selectedIds) {
+                  const idx = state.notes.findIndex((n) => n.id === noteId);
+                  if (idx >= 0) {
+                    const [note] = state.notes.splice(idx, 1);
+                    const deletedNote = {
+                      ...note,
+                      deletedAt: new Date().toISOString(),
+                    };
+                    state.trash.push(deletedNote);
 
-                      // Delete from backend
-                      if (Storage.useFileSystem) {
-                        try {
-                          await fileSystemService.deleteNoteFromCollection(
-                            noteId
-                          );
-                        } catch (error) {
-                          console.error(
-                            "Error deleting note from backend:",
-                            noteId,
-                            error
-                          );
-                        }
-                      }
-
-                      // Close tabs and windows
+                    // Delete from backend
+                    if (Storage.useFileSystem) {
                       try {
-                        closeTab("left", noteId);
-                        closeTab("right", noteId);
-                        closeWindow(noteId);
+                        await fileSystemService.deleteNoteFromCollection(
+                          noteId
+                        );
                       } catch (error) {
-                        console.warn(
-                          "Error closing tabs for note:",
+                        console.error(
+                          "Error deleting note from backend:",
                           noteId,
                           error
                         );
                       }
                     }
+
+                    // Close tabs and windows
+                    try {
+                      closeTab("left", noteId);
+                      closeTab("right", noteId);
+                      closeWindow(noteId);
+                    } catch (error) {
+                      console.warn(
+                        "Error closing tabs for note:",
+                        noteId,
+                        error
+                      );
+                    }
                   }
+                }
 
-                  // Clear selection
-                  state.selectedItems.clear();
+                // Clear selection
+                state.selectedItems.clear();
 
-                  saveNotes();
-                  Storage.saveTrash(state.trash);
-                  renderSidebar();
-                }); // Close showDeleteConfirmation callback
-              }
-            },
-          };
+                saveNotes();
+                Storage.saveTrash(state.trash);
+                renderSidebar();
+              }); // Close showDeleteConfirmation callback
+            }
+          },
+        };
 
         // Only add export handler if NO folders are selected
         if (!hasFolder) {
@@ -896,12 +989,7 @@ window.Storage = Storage;
         }
 
         // Show multi-select context menu
-        return showContextMenu(
-          e.clientX,
-          e.clientY,
-          handlers,
-          "multi-note"
-        );
+        return showContextMenu(e.clientX, e.clientY, handlers, "multi-note");
       } else {
         // Single note context menu: all options
         return showContextMenu(
@@ -937,6 +1025,26 @@ window.Storage = Storage;
               renderSidebar();
               refreshOpenTabs(id);
               refreshWindowTitle(id);
+            },
+            onExportNote: async () => {
+              const note = getNote(id);
+              if (!note) return;
+
+              const exportData = {
+                type: "note",
+                note: note,
+                exportedAt: new Date().toISOString(),
+                version: "1.0",
+              };
+
+              const json = JSON.stringify(exportData, null, 2);
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${note.title || "note"}-${id}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
             },
             onDeleteNote: async () => {
               if (
@@ -983,6 +1091,12 @@ window.Storage = Storage;
     const folderRow = target.closest(".folder-item, .folder-header");
     if (folderRow && folderRow.dataset.folderId !== undefined) {
       const fid = folderRow.dataset.folderId;
+
+      // Clear old active element first
+      if (window.ctxActiveElement && window.ctxActiveElement !== folderRow) {
+        window.ctxActiveElement.classList.remove("context-active");
+      }
+
       window.ctxActiveElement = folderRow;
       folderRow.classList.add("context-active");
       const isUncat = fid === "";
@@ -1020,6 +1134,162 @@ window.Storage = Storage;
           folder.icon = chosen;
           await saveFolders();
           renderSidebar();
+        };
+        handlers.onExportFolder = async () => {
+          const folder = state.folders.find((f) => f.id === fid);
+          if (!folder) return;
+
+          // Get all notes in this folder
+          const notesInFolder = state.notes.filter((n) => n.folderId === fid);
+
+          // Get subfolders recursively
+          const getSubfolders = (parentId) => {
+            const subs = state.folders.filter((f) => f.parentId === parentId);
+            let allSubs = [...subs];
+            subs.forEach((sub) => {
+              allSubs = allSubs.concat(getSubfolders(sub.id));
+            });
+            return allSubs;
+          };
+          const subfolders = getSubfolders(fid);
+
+          // Get notes in subfolders
+          const subfolderIds = subfolders.map((f) => f.id);
+          const notesInSubfolders = state.notes.filter((n) =>
+            subfolderIds.includes(n.folderId)
+          );
+
+          const exportData = {
+            type: "folder",
+            folder: folder,
+            notes: [...notesInFolder, ...notesInSubfolders],
+            subfolders: subfolders,
+            exportedAt: new Date().toISOString(),
+            version: "1.0",
+          };
+
+          const json = JSON.stringify(exportData, null, 2);
+          const blob = new Blob([json], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${folder.name}-folder-${fid}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        handlers.onImportToFolder = async () => {
+          const folder = state.folders.find((f) => f.id === fid);
+          if (!folder) return;
+
+          // Create file input
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "application/json";
+          input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+              const text = await file.text();
+              const data = JSON.parse(text);
+
+              // Handle different import formats
+              if (data.type === "folder") {
+                // Import the folder as a subfolder
+                const newFolderId = uid();
+                const idMap = new Map();
+                idMap.set(data.folder.id, newFolderId);
+
+                // Create the main imported folder as a subfolder
+                const newFolder = {
+                  ...data.folder,
+                  id: newFolderId,
+                  parentId: fid, // Make it a subfolder of the target folder
+                };
+                state.folders.push(newFolder);
+
+                // Import subfolders with new IDs
+                const importedSubfolders = data.subfolders || [];
+                importedSubfolders.forEach((subfolder) => {
+                  const newSubId = uid();
+                  idMap.set(subfolder.id, newSubId);
+                  const newSub = {
+                    ...subfolder,
+                    id: newSubId,
+                    parentId: idMap.get(subfolder.parentId) || newFolderId,
+                  };
+                  state.folders.push(newSub);
+                });
+
+                // Import notes with new IDs
+                const importedNotes = data.notes || [];
+                importedNotes.forEach((note) => {
+                  const newNote = {
+                    ...note,
+                    id: uid(),
+                    folderId: idMap.get(note.folderId) || newFolderId,
+                  };
+                  state.notes.push(newNote);
+                });
+
+                state.foldersOpen.add(fid); // Auto-expand parent folder
+                state.foldersOpen.add(newFolderId); // Auto-expand imported folder
+
+                await saveNotes();
+                await saveFolders();
+                renderSidebar();
+
+                // Show success message
+                const message = `Imported ${importedNotes.length} note(s) and ${importedSubfolders.length} folder(s) to "${folder.name}"`;
+                console.log(message);
+                // You could add a toast notification here if you have one
+              } else if (data.type === "note") {
+                // Import single note
+                const newNote = {
+                  ...data.note,
+                  id: uid(),
+                  folderId: fid,
+                };
+
+                state.notes.push(newNote);
+                await saveNotes();
+                renderSidebar();
+
+                console.log(
+                  `Imported legacy note "${newNote.title}" to "${folder.name}"`
+                );
+              } else if (data.title && data.content && !data.type) {
+                // Plain note format (direct note object)
+                const newNote = {
+                  ...data,
+                  id: uid(),
+                  folderId: fid,
+                  createdAt: data.createdAt || new Date().toISOString(),
+                  updatedAt: data.updatedAt || new Date().toISOString(),
+                };
+
+                state.notes.push(newNote);
+                await saveNotes();
+                renderSidebar();
+
+                console.log(
+                  `Imported plain note "${newNote.title}" to "${folder.name}"`
+                );
+              } else {
+                // Handle unknown or missing format
+                const errorMessage = data.type
+                  ? `Unknown export format: "${data.type}". Expected "folder" or "note".`
+                  : "Missing export format type. Expected 'folder' or 'note', or a plain note object with 'title' and 'content' fields.";
+                console.error(errorMessage);
+                alert(errorMessage);
+              }
+            } catch (error) {
+              console.error("Error importing file:", error);
+              alert("Error importing file. Please check the file format.");
+            }
+          };
+
+          input.click();
         };
 
         // Add Move to Root option if folder is nested
@@ -1120,6 +1390,7 @@ window.Storage = Storage;
       }
       return showContextMenu(e.clientX, e.clientY, handlers, "folder");
     }
+    
     // Editor selection - context menu disabled
     const content = target.closest(".content.editable");
     if (content) {
@@ -1127,6 +1398,7 @@ window.Storage = Storage;
       return;
     }
   });
+
 
   // Removed global selectionchange highlighter; we highlight on mouseup in editor only.
 
@@ -4188,6 +4460,13 @@ window.Storage = Storage;
         hideContextMenu();
         await handlers.onNewFolder?.();
       });
+    const bIR = ctxEl.querySelector('[data-cmd="import-root"]');
+    if (bIR)
+      bIR.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onImportRoot?.();
+      });
     const bOL = ctxEl.querySelector('[data-cmd="open-left"]');
     if (bOL)
       bOL.addEventListener("click", (e) => {
@@ -4241,18 +4520,21 @@ window.Storage = Storage;
           (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
         );
         const textNode = textNodes[textNodes.length - 1]; // Get the last text node
-        
+
         if (textNode) {
           if (handlers.selectionType === "folders") {
-            textNode.textContent = "\n            Delete Selected Folders\n          ";
+            textNode.textContent =
+              "\n            Delete Selected Folders\n          ";
           } else if (handlers.selectionType === "notes") {
-            textNode.textContent = "\n            Delete Selected Notes\n          ";
+            textNode.textContent =
+              "\n            Delete Selected Notes\n          ";
           } else if (handlers.selectionType === "mixed") {
-            textNode.textContent = "\n            Delete Selected Items\n          ";
+            textNode.textContent =
+              "\n            Delete Selected Items\n          ";
           }
         }
       }
-      
+
       bDeleteNotes.addEventListener("click", async (e) => {
         e.stopPropagation();
         hideContextMenu();
@@ -4294,6 +4576,13 @@ window.Storage = Storage;
         hideContextMenu();
         await handlers.onRenameNote?.();
       });
+    const bEN = ctxEl.querySelector('[data-cmd="export-note"]');
+    if (bEN)
+      bEN.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onExportNote?.();
+      });
     const bCNI = ctxEl.querySelector('[data-cmd="change-note-icon"]');
     if (bCNI)
       bCNI.addEventListener("click", async (e) => {
@@ -4314,6 +4603,20 @@ window.Storage = Storage;
         e.stopPropagation();
         hideContextMenu();
         await handlers.onChangeFolderIcon?.();
+      });
+    const bEF = ctxEl.querySelector('[data-cmd="export-folder"]');
+    if (bEF)
+      bEF.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onExportFolder?.();
+      });
+    const bITF = ctxEl.querySelector('[data-cmd="import-to-folder"]');
+    if (bITF)
+      bITF.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onImportToFolder?.();
       });
     const bCT = ctxEl.querySelector('[data-cmd="close-tab"]');
     if (bCT)

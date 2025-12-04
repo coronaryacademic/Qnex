@@ -570,6 +570,11 @@
     // Add active state to item
     const item = event.target.closest(".workspace-item");
     if (item) {
+      // Clear old active element first
+      if (window.ctxActiveElement && window.ctxActiveElement !== item) {
+        window.ctxActiveElement.classList.remove("context-active");
+      }
+
       window.ctxActiveElement = item;
       item.classList.add("context-active");
     }
@@ -837,6 +842,23 @@
             }
             renderWorkspaceSplit(TwoBaseState.currentFolder);
           },
+          onExportNote: async () => {
+            const exportData = {
+              type: "note",
+              note: note,
+              exportedAt: new Date().toISOString(),
+              version: "1.0",
+            };
+
+            const json = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${note.title || "note"}-${itemId}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          },
           onDeleteNote: async () => {
             console.log(
               "[BASE LAYER] Single note delete triggered for:",
@@ -947,6 +969,215 @@
           window.saveFolders();
         }
         renderWorkspaceSplit(TwoBaseState.currentFolder);
+      };
+
+      handlers.onExportFolder = async () => {
+        // Get all notes in this folder
+        const notesInFolder = state.notes.filter((n) => n.folderId === itemId);
+
+        // Get subfolders recursively
+        const getSubfolders = (parentId) => {
+          const subs = state.folders.filter((f) => f.parentId === parentId);
+          let allSubs = [...subs];
+          subs.forEach((sub) => {
+            allSubs = allSubs.concat(getSubfolders(sub.id));
+          });
+          return allSubs;
+        };
+        const subfolders = getSubfolders(itemId);
+
+        // Get notes in subfolders
+        const subfolderIds = subfolders.map((f) => f.id);
+        const notesInSubfolders = state.notes.filter((n) =>
+          subfolderIds.includes(n.folderId)
+        );
+
+        const exportData = {
+          type: "folder",
+          folder: folder,
+          notes: [...notesInFolder, ...notesInSubfolders],
+          subfolders: subfolders,
+          exportedAt: new Date().toISOString(),
+          version: "1.0",
+        };
+
+        const json = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${folder.name}-folder-${itemId}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      handlers.onImportToFolder = async () => {
+        // Create file input
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "application/json";
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            if (data.type === "folder") {
+              // Import folder structure and notes
+              const importedNotes = data.notes || [];
+              const importedSubfolders = data.subfolders || [];
+
+              // Create new IDs for imported items to avoid conflicts
+              const idMap = new Map();
+
+              // Import subfolders with new IDs
+              const newSubfolders = importedSubfolders.map((subfolder) => {
+                const newId =
+                  typeof window.uid === "function"
+                    ? window.uid()
+                    : Date.now().toString();
+                idMap.set(subfolder.id, newId);
+                return {
+                  ...subfolder,
+                  id: newId,
+                  parentId:
+                    subfolder.parentId === data.folder.id
+                      ? itemId
+                      : idMap.get(subfolder.parentId) || itemId,
+                };
+              });
+
+              // Import notes with new IDs and updated folder references
+              const newNotes = importedNotes.map((note) => {
+                const newId =
+                  typeof window.uid === "function"
+                    ? window.uid()
+                    : Date.now().toString();
+                return {
+                  ...note,
+                  id: newId,
+                  folderId:
+                    note.folderId === data.folder.id
+                      ? itemId
+                      : idMap.get(note.folderId) || itemId,
+                };
+              });
+
+              // Add to state
+              state.folders.push(...newSubfolders);
+              state.notes.push(...newNotes);
+
+              // Save changes
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+              if (typeof window.saveFolders === "function") {
+                window.saveFolders();
+              }
+
+              // Re-render workspace and sidebar
+              if (typeof window.renderSidebar === "function") {
+                window.renderSidebar();
+              }
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+
+              console.log(
+                `Imported ${newNotes.length} note(s) and ${newSubfolders.length} folder(s) to "${folder.name}"`
+              );
+            } else if (data.type === "note") {
+              // Import single note
+              const newNote = {
+                ...data.note,
+                id:
+                  typeof window.uid === "function"
+                    ? window.uid()
+                    : Date.now().toString(),
+                folderId: itemId,
+              };
+
+              state.notes.push(newNote);
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+
+              // Re-render workspace and sidebar
+              if (typeof window.renderSidebar === "function") {
+                window.renderSidebar();
+              }
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+
+              console.log(
+                `Imported note "${newNote.title}" to "${folder.name}"`
+              );
+            } else if (data.note && !data.type) {
+              // Legacy format: plain note object without wrapper
+              const newNote = {
+                ...data.note,
+                id:
+                  typeof window.uid === "function"
+                    ? window.uid()
+                    : Date.now().toString(),
+                folderId: itemId,
+              };
+
+              state.notes.push(newNote);
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+
+              // Re-render workspace and sidebar
+              if (typeof window.renderSidebar === "function") {
+                window.renderSidebar();
+              }
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+
+              console.log(
+                `Imported legacy note "${newNote.title}" to "${folder.name}"`
+              );
+            } else if (data.title && data.content && !data.type) {
+              // Plain note format (direct note object)
+              const newNote = {
+                ...data,
+                id:
+                  typeof window.uid === "function"
+                    ? window.uid()
+                    : Date.now().toString(),
+                folderId: itemId,
+                createdAt: data.createdAt || new Date().toISOString(),
+                updatedAt: data.updatedAt || new Date().toISOString(),
+              };
+
+              state.notes.push(newNote);
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+
+              // Re-render workspace and sidebar
+              if (typeof window.renderSidebar === "function") {
+                window.renderSidebar();
+              }
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+
+              console.log(
+                `Imported plain note "${newNote.title}" to "${folder.name}"`
+              );
+            } else {
+              // Handle unknown or missing format
+              const errorMessage = data.type
+                ? `Unknown export format: "${data.type}". Expected "folder" or "note".`
+                : "Missing export format type. Expected 'folder' or 'note', or a plain note object with 'title' and 'content' fields.";
+              console.error(errorMessage);
+              alert(errorMessage);
+            }
+          } catch (error) {
+            console.error("Error importing file:", error);
+            alert("Error importing file. Please check the file format.");
+          }
+        };
+
+        input.click();
       };
 
       if (folder.parentId) {
@@ -2864,12 +3095,18 @@
     const notesList = document.createElement("div");
     notesList.className = "folder-notes-list";
 
+    // Check if folder has subfolders
+    const hasSubfolders = window.state && window.state.folders 
+      ? window.state.folders.some(f => f.parentId === folder.id)
+      : false;
+
     if (notes.length > 0) {
       notes.forEach((note) => {
         const noteItem = createFolderNoteItem(note, folder.id, depth + 1);
         notesList.appendChild(noteItem);
       });
-    } else {
+    } else if (!hasSubfolders) {
+      // Only show empty message if there are no notes AND no subfolders
       const emptyMsg = document.createElement("div");
       emptyMsg.className = "folder-empty-message";
       emptyMsg.textContent = "No notes in this folder";
