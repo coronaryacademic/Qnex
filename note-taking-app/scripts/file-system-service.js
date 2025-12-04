@@ -33,7 +33,11 @@ class FileSystemService {
           return await response.text();
         }
       } catch (error) {
-        console.error(`Request attempt ${attempt} to ${this.baseUrl} failed:`, error);
+        // Don't log 404 errors (resource not found) - they're expected for deleted items
+        const is404 = error.message?.includes('404') || error.message?.includes('Not Found');
+        if (!is404) {
+          console.error(`Request attempt ${attempt} to ${this.baseUrl} failed:`, error);
+        }
         
         if (attempt === this.retryAttempts) {
           // If primary URL fails, try fallback URL (standalone server port 3001)
@@ -107,7 +111,11 @@ class FileSystemService {
       });
       return response;
     } catch (error) {
-      console.error('Error deleting note:', error);
+      // Don't log 404 errors (note already deleted or doesn't exist)
+      const is404 = error.message?.includes('404') || error.message?.includes('Not Found');
+      if (!is404) {
+        console.error('Error deleting note:', error);
+      }
       throw error;
     }
   }

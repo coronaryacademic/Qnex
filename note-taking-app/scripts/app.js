@@ -322,6 +322,30 @@ window.Storage = Storage;
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
+    // Add Enter key support - trigger the last button (primary action)
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        // Click the last button (typically the confirm/primary button)
+        const lastButton = buttonsContainer.lastElementChild;
+        if (lastButton) {
+          lastButton.click();
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        overlay.remove();
+        document.removeEventListener("keydown", handleKeyDown);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Clean up event listener when modal is removed
+    const originalRemove = overlay.remove.bind(overlay);
+    overlay.remove = () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      originalRemove();
+    };
+
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) overlay.remove();
     });
@@ -1370,11 +1394,21 @@ window.Storage = Storage;
               await Storage.deleteFolderFromFileSystem(fid);
               // Delete all notes in the folder from File System
               for (const note of notesInFolder) {
-                await Storage.deleteNoteFromFileSystem(note.id);
+                try {
+                  await Storage.deleteNoteFromFileSystem(note.id);
+                } catch (noteError) {
+                  // Ignore 404 errors (note doesn't exist in backend)
+                  if (!noteError.message?.includes('404') && !noteError.message?.includes('Not Found')) {
+                    console.warn(`Error deleting note ${note.id}:`, noteError);
+                  }
+                }
               }
               await Storage.saveTrash(state.trash);
             } catch (error) {
-              console.error("File system sync error:", error);
+              // Ignore 404 errors (folder doesn't exist in backend)
+              if (!error.message?.includes('404') && !error.message?.includes('Not Found')) {
+                console.error("File system sync error:", error);
+              }
             }
           }
 
