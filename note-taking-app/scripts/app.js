@@ -6283,7 +6283,15 @@ window.Storage = Storage;
     let startX = 0;
     let startWidth = 0;
 
+    const isAppFullscreen = () => {
+      return document.body.classList.contains("fullscreen");
+    };
+
     const onMouseDown = (e) => {
+      if (isAppFullscreen()) {
+        e.preventDefault();
+        return;
+      }
       isResizing = true;
       startX = e.clientX;
       startWidth = sidebar.offsetWidth;

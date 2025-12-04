@@ -1495,7 +1495,7 @@ textarea {
   right: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
+  width: 2px;
   cursor: col-resize;
   background: transparent;
   transition: background 0.2s;
@@ -1508,6 +1508,10 @@ textarea {
 
 .sidebar-resizer.resizing {
   background: var(--accent);
+}
+
+body.fullscreen .sidebar-resizer {
+  display: none;
 }
 
 .main {

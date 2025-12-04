@@ -134,8 +134,13 @@ document.addEventListener("DOMContentLoaded", () => {
 // Toggle fullscreen mode
 function toggleFullscreen() {
   isFullscreen = !isFullscreen;
+  const sidebar = document.getElementById("sidebar");
   if (isFullscreen) {
     document.body.classList.add("fullscreen");
+    // Reset sidebar to 280px when entering fullscreen
+    if (sidebar) {
+      sidebar.style.width = "280px";
+    }
     createHoverZones();
   } else {
     document.body.classList.remove("fullscreen");
@@ -1466,9 +1471,11 @@ async function initializeThemeCarousel() {
       savedTheme = "dark";
     }
   }
-  
+
   // Find theme index by name (case-insensitive)
-  currentThemeIndex = themes.findIndex(t => t.name.toLowerCase() === savedTheme.toLowerCase());
+  currentThemeIndex = themes.findIndex(
+    (t) => t.name.toLowerCase() === savedTheme.toLowerCase()
+  );
   if (currentThemeIndex === -1) currentThemeIndex = 0;
 
   updateThemeDisplay();
@@ -1499,10 +1506,7 @@ async function initializeThemeCarousel() {
     const themeClass = theme.class;
 
     // Remove all theme classes
-    document.body.classList.remove(
-      "theme-light",
-      "theme-classic"
-    );
+    document.body.classList.remove("theme-light", "theme-classic");
 
     // Apply new theme (dark is default, no class needed)
     if (themeClass) {
