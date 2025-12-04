@@ -190,6 +190,16 @@
   color: white;
 }
 
+.workspace-item.context-active {
+  background: var(--panel-hover);
+  border: 1px solid var(--accent);
+}
+
+.workspace-item.context-active .workspace-item-icon {
+  background: var(--accent);
+  color: white;
+}
+
 /* Drag-over state for workspace items */
 .workspace-item.drag-over {
   background: rgba(var(--accent-rgb), 0.1);
@@ -204,8 +214,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* NOTE BASE: Fullscreen Overlay */
@@ -364,7 +379,6 @@
   flex-shrink: 0;
   opacity: 0.7;
 }
-
 
 /* Note Toolbar - Separate section below tabs */
 .note-toolbar-section {
@@ -624,7 +638,6 @@
   margin-top: auto;
 }
 
-
 /* Toolbar Alignment: Left */
 .note-toolbar-section.toolbar-align-left {
   justify-content: flex-start;
@@ -655,7 +668,6 @@
 .note-base.toolbar-position-right .note-toolbar-section.toolbar-align-right {
   align-items: flex-end;
 }
-
 
 /* Note Editors Container */
 .note-editors {

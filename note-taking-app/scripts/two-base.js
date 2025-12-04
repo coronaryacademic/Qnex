@@ -394,7 +394,11 @@
               window.saveNotes();
             }
           }
-        } else if (folderId && folderId !== folder.id && folder.id !== "uncategorized") {
+        } else if (
+          folderId &&
+          folderId !== folder.id &&
+          folder.id !== "uncategorized"
+        ) {
           const draggedFolder = state.folders.find((f) => f.id === folderId);
           if (draggedFolder) {
             // Prevent circular nesting
@@ -561,6 +565,13 @@
     if (typeof window.showContextMenu !== "function") {
       console.error("[BASE LAYER] showContextMenu not available");
       return;
+    }
+
+    // Add active state to item
+    const item = event.target.closest(".workspace-item");
+    if (item) {
+      window.ctxActiveElement = item;
+      item.classList.add("context-active");
     }
 
     // Check for multi-selection
@@ -1941,7 +1952,6 @@
       });
     }
 
-    
     // Global Ctrl/Meta key detection for multi-select mode
     let ctrlPressed = false;
     const multiSelectBtn = document.getElementById("multiSelectBtn");
@@ -2619,7 +2629,7 @@
 
     // Add "Uncategorized" folder with expandable note list
     const uncategorizedNotes = window.state.notes.filter((n) => !n.folderId);
-    
+
     // Only show Uncategorized if there are notes in it
     if (uncategorizedNotes.length > 0) {
       const uncategorizedFolder = createExpandableFolderItem(
@@ -3839,7 +3849,7 @@
         if (window.state && window.state.selectedItems) {
           window.state.selectedItems.clear();
         }
-        
+
         // Remove visual selection
         document.querySelectorAll(".workspace-item.selected").forEach((el) => {
           el.classList.remove("selected");
@@ -3854,5 +3864,4 @@
       }
     }
   });
-
 })();

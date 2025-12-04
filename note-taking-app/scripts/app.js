@@ -762,6 +762,8 @@ window.Storage = Storage;
     const noteBtn = target.closest("button[data-note-id], .folder-note-item");
     if (noteBtn) {
       const id = noteBtn.dataset.noteId;
+      window.ctxActiveElement = noteBtn;
+      noteBtn.classList.add("context-active");
 
       // Check if multiple items are selected
       const isMultiSelect =
@@ -951,6 +953,8 @@ window.Storage = Storage;
     const folderRow = target.closest(".folder-item, .folder-header");
     if (folderRow && folderRow.dataset.folderId !== undefined) {
       const fid = folderRow.dataset.folderId;
+      window.ctxActiveElement = folderRow;
+      folderRow.classList.add("context-active");
       const isUncat = fid === "";
       const handlers = {};
       if (!isUncat) {
@@ -4082,6 +4086,7 @@ window.Storage = Storage;
 
   // Context menu helpers
   let ctxEl = null;
+  let ctxActiveElement = null;
   window.showContextMenu = showContextMenu; // Make globally available
   function showContextMenu(x, y, handlers, scope) {
     hideContextMenu();
@@ -4286,7 +4291,18 @@ window.Storage = Storage;
       });
     }
     setTimeout(() => {
-      document.addEventListener("click", hideContextMenu, { once: true });
+      document.addEventListener(
+        "click",
+        () => {
+          hideContextMenu();
+          // Remove active state when clicking anywhere
+          if (window.ctxActiveElement) {
+            window.ctxActiveElement.classList.remove("context-active");
+            window.ctxActiveElement = null;
+          }
+        },
+        { once: true }
+      );
     });
   }
   function hideContextMenu() {
@@ -6332,6 +6348,26 @@ window.Storage = Storage;
 
     sidebarResizer.addEventListener("mousedown", onMouseDown);
   }
+
+  // Global click handler to deselect all items
+  document.addEventListener("click", (e) => {
+    // Don't deselect if clicking on a selected item or context menu
+    if (e.target.closest(".selected") || e.target.closest(".ctx-menu")) {
+      return;
+    }
+    // Deselect all items in sidebar
+    document
+      .querySelectorAll(".sidebar-item.selected, .folder-note-item.selected")
+      .forEach((item) => {
+        item.classList.remove("selected");
+      });
+    // Deselect all items in workspace
+    if (typeof TwoBaseState !== "undefined") {
+      TwoBaseState.selectedItems = [];
+    }
+    // Clear state selections
+    state.selectedItems.clear();
+  });
 
   // Sidebar drop zone for moving folders to root
   el.noteList.addEventListener("dragover", (e) => {

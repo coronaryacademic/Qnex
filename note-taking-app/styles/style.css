@@ -506,6 +506,10 @@ textarea {
 .sidebar-item.selected svg {
   color: var(--accent);
 }
+.sidebar-item.context-active {
+  background: var(--panel-hover);
+  border: 1px solid var(--accent);
+}
 .sidebar-item svg {
   width: 16px;
   height: 16px;
@@ -573,6 +577,12 @@ textarea {
 
 .folder-header:hover {
   background: var(--panel-hover);
+}
+
+.folder-header.context-active {
+  background: var(--panel-hover);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
 }
 
 .folder-header.drag-over {
@@ -736,6 +746,11 @@ textarea {
 
 .folder-note-item.selected svg {
   color: var(--accent);
+}
+
+.folder-note-item.context-active {
+  background: var(--panel-hover);
+  border: 1px solid var(--accent);
 }
 
 .folder-empty-message {
