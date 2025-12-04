@@ -92,7 +92,7 @@ body.theme-classic .breadcrumb-path {
 }
 
 body.theme-classic .workspace-item:hover {
-  background: #303030 !important;
+  background: #9f9f9fa6 !important;
 }
 
 /* Welcome pane and content text colors */
@@ -116,15 +116,22 @@ body.theme-classic .todo-drag-handle {
   color: #2c3e50 !important;
 }
 
+body.theme-classic .workspace-item {
+  background: #dcdcdc !important;
+}
+
 /* Workspace item title - keep white */
 body.theme-classic .workspace-item-title {
-  color: #e8e8e8 !important;
+  color: #2c3e50 !important;
+}
+
+body.theme-classic .workspace-item-icon {
 }
 
 /* Muted text in Classic theme */
 body.theme-classic .workspace-item-meta,
 body.theme-classic .task-subtitle {
-  color: #7f8c8d !important;
+  color: #131313 !important;
 }
 
 /* Buttons in Classic theme */

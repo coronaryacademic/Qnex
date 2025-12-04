@@ -155,7 +155,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: var(--panel-2);
+  background: var(--bg);
   color: var(--accent);
 }
 
