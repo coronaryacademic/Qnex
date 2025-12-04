@@ -579,46 +579,119 @@
       TwoBaseState.selectedItems.length > 1 &&
       TwoBaseState.selectedItems.includes(itemId)
     ) {
-      // Show multi-select context menu
-      window.showContextMenu(
-        event.clientX,
-        event.clientY,
-        {
-          onDeleteNotes: async () => {
+      // Check if any selected items are folders
+      const hasFolder = TwoBaseState.selectedItems.some((id) => {
+        const cleanId = id.replace(/^(note-|folder-)/, "");
+        return state.folders.some((f) => f.id === cleanId);
+      });
+
+      // Determine selection type
+      const hasNote = TwoBaseState.selectedItems.some((id) => {
+        const cleanId = id.replace(/^(note-|folder-)/, "");
+        return state.notes.some((n) => n.id === cleanId);
+      });
+
+      let selectionType = "notes";
+      if (hasFolder && hasNote) {
+        selectionType = "mixed";
+      } else if (hasFolder) {
+        selectionType = "folders";
+      }
+
+      // Build handlers object - only include export if NO folders are selected
+      const handlers = {
+        selectionType: selectionType,
+        onDeleteNotes: async () => {
+          console.log(
+            "[BASE LAYER] Multi-delete triggered, items:",
+            TwoBaseState.selectedItems
+          );
+          const count = TwoBaseState.selectedItems.length;
+          console.log("[BASE LAYER] Count:", count);
+
+          showDeleteConfirmation(count, async () => {
+            console.log("[BASE LAYER] User confirmed delete");
             console.log(
-              "[BASE LAYER] Multi-delete triggered, items:",
+              "[BASE LAYER] Deleting items:",
               TwoBaseState.selectedItems
             );
-            const count = TwoBaseState.selectedItems.length;
-            console.log("[BASE LAYER] Count:", count);
 
-            showDeleteConfirmation(count, async () => {
-              console.log("[BASE LAYER] User confirmed delete");
-              console.log(
-                "[BASE LAYER] Deleting items:",
-                TwoBaseState.selectedItems
-              );
+            // Delete all selected items (notes and folders)
+            for (const id of TwoBaseState.selectedItems) {
+              console.log("[BASE LAYER] Processing item:", id);
 
-              // Delete all selected items (notes and folders)
-              for (const id of TwoBaseState.selectedItems) {
-                console.log("[BASE LAYER] Processing item:", id);
+              // Remove prefix if present
+              const cleanId = id.replace(/^(note-|folder-)/, "");
+              console.log("[BASE LAYER] Clean ID:", cleanId);
 
-                // Remove prefix if present
-                const cleanId = id.replace(/^(note-|folder-)/, "");
-                console.log("[BASE LAYER] Clean ID:", cleanId);
+              // Try to find in notes first
+              const noteIdx = state.notes.findIndex((n) => n.id === cleanId);
+              console.log("[BASE LAYER] Note index:", noteIdx);
 
-                // Try to find in notes first
-                const noteIdx = state.notes.findIndex((n) => n.id === cleanId);
-                console.log("[BASE LAYER] Note index:", noteIdx);
+              if (noteIdx >= 0) {
+                const [deletedNote] = state.notes.splice(noteIdx, 1);
+                const trashItem = {
+                  ...deletedNote,
+                  deletedAt: new Date().toISOString(),
+                };
+                state.trash.push(trashItem);
+                console.log("[BASE LAYER] Moved note to trash:", cleanId);
 
-                if (noteIdx >= 0) {
-                  const [deletedNote] = state.notes.splice(noteIdx, 1);
+                // Delete from backend
+                if (
+                  typeof window.Storage !== "undefined" &&
+                  window.Storage.useFileSystem
+                ) {
+                  try {
+                    if (typeof window.fileSystemService !== "undefined") {
+                      await window.fileSystemService.deleteNoteFromCollection(
+                        cleanId
+                      );
+                    }
+                  } catch (error) {
+                    console.error(
+                      "Error deleting note from backend:",
+                      cleanId,
+                      error
+                    );
+                  }
+                }
+
+                // Close tabs
+                if (typeof window.closeTab === "function") {
+                  window.closeTab("left", cleanId);
+                  window.closeTab("right", cleanId);
+                }
+              } else {
+                // Try to find in folders
+                const folderIdx = state.folders.findIndex(
+                  (f) => f.id === cleanId
+                );
+                console.log("[BASE LAYER] Folder index:", folderIdx);
+
+                if (folderIdx >= 0) {
+                  const folder = state.folders[folderIdx];
+                  const notesInFolder = state.notes.filter(
+                    (n) => n.folderId === cleanId
+                  );
+
+                  // Remove folder
+                  state.folders.splice(folderIdx, 1);
+
+                  // Move folder to trash with its notes
                   const trashItem = {
-                    ...deletedNote,
+                    ...folder,
+                    type: "folder",
+                    notes: notesInFolder,
                     deletedAt: new Date().toISOString(),
                   };
                   state.trash.push(trashItem);
-                  console.log("[BASE LAYER] Moved note to trash:", cleanId);
+                  console.log("[BASE LAYER] Moved folder to trash:", cleanId);
+
+                  // Remove notes in folder
+                  state.notes = state.notes.filter(
+                    (n) => n.folderId !== cleanId
+                  );
 
                   // Delete from backend
                   if (
@@ -627,129 +700,96 @@
                   ) {
                     try {
                       if (typeof window.fileSystemService !== "undefined") {
-                        await window.fileSystemService.deleteNoteFromCollection(
+                        await window.fileSystemService.deleteFolderFromCollection(
                           cleanId
                         );
                       }
                     } catch (error) {
                       console.error(
-                        "Error deleting note from backend:",
+                        "Error deleting folder from backend:",
                         cleanId,
                         error
                       );
                     }
                   }
-
-                  // Close tabs
-                  if (typeof window.closeTab === "function") {
-                    window.closeTab("left", cleanId);
-                    window.closeTab("right", cleanId);
-                  }
-                } else {
-                  // Try to find in folders
-                  const folderIdx = state.folders.findIndex(
-                    (f) => f.id === cleanId
-                  );
-                  console.log("[BASE LAYER] Folder index:", folderIdx);
-
-                  if (folderIdx >= 0) {
-                    const folder = state.folders[folderIdx];
-                    const notesInFolder = state.notes.filter(
-                      (n) => n.folderId === cleanId
-                    );
-
-                    // Remove folder
-                    state.folders.splice(folderIdx, 1);
-
-                    // Move folder to trash with its notes
-                    const trashItem = {
-                      ...folder,
-                      type: "folder",
-                      notes: notesInFolder,
-                      deletedAt: new Date().toISOString(),
-                    };
-                    state.trash.push(trashItem);
-                    console.log("[BASE LAYER] Moved folder to trash:", cleanId);
-
-                    // Remove notes in folder
-                    state.notes = state.notes.filter(
-                      (n) => n.folderId !== cleanId
-                    );
-
-                    // Delete from backend
-                    if (
-                      typeof window.Storage !== "undefined" &&
-                      window.Storage.useFileSystem
-                    ) {
-                      try {
-                        if (typeof window.fileSystemService !== "undefined") {
-                          await window.fileSystemService.deleteFolderFromCollection(
-                            cleanId
-                          );
-                        }
-                      } catch (error) {
-                        console.error(
-                          "Error deleting folder from backend:",
-                          cleanId,
-                          error
-                        );
-                      }
-                    }
-                  }
                 }
               }
+            }
 
-              // Clear selection
-              console.log("[BASE LAYER] Clearing selection");
-              TwoBaseState.selectedItems = [];
-              if (window.state && window.state.selectedItems) {
-                window.state.selectedItems.clear();
-              }
+            // Clear selection
+            console.log("[BASE LAYER] Clearing selection");
+            TwoBaseState.selectedItems = [];
+            if (window.state && window.state.selectedItems) {
+              window.state.selectedItems.clear();
+            }
 
-              // Save changes to backend
-              console.log("[BASE LAYER] Saving changes...");
-              if (typeof window.saveNotes === "function") {
-                window.saveNotes();
-              }
-              if (typeof window.saveFolders === "function") {
-                window.saveFolders();
-              }
-              if (
-                typeof window.Storage !== "undefined" &&
-                typeof window.Storage.saveTrash === "function"
-              ) {
-                window.Storage.saveTrash(window.state.trash);
-              }
+            // Save changes to backend
+            console.log("[BASE LAYER] Saving changes...");
+            if (typeof window.saveNotes === "function") {
+              window.saveNotes();
+            }
+            if (typeof window.saveFolders === "function") {
+              window.saveFolders();
+            }
+            if (
+              typeof window.Storage !== "undefined" &&
+              typeof window.Storage.saveTrash === "function"
+            ) {
+              window.Storage.saveTrash(window.state.trash);
+            }
 
-              // Refresh UI
-              console.log("[BASE LAYER] Refreshing UI");
-              if (
-                typeof window.TwoBase !== "undefined" &&
-                window.TwoBase.refreshSidebar
-              ) {
-                window.TwoBase.refreshSidebar();
-              }
-              if (typeof renderWorkspaceSplit === "function") {
-                renderWorkspaceSplit(TwoBaseState.currentFolder);
-              }
-              console.log("[BASE LAYER] Delete complete!");
+            // Refresh UI
+            console.log("[BASE LAYER] Refreshing UI");
+            if (
+              typeof window.TwoBase !== "undefined" &&
+              window.TwoBase.refreshSidebar
+            ) {
+              window.TwoBase.refreshSidebar();
+            }
+            if (typeof renderWorkspaceSplit === "function") {
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+            }
+            console.log("[BASE LAYER] Delete complete!");
 
-              // Refresh view and sidebar
-              if (typeof window.renderSidebar === "function") {
-                window.renderSidebar();
-              }
-              if (TwoBaseState.currentFolder === "uncategorized") {
-                renderUncategorizedNotes();
-              } else {
-                renderWorkspaceSplit(TwoBaseState.currentFolder);
-              }
-            }); // Close showDeleteConfirmation callback
-          },
-          onExportNotes: async () => {
-            // Use app.js handler if available, or implement basic export
-            console.log("Exporting selected notes...");
-          },
+            // Refresh view and sidebar
+            if (typeof window.renderSidebar === "function") {
+              window.renderSidebar();
+            }
+            if (TwoBaseState.currentFolder === "uncategorized") {
+              renderUncategorizedNotes();
+            } else {
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+            }
+          }); // Close showDeleteConfirmation callback
         },
+      };
+
+      // Only add export handler if NO folders are selected
+      if (!hasFolder) {
+        handlers.onExportNotes = async () => {
+          // Get only the notes (filter out any folder IDs)
+          const noteIds = TwoBaseState.selectedItems
+            .map((id) => id.replace(/^(note-|folder-)/, ""))
+            .filter((id) => state.notes.some((n) => n.id === id));
+
+          const notesToExport = state.notes.filter((n) =>
+            noteIds.includes(n.id)
+          );
+
+          if (
+            typeof window.exportNotes === "function" &&
+            notesToExport.length > 0
+          ) {
+            window.exportNotes(notesToExport);
+          }
+        };
+      }
+
+      // Show multi-select context menu
+      window.showContextMenu(
+        event.clientX,
+        event.clientY,
+        handlers,
         "multi-note"
       );
       return;

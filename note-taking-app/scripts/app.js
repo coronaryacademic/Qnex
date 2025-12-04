@@ -772,46 +772,35 @@ window.Storage = Storage;
         state.selectedItems.has(id);
 
       if (isMultiSelect) {
-        // Multi-select context menu: only export and delete
-        return showContextMenu(
-          e.clientX,
-          e.clientY,
-          {
-            onExportNotes: async () => {
-              const selectedIds = Array.from(state.selectedItems);
-              const selectedNotes = state.notes.filter((n) =>
-                selectedIds.includes(n.id)
-              );
+        // Check if any selected items are folders
+        const selectedIds = Array.from(state.selectedItems);
+        const hasFolder = selectedIds.some((itemId) => {
+          // Check if this ID is a folder ID (starts with "folder-" or exists in folders array)
+          return (
+            itemId.startsWith("folder-") ||
+            state.folders.some((f) => f.id === itemId || `folder-${f.id}` === itemId)
+          );
+        });
 
-              // Export as HTML
-              let html =
-                '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Exported Notes</title>\n<style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;}.note{margin-bottom:40px;border-bottom:2px solid #ccc;padding-bottom:20px;}.note h2{color:#333;}.note .meta{color:#666;font-size:0.9em;margin-bottom:10px;}</style>\n</head>\n<body>\n';
+        // Determine selection type
+        const hasNote = selectedIds.some((itemId) => {
+          const cleanId = itemId.replace(/^folder-/, "");
+          return state.notes.some((n) => n.id === itemId || n.id === cleanId);
+        });
 
-              selectedNotes.forEach((note) => {
-                const date = note.updatedAt
-                  ? new Date(note.updatedAt).toLocaleDateString()
-                  : "";
-                html += `<div class="note">\n<h2>${
-                  note.title || "Untitled"
-                }</h2>\n<div class="meta">Last updated: ${date}</div>\n<div class="content">${
-                  note.contentHtml || ""
-                }</div>\n</div>\n`;
-              });
+        let selectionType = "notes";
+        if (hasFolder && hasNote) {
+          selectionType = "mixed";
+        } else if (hasFolder) {
+          selectionType = "folders";
+        }
 
-              html += "</body>\n</html>";
-
-              // Download the HTML file
-              const blob = new Blob([html], { type: "text/html" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `exported-notes-${Date.now()}.html`;
-              a.click();
-              URL.revokeObjectURL(url);
-            },
-            onDeleteNotes: async () => {
-              const selectedIds = Array.from(state.selectedItems);
-              const count = selectedIds.length;
+        // Build handlers - only include export if NO folders
+        const handlers = {
+          selectionType: selectionType,
+          onDeleteNotes: async () => {
+            const selectedIds = Array.from(state.selectedItems);
+            const count = selectedIds.length;
 
               // Use custom delete dialog from two-base.js
               if (
@@ -869,7 +858,48 @@ window.Storage = Storage;
                 }); // Close showDeleteConfirmation callback
               }
             },
-          },
+          };
+
+        // Only add export handler if NO folders are selected
+        if (!hasFolder) {
+          handlers.onExportNotes = async () => {
+            const selectedNotes = state.notes.filter((n) =>
+              selectedIds.includes(n.id)
+            );
+
+            // Export as JSON with all note data
+            const exportData = {
+              notes: selectedNotes.map((note) => ({
+                id: note.id,
+                title: note.title,
+                contentHtml: note.contentHtml,
+                tags: note.tags || [],
+                folderId: note.folderId || null,
+                createdAt: note.createdAt,
+                updatedAt: note.updatedAt,
+                images: note.images || [],
+              })),
+              exportedAt: new Date().toISOString(),
+              version: "1.0",
+            };
+
+            // Download the JSON file
+            const json = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `exported-notes-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          };
+        }
+
+        // Show multi-select context menu
+        return showContextMenu(
+          e.clientX,
+          e.clientY,
+          handlers,
           "multi-note"
         );
       } else {
@@ -1278,6 +1308,41 @@ window.Storage = Storage;
   // Expose modal functions globally for use in two-base.js
   window.modalConfirm = modalConfirm;
   window.modalPrompt = modalPrompt;
+
+  // Global export function for multi-select export (used by two-base.js)
+  window.exportNotes = function (notesToExport) {
+    if (!notesToExport || notesToExport.length === 0) {
+      modalAlert("No notes to export");
+      return;
+    }
+
+    // Export as JSON with all note data
+    const exportData = {
+      notes: notesToExport.map((note) => ({
+        id: note.id,
+        title: note.title,
+        contentHtml: note.contentHtml,
+        tags: note.tags || [],
+        folderId: note.folderId || null,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt,
+        images: note.images || [],
+      })),
+      exportedAt: new Date().toISOString(),
+      version: "1.0",
+    };
+
+    // Download the JSON file
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `exported-notes-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   window.modalAlert = modalAlert;
 
   // Storage
@@ -4155,20 +4220,45 @@ window.Storage = Storage;
 
     // Multi-note handlers
     const bExportNotes = ctxEl.querySelector('[data-cmd="export-notes"]');
-    if (bExportNotes)
-      bExportNotes.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        hideContextMenu();
-        await handlers.onExportNotes?.();
-      });
+    if (bExportNotes) {
+      if (!handlers.onExportNotes) {
+        bExportNotes.style.display = "none";
+      } else {
+        bExportNotes.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          hideContextMenu();
+          await handlers.onExportNotes?.();
+        });
+      }
+    }
 
     const bDeleteNotes = ctxEl.querySelector('[data-cmd="delete-notes"]');
-    if (bDeleteNotes)
+    if (bDeleteNotes) {
+      // Update button text based on what's selected
+      if (handlers.selectionType) {
+        // Find the text node that comes after the SVG (the last text node)
+        const textNodes = Array.from(bDeleteNotes.childNodes).filter(
+          (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+        );
+        const textNode = textNodes[textNodes.length - 1]; // Get the last text node
+        
+        if (textNode) {
+          if (handlers.selectionType === "folders") {
+            textNode.textContent = "\n            Delete Selected Folders\n          ";
+          } else if (handlers.selectionType === "notes") {
+            textNode.textContent = "\n            Delete Selected Notes\n          ";
+          } else if (handlers.selectionType === "mixed") {
+            textNode.textContent = "\n            Delete Selected Items\n          ";
+          }
+        }
+      }
+      
       bDeleteNotes.addEventListener("click", async (e) => {
         e.stopPropagation();
         hideContextMenu();
         await handlers.onDeleteNotes?.();
       });
+    }
 
     const bNSF = ctxEl.querySelector('[data-cmd="new-subfolder"]');
     if (bNSF)
