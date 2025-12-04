@@ -1563,7 +1563,9 @@ window.Storage = Storage;
 
     // Filter notes and folders based on search query
     const query = state.searchQuery.toLowerCase().trim();
-    const filteredNotes = query
+
+    // 1. Identify matches
+    const matchingNotes = query
       ? state.notes.filter((n) => {
           const titleMatch = (n.title || "").toLowerCase().includes(query);
           const tagsMatch =
@@ -1576,18 +1578,62 @@ window.Storage = Storage;
         })
       : state.notes;
 
-    const filteredFolders = query
+    const matchingFolders = query
       ? state.folders.filter((f) => f.name.toLowerCase().includes(query))
       : state.folders;
 
+    // 2. Calculate inclusion and expansion sets
+    const foldersToInclude = new Set();
+    const foldersToExpand = new Set();
+
+    if (query) {
+      // Helper to add folder and its ancestors
+      const addFolderAndAncestors = (folderId) => {
+        let currentId = folderId;
+        while (currentId) {
+          foldersToInclude.add(currentId);
+          const folder = state.folders.find((f) => f.id === currentId);
+          if (folder && folder.parentId) {
+            foldersToExpand.add(folder.parentId);
+          }
+          currentId = folder ? folder.parentId : null;
+        }
+      };
+
+      // Process matching notes
+      matchingNotes.forEach((n) => {
+        if (n.folderId) {
+          addFolderAndAncestors(n.folderId);
+          foldersToExpand.add(n.folderId);
+        }
+      });
+
+      // Process matching folders
+      matchingFolders.forEach((f) => {
+        foldersToInclude.add(f.id);
+        if (f.parentId) {
+          addFolderAndAncestors(f.parentId);
+          foldersToExpand.add(f.parentId);
+        }
+      });
+    }
+
+    // 3. Prepare data for rendering
+    const foldersToShow = query
+      ? state.folders.filter((f) => foldersToInclude.has(f.id))
+      : state.folders;
+
+    const notesToShow = matchingNotes;
+
     // Render folders
     const groups = new Map(); // folderId -> notes[]
-    filteredNotes.forEach((n) => {
+    notesToShow.forEach((n) => {
       const key = n.folderId || "__none";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(n);
     });
-    const sortedFolders = filteredFolders
+
+    const sortedFolders = foldersToShow
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name));
     const makeNoteBtn = (n) => {
@@ -1692,16 +1738,35 @@ window.Storage = Storage;
           row.classList.add("selected");
         }
 
+        // Determine if expanded
+        const isExpanded = query
+          ? foldersToExpand.has(f.id) || state.foldersOpen.has(f.id)
+          : state.foldersOpen.has(f.id);
+
         const caret = document.createElement("span");
         caret.className = "folder-caret";
-        caret.textContent = state.foldersOpen.has(f.id) ? "▾" : "▸";
+        caret.textContent = isExpanded ? "▾" : "▸";
         const icon = document.createElement("span");
         icon.className = "folder-icon";
         // Folders use a dedicated folder default emoji when no custom icon is set
         const folderIconKey = f.icon || "folderDefault";
         icon.innerHTML = getIcon(folderIconKey);
         const name = document.createElement("span");
-        name.textContent = f.name;
+
+        // Highlight match in name if searching
+        if (query && f.name.toLowerCase().includes(query)) {
+          const regex = new RegExp(
+            `(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+            "gi"
+          );
+          name.innerHTML = f.name.replace(
+            regex,
+            '<span class="search-highlight">$1</span>'
+          );
+        } else {
+          name.textContent = f.name;
+        }
+
         row.appendChild(caret);
         row.appendChild(icon);
         row.appendChild(name);
@@ -1808,7 +1873,7 @@ window.Storage = Storage;
           }
         });
         el.noteList.appendChild(row);
-        if (state.foldersOpen.has(f.id)) {
+        if (isExpanded) {
           const wrap = document.createElement("div");
           wrap.className = "folder-notes";
           wrap.style.marginLeft = (depth + 1) * 16 + "px";
@@ -1827,9 +1892,10 @@ window.Storage = Storage;
       const row = document.createElement("div");
       row.className = "folder-item";
       row.dataset.folderId = "";
+      const isUncatExpanded = query ? true : state.foldersOpen.has("");
       const caret = document.createElement("span");
       caret.className = "folder-caret";
-      caret.textContent = state.foldersOpen.has("") ? "▾" : "▸";
+      caret.textContent = isUncatExpanded ? "▾" : "▸";
       const icon = document.createElement("span");
       icon.className = "folder-icon";
       const uncategorizedIconKey = "folderDefault";
@@ -1881,7 +1947,7 @@ window.Storage = Storage;
         refreshOpenTabs(id);
       });
       el.noteList.appendChild(row);
-      if (state.foldersOpen.has("")) {
+      if (isUncatExpanded) {
         const wrap = document.createElement("div");
         wrap.className = "folder-notes";
         noneArr.forEach((n) => wrap.appendChild(makeNoteBtn(n)));
@@ -1890,7 +1956,7 @@ window.Storage = Storage;
     }
 
     // Show empty state message if searching and no results
-    if (query && filteredNotes.length === 0 && filteredFolders.length === 0) {
+    if (query && matchingNotes.length === 0 && matchingFolders.length === 0) {
       const emptyMsg = document.createElement("div");
       emptyMsg.className = "sidebar-empty-state";
       emptyMsg.innerHTML = `
@@ -2404,6 +2470,7 @@ window.Storage = Storage;
     bringToFront(node);
     state.windows[id] = { el: node, minimized: false };
   }
+  window.openWindow = openWindow; // Expose globally
 
   let zTop = 10;
   function bringToFront(win) {
@@ -2783,9 +2850,13 @@ window.Storage = Storage;
   function showSearchResults(query) {
     const results = [];
     const lowerQuery = query.toLowerCase();
+    const seenIds = new Set();
 
     // Search through all notes
     state.notes.forEach((note) => {
+      // Prevent duplicates if state.notes has duplicates
+      if (seenIds.has(`note-${note.id}`)) return;
+      
       const matches = [];
       const title = note.title || "Untitled";
       const content = note.contentHtml || note.content || "";
@@ -2840,7 +2911,42 @@ window.Storage = Storage;
       }
 
       if (matches.length > 0) {
+        seenIds.add(`note-${note.id}`);
         results.push({ note, matches });
+      }
+    });
+
+    // Search through folders (standalone)
+    state.folders.forEach((folder) => {
+      // Skip special folders like Uncategorized
+      if (folder.id === "uncategorized" || folder.isSpecial) {
+        return;
+      }
+
+      // Prevent duplicates if state.folders has duplicates
+      if (seenIds.has(`folder-${folder.id}`)) {
+        console.log(`[SEARCH] Skipping duplicate folder: ${folder.name} (${folder.id})`);
+        return;
+      }
+
+      if (folder.name.toLowerCase().includes(lowerQuery)) {
+        console.log(`[SEARCH] Adding folder result: ${folder.name} (${folder.id})`);
+        
+        // Check if we already have a folder with this name
+        const existingFolder = results.find(r => r.folder && r.folder.name === folder.name);
+        if (existingFolder) {
+          console.warn(`[SEARCH] WARNING: Found duplicate folder name "${folder.name}" with different IDs: ${existingFolder.folder.id} and ${folder.id}`);
+        }
+        
+        seenIds.add(`folder-${folder.id}`);
+        results.push({
+          folder,
+          matches: [{
+            type: "FOLDER_NAME",
+            text: folder.name,
+            highlight: highlightText(folder.name, query)
+          }]
+        });
       }
     });
 
@@ -2871,153 +2977,124 @@ window.Storage = Storage;
       contentEl.innerHTML =
         '<div class="no-results">No results found. Try a different search term.</div>';
     } else {
-      results.forEach(({ note, matches }) => {
+      results.forEach(({ note, folder, matches }) => {
         const item = document.createElement("div");
         item.className = "search-result-item";
 
-        // Get primary match type
-        const primaryMatch = matches[0];
-        const matchType = primaryMatch.type;
+        if (note) {
+          // Note Result
+          const primaryMatch = matches[0];
+          const matchType = primaryMatch.type;
 
-        const header = document.createElement("div");
-        header.className = "search-result-header";
-        header.innerHTML = `
-          <span class="search-result-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-          </span>
-          <span class="search-result-title">${highlightText(
-            note.title || "Untitled",
-            query
-          )}</span>
-          <span class="search-result-match-type">${matchType}</span>
-        `;
-        item.appendChild(header);
-
-        // Show content preview if available
-        const contentMatch = matches.find((m) => m.type === "CONTENT");
-        if (contentMatch) {
-          const preview = document.createElement("div");
-          preview.className = "search-result-preview";
-          preview.innerHTML = contentMatch.highlight;
-          item.appendChild(preview);
-        }
-
-        // Show folder if it matches
-        const folderMatch = matches.find((m) => m.type === "FOLDER");
-        if (folderMatch) {
-          const folderDiv = document.createElement("div");
-          folderDiv.className = "search-result-folder";
-          folderDiv.innerHTML = `
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            </svg>
-            ${folderMatch.highlight}
+          const header = document.createElement("div");
+          header.className = "search-result-header";
+          header.innerHTML = `
+            <span class="search-result-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </span>
+            <span class="search-result-title">${highlightText(
+              note.title || "Untitled",
+              query
+            )}</span>
+            <span class="search-result-match-type">${matchType}</span>
           `;
-          item.appendChild(folderDiv);
-        }
+          item.appendChild(header);
 
-        // Show tags if they match
-        const tagMatch = matches.find((m) => m.type === "TAG");
-        if (tagMatch) {
-          const tagsDiv = document.createElement("div");
-          tagsDiv.className = "search-result-tags";
-          tagMatch.tags.forEach((tag) => {
-            const tagSpan = document.createElement("span");
-            tagSpan.className = "search-result-tag";
-            tagSpan.innerHTML = "#" + highlightText(tag, query);
-            tagsDiv.appendChild(tagSpan);
-          });
-          item.appendChild(tagsDiv);
-        }
-
-        // Click to open note in two-base system
-        item.addEventListener("click", () => {
-          // Use two-base system to open note
-          if (
-            typeof window.TwoBase !== "undefined" &&
-            typeof window.TwoBase.openNoteInNoteBase === "function"
-          ) {
-            window.TwoBase.openNoteInNoteBase(note.id);
-          } else if (typeof openInPane === "function") {
-            // Fallback to old system
-            openInPane(note.id, "left");
+          // Show content preview if available
+          const contentMatch = matches.find((m) => m.type === "CONTENT");
+          if (contentMatch) {
+            const preview = document.createElement("div");
+            preview.className = "search-result-preview";
+            preview.innerHTML = contentMatch.highlight;
+            item.appendChild(preview);
           }
-          closeModal();
 
-          // Wait for note to load, then scroll to match
-          setTimeout(() => {
-            const contentMatch = matches.find((m) => m.type === "CONTENT");
-            if (contentMatch) {
-              // Find and scroll to the matched text in the content
-              const paneContent = document.querySelector(
-                ".note-pane .note-pane-content"
-              );
-              if (paneContent) {
-                const contentEditor =
-                  paneContent.querySelector(".content.editable");
-                if (contentEditor) {
-                  // Create a walker to find text nodes
-                  const walker = document.createTreeWalker(
-                    contentEditor,
-                    NodeFilter.SHOW_TEXT,
-                    null
-                  );
+          // Show folder if it matches
+          const folderMatch = matches.find((m) => m.type === "FOLDER");
+          if (folderMatch) {
+            const folderDiv = document.createElement("div");
+            folderDiv.className = "search-result-folder";
+            folderDiv.innerHTML = `
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              ${folderMatch.highlight}
+            `;
+            item.appendChild(folderDiv);
+          }
 
-                  let node;
-                  while ((node = walker.nextNode())) {
-                    const text = node.textContent.toLowerCase();
-                    const index = text.indexOf(lowerQuery);
-                    if (index >= 0) {
-                      const parent = node.parentElement;
-                      if (parent) {
-                        // Create a temporary highlight span for just the matched word
-                        const range = document.createRange();
-                        range.setStart(node, index);
-                        range.setEnd(node, index + query.length);
+          // Show tags if they match
+          const tagMatch = matches.find((m) => m.type === "TAG");
+          if (tagMatch) {
+            const tagsDiv = document.createElement("div");
+            tagsDiv.className = "search-result-tags";
+            tagMatch.tags.forEach((tag) => {
+              const tagSpan = document.createElement("span");
+              tagSpan.className = "search-result-tag";
+              tagSpan.innerHTML = "#" + highlightText(tag, query);
+              tagsDiv.appendChild(tagSpan);
+            });
+            item.appendChild(tagsDiv);
+          }
 
-                        const tempHighlight = document.createElement("span");
-                        tempHighlight.style.cssText =
-                          "background-color: #ffff00; transition: background-color 0.3s;";
-
-                        try {
-                          range.surroundContents(tempHighlight);
-                          tempHighlight.scrollIntoView({
-                            behavior: "smooth",
-                            block: "center",
-                          });
-
-                          // Remove highlight after 2 seconds
-                          setTimeout(() => {
-                            const parent = tempHighlight.parentNode;
-                            if (parent) {
-                              parent.replaceChild(
-                                document.createTextNode(
-                                  tempHighlight.textContent
-                                ),
-                                tempHighlight
-                              );
-                              parent.normalize(); // Merge text nodes
-                            }
-                          }, 2000);
-                        } catch (e) {
-                          // Fallback: just scroll to the parent
-                          parent.scrollIntoView({
-                            behavior: "smooth",
-                            block: "center",
-                          });
-                        }
-                      }
-                      break;
-                    }
-                  }
-                }
-              }
+          item.addEventListener("click", () => {
+            closeModal();
+            // Open note using two-base system
+            if (window.TwoBase && window.TwoBase.openNoteFromWorkspace) {
+              window.TwoBase.openNoteFromWorkspace(note.id);
+            } else {
+              // Fallback to direct opening
+              openInPane(note.id, "left");
             }
-          }, 300);
-        });
+          });
+
+        } else if (folder) {
+          // Folder Result
+          const header = document.createElement("div");
+          header.className = "search-result-header";
+          header.innerHTML = `
+            <span class="search-result-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </span>
+            <span class="search-result-title">${matches[0].highlight}</span>
+            <span class="search-result-match-type">FOLDER</span>
+          `;
+          item.appendChild(header);
+
+          item.addEventListener("click", () => {
+            closeModal();
+            // Expand folder in sidebar
+            let currentId = folder.id;
+            while (currentId) {
+              state.foldersOpen.add(currentId);
+              const f = state.folders.find(x => x.id === currentId);
+              currentId = f ? f.parentId : null;
+            }
+            saveFoldersOpen();
+            renderSidebar();
+            
+            // Navigate in base layer
+            if (window.TwoBase && window.TwoBase.renderWorkspaceSplit) {
+              window.TwoBase.renderWorkspaceSplit(folder.id);
+            }
+
+            // Scroll to folder
+            setTimeout(() => {
+              const folderEl = document.querySelector(`.folder-item[data-folder-id="${folder.id}"]`);
+              if (folderEl) {
+                folderEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                state.selectedItems.clear();
+                state.selectedItems.add(`folder-${folder.id}`);
+                renderSidebar();
+              }
+            }, 100);
+          });
+        }
 
         contentEl.appendChild(item);
       });
@@ -4015,15 +4092,15 @@ window.Storage = Storage;
     if (bSN)
       bSN.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onNewNote?.();
         hideContextMenu();
+        await handlers.onNewNote?.();
       });
     const bSF = ctxEl.querySelector('[data-cmd="new-folder"]');
     if (bSF)
       bSF.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onNewFolder?.();
         hideContextMenu();
+        await handlers.onNewFolder?.();
       });
     const bOL = ctxEl.querySelector('[data-cmd="open-left"]');
     if (bOL)
@@ -4051,8 +4128,8 @@ window.Storage = Storage;
     if (bDN)
       bDN.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onDeleteNote?.();
         hideContextMenu();
+        await handlers.onDeleteNote?.();
       });
 
     // Multi-note handlers
@@ -4060,32 +4137,32 @@ window.Storage = Storage;
     if (bExportNotes)
       bExportNotes.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onExportNotes?.();
         hideContextMenu();
+        await handlers.onExportNotes?.();
       });
 
     const bDeleteNotes = ctxEl.querySelector('[data-cmd="delete-notes"]');
     if (bDeleteNotes)
       bDeleteNotes.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onDeleteNotes?.();
         hideContextMenu();
+        await handlers.onDeleteNotes?.();
       });
 
     const bNSF = ctxEl.querySelector('[data-cmd="new-subfolder"]');
     if (bNSF)
       bNSF.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onNewSubfolder?.();
         hideContextMenu();
+        await handlers.onNewSubfolder?.();
       });
 
     const bRF = ctxEl.querySelector('[data-cmd="rename-folder"]');
     if (bRF)
       bRF.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onRenameFolder?.();
         hideContextMenu();
+        await handlers.onRenameFolder?.();
       });
     const bMTR = ctxEl.querySelector('[data-cmd="move-to-root"]');
     if (bMTR) {
@@ -4094,8 +4171,8 @@ window.Storage = Storage;
       } else {
         bMTR.addEventListener("click", async (e) => {
           e.stopPropagation();
-          await handlers.onMoveToRoot?.();
           hideContextMenu();
+          await handlers.onMoveToRoot?.();
         });
       }
     }
@@ -4103,50 +4180,50 @@ window.Storage = Storage;
     if (bRN)
       bRN.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onRenameNote?.();
         hideContextMenu();
+        await handlers.onRenameNote?.();
       });
     const bCNI = ctxEl.querySelector('[data-cmd="change-note-icon"]');
     if (bCNI)
       bCNI.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onChangeNoteIcon?.();
         hideContextMenu();
+        await handlers.onChangeNoteIcon?.();
       });
     const bDF = ctxEl.querySelector('[data-cmd="delete-folder"]');
     if (bDF)
       bDF.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onDeleteFolder?.();
         hideContextMenu();
+        await handlers.onDeleteFolder?.();
       });
     const bCFI = ctxEl.querySelector('[data-cmd="change-folder-icon"]');
     if (bCFI)
       bCFI.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onChangeFolderIcon?.();
         hideContextMenu();
+        await handlers.onChangeFolderIcon?.();
       });
     const bCT = ctxEl.querySelector('[data-cmd="close-tab"]');
     if (bCT)
       bCT.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onCloseTab?.();
         hideContextMenu();
+        await handlers.onCloseTab?.();
       });
     const bCOT = ctxEl.querySelector('[data-cmd="close-other-tabs"]');
     if (bCOT)
       bCOT.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onCloseOtherTabs?.();
         hideContextMenu();
+        await handlers.onCloseOtherTabs?.();
       });
     const bCAT = ctxEl.querySelector('[data-cmd="close-all-tabs"]');
     if (bCAT)
       bCAT.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onCloseAllTabs?.();
         hideContextMenu();
+        await handlers.onCloseAllTabs?.();
       });
     const bPT = ctxEl.querySelector('[data-cmd="pin-tab"]');
     if (bPT) {
@@ -4188,8 +4265,8 @@ window.Storage = Storage;
 
       bPT.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await handlers.onPinTab?.();
         hideContextMenu();
+        await handlers.onPinTab?.();
       });
     }
     setTimeout(() => {

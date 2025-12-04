@@ -144,6 +144,7 @@
             </div>
             <div class="sidebar-section-content" id="notebooksContent">
               <!-- Notebooks will be dynamically populated -->
+              <div class="sidebar-empty-state" style="display: none;">No notebooks</div>
             </div>
           </div>
 
@@ -160,6 +161,7 @@
             </div>
             <div class="sidebar-section-content" id="foldersContent">
               <!-- Folders will be dynamically populated -->
+              <div class="sidebar-empty-state" style="display: none;">No folders</div>
             </div>
           </div>
 
@@ -172,7 +174,7 @@
           <input
             type="text"
             id="searchInput"
-            placeholder="Search notes, titles, tags..."
+            placeholder="Search notes, titles, folders, tags..."
             autocomplete="off"
           />
           <button id="clearSearch" class="clear-search" title="Clear search">

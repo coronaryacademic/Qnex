@@ -205,8 +205,9 @@ class FileSystemService {
       const settings = await this.makeRequest('/settings');
       return settings || {};
     } catch (error) {
-      console.error('Error loading settings:', error);
-      throw error;
+      console.warn('Error loading settings from server, returning defaults:', error);
+      // Return empty object instead of throwing - let app.js handle defaults
+      return {};
     }
   }
 

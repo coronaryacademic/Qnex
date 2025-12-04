@@ -113,8 +113,13 @@
         sidebarHeader.textContent = "All Notes";
       }
     } else {
-      const folder = state.folders.find((f) => f.id === currentFolder);
-      const folderName = folder ? folder.name : "Unknown Folder";
+      let folderName;
+      if (currentFolder === "uncategorized") {
+        folderName = "Uncategorized";
+      } else {
+        const folder = state.folders.find((f) => f.id === currentFolder);
+        folderName = folder ? folder.name : "Unknown Folder";
+      }
       el.breadcrumbPath.textContent = folderName;
       el.breadcrumbBack.style.display = "flex";
 
@@ -151,17 +156,30 @@
       grid.appendChild(createFolderItem(folder));
     });
 
-    // Then render notes
-    rootNotes.forEach((note) => {
-      grid.appendChild(createNoteItem(note));
-    });
+    // If there are root notes, render "Uncategorized" folder
+    if (rootNotes.length > 0) {
+      const uncategorizedFolder = {
+        id: "uncategorized",
+        name: "Uncategorized",
+        isSpecial: true,
+      };
+      grid.appendChild(createFolderItem(uncategorizedFolder));
+    }
 
     el.workspaceContent.innerHTML = "";
 
     if (rootFolders.length === 0 && rootNotes.length === 0) {
       el.workspaceContent.innerHTML = `
         <div class="workspace-empty">
-          <div class="workspace-empty-icon">📝</div>
+          <div class="workspace-empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); opacity: 0.5;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
           <div class="workspace-empty-text">No notes or folders yet</div>
         </div>
       `;
@@ -179,7 +197,13 @@
     let subfolders = state.folders.filter((f) => f.parentId === folderId);
 
     // Get notes in this folder
-    let folderNotes = state.notes.filter((n) => n.folderId === folderId);
+    let folderNotes;
+    if (folderId === "uncategorized") {
+      folderNotes = state.notes.filter((n) => !n.folderId);
+      subfolders = []; // Uncategorized has no subfolders
+    } else {
+      folderNotes = state.notes.filter((n) => n.folderId === folderId);
+    }
 
     // Apply sorting
     if (TwoBaseState.sortOrder === "asc") {
@@ -249,12 +273,14 @@
       }
     });
 
-    // Right-click context menu
-    item.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      showWorkspaceContextMenu(e, folder.id, "folder");
-    });
+    // Right-click context menu - disable for special folders
+    if (!folder.isSpecial) {
+      item.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showWorkspaceContextMenu(e, folder.id, "folder");
+      });
+    }
 
     // Drag and drop support
     item.draggable = true;
@@ -313,10 +339,12 @@
           // Check if it's a note
           const note = state.notes.find((n) => n.id === id);
           if (note) {
-            note.folderId = folder.id;
+            note.folderId = folder.id === "uncategorized" ? null : folder.id;
             note.updatedAt = new Date().toISOString();
           } else {
-            // Check if it's a folder
+            // Check if it's a folder - prevent dropping into Uncategorized
+            if (folder.id === "uncategorized") continue;
+
             const draggedFolder = state.folders.find((f) => f.id === id);
             if (draggedFolder && draggedFolder.id !== folder.id) {
               // Prevent circular nesting
@@ -358,7 +386,7 @@
         if (noteId) {
           const note = state.notes.find((n) => n.id === noteId);
           if (note) {
-            note.folderId = folder.id;
+            note.folderId = folder.id === "uncategorized" ? null : folder.id;
             note.updatedAt = new Date().toISOString();
 
             // Save to backend
@@ -366,7 +394,7 @@
               window.saveNotes();
             }
           }
-        } else if (folderId && folderId !== folder.id) {
+        } else if (folderId && folderId !== folder.id && folder.id !== "uncategorized") {
           const draggedFolder = state.folders.find((f) => f.id === folderId);
           if (draggedFolder) {
             // Prevent circular nesting
@@ -1913,6 +1941,7 @@
       });
     }
 
+    
     // Global Ctrl/Meta key detection for multi-select mode
     let ctrlPressed = false;
     const multiSelectBtn = document.getElementById("multiSelectBtn");
@@ -2573,27 +2602,49 @@
     const foldersContent = document.getElementById("foldersContent");
     if (!foldersContent || !window.state) return;
 
+    // Get or create empty state
+    let emptyState = foldersContent.querySelector(".sidebar-empty-state");
+    if (!emptyState) {
+      emptyState = document.createElement("div");
+      emptyState.className = "sidebar-empty-state";
+      emptyState.textContent = "No folders";
+      emptyState.style.display = "none";
+      // CSS class handles styling now
+    }
+
     foldersContent.innerHTML = "";
+    foldersContent.appendChild(emptyState);
+
+    let hasVisibleFolders = false;
 
     // Add "Uncategorized" folder with expandable note list
     const uncategorizedNotes = window.state.notes.filter((n) => !n.folderId);
-    const uncategorizedFolder = createExpandableFolderItem(
-      {
-        id: "uncategorized",
-        name: "Uncategorized",
-        isSpecial: true,
-      },
-      uncategorizedNotes,
-      0
-    );
-    foldersContent.appendChild(uncategorizedFolder);
+    
+    // Only show Uncategorized if there are notes in it
+    if (uncategorizedNotes.length > 0) {
+      const uncategorizedFolder = createExpandableFolderItem(
+        {
+          id: "uncategorized",
+          name: "Uncategorized",
+          isSpecial: true,
+        },
+        uncategorizedNotes,
+        0
+      );
+      foldersContent.appendChild(uncategorizedFolder);
+      hasVisibleFolders = true;
+    }
 
     // Add all root-level custom folders with their notes and subfolders
     const rootFolders = window.state.folders.filter((f) => !f.parentId);
     rootFolders.forEach((folder) => {
       const folderElement = renderFolderWithSubfolders(folder, 0);
       foldersContent.appendChild(folderElement);
+      hasVisibleFolders = true;
     });
+
+    // Show/hide empty state
+    emptyState.style.display = hasVisibleFolders ? "none" : "block";
 
     // Setup simple root drop zone
     setupRootDropZone(foldersContent);
@@ -3767,4 +3818,41 @@
   } else {
     init();
   }
+  // Global click handler for closing menus and deselecting items
+  document.addEventListener("click", (e) => {
+    // 1. Close context menus (if any)
+    if (typeof window.hideContextMenu === "function") {
+      window.hideContextMenu();
+    }
+
+    // 2. Deselect items if clicking on empty space
+    // Check if we are NOT clicking on a workspace item or a control button
+    const isItem = e.target.closest(".workspace-item");
+    const isControl = e.target.closest(
+      "button, .icon-btn, .sidebar-header, .sidebar-section-header-text, .ctx-menu, .modal-overlay"
+    );
+
+    if (!isItem && !isControl) {
+      // Clear selection
+      if (TwoBaseState.selectedItems.length > 0) {
+        TwoBaseState.selectedItems = [];
+        if (window.state && window.state.selectedItems) {
+          window.state.selectedItems.clear();
+        }
+        
+        // Remove visual selection
+        document.querySelectorAll(".workspace-item.selected").forEach((el) => {
+          el.classList.remove("selected");
+        });
+
+        // Re-render workspace to reflect cleared selection
+        if (TwoBaseState.currentFolder) {
+          renderFolderContents(TwoBaseState.currentFolder);
+        } else {
+          renderRootView();
+        }
+      }
+    }
+  });
+
 })();
