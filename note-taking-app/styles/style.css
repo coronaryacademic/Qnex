@@ -3421,10 +3421,26 @@ body.debug-borders div {
   color: var(--text);
   text-align: center;
 }
+.welcome-shortcuts-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 15px;
+}
+
+.welcome-shortcuts-column h5 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
 .welcome-shortcuts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   font-size: 13px;
 }
 .welcome-shortcuts-grid div {
@@ -3446,6 +3462,28 @@ body.debug-borders div {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   min-width: 60px;
   text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.welcome-shortcuts-grid kbd:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  border-color: var(--accent);
+  background: var(--panel);
+}
+
+.welcome-shortcuts-grid kbd:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* Classic theme specific hover styling */
+body.theme-classic .welcome-shortcuts-grid kbd:hover {
+  color: white !important;
 }
 @keyframes fadeIn {
   from {

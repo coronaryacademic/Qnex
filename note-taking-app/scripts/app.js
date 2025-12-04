@@ -851,7 +851,9 @@ window.Storage = Storage;
                   await saveNotes();
                   renderSidebar();
 
-                  console.log(`Imported note "${newNote.title}" to uncategorized`);
+                  console.log(
+                    `Imported note "${newNote.title}" to uncategorized`
+                  );
                 } else {
                   alert("Unknown import format");
                 }
@@ -1398,7 +1400,10 @@ window.Storage = Storage;
                   await Storage.deleteNoteFromFileSystem(note.id);
                 } catch (noteError) {
                   // Ignore 404 errors (note doesn't exist in backend)
-                  if (!noteError.message?.includes('404') && !noteError.message?.includes('Not Found')) {
+                  if (
+                    !noteError.message?.includes("404") &&
+                    !noteError.message?.includes("Not Found")
+                  ) {
                     console.warn(`Error deleting note ${note.id}:`, noteError);
                   }
                 }
@@ -1406,7 +1411,10 @@ window.Storage = Storage;
               await Storage.saveTrash(state.trash);
             } catch (error) {
               // Ignore 404 errors (folder doesn't exist in backend)
-              if (!error.message?.includes('404') && !error.message?.includes('Not Found')) {
+              if (
+                !error.message?.includes("404") &&
+                !error.message?.includes("Not Found")
+              ) {
                 console.error("File system sync error:", error);
               }
             }
@@ -1424,7 +1432,7 @@ window.Storage = Storage;
       }
       return showContextMenu(e.clientX, e.clientY, handlers, "folder");
     }
-    
+
     // Editor selection - context menu disabled
     const content = target.closest(".content.editable");
     if (content) {
@@ -1432,7 +1440,6 @@ window.Storage = Storage;
       return;
     }
   });
-
 
   // Removed global selectionchange highlighter; we highlight on mouseup in editor only.
 
@@ -6091,28 +6098,59 @@ window.Storage = Storage;
       e.preventDefault();
 
       const activeEl = document.activeElement;
+      const sidebar = document.getElementById("sidebar");
+      const isFullscreen = document.body.classList.contains("fullscreen");
 
-      // If search is already focused, blur it
+      // If search is already focused, blur it and hide sidebar in fullscreen
       if (activeEl === el.searchInput) {
         el.searchInput.blur();
+
+        // In fullscreen mode, also hide the sidebar when blurring search
+        if (isFullscreen && sidebar && sidebar.classList.contains("visible")) {
+          sidebar.classList.remove("visible");
+        }
         return;
       }
 
-      // If sidebar is collapsed, expand it first
-      const sidebar = el.sidebar;
-      const isCollapsed = sidebar.classList.contains("collapsed");
-      if (isCollapsed) {
-        sidebar.style.width = (state.settings.sidebarWidth || 280) + "px";
-        sidebar.classList.remove("collapsed");
-        sidebar.classList.remove("narrow");
-        state.settings.sidebarCollapsed = false;
-        el.toggleSidebarBtn.title = "Hide sidebar";
-        Storage.saveSettings(state.settings);
-      }
+      if (sidebar) {
+        let needsOpening = false;
 
-      // Then focus search
-      el.searchInput.focus();
-      el.searchInput.select();
+        if (isFullscreen) {
+          // In fullscreen mode, check if sidebar has .visible class
+          const isSidebarVisible = sidebar.classList.contains("visible");
+
+          if (!isSidebarVisible) {
+            // Sidebar is hidden, show it and focus search
+            needsOpening = true;
+            sidebar.classList.add("visible");
+
+            // Focus search input after animation
+            setTimeout(() => {
+              el.searchInput.focus();
+              el.searchInput.select();
+            }, 300);
+          } else {
+            // Sidebar is visible, hide it
+            sidebar.classList.remove("visible");
+          }
+        } else {
+          // In normal mode, check if sidebar has .collapsed class
+          needsOpening = sidebar.classList.contains("collapsed");
+          if (needsOpening) {
+            el.toggleSidebarBtn.click();
+
+            // Focus search input after animation
+            setTimeout(() => {
+              el.searchInput.focus();
+              el.searchInput.select();
+            }, 150);
+          } else {
+            // Sidebar is already open, just focus search
+            el.searchInput.focus();
+            el.searchInput.select();
+          }
+        }
+      }
     }
 
     // Ctrl+P: Close all tabs
@@ -6174,7 +6212,27 @@ window.Storage = Storage;
     // Ctrl+.: Toggle sidebar (works globally, even while typing)
     if ((e.ctrlKey || e.metaKey) && e.key === ".") {
       e.preventDefault();
-      el.toggleSidebarBtn.click();
+
+      const sidebar = document.getElementById("sidebar");
+      const isFullscreen = document.body.classList.contains("fullscreen");
+
+      if (sidebar) {
+        if (isFullscreen) {
+          // In fullscreen mode, use the sliding mechanism like hover
+          const isSidebarVisible = sidebar.classList.contains("visible");
+
+          if (!isSidebarVisible) {
+            // Show sidebar with slide-in animation
+            sidebar.classList.add("visible");
+          } else {
+            // Hide sidebar with slide-out animation
+            sidebar.classList.remove("visible");
+          }
+        } else {
+          // In normal mode, use the existing toggle button
+          el.toggleSidebarBtn.click();
+        }
+      }
     }
 
     // Delete key: Delete selected items
