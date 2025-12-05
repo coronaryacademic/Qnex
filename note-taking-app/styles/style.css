@@ -413,9 +413,9 @@ textarea {
   min-width: 28px;
   min-height: 28px;
   border-radius: 50%;
-  background: var(--accent) !important;
-  border: none !important;
-  color: #ffffff !important;
+  background: transparent !important;
+  border: 2px solid transparent !important;
+  color: var(--accent) !important;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -423,11 +423,12 @@ textarea {
   transition: all 0.3s ease;
   padding: 0 !important;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
 }
 
 .sidebar-action-btn:hover {
   transform: scale(1.08);
+  border: 2px solid var(--accent) !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
@@ -439,7 +440,7 @@ textarea {
   transition: transform 0.3s ease;
   width: 16px;
   height: 16px;
-  stroke: #ffffff;
+  stroke: var(--muted);
   stroke-width: 2.5;
   display: block;
 }
@@ -488,6 +489,7 @@ textarea {
   font-weight: 500;
   transition: all 0.2s ease;
   text-align: left;
+  border-radius: 0 !important;
 }
 
 .menu-item:hover {
