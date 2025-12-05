@@ -974,6 +974,14 @@ window.Storage = Storage;
                 saveNotes();
                 Storage.saveTrash(state.trash);
                 renderSidebar();
+                
+                // Refresh TwoBase sidebar sections and workspace
+                if (typeof window.TwoBase !== "undefined" && typeof window.TwoBase.refreshSidebar === "function") {
+                  window.TwoBase.refreshSidebar();
+                }
+                if (typeof window.TwoBaseState !== "undefined" && typeof window.TwoBase !== "undefined" && typeof window.TwoBase.renderWorkspaceSplit === "function") {
+                  window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+                }
               }); // Close showDeleteConfirmation callback
             }
           },
@@ -4279,6 +4287,18 @@ window.Storage = Storage;
       renderSidebar();
       ["left", "right"].forEach(renderPane);
 
+      // Refresh TwoBase sidebar sections (Notebooks and Folders)
+      if (typeof window.TwoBase !== "undefined" && typeof window.TwoBase.refreshSidebar === "function") {
+        window.TwoBase.refreshSidebar();
+      }
+      
+      // Refresh the base layer workspace view
+      if (typeof window.TwoBaseState !== "undefined" && typeof window.TwoBase !== "undefined") {
+        if (typeof window.TwoBase.renderWorkspaceSplit === "function") {
+          window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+        }
+      }
+
       // Show success message
       modalAlert("All notes have been deleted successfully.");
     } catch (error) {
@@ -5445,6 +5465,18 @@ window.Storage = Storage;
     saveNotes();
     saveFolders();
     renderSidebar();
+    
+    // Refresh TwoBase sidebar sections (Notebooks and Folders)
+    if (typeof window.TwoBase !== "undefined" && typeof window.TwoBase.refreshSidebar === "function") {
+      window.TwoBase.refreshSidebar();
+    }
+    
+    // Refresh the base layer workspace view
+    if (typeof window.TwoBaseState !== "undefined" && typeof window.TwoBase !== "undefined") {
+      if (typeof window.TwoBase.renderWorkspaceSplit === "function") {
+        window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+      }
+    }
   }
 
   // Table Editor Window

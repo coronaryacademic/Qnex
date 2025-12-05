@@ -1460,25 +1460,43 @@ async function initializeThemeCarousel() {
 
   if (!prevBtn || !nextBtn || !themeNameEl) return;
 
-  // Get saved theme index from file system
-  let savedTheme = "dark";
-  if (window.fileSystemService) {
-    try {
-      const response = await window.fileSystemService.makeRequest("/settings");
-      const settings = response || {};
-      savedTheme = settings.theme || "dark";
-    } catch (error) {
-      savedTheme = "dark";
+  // Function to detect current theme from body class or state
+  function detectCurrentTheme() {
+    // First try to get from window.state.settings (most reliable)
+    if (window.state && window.state.settings && window.state.settings.theme) {
+      const savedTheme = window.state.settings.theme.toLowerCase();
+      const foundIndex = themes.findIndex(
+        (t) => t.name.toLowerCase() === savedTheme
+      );
+      if (foundIndex !== -1) {
+        return foundIndex;
+      }
     }
+    
+    // Fallback: detect from body class
+    if (document.body.classList.contains("theme-classic")) {
+      return themes.findIndex((t) => t.class === "theme-classic");
+    } else if (document.body.classList.contains("theme-light")) {
+      return themes.findIndex((t) => t.class === "theme-light");
+    }
+    
+    // Default to dark (index 0)
+    return 0;
   }
 
-  // Find theme index by name (case-insensitive)
-  currentThemeIndex = themes.findIndex(
-    (t) => t.name.toLowerCase() === savedTheme.toLowerCase()
-  );
-  if (currentThemeIndex === -1) currentThemeIndex = 0;
-
+  // Initial sync with current theme
+  currentThemeIndex = detectCurrentTheme();
   updateThemeDisplay();
+
+  // Re-sync when settings panel is opened (settings button click)
+  const settingsBtn = document.getElementById("settingsBtn");
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", () => {
+      // Re-detect the current theme when settings opens
+      currentThemeIndex = detectCurrentTheme();
+      updateThemeDisplay();
+    });
+  }
 
   prevBtn.addEventListener("click", () => {
     currentThemeIndex = (currentThemeIndex - 1 + themes.length) % themes.length;
