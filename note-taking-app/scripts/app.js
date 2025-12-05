@@ -4362,9 +4362,7 @@ window.Storage = Storage;
               </div>
               <h2 style="margin: 0 0 12px 0; color: var(--text);">My Notes</h2>
               <p style="margin: 0 0 12px 0; color: var(--muted); font-size: 13px;">
-                <strong>Version:</strong> 8.0<br>
-                <strong>Build:</strong> 8<br>
-                <strong>Last Updated:</strong> November 6, 2025<br>
+                <strong>Version:</strong> 1.12BL <br>
                 <strong>Created by:</strong> Momen
               </p>
               <p style="margin: 0; color: var(--muted); font-size: 13px; font-style: italic;">

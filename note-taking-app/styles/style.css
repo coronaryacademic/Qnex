@@ -5135,3 +5135,13 @@ ol.editor-block {
   border-radius: 2px;
   padding: 0 1px;
 }
+
+/* Hide scrollbar for menu-list while keeping scrollability */
+.menu-list {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.menu-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
