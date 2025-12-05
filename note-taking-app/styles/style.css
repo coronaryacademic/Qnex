@@ -992,7 +992,7 @@ textarea {
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
   z-index: 999;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter: blur() removed - causes severe FPS drops */
 }
 .search-results-modal {
   position: fixed;
@@ -3895,7 +3895,7 @@ body.theme-classic .welcome-shortcuts-grid kbd:hover {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur() removed - causes FPS drops */
 }
 
 .close-app-content {
@@ -4123,7 +4123,7 @@ body:not(.theme-light) .horizontal-rule {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  /* backdrop-filter: blur() removed - causes FPS drops */
   animation: fadeIn 0.3s ease-out;
 }
 
