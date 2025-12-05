@@ -3906,10 +3906,6 @@
     }
   }
 
-  // ===================================
-  // Sidebar Marquee Selection
-  // ===================================
-
   let sidebarSelectionBox = null;
   let isSidebarSelecting = false;
   let sidebarSelectionStart = { x: 0, y: 0 };
@@ -4005,7 +4001,7 @@
       section.addEventListener("mousedown", (e) => {
         // Only start selection if clicking on empty space
         const clickedItem = e.target.closest(
-          ".sidebar-item, .folder-note-item, .folder-item"
+          ".sidebar-item, .folder-note-item, .folder-item, .folder-header, .folder-chevron"
         );
         if (clickedItem) return;
 
@@ -4021,6 +4017,7 @@
 
         isSidebarSelecting = true;
         sidebarMarqueeActive = true;
+        window.sidebarMarqueeActive = true; // Expose globally for app.js
         currentSelectingSection = section;
         sidebarSelectionStart = {
           x: e.clientX,
@@ -4087,30 +4084,70 @@
       const sections = document.querySelectorAll(".sidebar-section-content");
       sections.forEach((s) => s.classList.remove("selecting"));
 
-      // Finalize selection - ensure all selected items keep their "selected" class
-      // This persists the selection after mouse release
+      // REBUILD: Finalize selection properly
       const items = document.querySelectorAll(
         ".sidebar-item, .folder-note-item"
       );
+
+      // Clear previous selection first
+      if (window.state && window.state.selectedItems) {
+        window.state.selectedItems.clear();
+      }
       items.forEach((item) => {
-        const itemId = item.dataset.noteId;
-        if (itemId && window.state && window.state.selectedItems) {
-          const hasPrefix = window.state.selectedItems.has(`note-${itemId}`);
-          if (hasPrefix) {
+        item.classList.remove("selected");
+      });
+
+      // Select items that are within the selection box
+      items.forEach((item) => {
+        const rect = item.getBoundingClientRect();
+        const itemLeft = rect.left;
+        const itemRight = rect.right;
+        const itemTop = rect.top;
+        const itemBottom = rect.bottom;
+
+        const boxLeft = Math.min(
+          sidebarSelectionStart.x,
+          sidebarSelectionEnd.x
+        );
+        const boxRight = Math.max(
+          sidebarSelectionStart.x,
+          sidebarSelectionEnd.x
+        );
+        const boxTop = Math.min(sidebarSelectionStart.y, sidebarSelectionEnd.y);
+        const boxBottom = Math.max(
+          sidebarSelectionStart.y,
+          sidebarSelectionEnd.y
+        );
+
+        // Check if item intersects with selection box
+        const intersects = !(
+          itemRight < boxLeft ||
+          itemLeft > boxRight ||
+          itemBottom < boxTop ||
+          itemTop > boxBottom
+        );
+
+        if (intersects) {
+          const itemId = item.dataset.noteId;
+          if (itemId && window.state && window.state.selectedItems) {
+            // Add to selection with "note-" prefix
+            window.state.selectedItems.add(`note-${itemId}`);
             item.classList.add("selected");
-          } else {
-            item.classList.remove("selected");
           }
         }
       });
 
-      // Reset marquee flag after a short delay to allow click event to be blocked
+      // Set marquee flag for preventing click clearing
+      sidebarMarqueeActive = true;
+      window.sidebarMarqueeActive = true;
+
+      // Reset marquee flag after a short delay
       setTimeout(() => {
         sidebarMarqueeActive = false;
-      }, 50);
+        window.sidebarMarqueeActive = false;
+      }, 100);
 
       // NOTE: Marquee selection is SIDEBAR-ONLY - do NOT sync to workspace/base layer
-      // This keeps sidebar marquee selection independent from base layer selection
     });
   }
 
@@ -4310,12 +4347,6 @@
     }
 
     setupEventListeners();
-
-    // Initialize sidebar marquee selection only
-    initSidebarMarqueeSelection();
-
-    // Add click blocker to prevent clicks from clearing marquee selection
-    addSidebarClickBlocker();
 
     // Load saved view mode from backend settings
     if (
