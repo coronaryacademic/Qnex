@@ -3140,9 +3140,8 @@
 
       // Navigate to this folder in the workspace (base layer preview)
       if (folder.id === "uncategorized") {
-        // Open uncategorized notes view specifically
-        TwoBaseState.currentFolder = "uncategorized";
-        renderFolderContents("uncategorized");
+        // Open uncategorized notes view - use renderWorkspaceSplit for proper breadcrumb update
+        renderWorkspaceSplit("uncategorized");
       } else {
         TwoBaseState.currentFolder = folder.id;
         renderWorkspaceSplit(folder.id);
