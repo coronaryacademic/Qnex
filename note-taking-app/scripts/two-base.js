@@ -278,19 +278,24 @@
       item.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         console.log("[CONTEXT MENU] Before selection update:", {
           folderId: folder.id,
           currentSelection: [...TwoBaseState.selectedItems],
           multiSelectMode: TwoBaseState.multiSelectMode,
-          isAlreadySelected: TwoBaseState.selectedItems.includes(folder.id)
+          isAlreadySelected: TwoBaseState.selectedItems.includes(folder.id),
         });
-        
+
         // IMPORTANT: If item is already selected as part of a multi-selection, DON'T change the selection
         // This allows right-clicking on marquee-selected items to show multi-select menu
-        if (TwoBaseState.selectedItems.includes(folder.id) && TwoBaseState.selectedItems.length > 1) {
+        if (
+          TwoBaseState.selectedItems.includes(folder.id) &&
+          TwoBaseState.selectedItems.length > 1
+        ) {
           // Item is part of multi-selection, keep the selection as-is
-          console.log("[CONTEXT MENU] Item is part of multi-selection, preserving selection");
+          console.log(
+            "[CONTEXT MENU] Item is part of multi-selection, preserving selection"
+          );
         } else if (!TwoBaseState.selectedItems.includes(folder.id)) {
           // Item is not selected, select it
           if (!TwoBaseState.multiSelectMode) {
@@ -308,13 +313,13 @@
             }
           }
         }
-        
+
         console.log("[CONTEXT MENU] After selection update:", {
           folderId: folder.id,
           currentSelection: [...TwoBaseState.selectedItems],
-          selectionLength: TwoBaseState.selectedItems.length
+          selectionLength: TwoBaseState.selectedItems.length,
         });
-        
+
         showWorkspaceContextMenu(e, folder.id, "folder");
       });
     }
@@ -506,12 +511,17 @@
     item.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       // IMPORTANT: If item is already selected as part of a multi-selection, DON'T change the selection
       // This allows right-clicking on marquee-selected items to show multi-select menu
-      if (TwoBaseState.selectedItems.includes(note.id) && TwoBaseState.selectedItems.length > 1) {
+      if (
+        TwoBaseState.selectedItems.includes(note.id) &&
+        TwoBaseState.selectedItems.length > 1
+      ) {
         // Item is part of multi-selection, keep the selection as-is
-        console.log("[CONTEXT MENU] Note is part of multi-selection, preserving selection");
+        console.log(
+          "[CONTEXT MENU] Note is part of multi-selection, preserving selection"
+        );
       } else if (!TwoBaseState.selectedItems.includes(note.id)) {
         // Item is not selected, select it
         if (!TwoBaseState.multiSelectMode) {
@@ -529,7 +539,7 @@
           }
         }
       }
-      
+
       showWorkspaceContextMenu(e, note.id, "note");
     });
 
@@ -638,30 +648,37 @@
       item.classList.add("context-active");
     }
 
+    // Use the SAME simple check as Ctrl+click multi-selection (lines 291-294 and 517-520)
+    // This is the proven working logic
     console.log("[CONTEXT MENU] Checking multi-selection:", {
       itemId,
       selectedItems: TwoBaseState.selectedItems,
       selectedCount: TwoBaseState.selectedItems.length,
       includes: TwoBaseState.selectedItems.includes(itemId),
-      isMulti: TwoBaseState.selectedItems.length > 1 && TwoBaseState.selectedItems.includes(itemId)
+      isMulti:
+        TwoBaseState.selectedItems.length > 1 &&
+        TwoBaseState.selectedItems.includes(itemId),
     });
 
-    // Check for multi-selection
+    // Check for multi-selection - SAME logic as individual item handlers
     if (
       TwoBaseState.selectedItems.length > 1 &&
       TwoBaseState.selectedItems.includes(itemId)
     ) {
       console.log("[CONTEXT MENU] Multi-selection detected!");
+
+      // Use TwoBaseState.selectedItems directly (same as Ctrl+click)
+      // IDs are already clean (no prefixes) from marquee selection
+      const allSelectedIds = TwoBaseState.selectedItems;
+
       // Check if any selected items are folders
-      const hasFolder = TwoBaseState.selectedItems.some((id) => {
-        const cleanId = id.replace(/^(note-|folder-)/, "");
-        return state.folders.some((f) => f.id === cleanId);
+      const hasFolder = allSelectedIds.some((id) => {
+        return state.folders.some((f) => f.id === id);
       });
 
       // Determine selection type
-      const hasNote = TwoBaseState.selectedItems.some((id) => {
-        const cleanId = id.replace(/^(note-|folder-)/, "");
-        return state.notes.some((n) => n.id === cleanId);
+      const hasNote = allSelectedIds.some((id) => {
+        return state.notes.some((n) => n.id === id);
       });
 
       let selectionType = "notes";
@@ -677,25 +694,18 @@
         onDeleteNotes: async () => {
           console.log(
             "[BASE LAYER] Multi-delete triggered, items:",
-            TwoBaseState.selectedItems
+            allSelectedIds
           );
-          const count = TwoBaseState.selectedItems.length;
+          const count = allSelectedIds.length;
           console.log("[BASE LAYER] Count:", count);
 
           showDeleteConfirmation(count, async () => {
             console.log("[BASE LAYER] User confirmed delete");
-            console.log(
-              "[BASE LAYER] Deleting items:",
-              TwoBaseState.selectedItems
-            );
+            console.log("[BASE LAYER] Deleting items:", allSelectedIds);
 
             // Delete all selected items (notes and folders)
-            for (const id of TwoBaseState.selectedItems) {
-              console.log("[BASE LAYER] Processing item:", id);
-
-              // Remove prefix if present
-              const cleanId = id.replace(/^(note-|folder-)/, "");
-              console.log("[BASE LAYER] Clean ID:", cleanId);
+            for (const cleanId of allSelectedIds) {
+              console.log("[BASE LAYER] Processing item:", cleanId);
 
               // Try to find in notes first
               const noteIdx = state.notes.findIndex((n) => n.id === cleanId);
@@ -841,9 +851,9 @@
       if (!hasFolder) {
         handlers.onExportNotes = async () => {
           // Get only the notes (filter out any folder IDs)
-          const noteIds = TwoBaseState.selectedItems
-            .map((id) => id.replace(/^(note-|folder-)/, ""))
-            .filter((id) => state.notes.some((n) => n.id === id));
+          const noteIds = allSelectedIds.filter((id) =>
+            state.notes.some((n) => n.id === id)
+          );
 
           const notesToExport = state.notes.filter((n) =>
             noteIds.includes(n.id)
@@ -2298,19 +2308,19 @@
     document.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && !ctrlPressed) {
         ctrlPressed = true;
-        
+
         // Close context menu when Ctrl is pressed (without clearing active element)
         const contextMenu = document.querySelector(".ctx-menu");
         if (contextMenu) {
           contextMenu.remove();
         }
-        
+
         // Clear the active element highlight
         if (window.ctxActiveElement) {
           window.ctxActiveElement.classList.remove("context-active");
           window.ctxActiveElement = null;
         }
-        
+
         // Activate multi-select button visual state AND enable multi-select mode
         if (multiSelectBtn) {
           multiSelectBtn.classList.add("ctrl-active");
@@ -2484,12 +2494,12 @@
     sectionHeaders.forEach((header) => {
       const sectionName = header.dataset.section;
       const chevron = header.querySelector(".section-chevron");
-      
+
       // Chevron click - ONLY toggle collapse/expand
       if (chevron) {
         chevron.addEventListener("click", (e) => {
           e.stopPropagation(); // Prevent header click from firing
-          
+
           const section = header.closest(".sidebar-section");
           section.classList.toggle("collapsed");
 
@@ -2503,14 +2513,14 @@
           }
         });
       }
-      
+
       // Header click (except chevron) - navigate to base layer
       header.addEventListener("click", (e) => {
         // Don't do anything if clicking on chevron (it has its own handler)
         if (e.target.closest(".section-chevron")) {
           return;
         }
-        
+
         // When clicking on "Folders" or "Notebooks" section header, navigate to root view
         if (sectionName === "folders" || sectionName === "notebooks") {
           TwoBaseState.currentFolder = null;
@@ -3200,9 +3210,10 @@
     notesList.className = "folder-notes-list";
 
     // Check if folder has subfolders
-    const hasSubfolders = window.state && window.state.folders 
-      ? window.state.folders.some(f => f.parentId === folder.id)
-      : false;
+    const hasSubfolders =
+      window.state && window.state.folders
+        ? window.state.folders.some((f) => f.parentId === folder.id)
+        : false;
 
     if (notes.length > 0) {
       notes.forEach((note) => {
@@ -3895,7 +3906,6 @@
     }
   }
 
-
   // ===================================
   // Sidebar Marquee Selection
   // ===================================
@@ -3907,6 +3917,7 @@
   let sidebarInitialSelection = [];
   let sidebarAutoScrollInterval = null;
   let currentSelectingSection = null;
+  let sidebarMarqueeActive = false; // Flag to prevent clicks after marquee selection
 
   // Auto-scroll configuration
   const SIDEBAR_SCROLL_EDGE_SIZE = 50; // Pixels from edge to trigger scroll
@@ -3916,24 +3927,27 @@
     // Get the sidebar element that contains the scrollable content
     const sidebar = document.querySelector(".sidebar");
     const sidebarContent = document.querySelector(".sidebar-content");
-    
+
     if (!sidebar || !sidebarContent) return;
 
     const sidebarRect = sidebarContent.getBoundingClientRect();
-    
+
     // Calculate distance from edges
     const distanceFromTop = mouseY - sidebarRect.top;
     const distanceFromBottom = sidebarRect.bottom - mouseY;
-    
+
     // Clear existing interval
     if (sidebarAutoScrollInterval) {
       clearInterval(sidebarAutoScrollInterval);
       sidebarAutoScrollInterval = null;
     }
-    
+
     // Check if near top edge - scroll up
     if (distanceFromTop < SIDEBAR_SCROLL_EDGE_SIZE && distanceFromTop > 0) {
-      const scrollSpeed = Math.max(1, SIDEBAR_SCROLL_SPEED * (1 - distanceFromTop / SIDEBAR_SCROLL_EDGE_SIZE));
+      const scrollSpeed = Math.max(
+        1,
+        SIDEBAR_SCROLL_SPEED * (1 - distanceFromTop / SIDEBAR_SCROLL_EDGE_SIZE)
+      );
       sidebarAutoScrollInterval = setInterval(() => {
         sidebarContent.scrollTop -= scrollSpeed;
         // Update selection while scrolling
@@ -3941,8 +3955,15 @@
       }, 16); // ~60fps
     }
     // Check if near bottom edge - scroll down
-    else if (distanceFromBottom < SIDEBAR_SCROLL_EDGE_SIZE && distanceFromBottom > 0) {
-      const scrollSpeed = Math.max(1, SIDEBAR_SCROLL_SPEED * (1 - distanceFromBottom / SIDEBAR_SCROLL_EDGE_SIZE));
+    else if (
+      distanceFromBottom < SIDEBAR_SCROLL_EDGE_SIZE &&
+      distanceFromBottom > 0
+    ) {
+      const scrollSpeed = Math.max(
+        1,
+        SIDEBAR_SCROLL_SPEED *
+          (1 - distanceFromBottom / SIDEBAR_SCROLL_EDGE_SIZE)
+      );
       sidebarAutoScrollInterval = setInterval(() => {
         sidebarContent.scrollTop += scrollSpeed;
         // Update selection while scrolling
@@ -3983,7 +4004,9 @@
 
       section.addEventListener("mousedown", (e) => {
         // Only start selection if clicking on empty space
-        const clickedItem = e.target.closest(".sidebar-item, .folder-note-item, .folder-item");
+        const clickedItem = e.target.closest(
+          ".sidebar-item, .folder-note-item, .folder-item"
+        );
         if (clickedItem) return;
 
         // Allow dragging on section content, empty state, or any child that's not an item
@@ -3997,6 +4020,7 @@
         e.preventDefault();
 
         isSidebarSelecting = true;
+        sidebarMarqueeActive = true;
         currentSelectingSection = section;
         sidebarSelectionStart = {
           x: e.clientX,
@@ -4004,16 +4028,23 @@
         };
         sidebarSelectionEnd = { ...sidebarSelectionStart };
 
-        // Store initial selection if Ctrl is held
+        // Store initial selection if Ctrl is held (for sidebar only)
         if (e.ctrlKey || e.metaKey) {
-          sidebarInitialSelection = [...TwoBaseState.selectedItems];
+          // Get sidebar selection from state.selectedItems (not TwoBaseState)
+          sidebarInitialSelection =
+            window.state && window.state.selectedItems
+              ? [...window.state.selectedItems].map((id) =>
+                  id.replace(/^(note-|folder-)/, "")
+                )
+              : [];
         } else {
-          // Clear previous selection if not holding Ctrl
+          // Clear previous sidebar selection if not holding Ctrl
+          // NOTE: Only clear state.selectedItems (sidebar), NOT TwoBaseState.selectedItems (base layer)
           sidebarInitialSelection = [];
-          TwoBaseState.selectedItems = [];
           if (window.state && window.state.selectedItems) {
             window.state.selectedItems.clear();
           }
+          // Do NOT clear TwoBaseState.selectedItems - that's for base layer selection only
         }
 
         // Add selecting class
@@ -4036,7 +4067,7 @@
 
       updateSidebarSelectionBox();
       selectSidebarItemsInBox();
-      
+
       // Handle auto-scrolling when near sidebar edges
       handleSidebarAutoScroll(e.clientY);
     });
@@ -4048,7 +4079,7 @@
       isSidebarSelecting = false;
       currentSelectingSection = null;
       sidebarSelectionBox.style.display = "none";
-      
+
       // Stop any auto-scrolling
       stopSidebarAutoScroll();
 
@@ -4056,15 +4087,30 @@
       const sections = document.querySelectorAll(".sidebar-section-content");
       sections.forEach((s) => s.classList.remove("selecting"));
 
-      // DON'T re-render - just sync the state
-      // The selection is already visually applied, re-rendering causes issues
-      
-      // Sync selection to workspace state only
-      TwoBaseState.selectedItems.forEach((itemId) => {
-        if (typeof window.syncWorkspaceSelection === "function") {
-          window.syncWorkspaceSelection(itemId, true);
+      // Finalize selection - ensure all selected items keep their "selected" class
+      // This persists the selection after mouse release
+      const items = document.querySelectorAll(
+        ".sidebar-item, .folder-note-item"
+      );
+      items.forEach((item) => {
+        const itemId = item.dataset.noteId;
+        if (itemId && window.state && window.state.selectedItems) {
+          const hasPrefix = window.state.selectedItems.has(`note-${itemId}`);
+          if (hasPrefix) {
+            item.classList.add("selected");
+          } else {
+            item.classList.remove("selected");
+          }
         }
       });
+
+      // Reset marquee flag after a short delay to allow click event to be blocked
+      setTimeout(() => {
+        sidebarMarqueeActive = false;
+      }, 50);
+
+      // NOTE: Marquee selection is SIDEBAR-ONLY - do NOT sync to workspace/base layer
+      // This keeps sidebar marquee selection independent from base layer selection
     });
   }
 
@@ -4102,7 +4148,11 @@
       let isHidden = false;
       while (element && element !== document.body) {
         const style = window.getComputedStyle(element);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+        if (
+          style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.opacity === "0"
+        ) {
           isHidden = true;
           break;
         }
@@ -4121,7 +4171,7 @@
       }
 
       // Skip items that are outside the viewport (scrolled out of view)
-      const isVisible = 
+      const isVisible =
         itemRect.top < window.innerHeight &&
         itemRect.bottom > 0 &&
         itemRect.left < window.innerWidth &&
@@ -4150,12 +4200,42 @@
       }
     });
 
-    // Update state
-    TwoBaseState.selectedItems = newSelection;
+    // Update state - but ONLY for sidebar, NOT for base layer
+    // Marquee selection is sidebar-only, so we update state.selectedItems but NOT TwoBaseState.selectedItems
+    // This keeps sidebar marquee selection independent from base layer selection
+    // NOTE: state.selectedItems uses "note-" prefix format (sidebar expects this)
     if (window.state && window.state.selectedItems) {
       window.state.selectedItems.clear();
-      newSelection.forEach((id) => window.state.selectedItems.add(id));
+      newSelection.forEach((id) => {
+        // Add "note-" prefix to match sidebar's expected format
+        window.state.selectedItems.add(`note-${id}`);
+      });
     }
+    // Do NOT update TwoBaseState.selectedItems - that's for base layer selection only
+  }
+
+  // Add click handler to prevent clicks from clearing selection after marquee
+  function addSidebarClickBlocker() {
+    const notebooksContent = document.getElementById("notebooksContent");
+    const foldersContent = document.getElementById("foldersContent");
+
+    [notebooksContent, foldersContent].forEach((section) => {
+      if (!section) return;
+
+      section.addEventListener(
+        "click",
+        (e) => {
+          // If marquee was just active, prevent the click from clearing selection
+          if (sidebarMarqueeActive) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return false;
+          }
+        },
+        true // Use capture phase to intercept before other handlers
+      );
+    });
   }
 
   // ===================================
@@ -4225,6 +4305,9 @@
 
     // Initialize sidebar marquee selection only
     initSidebarMarqueeSelection();
+
+    // Add click blocker to prevent clicks from clearing marquee selection
+    addSidebarClickBlocker();
 
     // Load saved view mode from backend settings
     if (
@@ -4493,32 +4576,81 @@
     const isControl = e.target.closest(
       "button, .icon-btn, .sidebar-header, .sidebar-section-header-text, .ctx-menu, .modal-overlay"
     );
-    
+
+    // Check if clicking in sidebar (don't deselect base layer when clicking sidebar)
+    const isSidebar = e.target.closest("#sidebar, .sidebar");
+
     // Check if clicking in workspace area
-    const isWorkspaceArea = e.target.closest(".workspace-content, .workspace-grid, .workspace-list");
+    // Use the actual workspaceContent element or check for workspace-split container
+    const isWorkspaceArea =
+      !isSidebar &&
+      ((el.workspaceContent && el.workspaceContent.contains(e.target)) ||
+        e.target.closest(
+          "#workspaceContent, .workspace-content, .workspace-grid, .workspace-list, #workspaceSplit, .workspace-split"
+        ));
 
     console.log("[CLICK HANDLER]", {
       isItem: !!isItem,
       isControl: !!isControl,
+      isSidebar: !!isSidebar,
       isWorkspaceArea: !!isWorkspaceArea,
+      target: e.target.tagName,
+      targetClass: e.target.className,
+      targetId: e.target.id,
+      currentBase: TwoBaseState.currentBase,
       justFinishedMarquee: window._justFinishedMarqueeSelection,
-      currentSelection: TwoBaseState.selectedItems.length
+      currentSelection: TwoBaseState.selectedItems.length,
+      workspaceContentExists: !!el.workspaceContent,
     });
 
     // Only clear if clicking on empty workspace area (not on items or controls)
     if (!isItem && !isControl && isWorkspaceArea) {
       console.log("[CLICK HANDLER] Clearing selection");
-      // Clear selection
-      if (TwoBaseState.selectedItems.length > 0) {
+      // Clear selection in both base layer and sidebar
+      if (
+        TwoBaseState.selectedItems.length > 0 ||
+        (window.state &&
+          window.state.selectedItems &&
+          window.state.selectedItems.size > 0)
+      ) {
         TwoBaseState.selectedItems = [];
         if (window.state && window.state.selectedItems) {
           window.state.selectedItems.clear();
         }
 
-        // Remove visual selection and context-active classes
-        document.querySelectorAll(".workspace-item.selected, .workspace-item.context-active").forEach((el) => {
-          el.classList.remove("selected", "context-active");
-        });
+        // Remove visual selection and context-active classes from workspace
+        document
+          .querySelectorAll(
+            ".workspace-item.selected, .workspace-item.context-active"
+          )
+          .forEach((el) => {
+            el.classList.remove("selected", "context-active");
+          });
+
+        // Remove visual selection from sidebar
+        document
+          .querySelectorAll(
+            ".sidebar-item.selected, .folder-note-item.selected, .folder-item.selected"
+          )
+          .forEach((el) => {
+            el.classList.remove("selected");
+          });
+
+        // Sync deselection to sidebar using syncWorkspaceSelection
+        if (typeof window.syncWorkspaceSelection === "function") {
+          // Get all previously selected items from both sources
+          const allSelectedIds = new Set();
+          if (window.state && window.state.selectedItems) {
+            window.state.selectedItems.forEach((id) => {
+              const cleanId = id.replace(/^(note-|folder-)/, "");
+              allSelectedIds.add(cleanId);
+            });
+          }
+          // Deselect each item
+          allSelectedIds.forEach((id) => {
+            window.syncWorkspaceSelection(id, false);
+          });
+        }
 
         // DON'T re-render - just clear the visual state
         // Re-rendering causes selections to not persist after marquee selection
@@ -4533,29 +4665,70 @@
     if (!workspaceItem) return;
 
     // Only handle if we're in the workspace
-    if (!el.workspaceContent || !el.workspaceContent.contains(workspaceItem)) return;
+    if (!el.workspaceContent || !el.workspaceContent.contains(workspaceItem))
+      return;
 
     e.preventDefault();
     e.stopPropagation();
 
-    const itemId = workspaceItem.dataset.noteId || workspaceItem.dataset.folderId;
-    const itemType = workspaceItem.dataset.itemType || (workspaceItem.dataset.noteId ? "note" : "folder");
+    const itemId =
+      workspaceItem.dataset.noteId || workspaceItem.dataset.folderId;
+    const itemType =
+      workspaceItem.dataset.itemType ||
+      (workspaceItem.dataset.noteId ? "note" : "folder");
 
     if (!itemId) return;
+
+    // Check if item is in selection (check both sources and handle ID formats)
+    const isInTwoBase = TwoBaseState.selectedItems.includes(itemId);
+    let isInState = false;
+    if (window.state && window.state.selectedItems) {
+      isInState =
+        window.state.selectedItems.has(itemId) ||
+        window.state.selectedItems.has(`note-${itemId}`) ||
+        window.state.selectedItems.has(`folder-${itemId}`);
+      // Also check by cleaning IDs from state
+      if (!isInState) {
+        window.state.selectedItems.forEach((id) => {
+          const cleanId = id.replace(/^(note-|folder-)/, "");
+          if (cleanId === itemId) {
+            isInState = true;
+          }
+        });
+      }
+    }
+
+    const twoBaseCount = TwoBaseState.selectedItems.length;
+    const stateCount =
+      window.state && window.state.selectedItems
+        ? window.state.selectedItems.size
+        : 0;
+    const isMultiSelection =
+      (twoBaseCount > 1 && isInTwoBase) || (stateCount > 1 && isInState);
 
     console.log("[GLOBAL CONTEXT MENU] Right-click on:", {
       itemId,
       itemType,
-      currentSelection: [...TwoBaseState.selectedItems],
-      isAlreadySelected: TwoBaseState.selectedItems.includes(itemId)
+      twoBaseSelection: [...TwoBaseState.selectedItems],
+      twoBaseCount,
+      isInTwoBase,
+      stateSelection:
+        window.state && window.state.selectedItems
+          ? [...window.state.selectedItems]
+          : [],
+      stateCount,
+      isInState,
+      isMultiSelection,
     });
 
     // IMPORTANT: If item is already selected as part of a multi-selection, DON'T change the selection
     // This allows right-clicking on marquee-selected items to show multi-select menu
-    if (TwoBaseState.selectedItems.includes(itemId) && TwoBaseState.selectedItems.length > 1) {
+    if (isMultiSelection) {
       // Item is part of multi-selection, keep the selection as-is
-      console.log("[GLOBAL CONTEXT MENU] Item is part of multi-selection, preserving selection");
-    } else if (!TwoBaseState.selectedItems.includes(itemId)) {
+      console.log(
+        "[GLOBAL CONTEXT MENU] Item is part of multi-selection, preserving selection"
+      );
+    } else if (!isInTwoBase && !isInState) {
       // Item is not selected, select it and clear others
       TwoBaseState.selectedItems = [itemId];
       if (window.state && window.state.selectedItems) {
@@ -4572,7 +4745,11 @@
 
     console.log("[GLOBAL CONTEXT MENU] Final selection before showing menu:", {
       selectedItems: [...TwoBaseState.selectedItems],
-      count: TwoBaseState.selectedItems.length
+      count: TwoBaseState.selectedItems.length,
+      stateCount:
+        window.state && window.state.selectedItems
+          ? window.state.selectedItems.size
+          : 0,
     });
 
     showWorkspaceContextMenu(e, itemId, itemType);
@@ -4581,28 +4758,39 @@
   // Global keyboard handler for delete key
   document.addEventListener("keydown", (e) => {
     // Only handle Delete key when in base layer with items selected
-    if (e.key === "Delete" && TwoBaseState.currentBase === "main" && TwoBaseState.selectedItems.length > 0) {
+    if (
+      e.key === "Delete" &&
+      TwoBaseState.currentBase === "main" &&
+      TwoBaseState.selectedItems.length > 0
+    ) {
       // Don't trigger if user is typing in an input field
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
+      if (
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA" ||
+        e.target.isContentEditable
+      ) {
         return;
       }
 
       e.preventDefault();
-      
-      console.log("[KEYBOARD DELETE] Triggered for items:", TwoBaseState.selectedItems);
-      
+
+      console.log(
+        "[KEYBOARD DELETE] Triggered for items:",
+        TwoBaseState.selectedItems
+      );
+
       const count = TwoBaseState.selectedItems.length;
-      
+
       showDeleteConfirmation(count, async () => {
         console.log("[KEYBOARD DELETE] User confirmed delete");
-        
+
         // Delete all selected items (notes and folders)
         for (const id of [...TwoBaseState.selectedItems]) {
           const cleanId = id.replace(/^(note-|folder-)/, "");
-          
+
           // Try to find in notes first
           const noteIdx = state.notes.findIndex((n) => n.id === cleanId);
-          
+
           if (noteIdx >= 0) {
             const [deletedNote] = state.notes.splice(noteIdx, 1);
             const trashItem = {
@@ -4610,18 +4798,27 @@
               deletedAt: new Date().toISOString(),
             };
             state.trash.push(trashItem);
-            
+
             // Delete from backend
-            if (typeof window.Storage !== "undefined" && window.Storage.useFileSystem) {
+            if (
+              typeof window.Storage !== "undefined" &&
+              window.Storage.useFileSystem
+            ) {
               try {
                 if (typeof window.fileSystemService !== "undefined") {
-                  await window.fileSystemService.deleteNoteFromCollection(cleanId);
+                  await window.fileSystemService.deleteNoteFromCollection(
+                    cleanId
+                  );
                 }
               } catch (error) {
-                console.error("Error deleting note from backend:", cleanId, error);
+                console.error(
+                  "Error deleting note from backend:",
+                  cleanId,
+                  error
+                );
               }
             }
-            
+
             // Close tabs
             if (typeof window.closeTab === "function") {
               window.closeTab("left", cleanId);
@@ -4630,14 +4827,16 @@
           } else {
             // Try to find in folders
             const folderIdx = state.folders.findIndex((f) => f.id === cleanId);
-            
+
             if (folderIdx >= 0) {
               const folder = state.folders[folderIdx];
-              const notesInFolder = state.notes.filter((n) => n.folderId === cleanId);
-              
+              const notesInFolder = state.notes.filter(
+                (n) => n.folderId === cleanId
+              );
+
               // Remove folder
               state.folders.splice(folderIdx, 1);
-              
+
               // Move folder to trash with its notes
               const trashItem = {
                 ...folder,
@@ -4646,7 +4845,7 @@
                 deletedAt: new Date().toISOString(),
               };
               state.trash.push(trashItem);
-              
+
               // Move notes in folder to uncategorized
               notesInFolder.forEach((note) => {
                 note.folderId = null;
@@ -4654,13 +4853,13 @@
             }
           }
         }
-        
+
         // Clear selection
         TwoBaseState.selectedItems = [];
         if (window.state && window.state.selectedItems) {
           window.state.selectedItems.clear();
         }
-        
+
         // Refresh view and sidebar
         if (typeof window.renderSidebar === "function") {
           window.renderSidebar();

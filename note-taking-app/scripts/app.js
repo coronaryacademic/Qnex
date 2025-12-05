@@ -6870,6 +6870,60 @@ window.Storage = Storage;
     if (e.target.closest(".selected") || e.target.closest(".ctx-menu")) {
       return;
     }
+    
+    // Check if clicking in sidebar area (empty space, not on items)
+    const isSidebarArea = e.target.closest("#sidebar, .sidebar-section-content");
+    const isSidebarItem = e.target.closest(".sidebar-item, .folder-note-item, .folder-item");
+    const isSidebarControl = e.target.closest(".sidebar-header, .sidebar-section-header-text, button");
+    
+    // If clicking empty space in sidebar (not on items or controls)
+    if (isSidebarArea && !isSidebarItem && !isSidebarControl) {
+      // Get currently selected items before clearing
+      const selectedItems = [...state.selectedItems];
+      
+      // Deselect all items in sidebar
+      document
+        .querySelectorAll(".sidebar-item.selected, .folder-note-item.selected, .folder-item.selected")
+        .forEach((item) => {
+          item.classList.remove("selected");
+        });
+      
+      // Clear state selections
+      if (typeof TwoBaseState !== "undefined") {
+        TwoBaseState.selectedItems = [];
+      }
+      state.selectedItems.clear();
+      
+      // Sync deselection to workspace/base layer
+      if (typeof window.syncWorkspaceSelection === "function") {
+        selectedItems.forEach((itemId) => {
+          // Handle notes (with "note-" prefix)
+          if (itemId.startsWith("note-")) {
+            const noteId = itemId.replace(/^note-/, "");
+            window.syncWorkspaceSelection(noteId, false);
+          }
+          // Handle folders (with "folder-" prefix)
+          else if (itemId.startsWith("folder-")) {
+            const folderId = itemId.replace(/^folder-/, "");
+            // For folders, directly remove selected class from workspace items
+            document.querySelectorAll(`.workspace-item[data-folder-id="${folderId}"], .workspace-item.folder[data-folder-id="${folderId}"]`).forEach((item) => {
+              item.classList.remove("selected");
+            });
+            // Also try syncWorkspaceSelection in case folders use data-id
+            window.syncWorkspaceSelection(folderId, false);
+          }
+        });
+      }
+      
+      // Also directly remove selected class from all workspace items as backup
+      document.querySelectorAll(".workspace-item.selected").forEach((item) => {
+        item.classList.remove("selected");
+      });
+      
+      return;
+    }
+    
+    // For other areas, just clear the state (workspace click handler in two-base.js will handle visual updates)
     // Deselect all items in sidebar
     document
       .querySelectorAll(".sidebar-item.selected, .folder-note-item.selected")
