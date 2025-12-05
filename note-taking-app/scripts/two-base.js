@@ -4226,11 +4226,19 @@
         "click",
         (e) => {
           // If marquee was just active, prevent the click from clearing selection
+          // BUT: Allow clicks on folder headers and chevrons to expand/collapse
           if (sidebarMarqueeActive) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            return false;
+            const target = e.target.closest(".sidebar-item, .folder-note-item");
+            // Only block clicks on actual note/item elements, not folder headers
+            if (
+              target &&
+              !e.target.closest(".folder-header, .folder-chevron")
+            ) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              return false;
+            }
           }
         },
         true // Use capture phase to intercept before other handlers
