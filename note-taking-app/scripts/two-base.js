@@ -4465,8 +4465,12 @@
     // Event handlers
     const close = () => document.body.removeChild(overlay);
 
-    cancelBtn.addEventListener("click", close);
-    deleteBtn.addEventListener("click", () => {
+    cancelBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      close();
+    });
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       close();
       onConfirm();
     });
@@ -4483,8 +4487,9 @@
       }
     });
 
-    // Click overlay to cancel
+    // Click overlay to cancel (stop propagation to prevent deselection)
     overlay.addEventListener("click", (e) => {
+      e.stopPropagation();
       if (e.target === overlay) close();
     });
   }
