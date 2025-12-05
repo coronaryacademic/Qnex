@@ -2482,24 +2482,39 @@
     );
 
     sectionHeaders.forEach((header) => {
-      header.addEventListener("click", () => {
-        const section = header.closest(".sidebar-section");
-        section.classList.toggle("collapsed");
-
-        // Save collapsed state to localStorage
-        const sectionName = header.dataset.section;
-        if (sectionName) {
-          const isCollapsed = section.classList.contains("collapsed");
-          localStorage.setItem(
-            `sidebar-section-${sectionName}-collapsed`,
-            isCollapsed
-          );
+      const sectionName = header.dataset.section;
+      const chevron = header.querySelector(".section-chevron");
+      
+      // Chevron click - ONLY toggle collapse/expand
+      if (chevron) {
+        chevron.addEventListener("click", (e) => {
+          e.stopPropagation(); // Prevent header click from firing
           
-          // When clicking on "Folders" section header, navigate to root folders view
-          if (sectionName === "folders") {
-            TwoBaseState.currentFolder = null;
-            renderWorkspaceSplit(null);
+          const section = header.closest(".sidebar-section");
+          section.classList.toggle("collapsed");
+
+          // Save collapsed state to localStorage
+          if (sectionName) {
+            const isCollapsed = section.classList.contains("collapsed");
+            localStorage.setItem(
+              `sidebar-section-${sectionName}-collapsed`,
+              isCollapsed
+            );
           }
+        });
+      }
+      
+      // Header click (except chevron) - navigate to base layer
+      header.addEventListener("click", (e) => {
+        // Don't do anything if clicking on chevron (it has its own handler)
+        if (e.target.closest(".section-chevron")) {
+          return;
+        }
+        
+        // When clicking on "Folders" or "Notebooks" section header, navigate to root view
+        if (sectionName === "folders" || sectionName === "notebooks") {
+          TwoBaseState.currentFolder = null;
+          renderWorkspaceSplit(null);
         }
       });
     });
