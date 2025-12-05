@@ -974,13 +974,22 @@ window.Storage = Storage;
                 saveNotes();
                 Storage.saveTrash(state.trash);
                 renderSidebar();
-                
+
                 // Refresh TwoBase sidebar sections and workspace
-                if (typeof window.TwoBase !== "undefined" && typeof window.TwoBase.refreshSidebar === "function") {
+                if (
+                  typeof window.TwoBase !== "undefined" &&
+                  typeof window.TwoBase.refreshSidebar === "function"
+                ) {
                   window.TwoBase.refreshSidebar();
                 }
-                if (typeof window.TwoBaseState !== "undefined" && typeof window.TwoBase !== "undefined" && typeof window.TwoBase.renderWorkspaceSplit === "function") {
-                  window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+                if (
+                  typeof window.TwoBaseState !== "undefined" &&
+                  typeof window.TwoBase !== "undefined" &&
+                  typeof window.TwoBase.renderWorkspaceSplit === "function"
+                ) {
+                  window.TwoBase.renderWorkspaceSplit(
+                    window.TwoBaseState.currentFolder
+                  );
                 }
               }); // Close showDeleteConfirmation callback
             }
@@ -3197,8 +3206,151 @@ window.Storage = Storage;
     openInPane(n.id, "left");
   }
 
+  // Import function for sidebar header button
+  async function importRoot() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (data.type === "folder") {
+          // Import the folder as a new root folder
+          const newFolderId = uid();
+          const idMap = new Map();
+          idMap.set(data.folder.id, newFolderId);
+
+          // Create the main folder
+          const newFolder = {
+            ...data.folder,
+            id: newFolderId,
+            parentId: null, // Root level
+          };
+          state.folders.push(newFolder);
+
+          // Import subfolders with new IDs
+          const importedSubfolders = data.subfolders || [];
+          importedSubfolders.forEach((subfolder) => {
+            const newSubId = uid();
+            idMap.set(subfolder.id, newSubId);
+            const newSub = {
+              ...subfolder,
+              id: newSubId,
+              parentId: idMap.get(subfolder.parentId) || newFolderId,
+            };
+            state.folders.push(newSub);
+          });
+
+          // Import notes with new IDs
+          const importedNotes = data.notes || [];
+          importedNotes.forEach((note) => {
+            const newNote = {
+              ...note,
+              id: uid(),
+              folderId: idMap.get(note.folderId) || newFolderId,
+            };
+            state.notes.push(newNote);
+          });
+
+          state.foldersOpen.add(newFolderId); // Auto-expand
+          await saveNotes();
+          await saveFolders();
+          renderSidebar();
+
+          console.log(`Imported folder "${newFolder.name}" to root`);
+        } else if (data.type === "note") {
+          // Import single note to uncategorized
+          const newNote = {
+            ...data.note,
+            id: uid(),
+            folderId: null, // Uncategorized
+          };
+          state.notes.push(newNote);
+          await saveNotes();
+          renderSidebar();
+
+          console.log(`Imported note "${newNote.title}" to uncategorized`);
+        } else {
+          alert("Unknown import format");
+        }
+      } catch (error) {
+        console.error("Error importing:", error);
+        alert("Error importing file. Please check the file format.");
+      }
+    };
+
+    input.click();
+  }
+
   // Events
   el.newNoteBtn.addEventListener("click", newNote);
+
+  // Sidebar action menu toggle
+  const sidebarActionBtn = document.getElementById("sidebarActionBtn");
+  const sidebarActionMenu = document.getElementById("sidebarActionMenu");
+
+  if (sidebarActionBtn && sidebarActionMenu) {
+    sidebarActionBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      sidebarActionBtn.classList.toggle("open");
+      sidebarActionMenu.classList.toggle("open");
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".sidebar-action-menu")) {
+        sidebarActionBtn.classList.remove("open");
+        sidebarActionMenu.classList.remove("open");
+      }
+    });
+
+    // Close menu when clicking on a menu item
+    sidebarActionMenu.addEventListener("click", (e) => {
+      const menuItem = e.target.closest(".menu-item");
+      if (menuItem) {
+        sidebarActionBtn.classList.remove("open");
+        sidebarActionMenu.classList.remove("open");
+      }
+    });
+  }
+
+  // Import button in sidebar menu
+  const importBtn = document.querySelector('[data-cmd="import-root"]');
+  if (importBtn) {
+    importBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await importRoot();
+    });
+  }
+
+  // New folder button in sidebar menu
+  const newFolderBtn = document.querySelector('[data-cmd="new-folder"]');
+  if (newFolderBtn) {
+    newFolderBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const name = await modalPrompt("New Folder", "Folder name");
+      if (name) {
+        const newFolderId = uid();
+        const newFolder = {
+          id: newFolderId,
+          name: name,
+          parentId: null, // Root level
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        state.folders.push(newFolder);
+        await saveFolders();
+        renderSidebar();
+        state.foldersOpen.add(newFolderId); // Auto-expand
+        console.log(`Created folder "${name}" at root`);
+      }
+    });
+  }
 
   // Search functionality
   el.searchInput.addEventListener("input", (e) => {
@@ -4288,14 +4440,22 @@ window.Storage = Storage;
       ["left", "right"].forEach(renderPane);
 
       // Refresh TwoBase sidebar sections (Notebooks and Folders)
-      if (typeof window.TwoBase !== "undefined" && typeof window.TwoBase.refreshSidebar === "function") {
+      if (
+        typeof window.TwoBase !== "undefined" &&
+        typeof window.TwoBase.refreshSidebar === "function"
+      ) {
         window.TwoBase.refreshSidebar();
       }
-      
+
       // Refresh the base layer workspace view
-      if (typeof window.TwoBaseState !== "undefined" && typeof window.TwoBase !== "undefined") {
+      if (
+        typeof window.TwoBaseState !== "undefined" &&
+        typeof window.TwoBase !== "undefined"
+      ) {
         if (typeof window.TwoBase.renderWorkspaceSplit === "function") {
-          window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+          window.TwoBase.renderWorkspaceSplit(
+            window.TwoBaseState.currentFolder
+          );
         }
       }
 
@@ -5465,14 +5625,20 @@ window.Storage = Storage;
     saveNotes();
     saveFolders();
     renderSidebar();
-    
+
     // Refresh TwoBase sidebar sections (Notebooks and Folders)
-    if (typeof window.TwoBase !== "undefined" && typeof window.TwoBase.refreshSidebar === "function") {
+    if (
+      typeof window.TwoBase !== "undefined" &&
+      typeof window.TwoBase.refreshSidebar === "function"
+    ) {
       window.TwoBase.refreshSidebar();
     }
-    
+
     // Refresh the base layer workspace view
-    if (typeof window.TwoBaseState !== "undefined" && typeof window.TwoBase !== "undefined") {
+    if (
+      typeof window.TwoBaseState !== "undefined" &&
+      typeof window.TwoBase !== "undefined"
+    ) {
       if (typeof window.TwoBase.renderWorkspaceSplit === "function") {
         window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
       }
@@ -6870,30 +7036,38 @@ window.Storage = Storage;
     if (e.target.closest(".selected") || e.target.closest(".ctx-menu")) {
       return;
     }
-    
+
     // Check if clicking in sidebar area (empty space, not on items)
-    const isSidebarArea = e.target.closest("#sidebar, .sidebar-section-content");
-    const isSidebarItem = e.target.closest(".sidebar-item, .folder-note-item, .folder-item");
-    const isSidebarControl = e.target.closest(".sidebar-header, .sidebar-section-header-text, button");
-    
+    const isSidebarArea = e.target.closest(
+      "#sidebar, .sidebar-section-content"
+    );
+    const isSidebarItem = e.target.closest(
+      ".sidebar-item, .folder-note-item, .folder-item"
+    );
+    const isSidebarControl = e.target.closest(
+      ".sidebar-header, .sidebar-section-header-text, button"
+    );
+
     // If clicking empty space in sidebar (not on items or controls)
     if (isSidebarArea && !isSidebarItem && !isSidebarControl) {
       // Get currently selected items before clearing
       const selectedItems = [...state.selectedItems];
-      
+
       // Deselect all items in sidebar
       document
-        .querySelectorAll(".sidebar-item.selected, .folder-note-item.selected, .folder-item.selected")
+        .querySelectorAll(
+          ".sidebar-item.selected, .folder-note-item.selected, .folder-item.selected"
+        )
         .forEach((item) => {
           item.classList.remove("selected");
         });
-      
+
       // Clear state selections
       if (typeof TwoBaseState !== "undefined") {
         TwoBaseState.selectedItems = [];
       }
       state.selectedItems.clear();
-      
+
       // Sync deselection to workspace/base layer
       if (typeof window.syncWorkspaceSelection === "function") {
         selectedItems.forEach((itemId) => {
@@ -6906,23 +7080,27 @@ window.Storage = Storage;
           else if (itemId.startsWith("folder-")) {
             const folderId = itemId.replace(/^folder-/, "");
             // For folders, directly remove selected class from workspace items
-            document.querySelectorAll(`.workspace-item[data-folder-id="${folderId}"], .workspace-item.folder[data-folder-id="${folderId}"]`).forEach((item) => {
-              item.classList.remove("selected");
-            });
+            document
+              .querySelectorAll(
+                `.workspace-item[data-folder-id="${folderId}"], .workspace-item.folder[data-folder-id="${folderId}"]`
+              )
+              .forEach((item) => {
+                item.classList.remove("selected");
+              });
             // Also try syncWorkspaceSelection in case folders use data-id
             window.syncWorkspaceSelection(folderId, false);
           }
         });
       }
-      
+
       // Also directly remove selected class from all workspace items as backup
       document.querySelectorAll(".workspace-item.selected").forEach((item) => {
         item.classList.remove("selected");
       });
-      
+
       return;
     }
-    
+
     // For other areas, just clear the state (workspace click handler in two-base.js will handle visual updates)
     // Deselect all items in sidebar
     document
