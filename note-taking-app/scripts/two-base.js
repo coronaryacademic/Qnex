@@ -2494,6 +2494,12 @@
             `sidebar-section-${sectionName}-collapsed`,
             isCollapsed
           );
+          
+          // When clicking on "Folders" section header, navigate to root folders view
+          if (sectionName === "folders") {
+            TwoBaseState.currentFolder = null;
+            renderWorkspaceSplit(null);
+          }
         }
       });
     });
@@ -3134,8 +3140,11 @@
 
       // Navigate to this folder in the workspace (base layer preview)
       if (folder.id === "uncategorized") {
-        renderWorkspaceSplit(null);
+        // Open uncategorized notes view specifically
+        TwoBaseState.currentFolder = "uncategorized";
+        renderFolderContents("uncategorized");
       } else {
+        TwoBaseState.currentFolder = folder.id;
         renderWorkspaceSplit(folder.id);
       }
     });
@@ -3882,6 +3891,58 @@
   let sidebarSelectionStart = { x: 0, y: 0 };
   let sidebarSelectionEnd = { x: 0, y: 0 };
   let sidebarInitialSelection = [];
+  let sidebarAutoScrollInterval = null;
+  let currentSelectingSection = null;
+
+  // Auto-scroll configuration
+  const SIDEBAR_SCROLL_EDGE_SIZE = 50; // Pixels from edge to trigger scroll
+  const SIDEBAR_SCROLL_SPEED = 8; // Pixels per frame
+
+  function handleSidebarAutoScroll(mouseY) {
+    // Get the sidebar element that contains the scrollable content
+    const sidebar = document.querySelector(".sidebar");
+    const sidebarContent = document.querySelector(".sidebar-content");
+    
+    if (!sidebar || !sidebarContent) return;
+
+    const sidebarRect = sidebarContent.getBoundingClientRect();
+    
+    // Calculate distance from edges
+    const distanceFromTop = mouseY - sidebarRect.top;
+    const distanceFromBottom = sidebarRect.bottom - mouseY;
+    
+    // Clear existing interval
+    if (sidebarAutoScrollInterval) {
+      clearInterval(sidebarAutoScrollInterval);
+      sidebarAutoScrollInterval = null;
+    }
+    
+    // Check if near top edge - scroll up
+    if (distanceFromTop < SIDEBAR_SCROLL_EDGE_SIZE && distanceFromTop > 0) {
+      const scrollSpeed = Math.max(1, SIDEBAR_SCROLL_SPEED * (1 - distanceFromTop / SIDEBAR_SCROLL_EDGE_SIZE));
+      sidebarAutoScrollInterval = setInterval(() => {
+        sidebarContent.scrollTop -= scrollSpeed;
+        // Update selection while scrolling
+        selectSidebarItemsInBox();
+      }, 16); // ~60fps
+    }
+    // Check if near bottom edge - scroll down
+    else if (distanceFromBottom < SIDEBAR_SCROLL_EDGE_SIZE && distanceFromBottom > 0) {
+      const scrollSpeed = Math.max(1, SIDEBAR_SCROLL_SPEED * (1 - distanceFromBottom / SIDEBAR_SCROLL_EDGE_SIZE));
+      sidebarAutoScrollInterval = setInterval(() => {
+        sidebarContent.scrollTop += scrollSpeed;
+        // Update selection while scrolling
+        selectSidebarItemsInBox();
+      }, 16); // ~60fps
+    }
+  }
+
+  function stopSidebarAutoScroll() {
+    if (sidebarAutoScrollInterval) {
+      clearInterval(sidebarAutoScrollInterval);
+      sidebarAutoScrollInterval = null;
+    }
+  }
 
   function initSidebarMarqueeSelection() {
     // Create sidebar selection box element with light, clean design
@@ -3922,6 +3983,7 @@
         e.preventDefault();
 
         isSidebarSelecting = true;
+        currentSelectingSection = section;
         sidebarSelectionStart = {
           x: e.clientX,
           y: e.clientY,
@@ -3949,7 +4011,7 @@
       });
     });
 
-    // Mouse move - update selection box
+    // Mouse move - update selection box and handle auto-scroll
     document.addEventListener("mousemove", (e) => {
       if (!isSidebarSelecting) return;
 
@@ -3960,6 +4022,9 @@
 
       updateSidebarSelectionBox();
       selectSidebarItemsInBox();
+      
+      // Handle auto-scrolling when near sidebar edges
+      handleSidebarAutoScroll(e.clientY);
     });
 
     // Mouse up - finish selection
@@ -3967,7 +4032,11 @@
       if (!isSidebarSelecting) return;
 
       isSidebarSelecting = false;
+      currentSelectingSection = null;
       sidebarSelectionBox.style.display = "none";
+      
+      // Stop any auto-scrolling
+      stopSidebarAutoScroll();
 
       // Remove selecting class from all sections
       const sections = document.querySelectorAll(".sidebar-section-content");
