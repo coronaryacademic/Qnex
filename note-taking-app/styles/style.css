@@ -3520,10 +3520,10 @@ body.theme-classic .welcome-shortcuts-grid kbd:hover {
   border-radius: 8px;
   border: 1px solid var(--border);
   padding: 12px 0;
-  padding-bottom: 5px;
   position: relative;
   box-sizing: border-box;
 }
+
 .marquee-wrapper::before,
 .marquee-wrapper::after {
   content: "";

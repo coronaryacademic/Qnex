@@ -278,6 +278,43 @@
       item.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        
+        console.log("[CONTEXT MENU] Before selection update:", {
+          folderId: folder.id,
+          currentSelection: [...TwoBaseState.selectedItems],
+          multiSelectMode: TwoBaseState.multiSelectMode,
+          isAlreadySelected: TwoBaseState.selectedItems.includes(folder.id)
+        });
+        
+        // IMPORTANT: If item is already selected as part of a multi-selection, DON'T change the selection
+        // This allows right-clicking on marquee-selected items to show multi-select menu
+        if (TwoBaseState.selectedItems.includes(folder.id) && TwoBaseState.selectedItems.length > 1) {
+          // Item is part of multi-selection, keep the selection as-is
+          console.log("[CONTEXT MENU] Item is part of multi-selection, preserving selection");
+        } else if (!TwoBaseState.selectedItems.includes(folder.id)) {
+          // Item is not selected, select it
+          if (!TwoBaseState.multiSelectMode) {
+            // Clear other selections if not in multi-select mode
+            TwoBaseState.selectedItems = [folder.id];
+            if (window.state && window.state.selectedItems) {
+              window.state.selectedItems.clear();
+              window.state.selectedItems.add(folder.id);
+            }
+          } else {
+            // Add to selection in multi-select mode
+            TwoBaseState.selectedItems.push(folder.id);
+            if (window.state && window.state.selectedItems) {
+              window.state.selectedItems.add(folder.id);
+            }
+          }
+        }
+        
+        console.log("[CONTEXT MENU] After selection update:", {
+          folderId: folder.id,
+          currentSelection: [...TwoBaseState.selectedItems],
+          selectionLength: TwoBaseState.selectedItems.length
+        });
+        
         showWorkspaceContextMenu(e, folder.id, "folder");
       });
     }
@@ -432,6 +469,7 @@
   }
 
   function createNoteItem(note) {
+    console.log("[CREATE NOTE ITEM]", note.id);
     const item = document.createElement("div");
     item.className = "workspace-item note";
     item.dataset.noteId = note.id;
@@ -443,16 +481,13 @@
     }
 
     const icon = getIcon(note.icon || "default");
-    const date = note.updatedAt
-      ? new Date(note.updatedAt).toLocaleDateString()
-      : "";
 
     item.innerHTML = `
       <div class="workspace-item-icon">${icon}</div>
       <div class="workspace-item-title">${escapeHtml(
         note.title || "Untitled"
       )}</div>
-      <div class="workspace-item-meta">${date}</div>
+      <div class="workspace-item-meta">Notebook</div>
     `;
 
     // Click handler - only multi-select button enables multi-selection
@@ -471,6 +506,30 @@
     item.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      
+      // IMPORTANT: If item is already selected as part of a multi-selection, DON'T change the selection
+      // This allows right-clicking on marquee-selected items to show multi-select menu
+      if (TwoBaseState.selectedItems.includes(note.id) && TwoBaseState.selectedItems.length > 1) {
+        // Item is part of multi-selection, keep the selection as-is
+        console.log("[CONTEXT MENU] Note is part of multi-selection, preserving selection");
+      } else if (!TwoBaseState.selectedItems.includes(note.id)) {
+        // Item is not selected, select it
+        if (!TwoBaseState.multiSelectMode) {
+          // Clear other selections if not in multi-select mode
+          TwoBaseState.selectedItems = [note.id];
+          if (window.state && window.state.selectedItems) {
+            window.state.selectedItems.clear();
+            window.state.selectedItems.add(note.id);
+          }
+        } else {
+          // Add to selection in multi-select mode
+          TwoBaseState.selectedItems.push(note.id);
+          if (window.state && window.state.selectedItems) {
+            window.state.selectedItems.add(note.id);
+          }
+        }
+      }
+      
       showWorkspaceContextMenu(e, note.id, "note");
     });
 
@@ -579,11 +638,20 @@
       item.classList.add("context-active");
     }
 
+    console.log("[CONTEXT MENU] Checking multi-selection:", {
+      itemId,
+      selectedItems: TwoBaseState.selectedItems,
+      selectedCount: TwoBaseState.selectedItems.length,
+      includes: TwoBaseState.selectedItems.includes(itemId),
+      isMulti: TwoBaseState.selectedItems.length > 1 && TwoBaseState.selectedItems.includes(itemId)
+    });
+
     // Check for multi-selection
     if (
       TwoBaseState.selectedItems.length > 1 &&
       TwoBaseState.selectedItems.includes(itemId)
     ) {
+      console.log("[CONTEXT MENU] Multi-selection detected!");
       // Check if any selected items are folders
       const hasFolder = TwoBaseState.selectedItems.some((id) => {
         const cleanId = id.replace(/^(note-|folder-)/, "");
@@ -761,7 +829,7 @@
               window.renderSidebar();
             }
             if (TwoBaseState.currentFolder === "uncategorized") {
-              renderUncategorizedNotes();
+              renderFolderContents("uncategorized");
             } else {
               renderWorkspaceSplit(TwoBaseState.currentFolder);
             }
@@ -3615,7 +3683,7 @@
 
     // Re-render current view with new sort
     if (TwoBaseState.currentFolder === "uncategorized") {
-      renderUncategorizedNotes();
+      renderFolderContents("uncategorized");
     } else {
       renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
@@ -3667,7 +3735,7 @@
 
     // Re-render current view with new layout
     if (TwoBaseState.currentFolder === "uncategorized") {
-      renderUncategorizedNotes();
+      renderFolderContents("uncategorized");
     } else {
       renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
@@ -3798,9 +3866,212 @@
   function renderWorkspaceWithCheckboxes() {
     // Re-render current view with checkboxes
     if (TwoBaseState.currentFolder === "uncategorized") {
-      renderUncategorizedNotes();
+      renderFolderContents("uncategorized");
     } else {
       renderWorkspaceSplit(TwoBaseState.currentFolder);
+    }
+  }
+
+
+  // ===================================
+  // Sidebar Marquee Selection
+  // ===================================
+
+  let sidebarSelectionBox = null;
+  let isSidebarSelecting = false;
+  let sidebarSelectionStart = { x: 0, y: 0 };
+  let sidebarSelectionEnd = { x: 0, y: 0 };
+  let sidebarInitialSelection = [];
+
+  function initSidebarMarqueeSelection() {
+    // Create sidebar selection box element with light, clean design
+    sidebarSelectionBox = document.createElement("div");
+    sidebarSelectionBox.className = "selection-box";
+    sidebarSelectionBox.style.cssText = `
+      position: absolute;
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      background: rgba(59, 130, 246, 0.08);
+      pointer-events: none;
+      display: none;
+      z-index: 1000;
+      border-radius: 3px;
+    `;
+    document.body.appendChild(sidebarSelectionBox);
+
+    // Get sidebar sections
+    const notebooksContent = document.getElementById("notebooksContent");
+    const foldersContent = document.getElementById("foldersContent");
+
+    // Add event listeners to both sections
+    [notebooksContent, foldersContent].forEach((section) => {
+      if (!section) return;
+
+      section.addEventListener("mousedown", (e) => {
+        // Only start selection if clicking on empty space
+        const clickedItem = e.target.closest(".sidebar-item, .folder-note-item, .folder-item");
+        if (clickedItem) return;
+
+        // Allow dragging on section content, empty state, or any child that's not an item
+        // This includes padding areas and empty space
+        const isInSection = section.contains(e.target);
+        if (!isInSection) return;
+
+        // Don't start selection if right-clicking
+        if (e.button !== 0) return;
+
+        e.preventDefault();
+
+        isSidebarSelecting = true;
+        sidebarSelectionStart = {
+          x: e.clientX,
+          y: e.clientY,
+        };
+        sidebarSelectionEnd = { ...sidebarSelectionStart };
+
+        // Store initial selection if Ctrl is held
+        if (e.ctrlKey || e.metaKey) {
+          sidebarInitialSelection = [...TwoBaseState.selectedItems];
+        } else {
+          // Clear previous selection if not holding Ctrl
+          sidebarInitialSelection = [];
+          TwoBaseState.selectedItems = [];
+          if (window.state && window.state.selectedItems) {
+            window.state.selectedItems.clear();
+          }
+        }
+
+        // Add selecting class
+        section.classList.add("selecting");
+
+        // Show selection box
+        sidebarSelectionBox.style.display = "block";
+        updateSidebarSelectionBox();
+      });
+    });
+
+    // Mouse move - update selection box
+    document.addEventListener("mousemove", (e) => {
+      if (!isSidebarSelecting) return;
+
+      sidebarSelectionEnd = {
+        x: e.clientX,
+        y: e.clientY,
+      };
+
+      updateSidebarSelectionBox();
+      selectSidebarItemsInBox();
+    });
+
+    // Mouse up - finish selection
+    document.addEventListener("mouseup", (e) => {
+      if (!isSidebarSelecting) return;
+
+      isSidebarSelecting = false;
+      sidebarSelectionBox.style.display = "none";
+
+      // Remove selecting class from all sections
+      const sections = document.querySelectorAll(".sidebar-section-content");
+      sections.forEach((s) => s.classList.remove("selecting"));
+
+      // DON'T re-render - just sync the state
+      // The selection is already visually applied, re-rendering causes issues
+      
+      // Sync selection to workspace state only
+      TwoBaseState.selectedItems.forEach((itemId) => {
+        if (typeof window.syncWorkspaceSelection === "function") {
+          window.syncWorkspaceSelection(itemId, true);
+        }
+      });
+    });
+  }
+
+  function updateSidebarSelectionBox() {
+    const left = Math.min(sidebarSelectionStart.x, sidebarSelectionEnd.x);
+    const top = Math.min(sidebarSelectionStart.y, sidebarSelectionEnd.y);
+    const width = Math.abs(sidebarSelectionEnd.x - sidebarSelectionStart.x);
+    const height = Math.abs(sidebarSelectionEnd.y - sidebarSelectionStart.y);
+
+    sidebarSelectionBox.style.left = left + "px";
+    sidebarSelectionBox.style.top = top + "px";
+    sidebarSelectionBox.style.width = width + "px";
+    sidebarSelectionBox.style.height = height + "px";
+  }
+
+  function selectSidebarItemsInBox() {
+    const boxRect = sidebarSelectionBox.getBoundingClientRect();
+    const items = document.querySelectorAll(".sidebar-item, .folder-note-item");
+
+    // Start with initial selection (if Ctrl was held)
+    const newSelection = [...sidebarInitialSelection];
+
+    // First, clear all selected classes except those in initial selection
+    items.forEach((item) => {
+      const itemId = item.dataset.noteId;
+      if (itemId && !sidebarInitialSelection.includes(itemId)) {
+        item.classList.remove("selected");
+      }
+    });
+
+    // Then, add selected class only to items in the box
+    items.forEach((item) => {
+      // Check if item or any parent is hidden
+      let element = item;
+      let isHidden = false;
+      while (element && element !== document.body) {
+        const style = window.getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          isHidden = true;
+          break;
+        }
+        element = element.parentElement;
+      }
+
+      if (isHidden) {
+        return;
+      }
+
+      const itemRect = item.getBoundingClientRect();
+
+      // Skip items that are not visible (height/width = 0 or display:none)
+      if (itemRect.width === 0 || itemRect.height === 0) {
+        return;
+      }
+
+      // Skip items that are outside the viewport (scrolled out of view)
+      const isVisible = 
+        itemRect.top < window.innerHeight &&
+        itemRect.bottom > 0 &&
+        itemRect.left < window.innerWidth &&
+        itemRect.right > 0;
+
+      if (!isVisible) {
+        return;
+      }
+
+      // Check if item intersects with selection box
+      const intersects = !(
+        itemRect.right < boxRect.left ||
+        itemRect.left > boxRect.right ||
+        itemRect.bottom < boxRect.top ||
+        itemRect.top > boxRect.bottom
+      );
+
+      const itemId = item.dataset.noteId;
+
+      if (intersects && itemId) {
+        // Add to selection if not already there
+        if (!newSelection.includes(itemId)) {
+          newSelection.push(itemId);
+        }
+        item.classList.add("selected");
+      }
+    });
+
+    // Update state
+    TwoBaseState.selectedItems = newSelection;
+    if (window.state && window.state.selectedItems) {
+      window.state.selectedItems.clear();
+      newSelection.forEach((id) => window.state.selectedItems.add(id));
     }
   }
 
@@ -3868,6 +4139,9 @@
     }
 
     setupEventListeners();
+
+    // Initialize sidebar marquee selection only
+    initSidebarMarqueeSelection();
 
     // Load saved view mode from backend settings
     if (
@@ -4125,14 +4399,32 @@
       window.hideContextMenu();
     }
 
-    // 2. Deselect items if clicking on empty space
+    // Skip deselection if we just finished marquee selection
+    if (window._justFinishedMarqueeSelection) {
+      return;
+    }
+
+    // 2. Deselect items if clicking on empty space in base layer
     // Check if we are NOT clicking on a workspace item or a control button
     const isItem = e.target.closest(".workspace-item");
     const isControl = e.target.closest(
       "button, .icon-btn, .sidebar-header, .sidebar-section-header-text, .ctx-menu, .modal-overlay"
     );
+    
+    // Check if clicking in workspace area
+    const isWorkspaceArea = e.target.closest(".workspace-content, .workspace-grid, .workspace-list");
 
-    if (!isItem && !isControl) {
+    console.log("[CLICK HANDLER]", {
+      isItem: !!isItem,
+      isControl: !!isControl,
+      isWorkspaceArea: !!isWorkspaceArea,
+      justFinishedMarquee: window._justFinishedMarqueeSelection,
+      currentSelection: TwoBaseState.selectedItems.length
+    });
+
+    // Only clear if clicking on empty workspace area (not on items or controls)
+    if (!isItem && !isControl && isWorkspaceArea) {
+      console.log("[CLICK HANDLER] Clearing selection");
       // Clear selection
       if (TwoBaseState.selectedItems.length > 0) {
         TwoBaseState.selectedItems = [];
@@ -4140,18 +4432,162 @@
           window.state.selectedItems.clear();
         }
 
-        // Remove visual selection
-        document.querySelectorAll(".workspace-item.selected").forEach((el) => {
-          el.classList.remove("selected");
+        // Remove visual selection and context-active classes
+        document.querySelectorAll(".workspace-item.selected, .workspace-item.context-active").forEach((el) => {
+          el.classList.remove("selected", "context-active");
         });
 
-        // Re-render workspace to reflect cleared selection
+        // DON'T re-render - just clear the visual state
+        // Re-rendering causes selections to not persist after marquee selection
+      }
+    }
+  });
+
+  // Global delegated context menu handler for workspace items
+  // This works even after items are re-rendered
+  document.addEventListener("contextmenu", (e) => {
+    const workspaceItem = e.target.closest(".workspace-item");
+    if (!workspaceItem) return;
+
+    // Only handle if we're in the workspace
+    if (!el.workspaceContent || !el.workspaceContent.contains(workspaceItem)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const itemId = workspaceItem.dataset.noteId || workspaceItem.dataset.folderId;
+    const itemType = workspaceItem.dataset.itemType || (workspaceItem.dataset.noteId ? "note" : "folder");
+
+    if (!itemId) return;
+
+    console.log("[GLOBAL CONTEXT MENU] Right-click on:", {
+      itemId,
+      itemType,
+      currentSelection: [...TwoBaseState.selectedItems],
+      isAlreadySelected: TwoBaseState.selectedItems.includes(itemId)
+    });
+
+    // IMPORTANT: If item is already selected as part of a multi-selection, DON'T change the selection
+    // This allows right-clicking on marquee-selected items to show multi-select menu
+    if (TwoBaseState.selectedItems.includes(itemId) && TwoBaseState.selectedItems.length > 1) {
+      // Item is part of multi-selection, keep the selection as-is
+      console.log("[GLOBAL CONTEXT MENU] Item is part of multi-selection, preserving selection");
+    } else if (!TwoBaseState.selectedItems.includes(itemId)) {
+      // Item is not selected, select it and clear others
+      TwoBaseState.selectedItems = [itemId];
+      if (window.state && window.state.selectedItems) {
+        window.state.selectedItems.clear();
+        window.state.selectedItems.add(itemId);
+      }
+
+      // Update visual state
+      document.querySelectorAll(".workspace-item.selected").forEach((el) => {
+        el.classList.remove("selected");
+      });
+      workspaceItem.classList.add("selected");
+    }
+
+    console.log("[GLOBAL CONTEXT MENU] Final selection before showing menu:", {
+      selectedItems: [...TwoBaseState.selectedItems],
+      count: TwoBaseState.selectedItems.length
+    });
+
+    showWorkspaceContextMenu(e, itemId, itemType);
+  });
+
+  // Global keyboard handler for delete key
+  document.addEventListener("keydown", (e) => {
+    // Only handle Delete key when in base layer with items selected
+    if (e.key === "Delete" && TwoBaseState.currentBase === "main" && TwoBaseState.selectedItems.length > 0) {
+      // Don't trigger if user is typing in an input field
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
+        return;
+      }
+
+      e.preventDefault();
+      
+      console.log("[KEYBOARD DELETE] Triggered for items:", TwoBaseState.selectedItems);
+      
+      const count = TwoBaseState.selectedItems.length;
+      
+      showDeleteConfirmation(count, async () => {
+        console.log("[KEYBOARD DELETE] User confirmed delete");
+        
+        // Delete all selected items (notes and folders)
+        for (const id of [...TwoBaseState.selectedItems]) {
+          const cleanId = id.replace(/^(note-|folder-)/, "");
+          
+          // Try to find in notes first
+          const noteIdx = state.notes.findIndex((n) => n.id === cleanId);
+          
+          if (noteIdx >= 0) {
+            const [deletedNote] = state.notes.splice(noteIdx, 1);
+            const trashItem = {
+              ...deletedNote,
+              deletedAt: new Date().toISOString(),
+            };
+            state.trash.push(trashItem);
+            
+            // Delete from backend
+            if (typeof window.Storage !== "undefined" && window.Storage.useFileSystem) {
+              try {
+                if (typeof window.fileSystemService !== "undefined") {
+                  await window.fileSystemService.deleteNoteFromCollection(cleanId);
+                }
+              } catch (error) {
+                console.error("Error deleting note from backend:", cleanId, error);
+              }
+            }
+            
+            // Close tabs
+            if (typeof window.closeTab === "function") {
+              window.closeTab("left", cleanId);
+              window.closeTab("right", cleanId);
+            }
+          } else {
+            // Try to find in folders
+            const folderIdx = state.folders.findIndex((f) => f.id === cleanId);
+            
+            if (folderIdx >= 0) {
+              const folder = state.folders[folderIdx];
+              const notesInFolder = state.notes.filter((n) => n.folderId === cleanId);
+              
+              // Remove folder
+              state.folders.splice(folderIdx, 1);
+              
+              // Move folder to trash with its notes
+              const trashItem = {
+                ...folder,
+                type: "folder",
+                notes: notesInFolder,
+                deletedAt: new Date().toISOString(),
+              };
+              state.trash.push(trashItem);
+              
+              // Move notes in folder to uncategorized
+              notesInFolder.forEach((note) => {
+                note.folderId = null;
+              });
+            }
+          }
+        }
+        
+        // Clear selection
+        TwoBaseState.selectedItems = [];
+        if (window.state && window.state.selectedItems) {
+          window.state.selectedItems.clear();
+        }
+        
+        // Refresh view and sidebar
+        if (typeof window.renderSidebar === "function") {
+          window.renderSidebar();
+        }
         if (TwoBaseState.currentFolder) {
           renderFolderContents(TwoBaseState.currentFolder);
         } else {
           renderRootView();
         }
-      }
+      });
     }
   });
 })();

@@ -736,3 +736,28 @@
 .workspace-empty-text {
   font-size: 1.1rem;
 }
+
+/* ===================================
+   Marquee Selection Box
+   =================================== */
+
+.selection-box {
+  position: absolute;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.08);
+  pointer-events: none;
+  display: none;
+  z-index: 1000;
+  border-radius: 3px;
+  transition: none;
+}
+
+/* Prevent text selection during marquee selection */
+.workspace-content.selecting,
+.sidebar-section-content.selecting {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: crosshair;
+}
