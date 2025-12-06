@@ -264,18 +264,27 @@
     // Click handler - only multi-select button enables multi-selection
     item.addEventListener("click", (e) => {
       if (TwoBaseState.multiSelectMode) {
-        // Multi-select mode: toggle selection
+        // Multi-select mode: toggle selection (but prevent uncategorized from being selected)
         e.stopPropagation();
-        toggleItemSelection(folder.id, "folder");
+        if (folder.id !== "uncategorized") {
+          toggleItemSelection(folder.id, "folder");
+        }
       } else {
         // Normal mode: navigate to folder
         navigateToFolder(folder.id);
       }
     });
 
-    // Right-click context menu - disable for special folders
-    if (!folder.isSpecial) {
-      item.addEventListener("contextmenu", (e) => {
+    // Right-click context menu - disable for special folders and uncategorized
+    item.addEventListener("contextmenu", (e) => {
+      // Prevent right-click on uncategorized
+      if (folder.id === "uncategorized") {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (!folder.isSpecial) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -297,7 +306,12 @@
             "[CONTEXT MENU] Item is part of multi-selection, preserving selection"
           );
         } else if (!TwoBaseState.selectedItems.includes(folder.id)) {
-          // Item is not selected, select it
+          // Item is not selected, select it (but prevent uncategorized from being selected in multi-select mode)
+          if (folder.id === "uncategorized" && TwoBaseState.multiSelectMode) {
+            // Don't allow uncategorized to be selected in multi-select mode
+            return;
+          }
+
           if (!TwoBaseState.multiSelectMode) {
             // Clear other selections if not in multi-select mode
             TwoBaseState.selectedItems = [folder.id];
@@ -321,8 +335,8 @@
         });
 
         showWorkspaceContextMenu(e, folder.id, "folder");
-      });
-    }
+      }
+    });
 
     // Drag and drop support
     item.draggable = true;
