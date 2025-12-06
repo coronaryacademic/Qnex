@@ -3107,14 +3107,12 @@ window.Storage = Storage;
       bringToFront(w.el);
     });
     el.dock.appendChild(chip);
-    updateEmptyState();
   }
   function closeWindow(id) {
     const w = state.windows[id];
     if (!w) return;
     w.el.remove();
     delete state.windows[id];
-    updateEmptyState();
   }
   function refreshWindowTitle(id) {
     const w = state.windows[id];
@@ -5351,6 +5349,12 @@ window.Storage = Storage;
   // Boot
   await initializeData();
   renderSidebar();
+
+  // Play startup sound
+  setTimeout(() => {
+    AudioFX.playStartup();
+  }, 300);
+
   // OLD PANE SYSTEM - Disabled for two-base architecture
   // ["left", "right"].forEach(renderPane);
 
@@ -5387,10 +5391,9 @@ window.Storage = Storage;
 
     if (!el.emptyState) return;
 
-    // Always show welcome pane - removed auto-hide logic
-    // const shouldShowWelcome = !anyPane && !anyWindow;
-    // el.emptyState.classList.toggle("hidden", !shouldShowWelcome);
-    el.emptyState.classList.remove("hidden");
+    // Show welcome pane only when nothing is open in the base layer
+    const shouldShowWelcome = !anyPane && !anyWindow;
+    el.emptyState.classList.toggle("hidden", !shouldShowWelcome);
 
     const marqueeContent = document.getElementById("marquee-content");
     if (!marqueeContent) return;
@@ -6792,6 +6795,48 @@ window.Storage = Storage;
       osc.start(this.context.currentTime);
       osc.stop(this.context.currentTime + 0.15);
     },
+
+    playStartup() {
+      if (!this.context) this.init();
+      // Smooth, pleasant startup sound - ascending three-note chime
+      const osc1 = this.context.createOscillator();
+      const osc2 = this.context.createOscillator();
+      const osc3 = this.context.createOscillator();
+      const gain = this.context.createGain();
+      const filter = this.context.createBiquadFilter();
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      osc3.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.context.destination);
+
+      filter.type = "lowpass";
+      filter.frequency.value = 4000;
+
+      osc1.type = "sine";
+      osc2.type = "sine";
+      osc3.type = "sine";
+
+      // Ascending notes: C, E, G (pleasant major chord)
+      osc1.frequency.value = 261.63; // C
+      osc2.frequency.value = 329.63; // E
+      osc3.frequency.value = 392.0; // G
+
+      gain.gain.setValueAtTime(0, this.context.currentTime);
+      gain.gain.linearRampToValueAtTime(0.1, this.context.currentTime + 0.1);
+      gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        this.context.currentTime + 0.8
+      );
+
+      osc1.start(this.context.currentTime);
+      osc1.stop(this.context.currentTime + 0.8);
+      osc2.start(this.context.currentTime + 0.1);
+      osc2.stop(this.context.currentTime + 0.8);
+      osc3.start(this.context.currentTime + 0.2);
+      osc3.stop(this.context.currentTime + 0.8);
+    },
   };
 
   // To-Do List Management
@@ -7060,7 +7105,6 @@ window.Storage = Storage;
       todo.completed = !todo.completed;
 
       if (todo.completed) {
-        AudioFX.playComplete();
         const item = todoList.children[index];
         item.classList.add("completing");
         setTimeout(() => {
@@ -7068,21 +7112,18 @@ window.Storage = Storage;
           renderTodos();
         }, 600);
       } else {
-        AudioFX.playClick();
         saveTodos();
         renderTodos();
       }
     }
 
     function deleteTodo(index) {
-      AudioFX.playDelete();
       todos.splice(index, 1);
       saveTodos();
       renderTodos();
     }
 
     function editTodo(index) {
-      AudioFX.playClick();
       const todoItem = todoList.children[index];
       const todoTextDiv = todoItem.querySelector(".todo-text");
       const currentText = todos[index].text;
@@ -7162,7 +7203,6 @@ window.Storage = Storage;
       const text = taskInput.value.trim();
       if (!text) return;
 
-      AudioFX.playClick();
       todos.push({
         text,
         completed: false,
@@ -7175,13 +7215,11 @@ window.Storage = Storage;
     }
 
     addTaskBtn.addEventListener("click", () => {
-      AudioFX.playClick();
       todoInput.classList.remove("hidden");
       taskInput.focus();
     });
 
     cancelTodoBtn.addEventListener("click", () => {
-      AudioFX.playClick();
       todoInput.classList.add("hidden");
       taskInput.value = "";
     });
