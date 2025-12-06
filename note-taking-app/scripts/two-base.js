@@ -937,6 +937,28 @@
             a.click();
             URL.revokeObjectURL(url);
           },
+          onMoveToRoot: async () => {
+            // Move note to uncategorized (folderId = null)
+            if (note.folderId) {
+              note.folderId = null;
+              note.updatedAt = new Date().toISOString();
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+              // Clear selection
+              TwoBaseState.selectedItems = [];
+              if (window.state && window.state.selectedItems) {
+                window.state.selectedItems.clear();
+              }
+              // Remove visual selection
+              document
+                .querySelectorAll(".workspace-item.selected")
+                .forEach((el) => {
+                  el.classList.remove("selected");
+                });
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+            }
+          },
           onDeleteNote: async () => {
             console.log(
               "[BASE LAYER] Single note delete triggered for:",
@@ -1306,6 +1328,17 @@
           if (typeof window.saveFolders === "function") {
             window.saveFolders();
           }
+          // Clear selection
+          TwoBaseState.selectedItems = [];
+          if (window.state && window.state.selectedItems) {
+            window.state.selectedItems.clear();
+          }
+          // Remove visual selection
+          document
+            .querySelectorAll(".workspace-item.selected")
+            .forEach((el) => {
+              el.classList.remove("selected");
+            });
           renderWorkspaceSplit(TwoBaseState.currentFolder);
         };
       }

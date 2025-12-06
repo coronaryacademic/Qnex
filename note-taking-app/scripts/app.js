@@ -4966,7 +4966,9 @@ window.Storage = Storage;
         hideContextMenu();
         await handlers.onRenameFolder?.();
       });
-    const bMTR = ctxEl.querySelector('[data-cmd="move-to-root"]');
+    const bMTR = visibleSection
+      ? visibleSection.querySelector('[data-cmd="move-to-root"]')
+      : ctxEl.querySelector('[data-cmd="move-to-root"]');
     if (bMTR) {
       if (!handlers.onMoveToRoot) {
         bMTR.style.display = "none";
