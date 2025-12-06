@@ -5349,12 +5349,6 @@ window.Storage = Storage;
   // Boot
   await initializeData();
   renderSidebar();
-
-  // Play startup sound
-  setTimeout(() => {
-    AudioFX.playStartup();
-  }, 300);
-
   // OLD PANE SYSTEM - Disabled for two-base architecture
   // ["left", "right"].forEach(renderPane);
 
@@ -6794,48 +6788,6 @@ window.Storage = Storage;
 
       osc.start(this.context.currentTime);
       osc.stop(this.context.currentTime + 0.15);
-    },
-
-    playStartup() {
-      if (!this.context) this.init();
-      // Smooth, pleasant startup sound - ascending three-note chime
-      const osc1 = this.context.createOscillator();
-      const osc2 = this.context.createOscillator();
-      const osc3 = this.context.createOscillator();
-      const gain = this.context.createGain();
-      const filter = this.context.createBiquadFilter();
-
-      osc1.connect(filter);
-      osc2.connect(filter);
-      osc3.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.context.destination);
-
-      filter.type = "lowpass";
-      filter.frequency.value = 4000;
-
-      osc1.type = "sine";
-      osc2.type = "sine";
-      osc3.type = "sine";
-
-      // Ascending notes: C, E, G (pleasant major chord)
-      osc1.frequency.value = 261.63; // C
-      osc2.frequency.value = 329.63; // E
-      osc3.frequency.value = 392.0; // G
-
-      gain.gain.setValueAtTime(0, this.context.currentTime);
-      gain.gain.linearRampToValueAtTime(0.1, this.context.currentTime + 0.1);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        this.context.currentTime + 0.8
-      );
-
-      osc1.start(this.context.currentTime);
-      osc1.stop(this.context.currentTime + 0.8);
-      osc2.start(this.context.currentTime + 0.1);
-      osc2.stop(this.context.currentTime + 0.8);
-      osc3.start(this.context.currentTime + 0.2);
-      osc3.stop(this.context.currentTime + 0.8);
     },
   };
 
