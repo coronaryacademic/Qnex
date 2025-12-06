@@ -5349,6 +5349,19 @@ window.Storage = Storage;
   // Boot
   await initializeData();
   renderSidebar();
+
+  // Play startup or reload sound
+  setTimeout(() => {
+    if (sessionStorage.getItem("appReloaded")) {
+      // This is a reload
+      AudioFX.playReload();
+      sessionStorage.removeItem("appReloaded");
+    } else {
+      // This is a fresh launch
+      AudioFX.playStartup();
+    }
+  }, 300);
+
   // OLD PANE SYSTEM - Disabled for two-base architecture
   // ["left", "right"].forEach(renderPane);
 
@@ -6628,6 +6641,16 @@ window.Storage = Storage;
       insertTablePlaceholder();
     }
 
+    // Ctrl+R: Reload page with sound
+    if ((e.ctrlKey || e.metaKey) && e.key === "r") {
+      e.preventDefault();
+      AudioFX.playReload();
+      sessionStorage.setItem("appReloaded", "true");
+      setTimeout(() => {
+        location.reload();
+      }, 200);
+    }
+
     // Ctrl+L: Toggle note lock (works globally)
     if ((e.ctrlKey || e.metaKey) && e.key === "l") {
       e.preventDefault();
@@ -6788,6 +6811,26 @@ window.Storage = Storage;
 
       osc.start(this.context.currentTime);
       osc.stop(this.context.currentTime + 0.15);
+    },
+
+    playStartup() {
+      const audio = document.getElementById("startupSound");
+      if (audio) {
+        audio.currentTime = 0;
+        audio
+          .play()
+          .catch((err) => console.log("Startup sound play failed:", err));
+      }
+    },
+
+    playReload() {
+      const audio = document.getElementById("reloadSound");
+      if (audio) {
+        audio.currentTime = 0;
+        audio
+          .play()
+          .catch((err) => console.log("Reload sound play failed:", err));
+      }
     },
   };
 
