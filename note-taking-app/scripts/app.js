@@ -1436,7 +1436,6 @@ window.Storage = Storage;
 
           // Get notes in this folder
           const notesInFolder = state.notes.filter((n) => n.folderId === fid);
-          const noteCount = notesInFolder.length;
 
           // Get subfolders recursively
           const getSubfolders = (parentId) => {
@@ -1448,27 +1447,37 @@ window.Storage = Storage;
             return allSubs;
           };
           const subfolders = getSubfolders(fid);
+
+          // Get all notes in subfolders
+          const subfolderIds = subfolders.map((f) => f.id);
+          const notesInSubfolders = state.notes.filter((n) =>
+            subfolderIds.includes(n.folderId)
+          );
+
+          // Calculate total counts
+          const totalNotes = notesInFolder.length + notesInSubfolders.length;
           const subfolderCount = subfolders.length;
 
           const ok = await modalConfirm(
             `Delete folder "${folder.name}"?${
-              noteCount > 0
-                ? `\n\n${noteCount} note${
-                    noteCount !== 1 ? "s" : ""
-                  } inside will be moved to trash.`
+              totalNotes > 0
+                ? `\n\n${totalNotes} note${
+                    totalNotes !== 1 ? "s" : ""
+                  } (including notes in subfolders) will be moved to trash.`
                 : ""
             }${
               subfolderCount > 0
                 ? `\n${subfolderCount} subfolder${
                     subfolderCount !== 1 ? "s" : ""
-                  } will be moved to root.`
+                  } will also be deleted.`
                 : ""
             }\n\nYou can restore from trash later.`
           );
           if (!ok) return;
 
-          // Close tabs and windows for notes in folder (do this first)
-          notesInFolder.forEach((note) => {
+          // Close tabs and windows for all notes (in folder and subfolders)
+          const allNotes = [...notesInFolder, ...notesInSubfolders];
+          allNotes.forEach((note) => {
             try {
               closeTab("left", note.id);
               closeTab("right", note.id);
@@ -1478,8 +1487,10 @@ window.Storage = Storage;
             }
           });
 
-          // Remove notes from state
-          state.notes = state.notes.filter((n) => n.folderId !== fid);
+          // Remove all notes from state (in folder and subfolders)
+          state.notes = state.notes.filter(
+            (n) => n.folderId !== fid && !subfolderIds.includes(n.folderId)
+          );
 
           // Move folder to trash WITH its notes and subfolders nested inside
           const ix = state.folders.findIndex((x) => x.id === fid);
@@ -1488,16 +1499,34 @@ window.Storage = Storage;
             const trashItem = {
               ...deletedFolder,
               type: "folder",
-              notes: notesInFolder, // Keep notes nested in folder
+              notes: allNotes, // Keep all notes nested in folder
+              subfolders: subfolders, // Keep subfolders info
               deletedAt: new Date().toISOString(),
             };
             state.trash.push(trashItem);
 
-            // Sync with File System: Delete folder and notes from collections, add to trash
+            // Sync with File System: Delete folder, subfolders, and all notes from collections
             try {
+              // Delete the main folder
               await Storage.deleteFolderFromFileSystem(fid);
-              // Delete all notes in the folder from File System
-              for (const note of notesInFolder) {
+              
+              // Delete all subfolders
+              for (const subfolder of subfolders) {
+                try {
+                  await Storage.deleteFolderFromFileSystem(subfolder.id);
+                } catch (subfolderError) {
+                  // Ignore 404 errors (subfolder doesn't exist in backend)
+                  if (
+                    !subfolderError.message?.includes("404") &&
+                    !subfolderError.message?.includes("Not Found")
+                  ) {
+                    console.warn(`Error deleting subfolder ${subfolder.id}:`, subfolderError);
+                  }
+                }
+              }
+              
+              // Delete all notes (in folder and subfolders) from File System
+              for (const note of allNotes) {
                 try {
                   await Storage.deleteNoteFromFileSystem(note.id);
                 } catch (noteError) {
@@ -1510,6 +1539,7 @@ window.Storage = Storage;
                   }
                 }
               }
+              
               await Storage.saveTrash(state.trash);
             } catch (error) {
               // Ignore 404 errors (folder doesn't exist in backend)
@@ -1522,10 +1552,10 @@ window.Storage = Storage;
             }
           }
 
-          // Move subfolders to root level
-          subfolders.forEach((f) => {
-            if (f.parentId === fid) f.parentId = null;
-          });
+          // Remove all subfolders from state
+          state.folders = state.folders.filter(
+            (f) => !subfolderIds.includes(f.id)
+          );
 
           saveFolders();
           saveNotes();
@@ -5686,16 +5716,7 @@ window.Storage = Storage;
           (n) => n.folderId === folderId
         );
 
-        // Move notes in this folder to trash
-        notesInFolder.forEach((note) => {
-          state.trash.push({ ...note, deletedAt: new Date().toISOString() });
-          closeTab("left", note.id);
-          closeTab("right", note.id);
-          closeWindow(note.id);
-        });
-        state.notes = state.notes.filter((n) => n.folderId !== folderId);
-
-        // Get subfolders
+        // Get subfolders recursively
         const getSubfolders = (parentId) => {
           const subs = state.folders.filter((f) => f.parentId === parentId);
           let allSubs = [...subs];
@@ -5706,17 +5727,40 @@ window.Storage = Storage;
         };
         const subfolders = getSubfolders(folderId);
 
-        // Store for File System deletion
+        // Get all notes in subfolders
+        const subfolderIds = subfolders.map((f) => f.id);
+        const notesInSubfolders = state.notes.filter((n) =>
+          subfolderIds.includes(n.folderId)
+        );
+
+        // Combine all notes
+        const allNotes = [...notesInFolder, ...notesInSubfolders];
+
+        // Move all notes to trash and close tabs
+        allNotes.forEach((note) => {
+          state.trash.push({ ...note, deletedAt: new Date().toISOString() });
+          closeTab("left", note.id);
+          closeTab("right", note.id);
+          closeWindow(note.id);
+        });
+
+        // Remove all notes from state (in folder and subfolders)
+        state.notes = state.notes.filter(
+          (n) => n.folderId !== folderId && !subfolderIds.includes(n.folderId)
+        );
+
+        // Store for File System deletion (including subfolders)
         foldersToDelete.push({
           folderId: folderId,
-          notesInFolder: notesInFolder,
+          notesInFolder: allNotes,
+          subfolders: subfolders,
         });
 
         // Add folder to trash with nested notes and subfolders
         state.trash.push({
           ...folder,
           type: "folder",
-          notes: notesInFolder,
+          notes: allNotes,
           subfolders: subfolders,
           deletedAt: new Date().toISOString(),
         });
@@ -5724,15 +5768,10 @@ window.Storage = Storage;
         // Remove the folder
         state.folders = state.folders.filter((f) => f.id !== folderId);
 
-        // Remove child folders recursively
-        const removeChildFolders = (parentId) => {
-          const children = state.folders.filter((f) => f.parentId === parentId);
-          children.forEach((child) => {
-            state.folders = state.folders.filter((f) => f.id !== child.id);
-            removeChildFolders(child.id);
-          });
-        };
-        removeChildFolders(folderId);
+        // Remove all subfolders from state
+        state.folders = state.folders.filter(
+          (f) => !subfolderIds.includes(f.id)
+        );
       }
     });
 
@@ -5743,12 +5782,41 @@ window.Storage = Storage;
         await Storage.deleteNoteFromFileSystem(noteId);
       }
 
-      // Delete folders and their notes from File System
+      // Delete folders, subfolders, and their notes from File System
       for (const folderData of foldersToDelete) {
+        // Delete the main folder
         await Storage.deleteFolderFromFileSystem(folderData.folderId);
-        // Delete all notes in the folder
+        
+        // Delete all subfolders
+        if (folderData.subfolders) {
+          for (const subfolder of folderData.subfolders) {
+            try {
+              await Storage.deleteFolderFromFileSystem(subfolder.id);
+            } catch (subfolderError) {
+              // Ignore 404 errors (subfolder doesn't exist in backend)
+              if (
+                !subfolderError.message?.includes("404") &&
+                !subfolderError.message?.includes("Not Found")
+              ) {
+                console.warn(`Error deleting subfolder ${subfolder.id}:`, subfolderError);
+              }
+            }
+          }
+        }
+        
+        // Delete all notes in the folder and subfolders
         for (const note of folderData.notesInFolder) {
-          await Storage.deleteNoteFromFileSystem(note.id);
+          try {
+            await Storage.deleteNoteFromFileSystem(note.id);
+          } catch (noteError) {
+            // Ignore 404 errors (note doesn't exist in backend)
+            if (
+              !noteError.message?.includes("404") &&
+              !noteError.message?.includes("Not Found")
+            ) {
+              console.warn(`Error deleting note ${note.id}:`, noteError);
+            }
+          }
         }
       }
 
