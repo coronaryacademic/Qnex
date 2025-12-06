@@ -794,7 +794,12 @@ window.Storage = Storage;
 
               try {
                 const text = await file.text();
-                const data = JSON.parse(text);
+                let data = JSON.parse(text);
+
+                // Handle plain array format (from "Export All Notes")
+                if (Array.isArray(data)) {
+                  data = { notes: data };
+                }
 
                 if (data.type === "folder") {
                   // Import the folder as a new root folder
@@ -853,6 +858,55 @@ window.Storage = Storage;
 
                   console.log(
                     `Imported note "${newNote.title}" to uncategorized`
+                  );
+                } else if (data.notes && Array.isArray(data.notes)) {
+                  // Import multiple notes (from multi-select export)
+                  // Create or find "Imported" folder
+                  const timestamp = new Date().toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  const folderName = `Imported - ${timestamp}`;
+
+                  let importFolder = state.folders.find((f) => f.name === folderName);
+                  if (!importFolder) {
+                    importFolder = {
+                      id: uid(),
+                      name: folderName,
+                      parentId: null,
+                      createdAt: new Date().toISOString(),
+                    };
+                    state.folders.push(importFolder);
+                    state.foldersOpen.add(importFolder.id); // Auto-open the folder
+                  }
+
+                  // Add imported notes to the folder
+                  data.notes.forEach((n) => {
+                    const now = new Date().toISOString();
+                    state.notes.unshift({
+                      id: uid(),
+                      title: n.title || "Imported",
+                      contentHtml: n.contentHtml || n.content || "",
+                      tags: n.tags || [],
+                      folderId: importFolder.id,
+                      images: n.images || [],
+                      history: n.history || [],
+                      historyIndex: n.historyIndex || -1,
+                      createdAt: n.createdAt || now,
+                      updatedAt: n.updatedAt || now,
+                    });
+                  });
+
+                  await saveNotes();
+                  await saveFolders();
+                  renderSidebar();
+
+                  alert(
+                    `✓ Imported ${data.notes.length} note${
+                      data.notes.length !== 1 ? "s" : ""
+                    } into "${folderName}" folder`
                   );
                 } else {
                   alert("Unknown import format");
@@ -1234,7 +1288,12 @@ window.Storage = Storage;
 
             try {
               const text = await file.text();
-              const data = JSON.parse(text);
+              let data = JSON.parse(text);
+
+              // Handle plain array format (from "Export All Notes")
+              if (Array.isArray(data)) {
+                data = { notes: data };
+              }
 
               // Handle different import formats
               if (data.type === "folder") {
@@ -1317,6 +1376,32 @@ window.Storage = Storage;
 
                 console.log(
                   `Imported plain note "${newNote.title}" to "${folder.name}"`
+                );
+              } else if (data.notes && Array.isArray(data.notes)) {
+                // Import multiple notes (from multi-select export)
+                data.notes.forEach((n) => {
+                  const now = new Date().toISOString();
+                  state.notes.unshift({
+                    id: uid(),
+                    title: n.title || "Imported",
+                    contentHtml: n.contentHtml || n.content || "",
+                    tags: n.tags || [],
+                    folderId: fid,
+                    images: n.images || [],
+                    history: n.history || [],
+                    historyIndex: n.historyIndex || -1,
+                    createdAt: n.createdAt || now,
+                    updatedAt: n.updatedAt || now,
+                  });
+                });
+
+                await saveNotes();
+                renderSidebar();
+
+                alert(
+                  `✓ Imported ${data.notes.length} note${
+                    data.notes.length !== 1 ? "s" : ""
+                  } into "${folder.name}" folder`
                 );
               } else {
                 // Handle unknown or missing format
@@ -3217,7 +3302,12 @@ window.Storage = Storage;
 
       try {
         const text = await file.text();
-        const data = JSON.parse(text);
+        let data = JSON.parse(text);
+
+        // Handle plain array format (from "Export All Notes")
+        if (Array.isArray(data)) {
+          data = { notes: data };
+        }
 
         if (data.type === "folder") {
           // Import the folder as a new root folder
@@ -3275,6 +3365,55 @@ window.Storage = Storage;
           renderSidebar();
 
           console.log(`Imported note "${newNote.title}" to uncategorized`);
+        } else if (data.notes && Array.isArray(data.notes)) {
+          // Import multiple notes (from multi-select export)
+          // Create or find "Imported" folder
+          const timestamp = new Date().toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const folderName = `Imported - ${timestamp}`;
+
+          let importFolder = state.folders.find((f) => f.name === folderName);
+          if (!importFolder) {
+            importFolder = {
+              id: uid(),
+              name: folderName,
+              parentId: null,
+              createdAt: new Date().toISOString(),
+            };
+            state.folders.push(importFolder);
+            state.foldersOpen.add(importFolder.id); // Auto-open the folder
+          }
+
+          // Add imported notes to the folder
+          data.notes.forEach((n) => {
+            const now = new Date().toISOString();
+            state.notes.unshift({
+              id: uid(),
+              title: n.title || "Imported",
+              contentHtml: n.contentHtml || n.content || "",
+              tags: n.tags || [],
+              folderId: importFolder.id,
+              images: n.images || [],
+              history: n.history || [],
+              historyIndex: n.historyIndex || -1,
+              createdAt: n.createdAt || now,
+              updatedAt: n.updatedAt || now,
+            });
+          });
+
+          await saveNotes();
+          await saveFolders();
+          renderSidebar();
+
+          alert(
+            `✓ Imported ${data.notes.length} note${
+              data.notes.length !== 1 ? "s" : ""
+            } into "${folderName}" folder`
+          );
         } else {
           alert("Unknown import format");
         }

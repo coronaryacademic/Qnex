@@ -1100,7 +1100,12 @@
 
           try {
             const text = await file.text();
-            const data = JSON.parse(text);
+            let data = JSON.parse(text);
+
+            // Handle plain array format (from "Export All Notes")
+            if (Array.isArray(data)) {
+              data = { notes: data };
+            }
 
             if (data.type === "folder") {
               // Import folder structure and notes
@@ -1240,6 +1245,43 @@
 
               console.log(
                 `Imported plain note "${newNote.title}" to "${folder.name}"`
+              );
+            } else if (data.notes && Array.isArray(data.notes)) {
+              // Import multiple notes (from multi-select export)
+              data.notes.forEach((n) => {
+                const now = new Date().toISOString();
+                const newNote = {
+                  id:
+                    typeof window.uid === "function"
+                      ? window.uid()
+                      : Date.now().toString(),
+                  title: n.title || "Imported",
+                  contentHtml: n.contentHtml || n.content || "",
+                  tags: n.tags || [],
+                  folderId: itemId,
+                  images: n.images || [],
+                  history: n.history || [],
+                  historyIndex: n.historyIndex || -1,
+                  createdAt: n.createdAt || now,
+                  updatedAt: n.updatedAt || now,
+                };
+                state.notes.push(newNote);
+              });
+
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+
+              // Re-render workspace and sidebar
+              if (typeof window.renderSidebar === "function") {
+                window.renderSidebar();
+              }
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+
+              alert(
+                `✓ Imported ${data.notes.length} note${
+                  data.notes.length !== 1 ? "s" : ""
+                } into "${folder.name}" folder`
               );
             } else {
               // Handle unknown or missing format
