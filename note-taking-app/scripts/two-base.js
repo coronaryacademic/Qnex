@@ -4744,10 +4744,239 @@
     }
   });
 
+  // Context menu for empty space in workspace
+  function showEmptySpaceContextMenu(event) {
+    if (typeof window.showContextMenu !== "function") {
+      console.error("[BASE LAYER] showContextMenu not available");
+      return;
+    }
+
+    const currentFolderId = TwoBaseState.currentFolder;
+    const isRootView = currentFolderId === null; // All folders view
+    const isUncategorized = currentFolderId === "uncategorized"; // Uncategorized folder
+
+    const handlers = {
+      onNewNote: async () => {
+        if (typeof window.modalPrompt !== "function") return;
+        const title = await window.modalPrompt("New Note", "Note title");
+        if (!title) return;
+
+        const note = {
+          id:
+            typeof window.uid === "function"
+              ? window.uid()
+              : Date.now().toString(),
+          title,
+          content: "",
+          folderId: isUncategorized ? null : currentFolderId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        state.notes.push(note);
+        if (typeof window.saveNotes === "function") {
+          window.saveNotes();
+        }
+        // Re-render the current view
+        if (isUncategorized) {
+          renderFolderContents("uncategorized");
+        } else {
+          renderWorkspaceSplit(currentFolderId);
+        }
+      },
+      onNewFolder: async () => {
+        if (typeof window.modalPrompt !== "function") return;
+        const name = await window.modalPrompt("New Folder", "Folder name");
+        if (!name) return;
+
+        const folder = {
+          id:
+            typeof window.uid === "function"
+              ? window.uid()
+              : Date.now().toString(),
+          name,
+          parentId: currentFolderId || null,
+        };
+
+        state.folders.push(folder);
+        if (typeof window.saveFolders === "function") {
+          window.saveFolders();
+        }
+        // Re-render the current view
+        if (isUncategorized) {
+          renderFolderContents("uncategorized");
+        } else {
+          renderWorkspaceSplit(currentFolderId);
+        }
+      },
+      onImportRoot: async () => {
+        // Create file input for importing
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            if (data.type === "folder") {
+              // Import the folder as a subfolder in current folder
+              const newFolderId =
+                typeof window.uid === "function"
+                  ? window.uid()
+                  : Date.now().toString();
+              const idMap = new Map();
+              idMap.set(data.folder.id, newFolderId);
+
+              const newFolder = {
+                ...data.folder,
+                id: newFolderId,
+                parentId: currentFolderId || null,
+              };
+              state.folders.push(newFolder);
+
+              // Import subfolders with new IDs
+              const importedSubfolders = data.subfolders || [];
+              importedSubfolders.forEach((subfolder) => {
+                const newSubId =
+                  typeof window.uid === "function"
+                    ? window.uid()
+                    : Date.now().toString();
+                idMap.set(subfolder.id, newSubId);
+                const newSub = {
+                  ...subfolder,
+                  id: newSubId,
+                  parentId: newFolderId,
+                };
+                state.folders.push(newSub);
+              });
+
+              // Import notes with new IDs
+              const importedNotes = data.notes || [];
+              importedNotes.forEach((note) => {
+                const newNote = {
+                  ...note,
+                  id:
+                    typeof window.uid === "function"
+                      ? window.uid()
+                      : Date.now().toString(),
+                  folderId: newFolderId,
+                };
+                state.notes.push(newNote);
+              });
+
+              if (typeof window.saveFolders === "function") {
+                window.saveFolders();
+              }
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+              // Re-render the current view
+              if (isUncategorized) {
+                renderFolderContents("uncategorized");
+              } else {
+                renderWorkspaceSplit(currentFolderId);
+              }
+
+              console.log(
+                `Imported folder "${newFolder.name}" to current folder`
+              );
+            } else if (data.type === "note") {
+              // Import single note to current folder
+              const newNote = {
+                ...data.note,
+                id:
+                  typeof window.uid === "function"
+                    ? window.uid()
+                    : Date.now().toString(),
+                folderId: isUncategorized ? null : currentFolderId,
+              };
+              state.notes.push(newNote);
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+              // Re-render the current view
+              if (isUncategorized) {
+                renderFolderContents("uncategorized");
+              } else {
+                renderWorkspaceSplit(currentFolderId);
+              }
+
+              console.log(`Imported note "${newNote.title}" to current folder`);
+            } else if (data.notes && Array.isArray(data.notes)) {
+              // Import multiple notes to current folder
+              data.notes.forEach((n) => {
+                const now = new Date().toISOString();
+                state.notes.push({
+                  id:
+                    typeof window.uid === "function"
+                      ? window.uid()
+                      : Date.now().toString(),
+                  title: n.title || "Imported",
+                  content: n.content || "",
+                  tags: n.tags || [],
+                  folderId: isUncategorized ? null : currentFolderId,
+                  createdAt: now,
+                  updatedAt: now,
+                });
+              });
+
+              if (typeof window.saveNotes === "function") {
+                window.saveNotes();
+              }
+              // Re-render the current view
+              if (isUncategorized) {
+                renderFolderContents("uncategorized");
+              } else {
+                renderWorkspaceSplit(currentFolderId);
+              }
+
+              alert(
+                `✓ Imported ${data.notes.length} note${
+                  data.notes.length !== 1 ? "s" : ""
+                } to current folder`
+              );
+            } else {
+              alert("Unknown import format");
+            }
+          } catch (error) {
+            console.error("Error importing:", error);
+            alert("Error importing file. Please check the file format.");
+          }
+        };
+        input.click();
+      },
+    };
+
+    // Use different scope based on current view
+    // Root view (all folders) = "empty-space" (3 options)
+    // Uncategorized folder = "empty-space-uncategorized" (2 options)
+    // Regular folder = "empty-space" (3 options)
+    const scope = isUncategorized ? "empty-space-uncategorized" : "empty-space";
+
+    window.showContextMenu(event.clientX, event.clientY, handlers, scope);
+  }
+
   // Global delegated context menu handler for workspace items
   // This works even after items are re-rendered
   document.addEventListener("contextmenu", (e) => {
     const workspaceItem = e.target.closest(".workspace-item");
+
+    // Check if right-click is on empty space in workspace
+    if (
+      !workspaceItem &&
+      el.workspaceContent &&
+      el.workspaceContent.contains(e.target)
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      showEmptySpaceContextMenu(e);
+      return;
+    }
+
     if (!workspaceItem) return;
 
     // Only handle if we're in the workspace

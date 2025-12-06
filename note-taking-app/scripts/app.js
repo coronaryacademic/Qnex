@@ -870,7 +870,9 @@ window.Storage = Storage;
                   });
                   const folderName = `Imported - ${timestamp}`;
 
-                  let importFolder = state.folders.find((f) => f.name === folderName);
+                  let importFolder = state.folders.find(
+                    (f) => f.name === folderName
+                  );
                   if (!importFolder) {
                     importFolder = {
                       id: uid(),
@@ -1509,7 +1511,7 @@ window.Storage = Storage;
             try {
               // Delete the main folder
               await Storage.deleteFolderFromFileSystem(fid);
-              
+
               // Delete all subfolders
               for (const subfolder of subfolders) {
                 try {
@@ -1520,11 +1522,14 @@ window.Storage = Storage;
                     !subfolderError.message?.includes("404") &&
                     !subfolderError.message?.includes("Not Found")
                   ) {
-                    console.warn(`Error deleting subfolder ${subfolder.id}:`, subfolderError);
+                    console.warn(
+                      `Error deleting subfolder ${subfolder.id}:`,
+                      subfolderError
+                    );
                   }
                 }
               }
-              
+
               // Delete all notes (in folder and subfolders) from File System
               for (const note of allNotes) {
                 try {
@@ -1539,7 +1544,7 @@ window.Storage = Storage;
                   }
                 }
               }
-              
+
               await Storage.saveTrash(state.trash);
             } catch (error) {
               // Ignore 404 errors (folder doesn't exist in backend)
@@ -4827,6 +4832,12 @@ window.Storage = Storage;
     });
 
     document.body.appendChild(ctxEl);
+
+    // Get the visible section to query buttons from
+    const visibleSection = ctxEl.querySelector(
+      `.ctx-section[data-scope="${scope}"]`
+    );
+
     const btnH = ctxEl.querySelector('[data-cmd="highlight"]');
     if (btnH)
       btnH.addEventListener("click", (e) => {
@@ -4834,21 +4845,31 @@ window.Storage = Storage;
         handlers.onHighlight && handlers.onHighlight();
         hideContextMenu();
       });
-    const bSN = ctxEl.querySelector('[data-cmd="new-note"]');
+
+    // Query buttons only from the visible section
+    const bSN = visibleSection
+      ? visibleSection.querySelector('[data-cmd="new-note"]')
+      : ctxEl.querySelector('[data-cmd="new-note"]');
     if (bSN)
       bSN.addEventListener("click", async (e) => {
         e.stopPropagation();
         hideContextMenu();
         await handlers.onNewNote?.();
       });
-    const bSF = ctxEl.querySelector('[data-cmd="new-folder"]');
+
+    const bSF = visibleSection
+      ? visibleSection.querySelector('[data-cmd="new-folder"]')
+      : ctxEl.querySelector('[data-cmd="new-folder"]');
     if (bSF)
       bSF.addEventListener("click", async (e) => {
         e.stopPropagation();
         hideContextMenu();
         await handlers.onNewFolder?.();
       });
-    const bIR = ctxEl.querySelector('[data-cmd="import-root"]');
+
+    const bIR = visibleSection
+      ? visibleSection.querySelector('[data-cmd="import-root"]')
+      : ctxEl.querySelector('[data-cmd="import-root"]');
     if (bIR)
       bIR.addEventListener("click", async (e) => {
         e.stopPropagation();
@@ -5786,7 +5807,7 @@ window.Storage = Storage;
       for (const folderData of foldersToDelete) {
         // Delete the main folder
         await Storage.deleteFolderFromFileSystem(folderData.folderId);
-        
+
         // Delete all subfolders
         if (folderData.subfolders) {
           for (const subfolder of folderData.subfolders) {
@@ -5798,12 +5819,15 @@ window.Storage = Storage;
                 !subfolderError.message?.includes("404") &&
                 !subfolderError.message?.includes("Not Found")
               ) {
-                console.warn(`Error deleting subfolder ${subfolder.id}:`, subfolderError);
+                console.warn(
+                  `Error deleting subfolder ${subfolder.id}:`,
+                  subfolderError
+                );
               }
             }
           }
         }
-        
+
         // Delete all notes in the folder and subfolders
         for (const note of folderData.notesInFolder) {
           try {
