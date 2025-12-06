@@ -751,19 +751,14 @@ window.Storage = Storage;
         e.clientX,
         e.clientY,
         {
-          onNewNote: () => {
+          onNewNote: async () => {
+            const title = await modalPrompt("New Note", "Note name");
+            if (!title) return; // User cancelled
+
             const now = new Date().toISOString();
-            const today = new Date();
-            const dayName = today.toLocaleDateString("en-US", {
-              weekday: "long",
-            });
-            const day = String(today.getDate()).padStart(2, "0");
-            const month = String(today.getMonth() + 1).padStart(2, "0");
-            const year = String(today.getFullYear()).slice(-2);
-            const defaultTitle = `${dayName} - ${day}/${month}/${year}`;
             const n = {
               id: uid(),
-              title: defaultTitle,
+              title: title,
               contentHtml: "",
               tags: [],
               folderId: null,
@@ -3303,17 +3298,14 @@ window.Storage = Storage;
   }
 
   // Actions
-  function newNote() {
+  async function newNote() {
+    const title = await modalPrompt("New Note", "Note name");
+    if (!title) return; // User cancelled
+
     const now = new Date().toISOString();
-    const today = new Date();
-    const dayName = today.toLocaleDateString("en-US", { weekday: "long" });
-    const day = String(today.getDate()).padStart(2, "0");
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const year = String(today.getFullYear()).slice(-2);
-    const defaultTitle = `${dayName} - ${day}/${month}/${year}`;
     const n = {
       id: uid(),
-      title: defaultTitle,
+      title: title,
       contentHtml: "",
       tags: [],
       folderId: null,
@@ -4372,14 +4364,21 @@ window.Storage = Storage;
 
   // Tools actions
   if (el.duplicateBtn) {
-    el.duplicateBtn.addEventListener("click", () => {
+    el.duplicateBtn.addEventListener("click", async () => {
       const src = getActive(state.right.active ? "right" : "left");
       if (!src) return;
+      const title = await modalPrompt(
+        "Duplicate Note",
+        "Note name",
+        src.title + " (copy)"
+      );
+      if (!title) return; // User cancelled
+
       const now = new Date().toISOString();
       const copy = {
         ...src,
         id: uid(),
-        title: src.title + " (copy)",
+        title: title,
         createdAt: now,
         updatedAt: now,
       };
