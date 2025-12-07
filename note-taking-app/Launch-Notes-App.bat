@@ -7,7 +7,7 @@ echo Starting embedded server and app...
 echo Your notes will be saved to: D:\MyNotes
 echo.
 
-cd /d "d:\My projects\Note taking app\CascadeProjects\windsurf-project\note-taking-app\electron"
+cd /d "d:\My projects\Note taking app\notes-app-1.0\windsurf-project\note-taking-app\electron"
 
 echo Checking dependencies...
 if not exist "node_modules" (
