@@ -189,10 +189,6 @@
   }
 
   function renderFolderContents(folderId) {
-    const grid = document.createElement("div");
-    grid.className =
-      TwoBaseState.viewMode === "list" ? "workspace-list" : "workspace-grid";
-
     // Get subfolders
     let subfolders = state.folders.filter((f) => f.parentId === folderId);
 
@@ -214,16 +210,6 @@
       folderNotes.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
     }
 
-    // Render subfolders first
-    subfolders.forEach((folder) => {
-      grid.appendChild(createFolderItem(folder));
-    });
-
-    // Then render notes
-    folderNotes.forEach((note) => {
-      grid.appendChild(createNoteItem(note));
-    });
-
     el.workspaceContent.innerHTML = "";
 
     if (subfolders.length === 0 && folderNotes.length === 0) {
@@ -238,7 +224,66 @@
         </div>
       `;
     } else {
-      el.workspaceContent.appendChild(grid);
+      // Special case: Uncategorized folder - no section separation
+      if (folderId === "uncategorized") {
+        // Just show notes directly without sections
+        const grid = document.createElement("div");
+        grid.className = TwoBaseState.viewMode === "list" ? "workspace-list" : "workspace-grid";
+        
+        folderNotes.forEach((note) => {
+          grid.appendChild(createNoteItem(note));
+        });
+        
+        el.workspaceContent.appendChild(grid);
+      } else {
+        // Regular folders: Create container for sections
+        const container = document.createElement("div");
+        container.className = "workspace-sections-container";
+
+        // Notebooks section (if there are notes)
+        if (folderNotes.length > 0) {
+          const notebooksSection = document.createElement("div");
+          notebooksSection.className = "workspace-section";
+          
+          const notebooksHeader = document.createElement("div");
+          notebooksHeader.className = "workspace-section-header";
+          notebooksHeader.innerHTML = `<span>Notebooks</span>`;
+          
+          const notebooksGrid = document.createElement("div");
+          notebooksGrid.className = TwoBaseState.viewMode === "list" ? "workspace-list" : "workspace-grid";
+          
+          folderNotes.forEach((note) => {
+            notebooksGrid.appendChild(createNoteItem(note));
+          });
+          
+          notebooksSection.appendChild(notebooksHeader);
+          notebooksSection.appendChild(notebooksGrid);
+          container.appendChild(notebooksSection);
+        }
+
+        // Folders section (if there are subfolders)
+        if (subfolders.length > 0) {
+          const foldersSection = document.createElement("div");
+          foldersSection.className = "workspace-section";
+          
+          const foldersHeader = document.createElement("div");
+          foldersHeader.className = "workspace-section-header";
+          foldersHeader.innerHTML = `<span>Folders</span>`;
+          
+          const foldersGrid = document.createElement("div");
+          foldersGrid.className = TwoBaseState.viewMode === "list" ? "workspace-list" : "workspace-grid";
+          
+          subfolders.forEach((folder) => {
+            foldersGrid.appendChild(createFolderItem(folder));
+          });
+          
+          foldersSection.appendChild(foldersHeader);
+          foldersSection.appendChild(foldersGrid);
+          container.appendChild(foldersSection);
+        }
+
+        el.workspaceContent.appendChild(container);
+      }
     }
   }
 
@@ -3228,18 +3273,29 @@
     countBadge.className = "item-count";
     countBadge.textContent = calculateFolderItemCount(folder.id);
 
-    // Assemble header: [Icon] [Name] [Count] ......... [Chevron]
+    // Check if folder has subfolders
+    const hasSubfolders =
+      window.state && window.state.folders
+        ? window.state.folders.some((f) => f.parentId === folder.id)
+        : false;
+
+    // Assemble header: [Icon] [Name] [Count] ......... [Chevron (only if has subfolders)]
     header.appendChild(folderIconDiv);
     header.appendChild(nameSpan);
     header.appendChild(countBadge);
-    header.appendChild(chevron);
+    
+    // Only add chevron if folder has subfolders
+    if (hasSubfolders) {
+      header.appendChild(chevron);
+      
+      // Chevron click - ONLY toggle expansion
+      chevron.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault(); // Prevent any default behavior
+        toggleFolderExpansion(folder.id, container);
+      });
+    }
 
-    // Chevron click - ONLY toggle expansion
-    chevron.addEventListener("click", (e) => {
-      e.stopPropagation();
-      e.preventDefault(); // Prevent any default behavior
-      toggleFolderExpansion(folder.id, container);
-    });
 
     // Header click (except chevron) - open workspace preview
     header.addEventListener("click", (e) => {
@@ -3294,28 +3350,12 @@
       });
     }
 
-    // Notes list (expandable)
+    // Notes list (expandable) - Only show subfolders, not individual notes
     const notesList = document.createElement("div");
     notesList.className = "folder-notes-list";
 
-    // Check if folder has subfolders
-    const hasSubfolders =
-      window.state && window.state.folders
-        ? window.state.folders.some((f) => f.parentId === folder.id)
-        : false;
-
-    if (notes.length > 0) {
-      notes.forEach((note) => {
-        const noteItem = createFolderNoteItem(note, folder.id, depth + 1);
-        notesList.appendChild(noteItem);
-      });
-    } else if (!hasSubfolders) {
-      // Only show empty message if there are no notes AND no subfolders
-      const emptyMsg = document.createElement("div");
-      emptyMsg.className = "folder-empty-message";
-      emptyMsg.textContent = "No notes in this folder";
-      notesList.appendChild(emptyMsg);
-    }
+    // Don't show individual notes in the sidebar FOLDERS section
+    // Notes are only accessible from NOTEBOOKS section or base layer
 
     container.appendChild(header);
     container.appendChild(notesList);

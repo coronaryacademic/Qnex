@@ -1,9 +1,7 @@
 @echo off
 title My Notes App Launcher
 echo.
-echo ========================================
-echo    Welcome Back Momen!  
-echo ========================================
+echo Welcome Back Momen 
 echo.
 echo Starting embedded server and app...
 echo Your notes will be saved to: D:\MyNotes
