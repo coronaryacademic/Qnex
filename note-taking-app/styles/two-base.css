@@ -759,8 +759,8 @@
   color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--muted);
+  padding-bottom: 0.69rem;
+  border-bottom: 1px solid var(--borderX);
 }
 
 .workspace-section-header svg {

@@ -54,6 +54,7 @@ body {
   --chip: #2a2a2a;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   --panel-hover: rgba(255, 255, 255, 0.05);
+  --borderX: #333333;
 }
 
 /* Light Theme - Clean white/light gray */
@@ -69,6 +70,7 @@ body.theme-light {
   --chip: #eeeeee;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   --panel-hover: rgba(0, 0, 0, 0.05);
+  --borderX: #c4c4c4;
 }
 
 /* Classic Theme - Light professional theme with dark panels */
@@ -93,7 +95,7 @@ body.theme-classic .breadcrumb-path {
 
 body.theme-classic .workspace-section-header {
   color: #2c3e50 !important;
-  border-bottom-color: #999999 !important;
+  border-bottom-color: #c0c0c0 !important;
 }
 
 body.theme-classic .workspace-item:hover {
