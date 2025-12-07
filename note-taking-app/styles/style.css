@@ -79,7 +79,7 @@ body.theme-classic {
   --panel: #393a3a;
   --panel-2: #444647;
   --text: #e8e8e8;
-  --muted: #b0b0b0;
+  --muted: #858282;
   --accent: #4a9eff;
   --accent-2: #6bb0ff;
   --border: rgba(106, 106, 106, 0.449);
@@ -324,8 +324,8 @@ body.theme-classic h2[style*="color: var(--text)"] {
 /* Empty state SVG icons - Classic and Light themes */
 body.theme-classic svg[width="64"][height="64"],
 body.theme-light svg[width="64"][height="64"] {
-  color: white !important;
-  stroke: white !important;
+  color: black !important;
+  stroke: black !important;
 }
 
 /* Empty state SVG icons - Dark theme */

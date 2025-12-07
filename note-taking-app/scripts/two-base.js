@@ -172,7 +172,7 @@
       el.workspaceContent.innerHTML = `
         <div class="workspace-empty">
           <div class="workspace-empty-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); opacity: 0.5;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); opacity: 0.8;">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
               <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -219,7 +219,7 @@
       el.workspaceContent.innerHTML = `
         <div class="workspace-empty">
           <div class="workspace-empty-icon">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); opacity: 0.6;">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); opacity: 0.8;">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
               <line x1="12" y1="11" x2="12" y2="17"></line>
               <line x1="9" y1="14" x2="15" y2="14"></line>
@@ -227,7 +227,7 @@
           </div>
           <div class="workspace-empty-text" style="font-size: 1.3rem; font-weight: 600;">This folder is empty</div>
           <div class="workspace-empty-hint" style="font-size: 0.95rem; color: var(--muted); text-align: center; max-width: 300px; line-height: 1.5;">
-            Right-click to add a new note or subfolder, or navigate back home
+            Right-click to add a new note or subfolder or to import, or navigate back home.
           </div>
         </div>
       `;
@@ -1095,6 +1095,19 @@
         },
         "note"
       );
+
+      // Hide "Move to Uncategorized" if note is already in uncategorized
+      if (!note.folderId) {
+        // Update the context menu after creation to hide the button
+        setTimeout(() => {
+          const moveToButton = document.querySelector(
+            '[data-cmd="move-to-root"]'
+          );
+          if (moveToButton) {
+            moveToButton.style.display = "none";
+          }
+        }, 0);
+      }
     } else if (itemType === "folder") {
       const folder = state.folders.find((f) => f.id === itemId);
       if (!folder) return;

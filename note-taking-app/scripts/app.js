@@ -1086,99 +1086,112 @@ window.Storage = Storage;
         return showContextMenu(e.clientX, e.clientY, handlers, "multi-note");
       } else {
         // Single note context menu: all options
-        return showContextMenu(
-          e.clientX,
-          e.clientY,
-          {
-            onOpenWindow: () => openWindow(id),
-            onRenameNote: async () => {
-              const note = getNote(id);
-              if (!note) return;
-              const name = await modalPrompt(
-                "Rename Note",
-                "Title",
-                note.title || ""
-              );
-              if (name == null) return;
-              note.title = name;
-              note.updatedAt = new Date().toISOString();
-              saveNotes();
-              renderSidebar();
-              refreshOpenTabs(id);
-              refreshWindowTitle(id);
-            },
-            onChangeNoteIcon: async () => {
-              const note = getNote(id);
-              if (!note) return;
-              const current = note.icon || "default";
-              const chosen = await modalIconPicker(current);
-              if (!chosen) return;
-              note.icon = chosen;
-              note.updatedAt = new Date().toISOString();
-              saveNotes();
-              renderSidebar();
-              refreshOpenTabs(id);
-              refreshWindowTitle(id);
-            },
-            onExportNote: async () => {
-              const note = getNote(id);
-              if (!note) return;
-
-              const exportData = {
-                type: "note",
-                note: note,
-                exportedAt: new Date().toISOString(),
-                version: "1.0",
-              };
-
-              const json = JSON.stringify(exportData, null, 2);
-              const blob = new Blob([json], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `${note.title || "note"}-${id}.json`;
-              a.click();
-              URL.revokeObjectURL(url);
-            },
-            onDeleteNote: async () => {
-              if (
-                typeof window.TwoBase !== "undefined" &&
-                window.TwoBase.showDeleteConfirmation
-              ) {
-                window.TwoBase.showDeleteConfirmation(1, async () => {
-                  const idx = state.notes.findIndex((n) => n.id === id);
-                  if (idx >= 0) {
-                    const [note] = state.notes.splice(idx, 1);
-                    const deletedNote = {
-                      ...note,
-                      deletedAt: new Date().toISOString(),
-                    };
-                    state.trash.push(deletedNote);
-
-                    // Sync with File System: Delete from notes collection, add to trash
-                    try {
-                      await Storage.deleteNoteFromFileSystem(id);
-                      await Storage.saveTrash(state.trash);
-                    } catch (error) {
-                      console.error("File system sync error:", error);
-                    }
-                  }
-                  // Close tabs and windows for this note (do this first)
-                  try {
-                    closeTab("left", id);
-                    closeTab("right", id);
-                    closeWindow(id);
-                  } catch (error) {
-                    console.warn("Error closing tabs for note:", id, error);
-                  }
-                  saveNotes();
-                  renderSidebar();
-                }); // Close showDeleteConfirmation callback
-              }
-            },
+        const note = getNote(id);
+        const handlers = {
+          onOpenWindow: () => openWindow(id),
+          onRenameNote: async () => {
+            if (!note) return;
+            const name = await modalPrompt(
+              "Rename Note",
+              "Title",
+              note.title || ""
+            );
+            if (name == null) return;
+            note.title = name;
+            note.updatedAt = new Date().toISOString();
+            saveNotes();
+            renderSidebar();
+            refreshOpenTabs(id);
+            refreshWindowTitle(id);
           },
-          "note"
-        );
+          onChangeNoteIcon: async () => {
+            if (!note) return;
+            const current = note.icon || "default";
+            const chosen = await modalIconPicker(current);
+            if (!chosen) return;
+            note.icon = chosen;
+            note.updatedAt = new Date().toISOString();
+            saveNotes();
+            renderSidebar();
+            refreshOpenTabs(id);
+            refreshWindowTitle(id);
+          },
+          onExportNote: async () => {
+            if (!note) return;
+
+            const exportData = {
+              type: "note",
+              note: note,
+              exportedAt: new Date().toISOString(),
+              version: "1.0",
+            };
+
+            const json = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${note.title || "note"}-${id}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          },
+          onDeleteNote: async () => {
+            if (
+              typeof window.TwoBase !== "undefined" &&
+              window.TwoBase.showDeleteConfirmation
+            ) {
+              window.TwoBase.showDeleteConfirmation(1, async () => {
+                const idx = state.notes.findIndex((n) => n.id === id);
+                if (idx >= 0) {
+                  const [note] = state.notes.splice(idx, 1);
+                  const deletedNote = {
+                    ...note,
+                    deletedAt: new Date().toISOString(),
+                  };
+                  state.trash.push(deletedNote);
+
+                  // Sync with File System: Delete from notes collection, add to trash
+                  try {
+                    await Storage.deleteNoteFromFileSystem(id);
+                    await Storage.saveTrash(state.trash);
+                  } catch (error) {
+                    console.error("File system sync error:", error);
+                  }
+                }
+                // Close tabs and windows for this note (do this first)
+                try {
+                  closeTab("left", id);
+                  closeTab("right", id);
+                  closeWindow(id);
+                } catch (error) {
+                  console.warn("Error closing tabs for note:", id, error);
+                }
+                saveNotes();
+                renderSidebar();
+              }); // Close showDeleteConfirmation callback
+            }
+          },
+          onMoveToRoot: async () => {
+            if (!note) return;
+
+            // Only move to uncategorized if not already there
+            if (note.folderId) {
+              note.folderId = null;
+              note.updatedAt = new Date().toISOString();
+              saveNotes();
+              renderSidebar();
+              refreshOpenTabs(id);
+              refreshWindowTitle(id);
+            }
+          },
+        };
+
+        // Hide "Move to Uncategorized" if note is already in uncategorized
+        if (note && !note.folderId) {
+          handlers.hideMoveToUncategorized = true;
+        }
+
+        return showContextMenu(e.clientX, e.clientY, handlers, "note");
       }
     }
     // Folder row - support both .folder-item (old) and .folder-header (two-base sidebar)
@@ -4978,7 +4991,7 @@ window.Storage = Storage;
       ? visibleSection.querySelector('[data-cmd="move-to-root"]')
       : ctxEl.querySelector('[data-cmd="move-to-root"]');
     if (bMTR) {
-      if (!handlers.onMoveToRoot) {
+      if (!handlers.onMoveToRoot || handlers.hideMoveToUncategorized) {
         bMTR.style.display = "none";
       } else {
         bMTR.addEventListener("click", async (e) => {
