@@ -4857,12 +4857,23 @@ window.Storage = Storage;
     const bSF = visibleSection
       ? visibleSection.querySelector('[data-cmd="new-folder"]')
       : ctxEl.querySelector('[data-cmd="new-folder"]');
-    if (bSF)
+    if (bSF) {
+      // Update button text based on context (New Folder vs New Subfolder)
+      if (handlers.isSubfolder) {
+        const textNodes = Array.from(bSF.childNodes).filter(
+          (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+        );
+        const textNode = textNodes[textNodes.length - 1];
+        if (textNode) {
+          textNode.textContent = "\n            New Subfolder\n          ";
+        }
+      }
       bSF.addEventListener("click", async (e) => {
         e.stopPropagation();
         hideContextMenu();
         await handlers.onNewFolder?.();
       });
+    }
 
     const bIR = visibleSection
       ? visibleSection.querySelector('[data-cmd="import-root"]')

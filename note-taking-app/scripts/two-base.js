@@ -180,7 +180,10 @@
               <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
           </div>
-          <div class="workspace-empty-text">No notes or folders yet</div>
+          <div class="workspace-empty-text" style="font-size: 1.3rem; font-weight: 600;">Start your work!</div>
+          <div class="workspace-empty-hint" style="font-size: 0.95rem; color: var(--muted); text-align: center; max-width: 300px; line-height: 1.5;">
+            Press the <strong>}</strong> icon in the header to open the sidebar or navigate to a folder to begin
+          </div>
         </div>
       `;
     } else {
@@ -216,11 +219,16 @@
       el.workspaceContent.innerHTML = `
         <div class="workspace-empty">
           <div class="workspace-empty-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color: var(--muted); opacity: 0.5;">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); opacity: 0.6;">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              <line x1="12" y1="11" x2="12" y2="17"></line>
+              <line x1="9" y1="14" x2="15" y2="14"></line>
             </svg>
           </div>
-          <div class="workspace-empty-text">This folder is empty</div>
+          <div class="workspace-empty-text" style="font-size: 1.3rem; font-weight: 600;">This folder is empty</div>
+          <div class="workspace-empty-hint" style="font-size: 0.95rem; color: var(--muted); text-align: center; max-width: 300px; line-height: 1.5;">
+            Right-click to add a new note or subfolder, or navigate back home
+          </div>
         </div>
       `;
     } else {
@@ -4882,7 +4890,10 @@
       },
       onNewFolder: async () => {
         if (typeof window.modalPrompt !== "function") return;
-        const name = await window.modalPrompt("New Folder", "Folder name");
+        const isSubfolder =
+          currentFolderId && currentFolderId !== "uncategorized";
+        const title = isSubfolder ? "New Subfolder" : "New Folder";
+        const name = await window.modalPrompt(title, "Folder name");
         if (!name) return;
 
         const folder = {
@@ -5052,6 +5063,10 @@
     // Uncategorized folder = "empty-space-uncategorized" (2 options)
     // Regular folder = "empty-space" (3 options)
     const scope = isUncategorized ? "empty-space-uncategorized" : "empty-space";
+
+    // Add flag to indicate if we're creating a subfolder
+    handlers.isSubfolder =
+      currentFolderId && currentFolderId !== "uncategorized";
 
     window.showContextMenu(event.clientX, event.clientY, handlers, scope);
   }
