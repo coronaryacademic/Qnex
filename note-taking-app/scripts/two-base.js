@@ -228,12 +228,15 @@
       if (folderId === "uncategorized") {
         // Just show notes directly without sections
         const grid = document.createElement("div");
-        grid.className = TwoBaseState.viewMode === "list" ? "workspace-list" : "workspace-grid";
-        
+        grid.className =
+          TwoBaseState.viewMode === "list"
+            ? "workspace-list"
+            : "workspace-grid";
+
         folderNotes.forEach((note) => {
           grid.appendChild(createNoteItem(note));
         });
-        
+
         el.workspaceContent.appendChild(grid);
       } else {
         // Regular folders: Create container for sections
@@ -244,18 +247,21 @@
         if (folderNotes.length > 0) {
           const notebooksSection = document.createElement("div");
           notebooksSection.className = "workspace-section";
-          
+
           const notebooksHeader = document.createElement("div");
           notebooksHeader.className = "workspace-section-header";
           notebooksHeader.innerHTML = `<span>Notebooks</span>`;
-          
+
           const notebooksGrid = document.createElement("div");
-          notebooksGrid.className = TwoBaseState.viewMode === "list" ? "workspace-list" : "workspace-grid";
-          
+          notebooksGrid.className =
+            TwoBaseState.viewMode === "list"
+              ? "workspace-list"
+              : "workspace-grid";
+
           folderNotes.forEach((note) => {
             notebooksGrid.appendChild(createNoteItem(note));
           });
-          
+
           notebooksSection.appendChild(notebooksHeader);
           notebooksSection.appendChild(notebooksGrid);
           container.appendChild(notebooksSection);
@@ -265,18 +271,21 @@
         if (subfolders.length > 0) {
           const foldersSection = document.createElement("div");
           foldersSection.className = "workspace-section";
-          
+
           const foldersHeader = document.createElement("div");
           foldersHeader.className = "workspace-section-header";
           foldersHeader.innerHTML = `<span>Folders</span>`;
-          
+
           const foldersGrid = document.createElement("div");
-          foldersGrid.className = TwoBaseState.viewMode === "list" ? "workspace-list" : "workspace-grid";
-          
+          foldersGrid.className =
+            TwoBaseState.viewMode === "list"
+              ? "workspace-list"
+              : "workspace-grid";
+
           subfolders.forEach((folder) => {
             foldersGrid.appendChild(createFolderItem(folder));
           });
-          
+
           foldersSection.appendChild(foldersHeader);
           foldersSection.appendChild(foldersGrid);
           container.appendChild(foldersSection);
@@ -2633,6 +2642,7 @@
       if (chevron) {
         chevron.addEventListener("click", (e) => {
           e.stopPropagation(); // Prevent header click from firing
+          e.preventDefault();
 
           const section = header.closest(".sidebar-section");
           section.classList.toggle("collapsed");
@@ -3283,11 +3293,11 @@
     header.appendChild(folderIconDiv);
     header.appendChild(nameSpan);
     header.appendChild(countBadge);
-    
+
     // Only add chevron if folder has subfolders
     if (hasSubfolders) {
       header.appendChild(chevron);
-      
+
       // Chevron click - ONLY toggle expansion
       chevron.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -3295,7 +3305,6 @@
         toggleFolderExpansion(folder.id, container);
       });
     }
-
 
     // Header click (except chevron) - open workspace preview
     header.addEventListener("click", (e) => {
