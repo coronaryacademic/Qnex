@@ -182,7 +182,7 @@
           </div>
           <div class="workspace-empty-text" style="font-size: 1.3rem; font-weight: 600;">Start your work!</div>
           <div class="workspace-empty-hint" style="font-size: 0.95rem; color: var(--muted); text-align: center; max-width: 300px; line-height: 1.5;">
-            Press the <strong>}</strong> icon in the header to open the sidebar or navigate to a folder to begin
+            Press the <strong>+</strong> icon in the header to create your first note/folder or to import your work.
           </div>
         </div>
       `;
