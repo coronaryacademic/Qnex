@@ -91,6 +91,11 @@ body.theme-classic .breadcrumb-path {
   color: #2c3e50 !important;
 }
 
+body.theme-classic .workspace-section-header {
+  color: #2c3e50 !important;
+  border-bottom-color: #999999 !important;
+}
+
 body.theme-classic .workspace-item:hover {
   background: #9f9f9fa6 !important;
 }
@@ -3264,10 +3269,24 @@ body.debug-borders div {
   padding: 6px;
   display: grid;
   gap: 4px;
+  max-height: 80vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.ctx-menu::-webkit-scrollbar {
+  display: none;
 }
 .ctx-menu .ctx-section {
   display: grid;
   gap: 4px;
+  max-height: 80vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.ctx-menu .ctx-section::-webkit-scrollbar {
+  display: none;
 }
 
 .ctx-menu button {

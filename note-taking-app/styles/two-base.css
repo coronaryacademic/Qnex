@@ -741,7 +741,7 @@
 .workspace-sections-container {
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  gap: 2rem;
 }
 
 .workspace-section {
@@ -756,18 +756,17 @@
   gap: 0.5rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--muted);
 }
 
 .workspace-section-header svg {
   flex-shrink: 0;
   opacity: 0.7;
 }
-
 
 /* ===================================
    Marquee Selection Box
