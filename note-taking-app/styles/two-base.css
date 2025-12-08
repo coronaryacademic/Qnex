@@ -273,7 +273,7 @@
 /* Note Tabs */
 .note-tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: 8px;
   flex: 1;
   overflow-x: auto;
   scrollbar-width: none; /* Firefox */
@@ -287,18 +287,37 @@
 
 .note-tab {
   padding: 0.5rem 1rem;
-  border-radius: 6px 6px 0 0;
+  border-radius: 3px 3px 0 0;
   cursor: pointer;
   white-space: nowrap;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
-  background: transparent;
-  border: 2px solid transparent;
+  background: var(--panel-2);
+  border: none;
   color: var(--muted);
   transition: all 0.2s;
   font-size: 0.9rem;
   opacity: 1;
+  /* Fluid tab sizing - fill available space, shrink to min 125px */
+  flex: 1 1 0;
+  min-width: 125px;
+  max-width: 100%;
+  position: relative;
+}
+
+/* Centered short separator - all tabs except first */
+.note-tab + .note-tab::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 50%;
+  background: var(--border);
+  border-radius: 1px;
 }
 
 .note-tab:hover {
@@ -309,7 +328,6 @@
 .note-tab.active {
   background: var(--bg);
   color: var(--text);
-  border-color: var(--border);
   font-weight: 500;
 }
 
@@ -317,6 +335,7 @@
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
 }
 
 .note-tab-close {
@@ -327,6 +346,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .note-tab:hover .note-tab-close {
