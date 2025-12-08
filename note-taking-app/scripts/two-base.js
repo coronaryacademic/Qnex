@@ -1788,11 +1788,17 @@
       } else if (action === "close") {
         closeNoteTab(noteId);
       } else if (action === "close-others") {
-        const otherNotes = TwoBaseState.openNotes.filter((id) => id !== noteId);
+        // Close all other unpinned tabs (keep pinned)
+        const otherNotes = TwoBaseState.openNotes.filter(
+          (id) => id !== noteId && !TwoBaseState.pinnedNotes.includes(id)
+        );
         otherNotes.forEach((id) => closeNoteTab(id));
       } else if (action === "close-all") {
-        const allNotes = [...TwoBaseState.openNotes];
-        allNotes.forEach((id) => closeNoteTab(id));
+        // Close all unpinned tabs (keep pinned)
+        const unpinnedNotes = TwoBaseState.openNotes.filter(
+          (id) => !TwoBaseState.pinnedNotes.includes(id)
+        );
+        unpinnedNotes.forEach((id) => closeNoteTab(id));
       }
 
       menu.remove();
