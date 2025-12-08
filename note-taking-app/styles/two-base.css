@@ -339,6 +339,10 @@
 }
 
 .note-tab-close {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
   opacity: 0;
   padding: 0.25rem;
   border-radius: 4px;
