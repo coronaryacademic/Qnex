@@ -247,9 +247,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem 1rem;
-  padding-bottom: 0;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem;
   background: var(--panel-2);
   min-height: 50px;
   border-bottom: 2px solid var(--border);
@@ -267,7 +266,6 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding-bottom: 0.5rem;
 }
 
 /* Note Tabs */
@@ -362,15 +360,74 @@
   color: var(--danger);
 }
 
-/* Drag and drop states */
-.note-tab.dragging {
-  opacity: 0.5;
-  cursor: grabbing;
+/* Unpin button for pinned tabs */
+.note-tab-unpin {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--muted);
 }
 
-.note-tab.drag-over {
-  border-left: 3px solid var(--accent);
-  padding-left: calc(1rem - 3px);
+.note-tab:hover .note-tab-unpin {
+  opacity: 1;
+}
+
+.note-tab-unpin:hover {
+  background: var(--hover);
+}
+
+/* Drag and drop states */
+.note-tab.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+  transform: scale(0.98);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.note-tab.drag-over-left,
+.note-tab.drag-over-right {
+  position: relative;
+}
+
+.note-tab.drag-over-left::after,
+.note-tab.drag-over-right::after {
+  content: '';
+  position: absolute;
+  top: 15%;
+  height: 70%;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: dropIndicator 0.2s ease forwards;
+}
+
+.note-tab.drag-over-left::after {
+  left: -5px;
+}
+
+.note-tab.drag-over-right::after {
+  right: -5px;
+}
+
+@keyframes dropIndicator {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 
 /* Tab context menu */
@@ -402,6 +459,12 @@
 .tab-context-menu .context-menu-item svg {
   flex-shrink: 0;
   opacity: 0.7;
+}
+
+.tab-context-menu .context-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
 }
 
 /* Note Toolbar - Separate section below tabs */

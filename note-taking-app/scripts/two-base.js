@@ -10,6 +10,7 @@
     currentFolder: null, // Currently browsing folder ID
     breadcrumb: [], // Navigation path [{ id, name }]
     openNotes: [], // Note IDs open in Note Base
+    pinnedNotes: [], // Note IDs that are pinned
     activeNote: null, // Currently active note ID in Note Base
     splitView: false, // Whether split view is active
     leftPaneNote: null, // Note ID in left pane
@@ -1533,46 +1534,88 @@
   function renderNoteTabs() {
     el.noteTabs.innerHTML = "";
 
-    TwoBaseState.openNotes.forEach((noteId, index) => {
+    // Sort notes: pinned first, then regular
+    const sortedNotes = [...TwoBaseState.openNotes].sort((a, b) => {
+      const aIsPinned = TwoBaseState.pinnedNotes.includes(a);
+      const bIsPinned = TwoBaseState.pinnedNotes.includes(b);
+      if (aIsPinned && !bIsPinned) return -1;
+      if (!aIsPinned && bIsPinned) return 1;
+      return 0;
+    });
+
+    sortedNotes.forEach((noteId, index) => {
       const note = state.notes.find((n) => n.id === noteId);
       if (!note) return;
 
+      const isPinned = TwoBaseState.pinnedNotes.includes(noteId);
       const tab = document.createElement("div");
       tab.className =
-        "note-tab" + (noteId === TwoBaseState.activeNote ? " active" : "");
+        "note-tab" + 
+        (noteId === TwoBaseState.activeNote ? " active" : "") +
+        (isPinned ? " pinned" : "");
       tab.dataset.noteId = noteId;
       tab.dataset.index = index;
-      tab.draggable = true;
+      // Pinned tabs are not draggable
+      tab.draggable = !isPinned;
 
-      tab.innerHTML = `
-        <span class="note-tab-title">${escapeHtml(
-          note.title || "Untitled"
-        )}</span>
-        <span class="note-tab-close">×</span>
-      `;
+      // Pinned tabs show unpin button, regular tabs show close button
+      if (isPinned) {
+        tab.innerHTML = `
+          <span class="note-tab-title">${escapeHtml(note.title || "Untitled")}</span>
+          <span class="note-tab-unpin" title="Unpin tab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 17v5"></path>
+              <path d="M9 10V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5"></path>
+              <path d="M9 14h6"></path>
+              <path d="M9 10h6a1 1 0 0 1 1 1v3H8v-3a1 1 0 0 1 1-1z"></path>
+              <line x1="3" y1="3" x2="21" y2="21" stroke-width="2.5"></line>
+            </svg>
+          </span>
+        `;
+      } else {
+        tab.innerHTML = `
+          <span class="note-tab-title">${escapeHtml(note.title || "Untitled")}</span>
+          <span class="note-tab-close">×</span>
+        `;
+      }
 
       // Click handler
       tab.addEventListener("click", (e) => {
-        if (e.target.classList.contains("note-tab-close")) {
+        if (e.target.closest(".note-tab-unpin")) {
+          // Unpin the tab
+          const idx = TwoBaseState.pinnedNotes.indexOf(noteId);
+          if (idx !== -1) {
+            TwoBaseState.pinnedNotes.splice(idx, 1);
+            renderNoteTabs();
+            saveTwoBaseSession();
+          }
+        } else if (e.target.classList.contains("note-tab-close")) {
           closeNoteTab(noteId);
         } else {
           switchActiveNote(noteId);
         }
       });
 
-      // Drag and drop handlers
-      tab.addEventListener("dragstart", (e) => {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/note-tab-id", noteId);
-        tab.classList.add("dragging");
-      });
+      // Drag and drop handlers - only for non-pinned tabs
+      if (!isPinned) {
+        tab.addEventListener("dragstart", (e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/note-tab-id", noteId);
+          tab.classList.add("dragging");
+          // Add slight delay for visual effect
+          setTimeout(() => tab.style.opacity = "0.4", 0);
+        });
 
-      tab.addEventListener("dragend", (e) => {
-        tab.classList.remove("dragging");
-        document
-          .querySelectorAll(".note-tab")
-          .forEach((t) => t.classList.remove("drag-over"));
-      });
+        tab.addEventListener("dragend", (e) => {
+          tab.classList.remove("dragging");
+          tab.style.opacity = "";
+          document
+            .querySelectorAll(".note-tab")
+            .forEach((t) => {
+              t.classList.remove("drag-over-left", "drag-over-right");
+            });
+        });
+      }
 
       tab.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -1580,22 +1623,40 @@
 
         const draggingTab = document.querySelector(".note-tab.dragging");
         if (draggingTab && draggingTab !== tab) {
-          tab.classList.add("drag-over");
+          // Determine which side of the tab we're on
+          const rect = tab.getBoundingClientRect();
+          const midpoint = rect.left + rect.width / 2;
+          
+          // Remove previous indicators
+          tab.classList.remove("drag-over-left", "drag-over-right");
+          
+          // Add indicator based on cursor position
+          if (e.clientX < midpoint) {
+            tab.classList.add("drag-over-left");
+          } else {
+            tab.classList.add("drag-over-right");
+          }
         }
       });
 
       tab.addEventListener("dragleave", (e) => {
-        tab.classList.remove("drag-over");
+        tab.classList.remove("drag-over-left", "drag-over-right");
       });
 
       tab.addEventListener("drop", (e) => {
         e.preventDefault();
-        tab.classList.remove("drag-over");
-
+        
         const draggedNoteId = e.dataTransfer.getData("text/note-tab-id");
         if (draggedNoteId && draggedNoteId !== noteId) {
-          reorderTabs(draggedNoteId, noteId);
+          // Determine drop position based on cursor
+          const rect = tab.getBoundingClientRect();
+          const midpoint = rect.left + rect.width / 2;
+          const insertAfter = e.clientX >= midpoint;
+          
+          reorderTabs(draggedNoteId, noteId, insertAfter);
         }
+        
+        tab.classList.remove("drag-over-left", "drag-over-right");
       });
 
       // Right-click context menu
@@ -1608,7 +1669,7 @@
     });
   }
 
-  function reorderTabs(draggedNoteId, targetNoteId) {
+  function reorderTabs(draggedNoteId, targetNoteId, insertAfter = false) {
     const draggedIndex = TwoBaseState.openNotes.indexOf(draggedNoteId);
     const targetIndex = TwoBaseState.openNotes.indexOf(targetNoteId);
 
@@ -1617,8 +1678,14 @@
     // Remove dragged note from array
     TwoBaseState.openNotes.splice(draggedIndex, 1);
 
-    // Insert at new position
-    const newTargetIndex = TwoBaseState.openNotes.indexOf(targetNoteId);
+    // Recalculate target index after removal
+    let newTargetIndex = TwoBaseState.openNotes.indexOf(targetNoteId);
+    
+    // Insert before or after based on drop position
+    if (insertAfter) {
+      newTargetIndex += 1;
+    }
+    
     TwoBaseState.openNotes.splice(newTargetIndex, 0, draggedNoteId);
 
     // Re-render tabs
@@ -1642,15 +1709,38 @@
 
     const note = state.notes.find((n) => n.id === noteId);
     const noteTitle = note ? note.title || "Untitled" : "Untitled";
+    const isPinned = TwoBaseState.pinnedNotes.includes(noteId);
 
     menu.innerHTML = `
-      <div class="context-menu-item" data-action="close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-        <span>Close Tab</span>
+      <div class="context-menu-item" data-action="${isPinned ? 'unpin' : 'pin'}">
+        ${isPinned ? `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="2" y1="2" x2="22" y2="22"></line>
+            <path d="M12 17v5"></path>
+            <path d="M9 9v1a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V8"></path>
+            <path d="M15 4h-6a1 1 0 0 0-1 1v1"></path>
+            <path d="M9 14h6"></path>
+          </svg>
+        ` : `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 17v5"></path>
+            <path d="M9 10V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5"></path>
+            <path d="M9 14h6"></path>
+            <path d="M9 10h6a1 1 0 0 1 1 1v3H8v-3a1 1 0 0 1 1-1z"></path>
+          </svg>
+        `}
+        <span>${isPinned ? 'Unpin Tab' : 'Pin Tab'}</span>
       </div>
+      ${!isPinned ? `
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" data-action="close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Close Tab</span>
+        </div>
+      ` : ''}
       <div class="context-menu-item" data-action="close-others">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="6" width="8" height="12" rx="1"></rect>
@@ -1680,7 +1770,22 @@
 
       const action = item.dataset.action;
 
-      if (action === "close") {
+      if (action === "pin") {
+        // Add to pinned notes
+        if (!TwoBaseState.pinnedNotes.includes(noteId)) {
+          TwoBaseState.pinnedNotes.push(noteId);
+          renderNoteTabs();
+          saveTwoBaseSession();
+        }
+      } else if (action === "unpin") {
+        // Remove from pinned notes
+        const idx = TwoBaseState.pinnedNotes.indexOf(noteId);
+        if (idx !== -1) {
+          TwoBaseState.pinnedNotes.splice(idx, 1);
+          renderNoteTabs();
+          saveTwoBaseSession();
+        }
+      } else if (action === "close") {
         closeNoteTab(noteId);
       } else if (action === "close-others") {
         const otherNotes = TwoBaseState.openNotes.filter((id) => id !== noteId);
@@ -1706,6 +1811,7 @@
     const sessionState = {
       activeNote: TwoBaseState.activeNote,
       openNotes: TwoBaseState.openNotes,
+      pinnedNotes: TwoBaseState.pinnedNotes,
       currentBase: TwoBaseState.currentBase,
       currentFolder: TwoBaseState.currentFolder,
       toolbarPosition: TwoBaseState.toolbarPosition,
@@ -1732,6 +1838,10 @@
     // Restore state
     if (savedSession.openNotes && Array.isArray(savedSession.openNotes)) {
       TwoBaseState.openNotes = savedSession.openNotes;
+    }
+
+    if (savedSession.pinnedNotes && Array.isArray(savedSession.pinnedNotes)) {
+      TwoBaseState.pinnedNotes = savedSession.pinnedNotes;
     }
 
     if (savedSession.activeNote) {
