@@ -1135,6 +1135,15 @@ window.Storage = Storage;
             a.click();
             URL.revokeObjectURL(url);
           },
+          onTogglePin: () => {
+            if (typeof window.togglePinNote === "function") {
+              window.togglePinNote(id);
+            }
+          },
+          isPinned:
+            typeof window.isNotePinned === "function"
+              ? window.isNotePinned(id)
+              : false,
           onDeleteNote: async () => {
             if (
               typeof window.TwoBase !== "undefined" &&
@@ -2517,6 +2526,15 @@ window.Storage = Storage;
         <div class="sidebar-empty-hint">Click <strong>+ New Note</strong> to get started</div>
       `;
       el.noteList.appendChild(emptyMsg);
+    }
+
+    // Refresh pinned notes section in sidebar
+    if (
+      typeof window.TwoBase !== "undefined" &&
+      window.TwoBase.setupSidebarSections
+    ) {
+      console.log("[SIDEBAR] Calling setupSidebarSections from renderSidebar");
+      window.TwoBase.setupSidebarSections();
     }
   }
   // Expose renderSidebar globally for two-base.js
@@ -4972,6 +4990,45 @@ window.Storage = Storage;
       });
     }
 
+    // Pinned note handlers
+    const bUnpinNote = ctxEl.querySelector('[data-cmd="unpin-note"]');
+    if (bUnpinNote) {
+      bUnpinNote.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onUnpinNote?.();
+      });
+    }
+
+    const bUnpinOthers = ctxEl.querySelector('[data-cmd="unpin-others"]');
+    if (bUnpinOthers) {
+      bUnpinOthers.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onUnpinOthers?.();
+      });
+    }
+
+    const bUnpinAll = ctxEl.querySelector('[data-cmd="unpin-all"]');
+    if (bUnpinAll) {
+      bUnpinAll.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onUnpinAll?.();
+      });
+    }
+
+    const bDeletePinnedNote = ctxEl.querySelector(
+      '[data-cmd="delete-pinned-note"]'
+    );
+    if (bDeletePinnedNote) {
+      bDeletePinnedNote.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onDeletePinnedNote?.();
+      });
+    }
+
     const bNSF = ctxEl.querySelector('[data-cmd="new-subfolder"]');
     if (bNSF)
       bNSF.addEventListener("click", async (e) => {
@@ -5015,6 +5072,37 @@ window.Storage = Storage;
         hideContextMenu();
         await handlers.onExportNote?.();
       });
+
+    // Only add pin/unpin handler for note scope (sidebar notes)
+    if (scope === "note") {
+      const bTP = ctxEl.querySelector('[data-cmd="toggle-pin"]');
+      if (bTP) {
+        // Update button text and icon based on pin state
+        const pinText = bTP.querySelector(".pin-text");
+        const svg = bTP.querySelector("svg");
+        if (handlers.isPinned) {
+          if (pinText) {
+            pinText.textContent = "Unpin Note";
+          }
+          // Change to unpin icon (pin with strike-through)
+          if (svg) {
+            svg.innerHTML = `
+              <line x1="2" y1="2" x2="22" y2="22"></line>
+              <path d="M12 17v5"></path>
+              <path d="M9 9v1a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V8"></path>
+              <path d="M15 4h-6a1 1 0 0 0-1 1v1"></path>
+              <path d="M9 14h6"></path>
+            `;
+          }
+        }
+        bTP.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          hideContextMenu();
+          await handlers.onTogglePin?.();
+        });
+      }
+    }
+
     const bCNI = ctxEl.querySelector('[data-cmd="change-note-icon"]');
     if (bCNI)
       bCNI.addEventListener("click", async (e) => {
@@ -5135,7 +5223,14 @@ window.Storage = Storage;
       ctxEl.remove();
       ctxEl = null;
     }
+    // Also close pinned note context menu if it exists
+    if (typeof window.closePinnedNoteContextMenu === "function") {
+      window.closePinnedNoteContextMenu();
+    }
   }
+
+  // Expose hideContextMenu globally so other menus can use it
+  window.hideContextMenu = hideContextMenu;
 
   // Handle click on highlighted text
   function handleHighlightClick(e) {

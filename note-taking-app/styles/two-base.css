@@ -307,7 +307,7 @@
 
 /* Centered short separator - all tabs except first */
 .note-tab + .note-tab::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -5px;
   top: 50%;
@@ -414,7 +414,7 @@
 
 .note-tab.drag-over-left::after,
 .note-tab.drag-over-right::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 15%;
   height: 70%;
@@ -447,37 +447,103 @@
 .tab-context-menu {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.5rem 0;
-  min-width: 200px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 180px;
+  box-shadow: var(--shadow);
   z-index: 10000;
+  display: grid;
+  gap: 4px;
 }
 
 .tab-context-menu .context-menu-item {
-  padding: 0.5rem 1rem;
+  padding: 8px 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 8px;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   transition: background 0.2s;
+  border-radius: 8px;
+  border: 1px solid transparent;
 }
 
 .tab-context-menu .context-menu-item:hover {
-  background: var(--hover);
+  background: var(--panel-2);
 }
 
 .tab-context-menu .context-menu-item svg {
   flex-shrink: 0;
-  opacity: 0.7;
+  margin-top: 1px;
 }
 
 .tab-context-menu .context-menu-divider {
   height: 1px;
   background: var(--border);
-  margin: 0.25rem 0;
+  margin: 2px 0;
+}
+
+/* Pinned Notes in Sidebar */
+.pinned-note-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  padding-left: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.pinned-note-item:hover {
+  background: var(--panel-hover);
+}
+
+.pinned-note-item .pinned-note-icon {
+  flex-shrink: 0;
+  color: var(--muted);
+  width: 16px;
+  height: 16px;
+}
+
+.pinned-note-item .pinned-note-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pinned-note-item.selected {
+  background: var(--panel-hover);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.pinned-note-item.selected:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent);
+}
+
+.pinned-note-item.selected .pinned-note-icon {
+  color: var(--accent);
+}
+
+.pinned-note-item.context-active {
+  background: var(--panel-hover);
+  border: 1px solid var(--accent);
+}
+
+.pinned-note-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.pinned-note-item.drag-over {
+  background: var(--panel-2);
+  border: 1px dashed var(--accent);
 }
 
 /* Note Toolbar - Separate section below tabs */

@@ -577,6 +577,11 @@ textarea {
   color: var(--muted);
   flex-shrink: 0;
 }
+.sidebar-section-header-text[data-section="pinned"] .section-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: -3px;
+}
 .sidebar-section-header-text .section-chevron {
   width: 14px;
   height: 14px;
@@ -5328,4 +5333,20 @@ ol.editor-block {
 
 .search-results-list::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
+}
+
+/* Delete buttons in context menus - Red color */
+[data-cmd="delete-note"],
+[data-cmd="delete-notes"],
+[data-cmd="delete-pinned-note"],
+[data-cmd="delete-folder"] {
+  color: #ef4444 !important;
+}
+
+[data-cmd="delete-note"]:hover,
+[data-cmd="delete-notes"]:hover,
+[data-cmd="delete-pinned-note"]:hover,
+[data-cmd="delete-folder"]:hover {
+  color: #dc2626 !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
 }

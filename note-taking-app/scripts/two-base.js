@@ -959,7 +959,7 @@
       const note = state.notes.find((n) => n.id === itemId);
       if (!note) return;
 
-      // Show note context menu
+      // Show note context menu - use "baselayer-note" scope to exclude pin/unpin options
       window.showContextMenu(
         event.clientX,
         event.clientY,
@@ -1094,7 +1094,7 @@
             }); // Close showDeleteConfirmation callback
           },
         },
-        "note"
+        "baselayer-note"
       );
 
       // Hide "Move to Uncategorized" if note is already in uncategorized
@@ -1550,7 +1550,7 @@
       const isPinned = TwoBaseState.pinnedNotes.includes(noteId);
       const tab = document.createElement("div");
       tab.className =
-        "note-tab" + 
+        "note-tab" +
         (noteId === TwoBaseState.activeNote ? " active" : "") +
         (isPinned ? " pinned" : "");
       tab.dataset.noteId = noteId;
@@ -1561,7 +1561,9 @@
       // Pinned tabs show unpin button, regular tabs show close button
       if (isPinned) {
         tab.innerHTML = `
-          <span class="note-tab-title">${escapeHtml(note.title || "Untitled")}</span>
+          <span class="note-tab-title">${escapeHtml(
+            note.title || "Untitled"
+          )}</span>
           <span class="note-tab-unpin" title="Unpin tab">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 17v5"></path>
@@ -1574,7 +1576,9 @@
         `;
       } else {
         tab.innerHTML = `
-          <span class="note-tab-title">${escapeHtml(note.title || "Untitled")}</span>
+          <span class="note-tab-title">${escapeHtml(
+            note.title || "Untitled"
+          )}</span>
           <span class="note-tab-close">×</span>
         `;
       }
@@ -1603,17 +1607,15 @@
           e.dataTransfer.setData("text/note-tab-id", noteId);
           tab.classList.add("dragging");
           // Add slight delay for visual effect
-          setTimeout(() => tab.style.opacity = "0.4", 0);
+          setTimeout(() => (tab.style.opacity = "0.4"), 0);
         });
 
         tab.addEventListener("dragend", (e) => {
           tab.classList.remove("dragging");
           tab.style.opacity = "";
-          document
-            .querySelectorAll(".note-tab")
-            .forEach((t) => {
-              t.classList.remove("drag-over-left", "drag-over-right");
-            });
+          document.querySelectorAll(".note-tab").forEach((t) => {
+            t.classList.remove("drag-over-left", "drag-over-right");
+          });
         });
       }
 
@@ -1626,10 +1628,10 @@
           // Determine which side of the tab we're on
           const rect = tab.getBoundingClientRect();
           const midpoint = rect.left + rect.width / 2;
-          
+
           // Remove previous indicators
           tab.classList.remove("drag-over-left", "drag-over-right");
-          
+
           // Add indicator based on cursor position
           if (e.clientX < midpoint) {
             tab.classList.add("drag-over-left");
@@ -1645,17 +1647,17 @@
 
       tab.addEventListener("drop", (e) => {
         e.preventDefault();
-        
+
         const draggedNoteId = e.dataTransfer.getData("text/note-tab-id");
         if (draggedNoteId && draggedNoteId !== noteId) {
           // Determine drop position based on cursor
           const rect = tab.getBoundingClientRect();
           const midpoint = rect.left + rect.width / 2;
           const insertAfter = e.clientX >= midpoint;
-          
+
           reorderTabs(draggedNoteId, noteId, insertAfter);
         }
-        
+
         tab.classList.remove("drag-over-left", "drag-over-right");
       });
 
@@ -1680,12 +1682,12 @@
 
     // Recalculate target index after removal
     let newTargetIndex = TwoBaseState.openNotes.indexOf(targetNoteId);
-    
+
     // Insert before or after based on drop position
     if (insertAfter) {
       newTargetIndex += 1;
     }
-    
+
     TwoBaseState.openNotes.splice(newTargetIndex, 0, draggedNoteId);
 
     // Re-render tabs
@@ -1712,8 +1714,12 @@
     const isPinned = TwoBaseState.pinnedNotes.includes(noteId);
 
     menu.innerHTML = `
-      <div class="context-menu-item" data-action="${isPinned ? 'unpin' : 'pin'}">
-        ${isPinned ? `
+      <div class="context-menu-item" data-action="${
+        isPinned ? "unpin" : "pin"
+      }">
+        ${
+          isPinned
+            ? `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="2" y1="2" x2="22" y2="22"></line>
             <path d="M12 17v5"></path>
@@ -1721,17 +1727,21 @@
             <path d="M15 4h-6a1 1 0 0 0-1 1v1"></path>
             <path d="M9 14h6"></path>
           </svg>
-        ` : `
+        `
+            : `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 17v5"></path>
             <path d="M9 10V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5"></path>
             <path d="M9 14h6"></path>
             <path d="M9 10h6a1 1 0 0 1 1 1v3H8v-3a1 1 0 0 1 1-1z"></path>
           </svg>
-        `}
-        <span>${isPinned ? 'Unpin Tab' : 'Pin Tab'}</span>
+        `
+        }
+        <span>${isPinned ? "Unpin Tab" : "Pin Tab"}</span>
       </div>
-      ${!isPinned ? `
+      ${
+        !isPinned
+          ? `
         <div class="context-menu-divider"></div>
         <div class="context-menu-item" data-action="close">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1740,7 +1750,9 @@
           </svg>
           <span>Close Tab</span>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       <div class="context-menu-item" data-action="close-others">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="6" width="8" height="12" rx="1"></rect>
@@ -1775,6 +1787,7 @@
         if (!TwoBaseState.pinnedNotes.includes(noteId)) {
           TwoBaseState.pinnedNotes.push(noteId);
           renderNoteTabs();
+          renderPinnedNotesSection();
           saveTwoBaseSession();
         }
       } else if (action === "unpin") {
@@ -1783,6 +1796,7 @@
         if (idx !== -1) {
           TwoBaseState.pinnedNotes.splice(idx, 1);
           renderNoteTabs();
+          renderPinnedNotesSection();
           saveTwoBaseSession();
         }
       } else if (action === "close") {
@@ -1891,7 +1905,307 @@
       // Show workspace
       renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
+
+    // Refresh sidebar sections to show pinned notes
+    console.log("[TWO-BASE] Restoring pinned notes:", TwoBaseState.pinnedNotes);
+    setupSidebarSections();
   }
+
+  // Render pinned notes section in sidebar
+  function renderPinnedNotesSection() {
+    const section = document.getElementById("pinnedNotesSection");
+    const content = document.getElementById("pinnedNotesContent");
+
+    if (!section || !content) return;
+
+    // Hide section if no pinned notes
+    if (TwoBaseState.pinnedNotes.length === 0) {
+      section.style.display = "none";
+      return;
+    }
+
+    // Show section
+    section.style.display = "";
+    content.innerHTML = "";
+
+    // Render each pinned note
+    TwoBaseState.pinnedNotes.forEach((noteId, index) => {
+      const note = state.notes.find((n) => n.id === noteId);
+      if (!note) return;
+
+      const item = document.createElement("div");
+      item.className = "pinned-note-item";
+      item.dataset.noteId = noteId;
+      item.dataset.index = index;
+      item.dataset.itemType = "note";
+      item.draggable = true;
+
+      // Add selected class if item is selected
+      if (state.selectedItems && state.selectedItems.has(`note-${noteId}`)) {
+        item.classList.add("selected");
+      }
+
+      item.innerHTML = `
+        <svg class="pinned-note-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <span class="pinned-note-title">${escapeHtml(
+          note.title || "Untitled"
+        )}</span>
+      `;
+
+      // Click to open note or multi-select
+      item.addEventListener("click", (e) => {
+        // Ctrl/Cmd+click for multi-select
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          const itemId = `note-${noteId}`;
+          if (state.selectedItems) {
+            if (state.selectedItems.has(itemId)) {
+              state.selectedItems.delete(itemId);
+            } else {
+              state.selectedItems.add(itemId);
+            }
+            // Re-render to show selection
+            renderPinnedNotesSection();
+            // Sync with sidebar and workspace
+            if (typeof window.renderSidebar === "function") {
+              window.renderSidebar();
+            }
+            if (
+              typeof renderWorkspaceSplit === "function" &&
+              TwoBaseState.currentBase === "main"
+            ) {
+              renderWorkspaceSplit(TwoBaseState.currentFolder);
+            }
+          }
+        } else {
+          // Clear selection and open note
+          if (state.selectedItems) {
+            state.selectedItems.clear();
+          }
+          openNoteInNoteBase(noteId);
+        }
+      });
+
+      // Right-click context menu
+      item.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+
+        // Clear old active element first
+        if (window.ctxActiveElement && window.ctxActiveElement !== item) {
+          window.ctxActiveElement.classList.remove("context-active");
+        }
+
+        window.ctxActiveElement = item;
+        item.classList.add("context-active");
+
+        showPinnedNoteContextMenu(e, noteId);
+      });
+
+      // Drag and drop for reordering
+      item.addEventListener("dragstart", (e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/pinned-note-id", noteId);
+        item.classList.add("dragging");
+      });
+
+      item.addEventListener("dragend", () => {
+        item.classList.remove("dragging");
+        document.querySelectorAll(".pinned-note-item").forEach((i) => {
+          i.classList.remove("drag-over");
+        });
+      });
+
+      item.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector(
+          ".pinned-note-item.dragging"
+        );
+        if (draggingItem && draggingItem !== item) {
+          item.classList.add("drag-over");
+        }
+      });
+
+      item.addEventListener("dragleave", () => {
+        item.classList.remove("drag-over");
+      });
+
+      item.addEventListener("drop", (e) => {
+        e.preventDefault();
+        item.classList.remove("drag-over");
+
+        const draggedNoteId = e.dataTransfer.getData("text/pinned-note-id");
+        if (draggedNoteId && draggedNoteId !== noteId) {
+          reorderPinnedNotes(draggedNoteId, noteId);
+        }
+      });
+
+      content.appendChild(item);
+    });
+  }
+
+  // Reorder pinned notes
+  function reorderPinnedNotes(draggedNoteId, targetNoteId) {
+    const draggedIndex = TwoBaseState.pinnedNotes.indexOf(draggedNoteId);
+    const targetIndex = TwoBaseState.pinnedNotes.indexOf(targetNoteId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Remove dragged note
+    TwoBaseState.pinnedNotes.splice(draggedIndex, 1);
+
+    // Insert at new position
+    const newTargetIndex = TwoBaseState.pinnedNotes.indexOf(targetNoteId);
+    TwoBaseState.pinnedNotes.splice(newTargetIndex, 0, draggedNoteId);
+
+    renderPinnedNotesSection();
+    renderNoteTabs();
+    saveTwoBaseSession();
+  }
+
+  // Helper to close all pinned note context menus
+  function closePinnedNoteContextMenu() {
+    const existingMenu = document.querySelector(".pinned-note-context-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+      if (window.ctxActiveElement) {
+        window.ctxActiveElement.classList.remove("context-active");
+        window.ctxActiveElement = null;
+      }
+    }
+  }
+
+  // Expose globally so other menus can close it
+  window.closePinnedNoteContextMenu = closePinnedNoteContextMenu;
+
+  // Context menu for pinned notes
+  function showPinnedNoteContextMenu(event, noteId) {
+    // Close any existing pinned note context menu first
+    closePinnedNoteContextMenu();
+
+    // Also close any global context menu that might be open
+    if (typeof window.hideContextMenu === "function") {
+      window.hideContextMenu();
+    }
+
+    const menu = document.createElement("div");
+    menu.className = "tab-context-menu pinned-note-context-menu";
+    menu.style.position = "fixed";
+    menu.style.left = event.clientX + "px";
+    menu.style.top = event.clientY + "px";
+    menu.style.zIndex = "10001"; // Ensure it's above other menus
+
+    menu.innerHTML = `
+      <div class="context-menu-item" data-action="unpin">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="2" y1="2" x2="22" y2="22"></line>
+          <path d="M12 17v5"></path>
+          <path d="M9 9v1a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V8"></path>
+          <path d="M15 4h-6a1 1 0 0 0-1 1v1"></path>
+          <path d="M9 14h6"></path>
+        </svg>
+        <span>Unpin Note</span>
+      </div>
+      <div class="context-menu-divider"></div>
+      <div class="context-menu-item" data-action="unpin-others">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="6" width="8" height="12" rx="1"></rect>
+          <rect x="14" y="6" width="8" height="12" rx="1"></rect>
+          <line x1="5" y1="10" x2="7" y2="12"></line>
+          <line x1="7" y1="10" x2="5" y2="12"></line>
+          <line x1="17" y1="10" x2="19" y2="12"></line>
+          <line x1="19" y1="10" x2="17" y2="12"></line>
+        </svg>
+        <span>Unpin Others</span>
+      </div>
+      <div class="context-menu-item" data-action="unpin-all">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        <span>Unpin All</span>
+      </div>
+    `;
+
+    // Handle menu item clicks
+    menu.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const menuItem = e.target.closest(".context-menu-item");
+      if (!menuItem) return;
+
+      const action = menuItem.dataset.action;
+
+      if (action === "unpin") {
+        const idx = TwoBaseState.pinnedNotes.indexOf(noteId);
+        if (idx !== -1) {
+          TwoBaseState.pinnedNotes.splice(idx, 1);
+          renderPinnedNotesSection();
+          renderNoteTabs();
+          saveTwoBaseSession();
+        }
+      } else if (action === "unpin-others") {
+        TwoBaseState.pinnedNotes = [noteId];
+        renderPinnedNotesSection();
+        renderNoteTabs();
+        saveTwoBaseSession();
+      } else if (action === "unpin-all") {
+        TwoBaseState.pinnedNotes = [];
+        renderPinnedNotesSection();
+        renderNoteTabs();
+        saveTwoBaseSession();
+      }
+
+      closePinnedNoteContextMenu();
+    });
+
+    // Prevent context menu from closing when clicking inside it
+    menu.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+    });
+
+    document.body.appendChild(menu);
+
+    // Close menu when clicking outside - use mousedown for better responsiveness
+    const closeHandler = (e) => {
+      if (!menu.contains(e.target)) {
+        closePinnedNoteContextMenu();
+        document.removeEventListener("mousedown", closeHandler, true);
+      }
+    };
+
+    // Delay adding the listener to avoid immediately triggering it
+    setTimeout(() => {
+      document.addEventListener("mousedown", closeHandler, true);
+    }, 0);
+  }
+
+  // Expose renderPinnedNotesSection globally
+  window.renderPinnedNotesSection = renderPinnedNotesSection;
+
+  // Helper function to toggle pin state of a note (for use in context menus)
+  window.togglePinNote = function (noteId) {
+    const idx = TwoBaseState.pinnedNotes.indexOf(noteId);
+    if (idx !== -1) {
+      // Unpin
+      TwoBaseState.pinnedNotes.splice(idx, 1);
+    } else {
+      // Pin
+      TwoBaseState.pinnedNotes.push(noteId);
+    }
+    renderPinnedNotesSection();
+    renderNoteTabs();
+    saveTwoBaseSession();
+  };
+
+  // Helper function to check if a note is pinned
+  window.isNotePinned = function (noteId) {
+    return TwoBaseState.pinnedNotes.includes(noteId);
+  };
 
   function renderNoteEditor(noteId) {
     const note = state.notes.find((n) => n.id === noteId);
@@ -2751,6 +3065,9 @@
 
     // Setup toolbar options
     setupToolbarOptions();
+
+    // Setup sidebar sections (pinned notes, notebooks, folders)
+    setupSidebarSections();
   }
 
   // ===================================
@@ -2758,7 +3075,9 @@
   // ===================================
 
   function setupSidebarSections() {
-    // Populate notebooks and folders sections
+    console.log("[SIDEBAR] setupSidebarSections called");
+    // Populate pinned notes, notebooks and folders sections
+    populatePinnedNotesSection();
     populateNotebooksSection();
     populateFoldersSection();
 
@@ -2766,23 +3085,204 @@
     setupSectionToggle();
   }
 
+  function populatePinnedNotesSection() {
+    const pinnedContent = document.getElementById("pinnedNotesContent");
+    console.log("[PINNED] populatePinnedNotesSection called");
+    console.log("[PINNED] pinnedContent element:", pinnedContent);
+    console.log("[PINNED] window.state:", window.state);
+    console.log("[PINNED] state (module):", state);
+    console.log("[PINNED] TwoBaseState.pinnedNotes:", TwoBaseState.pinnedNotes);
+
+    if (!pinnedContent) {
+      console.log("[PINNED] Early return - missing pinnedContent");
+      return;
+    }
+
+    // Use window.state if available, fallback to module state
+    const appState = window.state || state;
+    if (!appState) {
+      console.log("[PINNED] Early return - state not available");
+      return;
+    }
+
+    // Clear all pinned note items
+    const items = pinnedContent.querySelectorAll(".pinned-note-item");
+    items.forEach((item) => item.remove());
+
+    // Get pinned notes
+    const pinnedNotes = appState.notes.filter((note) =>
+      TwoBaseState.pinnedNotes.includes(note.id)
+    );
+
+    console.log("[PINNED] Found pinned notes:", pinnedNotes);
+
+    // Show/hide section based on pinned notes count
+    const pinnedSection = pinnedContent.closest(".sidebar-section");
+    if (pinnedNotes.length === 0) {
+      console.log("[PINNED] No pinned notes, hiding section");
+      if (pinnedSection) pinnedSection.style.display = "none";
+      return;
+    } else {
+      console.log("[PINNED] Showing pinned notes section");
+      if (pinnedSection) pinnedSection.style.display = "block";
+    }
+
+    // Add each pinned note
+    pinnedNotes.forEach((note) => {
+      console.log("[PINNED] Adding pinned note:", note.title);
+      const item = createPinnedNoteItem(note);
+      pinnedContent.appendChild(item);
+    });
+  }
+
+  function createPinnedNoteItem(note) {
+    const item = document.createElement("div");
+    item.className = "pinned-note-item";
+    item.dataset.noteId = note.id;
+    item.dataset.index = "0";
+    item.dataset.itemType = "note";
+    item.draggable = true;
+
+    console.log("[PINNED] Creating pinned note item:", note.id, note.title);
+
+    // Note icon
+    const iconDiv = document.createElement("div");
+    iconDiv.className = "pinned-note-icon";
+    iconDiv.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+
+    // Note title
+    const title = document.createElement("span");
+    title.className = "pinned-note-title";
+    title.textContent = note.title || "Untitled";
+
+    item.appendChild(iconDiv);
+    item.appendChild(title);
+
+    // Click to open note
+    item.addEventListener("click", (e) => {
+      console.log("[PINNED] Click on pinned note:", note.id);
+      openNoteFromSidebar(note.id);
+    });
+
+    // Right-click context menu
+    item.addEventListener("contextmenu", (e) => {
+      console.log("[PINNED] RIGHT-CLICK EVENT FIRED on:", note.id);
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log(
+        "[PINNED] Right-click on pinned note:",
+        note.id,
+        "scope: pinned-note"
+      );
+
+      // Add active state highlighting
+      if (window.ctxActiveElement && window.ctxActiveElement !== item) {
+        window.ctxActiveElement.classList.remove("context-active");
+      }
+      window.ctxActiveElement = item;
+      item.classList.add("context-active");
+
+      // Show context menu with pinned-note scope
+      if (typeof window.showContextMenu === "function") {
+        console.log("[PINNED] Calling showContextMenu with scope: pinned-note");
+        const handlers = {
+          onUnpinNote: () => {
+            console.log("[PINNED] Unpin note clicked:", note.id);
+            window.togglePinNote(note.id);
+          },
+          onUnpinOthers: () => {
+            console.log("[PINNED] Unpin others clicked");
+            // Keep only this note pinned, unpin all others
+            TwoBaseState.pinnedNotes = [note.id];
+            saveTwoBaseSession();
+            setupSidebarSections();
+          },
+          onUnpinAll: () => {
+            console.log("[PINNED] Unpin all clicked");
+            // Clear all pinned notes
+            TwoBaseState.pinnedNotes = [];
+            saveTwoBaseSession();
+            setupSidebarSections();
+          },
+          onDeletePinnedNote: () => {
+            console.log("[PINNED] Delete pinned note clicked:", note.id);
+            // Show delete confirmation
+            if (typeof window.showDeleteConfirmation === "function") {
+              window.showDeleteConfirmation(1, async () => {
+                // Delete the note
+                const noteIndex = state.notes.findIndex(
+                  (n) => n.id === note.id
+                );
+                if (noteIndex > -1) {
+                  state.notes.splice(noteIndex, 1);
+                  // Also remove from pinned if it was pinned
+                  const pinnedIndex = TwoBaseState.pinnedNotes.indexOf(note.id);
+                  if (pinnedIndex > -1) {
+                    TwoBaseState.pinnedNotes.splice(pinnedIndex, 1);
+                  }
+                  // Save and refresh
+                  if (typeof window.Storage !== "undefined") {
+                    await window.Storage.saveNotes(state.notes);
+                  }
+                  saveTwoBaseSession();
+                  setupSidebarSections();
+                  // Refresh workspace if needed
+                  if (typeof window.renderWorkspaceSplit === "function") {
+                    window.renderWorkspaceSplit(TwoBaseState.currentFolder);
+                  }
+                }
+              });
+            }
+          },
+        };
+
+        window.showContextMenu(e.clientX, e.clientY, handlers, "pinned-note");
+      } else {
+        console.log("[PINNED] showContextMenu NOT available!");
+      }
+    });
+
+    return item;
+  }
+
   function setupSectionToggle() {
+    console.log("[SIDEBAR] setupSectionToggle called");
     const sectionHeaders = document.querySelectorAll(
       ".sidebar-section-header-text"
     );
+    console.log("[SIDEBAR] Found section headers:", sectionHeaders.length);
 
     sectionHeaders.forEach((header) => {
       const sectionName = header.dataset.section;
       const chevron = header.querySelector(".section-chevron");
+      const section = header.closest(".sidebar-section");
+
+      console.log(
+        "[SIDEBAR] Setting up section:",
+        sectionName,
+        "chevron:",
+        !!chevron
+      );
 
       // Chevron click - ONLY toggle collapse/expand
       if (chevron) {
-        chevron.addEventListener("click", (e) => {
+        // Remove old listeners by cloning and replacing
+        const newChevron = chevron.cloneNode(true);
+        chevron.parentNode.replaceChild(newChevron, chevron);
+
+        newChevron.addEventListener("click", (e) => {
+          console.log("[SIDEBAR] Chevron clicked for section:", sectionName);
           e.stopPropagation(); // Prevent header click from firing
           e.preventDefault();
 
-          const section = header.closest(".sidebar-section");
+          const section = newChevron.closest(".sidebar-section");
           section.classList.toggle("collapsed");
+          console.log(
+            "[SIDEBAR] Section collapsed state:",
+            section.classList.contains("collapsed")
+          );
 
           // Save collapsed state to localStorage
           if (sectionName) {
@@ -2820,6 +3320,7 @@
         if (isCollapsed) {
           const section = header.closest(".sidebar-section");
           section.classList.add("collapsed");
+          console.log("[SIDEBAR] Restored collapsed state for:", sectionName);
         }
       }
     });
@@ -4858,6 +5359,25 @@
   */
 
   // Export functions to global scope
+  // Toggle pin state for a note
+  window.togglePinNote = function (noteId) {
+    console.log("[PIN] Toggling pin for note:", noteId);
+    const index = TwoBaseState.pinnedNotes.indexOf(noteId);
+    if (index > -1) {
+      // Unpin
+      TwoBaseState.pinnedNotes.splice(index, 1);
+      console.log("[PIN] Unpinned note:", noteId);
+    } else {
+      // Pin
+      TwoBaseState.pinnedNotes.push(noteId);
+      console.log("[PIN] Pinned note:", noteId);
+    }
+
+    // Save and refresh
+    saveTwoBaseSession();
+    setupSidebarSections();
+  };
+
   window.TwoBase = {
     init,
     renderWorkspaceSplit,
@@ -4868,6 +5388,7 @@
     closeNoteTab,
     refreshWorkspace,
     refreshSidebar, // Export sidebar refresh function
+    setupSidebarSections, // Export sidebar sections setup
     showDeleteConfirmation, // Export custom delete dialog
   };
 
@@ -5198,6 +5719,63 @@
       currentFolderId && currentFolderId !== "uncategorized";
 
     window.showContextMenu(event.clientX, event.clientY, handlers, scope);
+  }
+
+  // Show context menu for empty space in workspace
+  function showEmptySpaceContextMenu(event) {
+    const handlers = {
+      onNewNote: async () => {
+        const noteId = window.uid();
+        const newNote = {
+          id: noteId,
+          title: "",
+          contentHtml: "",
+          tags: [],
+          folderId: TwoBaseState.currentFolder || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        state.notes.push(newNote);
+        if (typeof window.saveNotes === "function") {
+          window.saveNotes();
+        }
+        renderWorkspaceSplit(TwoBaseState.currentFolder);
+        // Open the note
+        openNoteInNoteBase(noteId);
+      },
+      onNewFolder: async () => {
+        const folderName = await window.modalPrompt(
+          "New Folder",
+          "Folder Name",
+          ""
+        );
+        if (!folderName) return;
+
+        const folderId = window.uid();
+        const newFolder = {
+          id: folderId,
+          name: folderName,
+          parentId: TwoBaseState.currentFolder || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        state.folders.push(newFolder);
+        if (typeof window.saveFolders === "function") {
+          window.saveFolders();
+        }
+        renderWorkspaceSplit(TwoBaseState.currentFolder);
+        if (typeof window.renderSidebar === "function") {
+          window.renderSidebar();
+        }
+      },
+    };
+
+    window.showContextMenu(
+      event.clientX,
+      event.clientY,
+      handlers,
+      "empty-space"
+    );
   }
 
   // Global delegated context menu handler for workspace items
