@@ -3208,33 +3208,39 @@
           },
           onDeletePinnedNote: () => {
             console.log("[PINNED] Delete pinned note clicked:", note.id);
-            // Show delete confirmation
-            if (typeof window.showDeleteConfirmation === "function") {
-              window.showDeleteConfirmation(1, async () => {
-                // Delete the note
-                const noteIndex = state.notes.findIndex(
-                  (n) => n.id === note.id
-                );
-                if (noteIndex > -1) {
-                  state.notes.splice(noteIndex, 1);
-                  // Also remove from pinned if it was pinned
-                  const pinnedIndex = TwoBaseState.pinnedNotes.indexOf(note.id);
-                  if (pinnedIndex > -1) {
-                    TwoBaseState.pinnedNotes.splice(pinnedIndex, 1);
-                  }
-                  // Save and refresh
-                  if (typeof window.Storage !== "undefined") {
-                    await window.Storage.saveNotes(state.notes);
-                  }
-                  saveTwoBaseSession();
-                  setupSidebarSections();
-                  // Refresh workspace if needed
-                  if (typeof window.renderWorkspaceSplit === "function") {
-                    window.renderWorkspaceSplit(TwoBaseState.currentFolder);
-                  }
+            // Use the existing delete confirmation dialog
+            showDeleteConfirmation(1, async () => {
+              console.log("[PINNED] User confirmed delete for note:", note.id);
+
+              // Delete the note
+              const noteIndex = state.notes.findIndex((n) => n.id === note.id);
+              if (noteIndex > -1) {
+                state.notes.splice(noteIndex, 1);
+                console.log("[PINNED] Note removed from state");
+
+                // Also remove from pinned if it was pinned
+                const pinnedIndex = TwoBaseState.pinnedNotes.indexOf(note.id);
+                if (pinnedIndex > -1) {
+                  TwoBaseState.pinnedNotes.splice(pinnedIndex, 1);
+                  console.log("[PINNED] Note removed from pinned");
                 }
-              });
-            }
+
+                // Save and refresh
+                if (typeof window.Storage !== "undefined") {
+                  await window.Storage.saveNotes(state.notes);
+                  console.log("[PINNED] Note saved to storage");
+                }
+                saveTwoBaseSession();
+                setupSidebarSections();
+
+                // Refresh workspace if needed
+                if (typeof window.renderWorkspaceSplit === "function") {
+                  window.renderWorkspaceSplit(TwoBaseState.currentFolder);
+                }
+
+                console.log("[PINNED] Note deleted successfully");
+              }
+            });
           },
         };
 
