@@ -5738,6 +5738,12 @@
         };
         input.click();
       },
+
+      onRefreshApp: () => {
+        console.log("[DEBUG] Base layer refresh handler called");
+        // Reload the entire application like Ctrl+R
+        window.location.reload();
+      },
     };
 
     // Use different scope based on current view
@@ -5799,6 +5805,14 @@
         if (typeof window.renderSidebar === "function") {
           window.renderSidebar();
         }
+      },
+
+      onRefreshApp: () => {
+        console.log(
+          "[DEBUG] Base layer refresh handler called (second function)"
+        );
+        // Reload the entire application like Ctrl+R
+        window.location.reload();
       },
     };
 

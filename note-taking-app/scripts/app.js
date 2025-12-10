@@ -916,6 +916,10 @@ window.Storage = Storage;
 
             input.click();
           },
+          onRefreshApp: () => {
+            // Reload the entire application like Ctrl+R
+            window.location.reload();
+          },
         },
         "sidebar"
       );
@@ -1088,6 +1092,10 @@ window.Storage = Storage;
         // Single note context menu: all options
         const note = getNote(id);
         const handlers = {
+          onRefreshApp: () => {
+            // Reload the entire application like Ctrl+R
+            window.location.reload();
+          },
           onOpenWindow: () => openWindow(id),
           onRenameNote: async () => {
             if (!note) return;
@@ -4934,6 +4942,17 @@ window.Storage = Storage;
         hideContextMenu();
         await handlers.onImportRoot?.();
       });
+
+    const bRA = visibleSection
+      ? visibleSection.querySelector('[data-cmd="refresh-app"]')
+      : ctxEl.querySelector('[data-cmd="refresh-app"]');
+    if (bRA)
+      bRA.addEventListener("click", async (e) => {
+        console.log("[DEBUG] Base layer refresh button clicked");
+        e.stopPropagation();
+        hideContextMenu();
+        handlers.onRefreshApp && handlers.onRefreshApp();
+      });
     const bOL = ctxEl.querySelector('[data-cmd="open-left"]');
     if (bOL)
       bOL.addEventListener("click", (e) => {
@@ -4954,6 +4973,14 @@ window.Storage = Storage;
         e.stopPropagation();
         handlers.onOpenWindow && handlers.onOpenWindow();
         hideContextMenu();
+      });
+
+    const bRA2 = ctxEl.querySelector('[data-cmd="refresh-app"]');
+    if (bRA2)
+      bRA2.addEventListener("click", (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        handlers.onRefreshApp && handlers.onRefreshApp();
       });
 
     const bDN = ctxEl.querySelector('[data-cmd="delete-note"]');
