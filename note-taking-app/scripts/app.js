@@ -4879,14 +4879,38 @@ window.Storage = Storage;
     ctxEl = el.ctxTemplate.content.firstElementChild.cloneNode(true);
     const rect = document.body.getBoundingClientRect();
     ctxEl.style.left = Math.min(x, rect.width - 220) + "px";
+
+    // Add to DOM to measure height
+    ctxEl.style.visibility = "hidden";
     ctxEl.style.top = y + "px";
-    // show only relevant sections
+    document.body.appendChild(ctxEl);
+
+    // Hide irrelevant sections BEFORE measuring height
     ctxEl.querySelectorAll(".ctx-section").forEach((sec) => {
       const s = sec.getAttribute("data-scope");
       sec.style.display = s === scope ? "grid" : "none";
     });
 
-    document.body.appendChild(ctxEl);
+    // Check if menu goes off bottom edge and adjust if needed
+    const menuHeight = ctxEl.offsetHeight;
+    const menuBottom = y + menuHeight;
+
+    console.log("[DEBUG] Context menu positioning:", {
+      y: y,
+      menuHeight: menuHeight,
+      menuBottom: menuBottom,
+      windowHeight: window.innerHeight,
+      wouldGoOffScreen: menuBottom > window.innerHeight,
+    });
+
+    if (menuBottom > window.innerHeight) {
+      // Move menu up so bottom edge touches screen bottom
+      const newPosition = window.innerHeight - menuHeight;
+      console.log("[DEBUG] Moving menu up to:", newPosition);
+      ctxEl.style.top = newPosition + "px";
+    }
+
+    ctxEl.style.visibility = "visible";
 
     // Get the visible section to query buttons from
     const visibleSection = ctxEl.querySelector(
