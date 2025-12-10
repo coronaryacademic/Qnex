@@ -1134,6 +1134,32 @@
         renderWorkspaceSplit(TwoBaseState.currentFolder);
       };
 
+      handlers.onNewNoteToFolder = async () => {
+        if (typeof window.modalPrompt !== "function") return;
+        const title = await window.modalPrompt("New Note", "Note name");
+        if (!title) return;
+
+        const note = {
+          id:
+            typeof window.uid === "function"
+              ? window.uid()
+              : Date.now().toString(),
+          title,
+          contentHtml: "",
+          tags: [],
+          folderId: itemId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        state.notes.unshift(note);
+        if (typeof window.saveNotes === "function") {
+          window.saveNotes();
+        }
+        renderWorkspaceSplit(TwoBaseState.currentFolder);
+        // Open the note in the note base
+        openNoteInNoteBase(note.id);
+      };
+
       handlers.onRenameFolder = async () => {
         if (typeof window.modalPrompt !== "function") return;
         const name = await window.modalPrompt(

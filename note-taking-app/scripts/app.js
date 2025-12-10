@@ -1227,6 +1227,25 @@ window.Storage = Storage;
           saveFolders();
           renderSidebar();
         };
+        handlers.onNewNoteToFolder = async () => {
+          const title = await modalPrompt("New Note", "Note name");
+          if (!title) return;
+
+          const now = new Date().toISOString();
+          const note = {
+            id: uid(),
+            title: title,
+            contentHtml: "",
+            tags: [],
+            folderId: fid,
+            createdAt: now,
+            updatedAt: now,
+          };
+          state.notes.unshift(note);
+          saveNotes();
+          renderSidebar();
+          openInPane(note.id, "left");
+        };
         handlers.onRenameFolder = async () => {
           const folder = state.folders.find((x) => x.id === fid);
           const name = await modalPrompt(
@@ -5035,6 +5054,14 @@ window.Storage = Storage;
         e.stopPropagation();
         hideContextMenu();
         await handlers.onNewSubfolder?.();
+      });
+
+    const bNTF = ctxEl.querySelector('[data-cmd="new-note-to-folder"]');
+    if (bNTF)
+      bNTF.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onNewNoteToFolder?.();
       });
 
     const bRF = ctxEl.querySelector('[data-cmd="rename-folder"]');
