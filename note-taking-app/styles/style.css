@@ -699,7 +699,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px 6px 30px;
+  padding: 8px 10px 4px 30px;
   padding-left: 30px;
   padding-right: 30px; /* Make room for absolute positioned chevron */
   background: transparent;
