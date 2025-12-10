@@ -805,7 +805,8 @@ textarea {
 .folder-tree-item.expanded > .folder-notes-list {
   max-height: 5000px; /* Increased to support deeply nested folders */
   opacity: 1;
-  padding: 4px 0;
+  padding-top: 2px;
+  padding-bottom: -2px;
   overflow: visible; /* Allow nested folders to be fully visible */
 }
 
