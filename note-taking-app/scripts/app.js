@@ -1996,14 +1996,11 @@ window.Storage = Storage;
     if (state.settings.autoSave === undefined) state.settings.autoSave = false;
 
     // Restore sidebar width
-    if (state.settings.sidebarWidth) {
+    if (state.settings.sidebarWidth && !state.settings.sidebarCollapsed) {
       el.sidebar.style.width = state.settings.sidebarWidth + "px";
 
       // Apply narrow class if width is small
-      if (
-        state.settings.sidebarWidth <= 150 &&
-        !state.settings.sidebarCollapsed
-      ) {
+      if (state.settings.sidebarWidth <= 150) {
         el.sidebar.classList.add("narrow");
       }
     }
@@ -2011,6 +2008,10 @@ window.Storage = Storage;
     // Restore sidebar collapsed state
     if (state.settings.sidebarCollapsed) {
       el.sidebar.classList.add("collapsed");
+      el.sidebar.style.width = ""; // Ensure no inline width interferes
+      if (el.toggleSidebarBtn) el.toggleSidebarBtn.title = "Show sidebar";
+    } else if (el.toggleSidebarBtn) {
+      el.toggleSidebarBtn.title = "Hide sidebar";
     }
 
     // Update trash button with count
