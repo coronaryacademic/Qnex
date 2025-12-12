@@ -324,8 +324,8 @@ body.theme-classic h2[style*="color: var(--text)"] {
 /* Empty state SVG icons - Classic and Light themes */
 body.theme-classic svg[width="64"][height="64"],
 body.theme-light svg[width="64"][height="64"] {
-  color: black !important;
-  stroke: black !important;
+  color: white !important;
+  stroke: white !important;
 }
 
 /* Empty state SVG icons - Dark theme */
