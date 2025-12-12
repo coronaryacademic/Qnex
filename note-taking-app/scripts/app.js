@@ -691,6 +691,10 @@ window.Storage = Storage;
     item.folderId = tgt?.folderId ?? null;
     state.notes.splice(insertAt, 0, item);
     item.updatedAt = new Date().toISOString();
+    
+    // Reassign order values to persist custom order
+    reassignOrderValues(state.notes);
+    
     saveNotes();
     renderSidebar();
     refreshOpenTabs(item.id);
@@ -1852,6 +1856,17 @@ window.Storage = Storage;
   window.modalAlert = modalAlert;
 
   // Storage
+  // Helper function to reassign sequential order values
+  // Call this after any array reordering operation to maintain explicit order
+  function reassignOrderValues(items) {
+    items.forEach((item, index) => {
+      item.order = index;
+    });
+  }
+  
+  // Expose to window for two-base.js
+  window.reassignOrderValues = reassignOrderValues;
+  
   // Data persistence functions
   function saveNotes() {
     Storage.saveNotes(state.notes);
@@ -1993,6 +2008,54 @@ window.Storage = Storage;
     state.folders = await Storage.loadFolders();
     state.trash = await Storage.loadTrash();
     state.settings = await Storage.loadSettings();
+    
+    console.log("[Order Debug] Loaded notes:", state.notes.map(n => ({ id: n.id, title: n.title, order: n.order })));
+    console.log("[Order Debug] Loaded folders:", state.folders.map(f => ({ id: f.id, name: f.name, order: f.order })));
+    
+    // CRITICAL: Sort by order field immediately after load, because backend returns in wrong order
+    state.notes.sort((a, b) => {
+      const aOrder = a.order !== undefined ? a.order : Infinity;
+      const bOrder = b.order !== undefined ? b.order : Infinity;
+      return aOrder - bOrder;
+    });
+    
+    state.folders.sort((a, b) => {
+      const aOrder = a.order !== undefined ? a.order : Infinity;
+      const bOrder = b.order !== undefined ? b.order : Infinity;
+      return aOrder - bOrder;
+    });
+    
+    console.log("[Order Debug] After backend sort:", state.notes.map(n => ({ id: n.id, title: n.title, order: n.order })));
+
+    // Initialize order field for notes and folders that don't have one (backward compatibility)
+    let notesNeedSaving = false;
+    let foldersNeedSaving = false;
+    
+    state.notes.forEach((note, index) => {
+      if (note.order === undefined) {
+        note.order = index;
+        notesNeedSaving = true;
+      }
+    });
+    
+    state.folders.forEach((folder, index) => {
+      if (folder.order === undefined) {
+        folder.order = index;
+        foldersNeedSaving = true;
+      }
+    });
+    
+    // Save if we added order fields
+    if (notesNeedSaving) {
+      console.log("[Order Init] Assigned order to", state.notes.length, "notes");
+      await Storage.saveNotes(state.notes);
+    }
+    if (foldersNeedSaving) {
+      console.log("[Order Init] Assigned order to", state.folders.length, "folders");
+      await Storage.saveFolders(state.folders);
+    }
+    
+    console.log("[Order Debug] After init:", state.notes.map(n => ({ id: n.id, title: n.title, order: n.order })));
 
     // Restore image placeholder handlers for all loaded notes
     restoreAllImagePlaceholders();
@@ -2216,7 +2279,12 @@ window.Storage = Storage;
 
     const sortedFolders = foldersToShow
       .slice()
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => {
+        // Sort by order field (ascending), fallback to infinity if undefined
+        const aOrder = a.order !== undefined ? a.order : Infinity;
+        const bOrder = b.order !== undefined ? b.order : Infinity;
+        return aOrder - bOrder;
+      });
     const makeNoteBtn = (n) => {
       const btn = document.createElement("button");
       btn.dataset.noteId = n.id;
@@ -2458,7 +2526,12 @@ window.Storage = Storage;
           const wrap = document.createElement("div");
           wrap.className = "folder-notes";
           wrap.style.marginLeft = (depth + 1) * 16 + "px";
-          const arr = groups.get(f.id) || []; // keep original order
+          const arr = (groups.get(f.id) || []).sort((a, b) => {
+            // Sort by order field
+            const aOrder = a.order !== undefined ? a.order : Infinity;
+            const bOrder = b.order !== undefined ? b.order : Infinity;
+            return aOrder - bOrder;
+          });
           arr.forEach((n) => wrap.appendChild(makeNoteBtn(n)));
           el.noteList.appendChild(wrap);
           // Render subfolders recursively

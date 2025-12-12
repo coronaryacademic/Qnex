@@ -4002,6 +4002,11 @@
     // Insert at new position
     window.state.notes.splice(insertIndex, 0, draggedNote);
 
+    // Reassign order values to persist custom order
+    if (typeof window.reassignOrderValues === "function") {
+      window.reassignOrderValues(window.state.notes);
+    }
+
     // Save and refresh
     if (typeof window.saveNotes === "function") {
       window.saveNotes();
@@ -4640,6 +4645,11 @@
           const newTargetIndex = window.state.folders.indexOf(targetFolder);
           const insertIndex = isAfter ? newTargetIndex + 1 : newTargetIndex;
           window.state.folders.splice(insertIndex, 0, draggedFolder);
+
+          // Reassign order values to persist custom order
+          if (typeof window.reassignOrderValues === "function") {
+            window.reassignOrderValues(window.state.folders);
+          }
 
           // Save changes
           if (typeof window.saveFolders === "function") {
