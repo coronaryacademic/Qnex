@@ -16,7 +16,7 @@
     leftPaneNote: null, // Note ID in left pane
     rightPaneNote: null, // Note ID in right pane
     viewMode: "grid", // 'grid' or 'list'
-    sortOrder: "asc", // 'asc' or 'desc'
+    sortOrder: null, // null = custom order (default), 'asc'/'desc' = temp alphabetical
     multiSelectMode: false, // Whether multi-select is enabled
     selectedItems: [], // Selected item IDs in multi-select mode
     currentEditor: null, // Current BlockEditor instance
