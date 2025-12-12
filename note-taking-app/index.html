@@ -995,29 +995,8 @@
           </button>
         </div>
         <div class="ctx-section" data-scope="note">
-          <button data-cmd="refresh-app">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <polyline points="1 20 1 14 7 14"></polyline>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
-            Refresh
-          </button>
-          <hr
-            style="
-              margin: 4px 0;
-              border: none;
-              border-top: 1px solid var(--border);
-            "
-          />
-          <button data-cmd="open-window">
+
+          <button data-cmd="open-note">
             <svg
               width="14"
               height="14"
@@ -1029,7 +1008,7 @@
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="9" y1="3" x2="9" y2="21"></line>
             </svg>
-            Open Window
+            Open Note
           </button>
           <hr
             style="
@@ -1054,7 +1033,7 @@
                 d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
               ></path>
             </svg>
-            Rename Note…
+            Rename Note
           </button>
           <button data-cmd="export-note">
             <svg
@@ -1070,6 +1049,13 @@
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             Export Note
+          </button>
+          <button data-cmd="duplicate">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Duplicate Note
           </button>
           <button data-cmd="toggle-pin">
             <svg
@@ -1121,7 +1107,7 @@
           </button>
         </div>
         <div class="ctx-section" data-scope="baselayer-note">
-          <button data-cmd="open-window">
+          <button data-cmd="open-note">
             <svg
               width="14"
               height="14"
@@ -1133,7 +1119,7 @@
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="9" y1="3" x2="9" y2="21"></line>
             </svg>
-            Open Window
+            Open Note
           </button>
           <hr
             style="
@@ -1158,7 +1144,7 @@
                 d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
               ></path>
             </svg>
-            Rename Note…
+            Rename Note
           </button>
           <button data-cmd="export-note">
             <svg
@@ -1174,6 +1160,13 @@
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             Export Note
+          </button>
+          <button data-cmd="duplicate">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Duplicate Note
           </button>
           <button data-cmd="move-to-root">
             <svg
@@ -1240,6 +1233,27 @@
           </button>
         </div>
         <div class="ctx-section" data-scope="pinned-note">
+          <button data-cmd="open-note">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+            Open Note
+          </button>
+          <hr
+            style="
+              margin: 4px 0;
+              border: none;
+              border-top: 1px solid var(--border);
+            "
+          />
           <button data-cmd="unpin-note">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 17v5"></path>
@@ -1363,6 +1377,13 @@
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             Export Folder
+          </button>
+          <button data-cmd="duplicate">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Duplicate Folder
           </button>
           <button data-cmd="import-to-folder">
             <svg

@@ -1096,7 +1096,19 @@ window.Storage = Storage;
             // Reload the entire application like Ctrl+R
             window.location.reload();
           },
-          onOpenWindow: () => openWindow(id),
+          onOpenNote: () => {
+            if (typeof window.openNoteInNoteBase === "function") {
+              window.openNoteInNoteBase(id);
+            } else {
+              // Fallback if not available
+              openWindow(id);
+            }
+          },
+          onDuplicate: () => {
+             if (typeof window.duplicateNote === "function") {
+               window.duplicateNote(id);
+             }
+          },
           onRenameNote: async () => {
             if (!note) return;
             const name = await modalPrompt(
@@ -2103,6 +2115,8 @@ window.Storage = Storage;
     }:${pad(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
   }
   const uid = () => Math.random().toString(36).slice(2, 9);
+  window.uid = uid; // Expose globally
+
   const debounce = (fn, ms = 300) => {
     let t;
     return (...a) => {
@@ -2110,6 +2124,7 @@ window.Storage = Storage;
       t = setTimeout(() => fn(...a), ms);
     };
   };
+  window.debounce = debounce; // Expose globally
 
   function getNote(id) {
     return state.notes.find((n) => n.id === id);
@@ -4992,11 +5007,13 @@ window.Storage = Storage;
         handlers.onOpenRight && handlers.onOpenRight();
         hideContextMenu();
       });
-    const bOW = ctxEl.querySelector('[data-cmd="open-window"]');
-    if (bOW)
-      bOW.addEventListener("click", (e) => {
+    const bON = ctxEl.querySelector('[data-cmd="open-note"]');
+    if (bON)
+      bON.addEventListener("click", (e) => {
+        console.log("[CTX] Open Note clicked");
+        console.log("[CTX] Handlers keys:", Object.keys(handlers));
         e.stopPropagation();
-        handlers.onOpenWindow && handlers.onOpenWindow();
+        handlers.onOpenNote && handlers.onOpenNote();
         hideContextMenu();
       });
 
@@ -5011,9 +5028,26 @@ window.Storage = Storage;
     const bDN = ctxEl.querySelector('[data-cmd="delete-note"]');
     if (bDN)
       bDN.addEventListener("click", async (e) => {
+        console.log("[CTX] Delete Note clicked");
         e.stopPropagation();
         hideContextMenu();
         await handlers.onDeleteNote?.();
+      });
+
+    const bDup = visibleSection
+      ? visibleSection.querySelector('[data-cmd="duplicate"]')
+      : ctxEl.querySelector('[data-cmd="duplicate"]');
+    if (bDup)
+      bDup.addEventListener("click", (e) => {
+        console.log("[CTX] Duplicate clicked");
+        e.stopPropagation();
+        hideContextMenu();
+        if (handlers.onDuplicate) {
+          console.log("[CTX] Calling handlers.onDuplicate");
+          handlers.onDuplicate();
+        } else {
+          console.warn("[CTX] NO handlers.onDuplicate defined!");
+        }
       });
 
     // Multi-note handlers

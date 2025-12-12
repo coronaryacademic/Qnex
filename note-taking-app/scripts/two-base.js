@@ -964,10 +964,10 @@
         event.clientX,
         event.clientY,
         {
-          onOpenWindow: () => {
-            if (typeof window.openWindow === "function") {
-              window.openWindow(itemId);
-            }
+          onOpenNote: () => {
+            console.log("[TWO-BASE] onOpenNote handler called for:", itemId);
+            // Open in note base
+            openNoteInNoteBase(itemId);
           },
           onRenameNote: async () => {
             if (typeof window.modalPrompt !== "function") return;
@@ -996,6 +996,11 @@
               window.saveNotes();
             }
             renderWorkspaceSplit(TwoBaseState.currentFolder);
+          },
+          onDuplicate: () => {
+            console.log("[TWO-BASE] onDuplicate handler called for:", itemId);
+            const res = duplicateNote(itemId);
+            console.log("[TWO-BASE] duplicateNote result:", res);
           },
           onExportNote: async () => {
             const exportData = {
@@ -1132,6 +1137,10 @@
           window.saveFolders();
         }
         renderWorkspaceSplit(TwoBaseState.currentFolder);
+      };
+
+      handlers.onDuplicate = () => {
+        duplicateFolder(itemId);
       };
 
       handlers.onNewNoteToFolder = async () => {
@@ -1536,7 +1545,20 @@
     renderWorkspaceSplit(TwoBaseState.currentFolder);
   }
 
+  window.openNoteInNoteBase = openNoteInNoteBase;
   function openNoteInNoteBase(noteId) {
+    // Switch to note base view
+    TwoBaseState.currentBase = "note";
+
+    // Direct DOM access for robustness
+    const workspaceSplit = document.getElementById("workspaceSplit");
+    const noteBase = document.getElementById("noteBase");
+    const emptyState = document.getElementById("empty-state");
+
+    if (workspaceSplit) workspaceSplit.style.display = "none";
+    if (noteBase) noteBase.classList.remove("hidden");
+    if (emptyState) emptyState.classList.add("hidden");
+
     // Check if note is already open
     const existingIndex = TwoBaseState.openNotes.indexOf(noteId);
     if (existingIndex !== -1) {
@@ -2125,6 +2147,14 @@
     menu.style.zIndex = "10001"; // Ensure it's above other menus
 
     menu.innerHTML = `
+      <div class="context-menu-item" data-action="open">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+        </svg>
+        <span>Open Note</span>
+      </div>
+      <div class="context-menu-divider"></div>
       <div class="context-menu-item" data-action="unpin">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="2" y1="2" x2="22" y2="22"></line>
@@ -2166,7 +2196,9 @@
 
       const action = menuItem.dataset.action;
 
-      if (action === "unpin") {
+      if (action === "open") {
+        openNoteInNoteBase(noteId);
+      } else if (action === "unpin") {
         const idx = TwoBaseState.pinnedNotes.indexOf(noteId);
         if (idx !== -1) {
           TwoBaseState.pinnedNotes.splice(idx, 1);
@@ -2818,6 +2850,99 @@
     }
   }
 
+  function duplicateNote(noteId, targetFolderId = null) {
+    const note = state.notes.find((n) => n.id === noteId);
+    if (!note) return null;
+
+    const newId =
+      typeof window.uid === "function" ? window.uid() : Date.now().toString();
+    const newNote = {
+      ...note,
+      id: newId,
+      title: `Copy of ${note.title || "Untitled"}`,
+      folderId: targetFolderId !== null ? targetFolderId : note.folderId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    state.notes.push(newNote);
+    
+    // Clear selection
+    TwoBaseState.selectedItems = [];
+    if (window.state && window.state.selectedItems) {
+      window.state.selectedItems.clear();
+    }
+    
+    // Save changes
+    if (typeof window.saveNotes === "function") {
+      window.saveNotes();
+    }
+
+    // Refresh view
+    if (TwoBaseState.currentBase === "main") {
+      renderWorkspaceSplit(TwoBaseState.currentFolder);
+    }
+    
+    return newNote;
+  }
+  window.duplicateNote = duplicateNote;
+
+  function duplicateFolder(folderId, targetParentId = null) {
+    const folder = state.folders.find((f) => f.id === folderId);
+    if (!folder) return null;
+
+    const newFolderId =
+      typeof window.uid === "function" ? window.uid() : Date.now().toString();
+    
+    // Create new folder
+    const newFolder = {
+      ...folder,
+      id: newFolderId,
+      name: `Copy of ${folder.name}`,
+      parentId: targetParentId !== null ? targetParentId : folder.parentId,
+    };
+    state.folders.push(newFolder);
+
+    // Duplicate all notes in this folder
+    const notesInFolder = state.notes.filter((n) => n.folderId === folderId);
+    notesInFolder.forEach((note) => {
+      // Pass the NEW folder ID as target
+      const duplicatedNote = duplicateNote(note.id, newFolderId);
+      if (duplicatedNote) {
+        duplicatedNote.title = note.title; // Keep original title inside duplicated folder
+      }
+    });
+
+    // Duplicate all subfolders recursively
+    const subfolders = state.folders.filter((f) => f.parentId === folderId);
+    subfolders.forEach((sub) => {
+      duplicateFolder(sub.id, newFolderId);
+    });
+
+    // Clear selection
+    TwoBaseState.selectedItems = [];
+    if (window.state && window.state.selectedItems) {
+      window.state.selectedItems.clear();
+    }
+
+    // Save changes
+    if (typeof window.saveFolders === "function") {
+      window.saveFolders();
+    }
+    
+    // Refresh view if at root or parent
+    if (TwoBaseState.currentBase === "main") {
+      renderWorkspaceSplit(TwoBaseState.currentFolder);
+    }
+
+    return newFolder;
+  }
+  window.duplicateFolder = duplicateFolder;
+
+  // Export functions to window (inside IIFE, so attached to window)
+  window.duplicateNote = duplicateNote;
+  window.duplicateFolder = duplicateFolder;
+
   // ===================================
   // Event Listeners
   // ===================================
@@ -3214,6 +3339,14 @@
       if (typeof window.showContextMenu === "function") {
         console.log("[PINNED] Calling showContextMenu with scope: pinned-note");
         const handlers = {
+          onOpenNote: () => {
+            console.log("[PINNED] onOpenNote handler called for:", note.id);
+            openNoteInNoteBase(note.id);
+          },
+          onDuplicate: () => {
+            console.log("[PINNED] onDuplicate handler called for:", note.id);
+            duplicateNote(note.id);
+          },
           onUnpinNote: () => {
             console.log("[PINNED] Unpin note clicked:", note.id);
             window.togglePinNote(note.id);
@@ -5759,70 +5892,7 @@
     window.showContextMenu(event.clientX, event.clientY, handlers, scope);
   }
 
-  // Show context menu for empty space in workspace
-  function showEmptySpaceContextMenu(event) {
-    const handlers = {
-      onNewNote: async () => {
-        const noteId = window.uid();
-        const newNote = {
-          id: noteId,
-          title: "",
-          contentHtml: "",
-          tags: [],
-          folderId: TwoBaseState.currentFolder || null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        state.notes.push(newNote);
-        if (typeof window.saveNotes === "function") {
-          window.saveNotes();
-        }
-        renderWorkspaceSplit(TwoBaseState.currentFolder);
-        // Open the note
-        openNoteInNoteBase(noteId);
-      },
-      onNewFolder: async () => {
-        const folderName = await window.modalPrompt(
-          "New Folder",
-          "Folder Name",
-          ""
-        );
-        if (!folderName) return;
 
-        const folderId = window.uid();
-        const newFolder = {
-          id: folderId,
-          name: folderName,
-          parentId: TwoBaseState.currentFolder || null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        state.folders.push(newFolder);
-        if (typeof window.saveFolders === "function") {
-          window.saveFolders();
-        }
-        renderWorkspaceSplit(TwoBaseState.currentFolder);
-        if (typeof window.renderSidebar === "function") {
-          window.renderSidebar();
-        }
-      },
-
-      onRefreshApp: () => {
-        console.log(
-          "[DEBUG] Base layer refresh handler called (second function)"
-        );
-        // Reload the entire application like Ctrl+R
-        window.location.reload();
-      },
-    };
-
-    window.showContextMenu(
-      event.clientX,
-      event.clientY,
-      handlers,
-      "empty-space"
-    );
-  }
 
   // Global delegated context menu handler for workspace items
   // This works even after items are re-rendered
