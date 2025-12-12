@@ -143,21 +143,31 @@
     // Get notes without folder
     let rootNotes = state.notes.filter((n) => !n.folderId);
 
-    // Apply sorting
-    if (TwoBaseState.sortOrder === "asc") {
-      rootFolders.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      rootNotes.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    // Apply sorting - use order field UNLESS temp sort is active
+    if (TwoBaseState.sortOrder === "asc" || TwoBaseState.sortOrder === "desc") {
+      // Temporary alphabetical sorting (doesn't persist)
+      if (TwoBaseState.sortOrder === "asc") {
+        rootFolders.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        rootNotes.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+      } else {
+        rootFolders.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+        rootNotes.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+      }
     } else {
-      rootFolders.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
-      rootNotes.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+      // DEFAULT: Sort by order field (persisted custom order)
+      rootFolders.sort((a, b) => {
+        const aOrder = a.order !== undefined ? a.order : Infinity;
+        const bOrder = b.order !== undefined ? b.order : Infinity;
+        return aOrder - bOrder;
+      });
+      rootNotes.sort((a, b) => {
+        const aOrder = a.order !== undefined ? a.order : Infinity;
+        const bOrder = b.order !== undefined ? b.order : Infinity;
+        return aOrder - bOrder;
+      });
     }
 
-    // Render folders first
-    rootFolders.forEach((folder) => {
-      grid.appendChild(createFolderItem(folder));
-    });
-
-    // If there are root notes, render "Uncategorized" folder
+    // Render Uncategorized folder FIRST (always on top)
     if (rootNotes.length > 0) {
       const uncategorizedFolder = {
         id: "uncategorized",
@@ -166,6 +176,11 @@
       };
       grid.appendChild(createFolderItem(uncategorizedFolder));
     }
+
+    // Then render other folders
+    rootFolders.forEach((folder) => {
+      grid.appendChild(createFolderItem(folder));
+    });
 
     el.workspaceContent.innerHTML = "";
 
