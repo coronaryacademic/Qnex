@@ -286,7 +286,7 @@
 .note-tab {
   padding: 0.5rem 1rem;
   border-radius: 3px 3px 0 0;
-  cursor: grab;
+  cursor: default;
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -362,6 +362,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .note-tab:hover .note-tab-close {
