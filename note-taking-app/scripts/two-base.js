@@ -252,7 +252,31 @@
         const container = document.createElement("div");
         container.className = "workspace-sections-container";
 
-        // Notebooks section (if there are notes)
+        // Folders section (render first as requested)
+        if (subfolders.length > 0) {
+          const foldersSection = document.createElement("div");
+          foldersSection.className = "workspace-section";
+
+          const foldersHeader = document.createElement("div");
+          foldersHeader.className = "workspace-section-header";
+          foldersHeader.innerHTML = `<span>Folders</span>`;
+
+          const foldersGrid = document.createElement("div");
+          foldersGrid.className =
+            TwoBaseState.viewMode === "list"
+              ? "workspace-list"
+              : "workspace-grid";
+
+          subfolders.forEach((folder) => {
+            foldersGrid.appendChild(createFolderItem(folder));
+          });
+
+          foldersSection.appendChild(foldersHeader);
+          foldersSection.appendChild(foldersGrid);
+          container.appendChild(foldersSection);
+        }
+
+        // Notebooks section
         if (folderNotes.length > 0) {
           const notebooksSection = document.createElement("div");
           notebooksSection.className = "workspace-section";
@@ -276,29 +300,6 @@
           container.appendChild(notebooksSection);
         }
 
-        // Folders section (if there are subfolders)
-        if (subfolders.length > 0) {
-          const foldersSection = document.createElement("div");
-          foldersSection.className = "workspace-section";
-
-          const foldersHeader = document.createElement("div");
-          foldersHeader.className = "workspace-section-header";
-          foldersHeader.innerHTML = `<span>Folders</span>`;
-
-          const foldersGrid = document.createElement("div");
-          foldersGrid.className =
-            TwoBaseState.viewMode === "list"
-              ? "workspace-list"
-              : "workspace-grid";
-
-          subfolders.forEach((folder) => {
-            foldersGrid.appendChild(createFolderItem(folder));
-          });
-
-          foldersSection.appendChild(foldersHeader);
-          foldersSection.appendChild(foldersGrid);
-          container.appendChild(foldersSection);
-        }
 
         el.workspaceContent.appendChild(container);
       }
