@@ -286,7 +286,7 @@
 .note-tab {
   padding: 0.5rem 1rem;
   border-radius: 3px 3px 0 0;
-  cursor: pointer;
+  cursor: grab;
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -389,6 +389,7 @@
   flex-shrink: 0;
   cursor: pointer;
   color: var(--muted);
+  pointer-events: auto; /* Allow this button to receive clicks */
 }
 
 .note-tab:hover .note-tab-unpin {
@@ -1014,7 +1015,7 @@
 .note-tab.pinned.compact {
   max-width: 120px !important; /* Allow some width for title */
   min-width: 60px !important;
-  padding: 0 8px !important;
+  padding: 0.5rem 8px !important;
   justify-content: flex-start; /* Align left to show start of title */
 }
 

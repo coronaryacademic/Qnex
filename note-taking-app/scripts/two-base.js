@@ -1681,12 +1681,21 @@
   function renderNoteTabs() {
     el.noteTabs.innerHTML = "";
 
-    // Sort notes: pinned first, then regular
+    // Sort notes: pinned first (in their pinnedNotes order), then regular (in their openNotes order)
     const sortedNotes = [...TwoBaseState.openNotes].sort((a, b) => {
       const aIsPinned = TwoBaseState.pinnedNotes.includes(a);
       const bIsPinned = TwoBaseState.pinnedNotes.includes(b);
+      
+      // Both pinned: sort by their position in pinnedNotes array
+      if (aIsPinned && bIsPinned) {
+        return TwoBaseState.pinnedNotes.indexOf(a) - TwoBaseState.pinnedNotes.indexOf(b);
+      }
+      
+      // One pinned, one not: pinned comes first
       if (aIsPinned && !bIsPinned) return -1;
       if (!aIsPinned && bIsPinned) return 1;
+      
+      // Both unpinned: maintain their order in openNotes (which is already their order)
       return 0;
     });
 
@@ -1715,8 +1724,8 @@
       tab.className = className;
       tab.dataset.noteId = noteId;
       tab.dataset.index = index;
-      // Pinned tabs are not draggable
-      tab.draggable = !isPinned;
+      // All tabs are draggable (pinned and unpinned)
+      tab.draggable = true;
 
       // Pinned tabs show unpin button, regular tabs show close button
       if (isPinned) {
@@ -1734,6 +1743,25 @@
             </svg>
           </span>
         `;
+        
+        // Make the unpin button not interfere with dragging
+        const unpinBtn = tab.querySelector('.note-tab-unpin');
+        if (unpinBtn) {
+          unpinBtn.addEventListener('mousedown', (e) => {
+            // Stop propagation so drag doesn't start when clicking unpin button
+            e.stopPropagation();
+          });
+          unpinBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Unpin the tab
+            const idx = TwoBaseState.pinnedNotes.indexOf(noteId);
+            if (idx !== -1) {
+              TwoBaseState.pinnedNotes.splice(idx, 1);
+              renderNoteTabs();
+              saveTwoBaseSession();
+            }
+          });
+        }
       } else {
         tab.innerHTML = `
           <span class="note-tab-title">${escapeHtml(
@@ -1741,43 +1769,52 @@
           )}</span>
           <span class="note-tab-close">×</span>
         `;
+        
+        // Close button handler
+        const closeBtn = tab.querySelector('.note-tab-close');
+        if (closeBtn) {
+          closeBtn.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+          });
+          closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeNoteTab(noteId);
+          });
+        }
       }
 
-      // Click handler
+      // Click handler for tab body (not buttons)
       tab.addEventListener("click", (e) => {
-        if (e.target.closest(".note-tab-unpin")) {
-          // Unpin the tab
-          const idx = TwoBaseState.pinnedNotes.indexOf(noteId);
-          if (idx !== -1) {
-            TwoBaseState.pinnedNotes.splice(idx, 1);
-            renderNoteTabs();
-            saveTwoBaseSession();
-          }
-        } else if (e.target.classList.contains("note-tab-close")) {
-          closeNoteTab(noteId);
-        } else {
+        // Only switch tab if not clicking on buttons
+        if (!e.target.closest(".note-tab-unpin") && !e.target.closest(".note-tab-close")) {
           switchActiveNote(noteId);
         }
       });
 
-      // Drag and drop handlers - only for non-pinned tabs
-      if (!isPinned) {
-        tab.addEventListener("dragstart", (e) => {
-          e.dataTransfer.effectAllowed = "move";
+      // Drag and drop handlers for both pinned and unpinned tabs
+      tab.addEventListener("dragstart", (e) => {
+        console.log("[DRAG] Dragstart event fired for tab:", noteId, "isPinned:", isPinned);
+        e.dataTransfer.effectAllowed = "move";
+        // Use different data types for pinned vs unpinned tabs
+        if (isPinned) {
+          e.dataTransfer.setData("text/pinned-tab-id", noteId);
+          console.log("[DRAG] Set pinned tab data:", noteId);
+        } else {
           e.dataTransfer.setData("text/note-tab-id", noteId);
-          tab.classList.add("dragging");
-          // Add slight delay for visual effect
-          setTimeout(() => (tab.style.opacity = "0.4"), 0);
-        });
+          console.log("[DRAG] Set unpinned tab data:", noteId);
+        }
+        tab.classList.add("dragging");
+        // Add slight delay for visual effect
+        setTimeout(() => (tab.style.opacity = "0.4"), 0);
+      });
 
-        tab.addEventListener("dragend", (e) => {
-          tab.classList.remove("dragging");
-          tab.style.opacity = "";
-          document.querySelectorAll(".note-tab").forEach((t) => {
-            t.classList.remove("drag-over-left", "drag-over-right");
-          });
+      tab.addEventListener("dragend", (e) => {
+        tab.classList.remove("dragging");
+        tab.style.opacity = "";
+        document.querySelectorAll(".note-tab").forEach((t) => {
+          t.classList.remove("drag-over-left", "drag-over-right");
         });
-      }
+      });
 
       tab.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -1785,18 +1822,25 @@
 
         const draggingTab = document.querySelector(".note-tab.dragging");
         if (draggingTab && draggingTab !== tab) {
-          // Determine which side of the tab we're on
-          const rect = tab.getBoundingClientRect();
-          const midpoint = rect.left + rect.width / 2;
+          // Only show indicators if dragging compatible types
+          const draggingIsPinned = draggingTab.classList.contains("pinned");
+          const targetIsPinned = tab.classList.contains("pinned");
+          
+          // Only show indicators if both tabs are of the same type (both pinned or both unpinned)
+          if (draggingIsPinned === targetIsPinned) {
+            // Determine which side of the tab we're on
+            const rect = tab.getBoundingClientRect();
+            const midpoint = rect.left + rect.width / 2;
 
-          // Remove previous indicators
-          tab.classList.remove("drag-over-left", "drag-over-right");
+            // Remove previous indicators
+            tab.classList.remove("drag-over-left", "drag-over-right");
 
-          // Add indicator based on cursor position
-          if (e.clientX < midpoint) {
-            tab.classList.add("drag-over-left");
-          } else {
-            tab.classList.add("drag-over-right");
+            // Add indicator based on cursor position
+            if (e.clientX < midpoint) {
+              tab.classList.add("drag-over-left");
+            } else {
+              tab.classList.add("drag-over-right");
+            }
           }
         }
       });
@@ -1808,14 +1852,31 @@
       tab.addEventListener("drop", (e) => {
         e.preventDefault();
 
+        // Check for pinned tab drop
+        const draggedPinnedId = e.dataTransfer.getData("text/pinned-tab-id");
         const draggedNoteId = e.dataTransfer.getData("text/note-tab-id");
-        if (draggedNoteId && draggedNoteId !== noteId) {
-          // Determine drop position based on cursor
+        
+        console.log("[DROP] Drop event on tab:", noteId, "isPinned:", isPinned);
+        console.log("[DROP] draggedPinnedId:", draggedPinnedId, "draggedNoteId:", draggedNoteId);
+
+        if (draggedPinnedId && isPinned && draggedPinnedId !== noteId) {
+          // Reordering pinned tabs
+          console.log("[DROP] Reordering pinned tabs:", draggedPinnedId, "->", noteId);
+          const rect = tab.getBoundingClientRect();
+          const midpoint = rect.left + rect.width / 2;
+          const insertAfter = e.clientX >= midpoint;
+
+          reorderPinnedTabsInBar(draggedPinnedId, noteId, insertAfter);
+        } else if (draggedNoteId && !isPinned && draggedNoteId !== noteId) {
+          // Reordering unpinned tabs
+          console.log("[DROP] Reordering unpinned tabs:", draggedNoteId, "->", noteId);
           const rect = tab.getBoundingClientRect();
           const midpoint = rect.left + rect.width / 2;
           const insertAfter = e.clientX >= midpoint;
 
           reorderTabs(draggedNoteId, noteId, insertAfter);
+        } else {
+          console.log("[DROP] Drop ignored - incompatible types or same tab");
         }
 
         tab.classList.remove("drag-over-left", "drag-over-right");
@@ -1852,6 +1913,33 @@
 
     // Re-render tabs
     renderNoteTabs();
+
+    // Save session state
+    saveTwoBaseSession();
+  }
+
+  function reorderPinnedTabsInBar(draggedNoteId, targetNoteId, insertAfter = false) {
+    const draggedIndex = TwoBaseState.pinnedNotes.indexOf(draggedNoteId);
+    const targetIndex = TwoBaseState.pinnedNotes.indexOf(targetNoteId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Remove dragged note from array
+    TwoBaseState.pinnedNotes.splice(draggedIndex, 1);
+
+    // Recalculate target index after removal
+    let newTargetIndex = TwoBaseState.pinnedNotes.indexOf(targetNoteId);
+
+    // Insert before or after based on drop position
+    if (insertAfter) {
+      newTargetIndex += 1;
+    }
+
+    TwoBaseState.pinnedNotes.splice(newTargetIndex, 0, draggedNoteId);
+
+    // Re-render tabs and sidebar pinned section
+    renderNoteTabs();
+    renderPinnedNotesSection();
 
     // Save session state
     saveTwoBaseSession();
@@ -1966,13 +2054,40 @@
         const otherNotes = TwoBaseState.openNotes.filter(
           (id) => id !== noteId && !TwoBaseState.pinnedNotes.includes(id)
         );
-        otherNotes.forEach((id) => closeNoteTab(id));
+        // Remove all at once instead of calling closeNoteTab repeatedly
+        otherNotes.forEach((id) => {
+          const index = TwoBaseState.openNotes.indexOf(id);
+          if (index > -1) {
+            TwoBaseState.openNotes.splice(index, 1);
+          }
+        });
+        // Re-render tabs once
+        renderNoteTabs();
+        saveTwoBaseSession();
       } else if (action === "close-all") {
         // Close all unpinned tabs (keep pinned)
         const unpinnedNotes = TwoBaseState.openNotes.filter(
           (id) => !TwoBaseState.pinnedNotes.includes(id)
         );
-        unpinnedNotes.forEach((id) => closeNoteTab(id));
+        // Remove all at once instead of calling closeNoteTab repeatedly
+        unpinnedNotes.forEach((id) => {
+          const index = TwoBaseState.openNotes.indexOf(id);
+          if (index > -1) {
+            TwoBaseState.openNotes.splice(index, 1);
+          }
+        });
+        // Switch to a pinned tab if the active tab was closed, or go back to main
+        if (!TwoBaseState.openNotes.includes(TwoBaseState.activeNote)) {
+          if (TwoBaseState.openNotes.length > 0) {
+            switchActiveNote(TwoBaseState.openNotes[0]);
+          } else {
+            switchToMainBase();
+          }
+        } else {
+          // Just re-render tabs
+          renderNoteTabs();
+          saveTwoBaseSession();
+        }
       }
 
       menu.remove();
