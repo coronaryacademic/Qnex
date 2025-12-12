@@ -985,6 +985,11 @@
             }
             // Re-render workspace
             renderWorkspaceSplit(TwoBaseState.currentFolder);
+            
+            // Auto-open the new note
+            if (typeof openNoteInNoteBase === "function") {
+              openNoteInNoteBase(note.id);
+            }
           },
           onChangeNoteIcon: async () => {
             if (typeof window.modalIconPicker !== "function") return;
@@ -1531,16 +1536,87 @@
   // NOTE BASE: Editor Functions
   // ===================================
 
+  // Helper for view transitions
+    // Helper for view transitions (Overlay Style)
+  function switchViewWithAnimation(toView, fromView, direction = "forward") {
+    if (!toView || !fromView) return;
+
+    // If already in that view, do nothing
+    if (!toView.classList.contains("hidden") && toView.style.display !== "none" && 
+        (fromView.classList.contains("hidden") || fromView.style.display === "none")) {
+      return;
+    }
+
+    // Prepare views for animation relative to viewport
+    // No container needed since we use fixed/absolute positioning on body/window level 
+    // but ensures parent has relative positioning for containment if needed.
+    const container = toView.parentElement;
+    if (container) {
+      container.classList.add("view-transition-container");
+    }
+
+    // Ensure 'to' view is visible
+    toView.classList.remove("hidden");
+    toView.style.display = "flex"; 
+    
+    // Add animation classes
+    toView.classList.add("view-animate");
+    fromView.classList.add("view-animate");
+
+    // Initial state
+    toView.classList.add("view-enter");
+    fromView.classList.add("view-active"); // Start at active state
+
+    // Force reflow
+    void toView.offsetWidth;
+
+    // Start animation
+    requestAnimationFrame(() => {
+      // Move 'to' view to active
+      toView.classList.remove("view-enter");
+      toView.classList.add("view-active");
+
+      // Move 'from' view to exit (fade out background slightly or keep it)
+      // For true overlay feel, background (fromView) could just stay active or fade out slightly.
+      // But standard request is switch. Let's do fade out of From view.
+      fromView.classList.remove("view-active");
+      fromView.classList.add("view-exit");
+    });
+
+    // Clean up after animation
+    setTimeout(() => {
+      // Hide the old view (except if we want to keep it visible behind, but memory/state wise usually better to hide for "modes")
+      // User asked for "appear on top", which implies overlay. 
+      // But eventually we usually want to hide the inactive view to avoid interaction issues.
+      fromView.style.display = "none";
+      fromView.classList.add("hidden");
+      
+      // Clean up classes
+      toView.classList.remove("view-animate", "view-active");
+      fromView.classList.remove("view-animate", "view-exit");
+      
+      // Clean up inline styles
+      toView.style.transform = "";
+      toView.style.opacity = "";
+      
+      if (container) {
+        container.classList.remove("view-transition-container");
+      }
+    }, 310); // Match CSS transition 300ms + buffer
+  }
+
   function switchToNoteBase() {
     TwoBaseState.currentBase = "note";
-    el.workspaceSplit.style.display = "none";
-    el.noteBase.classList.remove("hidden");
+    // el.workspaceSplit.style.display = "none";
+    // el.noteBase.classList.remove("hidden");
+    switchViewWithAnimation(el.noteBase, el.workspaceSplit);
   }
 
   function switchToMainBase() {
     TwoBaseState.currentBase = "main";
-    el.noteBase.classList.add("hidden");
-    el.workspaceSplit.style.display = "flex";
+    // el.noteBase.classList.add("hidden");
+    // el.workspaceSplit.style.display = "flex";
+    switchViewWithAnimation(el.workspaceSplit, el.noteBase);
 
     // Refresh workspace in case notes were edited
     renderWorkspaceSplit(TwoBaseState.currentFolder);
@@ -1556,8 +1632,15 @@
     const noteBase = document.getElementById("noteBase");
     const emptyState = document.getElementById("empty-state");
 
-    if (workspaceSplit) workspaceSplit.style.display = "none";
-    if (noteBase) noteBase.classList.remove("hidden");
+    // Use animation if elements are available
+    if (workspaceSplit && noteBase && workspaceSplit.style.display !== "none") {
+       switchViewWithAnimation(noteBase, workspaceSplit);
+    } else {
+       // Fallback or if already switched
+       if (workspaceSplit) workspaceSplit.style.display = "none";
+       if (noteBase) noteBase.classList.remove("hidden");
+    }
+    
     if (emptyState) emptyState.classList.add("hidden");
 
     // Check if note is already open
@@ -1592,16 +1675,29 @@
       return 0;
     });
 
+    // Check if we need compact pinned tabs (if there are unpinned tabs open)
+    // User requested "compact... if there were other tabs". 
+    // If all tabs are pinned, they shouldn't be compacted as there's no space saving need against unpinned ones.
+    const hasUnpinnedTabs = sortedNotes.some(id => !TwoBaseState.pinnedNotes.includes(id));
+    const shouldCompact = hasUnpinnedTabs;
+
     sortedNotes.forEach((noteId, index) => {
       const note = state.notes.find((n) => n.id === noteId);
       if (!note) return;
 
       const isPinned = TwoBaseState.pinnedNotes.includes(noteId);
       const tab = document.createElement("div");
-      tab.className =
-        "note-tab" +
-        (noteId === TwoBaseState.activeNote ? " active" : "") +
-        (isPinned ? " pinned" : "");
+      
+      // Add compact class to pinned tabs only if we decided to compact
+      let className = "note-tab" + (noteId === TwoBaseState.activeNote ? " active" : "");
+      if (isPinned) {
+        className += " pinned";
+        if (shouldCompact) {
+          className += " compact";
+        }
+      }
+      
+      tab.className = className;
       tab.dataset.noteId = noteId;
       tab.dataset.index = index;
       // Pinned tabs are not draggable
@@ -5322,6 +5418,69 @@
     // This will handle showing the correct view (main base, note base, or welcome)
     restoreTwoBaseSession();
 
+    // NUCLEAR VISIBILITY FIX: The .hidden class has "display:none !important" which cannot be overridden by inline styles
+    // We must aggressively remove the .hidden class and prevent it from being re-added during initialization
+    // Run this for 1 second to catch any delayed initialization logic that might re-hide the view
+    const visibilityInterval = setInterval(() => {
+        const wsSplit = document.getElementById("workspaceSplit");
+        const nBase = document.getElementById("noteBase");
+        const emptyState = document.getElementById("empty-state");
+        
+        if (TwoBaseState.currentBase === 'note') {
+            // Note base should be visible
+            if (nBase) {
+                nBase.classList.remove('hidden', 'view-animate', 'view-enter', 'view-exit');
+                nBase.style.display = 'flex';
+                nBase.style.opacity = '1';
+                nBase.style.transform = '';
+            }
+            if (wsSplit) {
+                wsSplit.classList.add('hidden');
+                wsSplit.style.display = 'none';
+            }
+            if (emptyState) {
+                emptyState.classList.add('hidden');
+            }
+        } else if (TwoBaseState.currentBase === 'home') {
+            // Home/welcome view should be visible
+            if (emptyState) {
+                emptyState.classList.remove('hidden');
+            }
+            if (nBase) {
+                nBase.classList.add('hidden');
+                nBase.style.display = 'none';
+            }
+            if (wsSplit) {
+                wsSplit.classList.add('hidden');
+                wsSplit.style.display = 'none';
+            }
+        } else {
+            // Main base (workspace) should be visible
+            if (wsSplit) {
+                wsSplit.classList.remove('hidden', 'view-animate', 'view-enter', 'view-exit');
+                wsSplit.style.display = 'flex';
+                wsSplit.style.opacity = '1';
+                wsSplit.style.transform = '';
+                if (wsSplit.parentElement) {
+                    wsSplit.parentElement.classList.remove('view-transition-container');
+                }
+            }
+            if (nBase) {
+                nBase.classList.add('hidden');
+                nBase.style.display = 'none';
+            }
+            if (emptyState) {
+                emptyState.classList.add('hidden');
+            }
+        }
+    }, 50); // Run every 50ms
+    
+    // Stop after 1 second (20 iterations)
+    setTimeout(() => {
+        clearInterval(visibilityInterval);
+        console.log("[Two-Base] Visibility enforcement completed");
+    }, 1000);
+
     console.log("Two-Base: Initialized successfully");
   }
 
@@ -5703,6 +5862,13 @@
         } else {
           renderWorkspaceSplit(currentFolderId);
         }
+
+        // Auto-open the new note with a slight delay to ensure DOM is ready and view state is stable
+        if (typeof openNoteInNoteBase === "function") {
+          setTimeout(() => {
+            openNoteInNoteBase(note.id);
+          }, 50);
+        }
       },
       onNewFolder: async () => {
         if (typeof window.modalPrompt !== "function") return;
@@ -5906,6 +6072,29 @@
       el.workspaceContent &&
       el.workspaceContent.contains(e.target)
     ) {
+      // AGGRESSIVE SELECTION CLEARING
+      // 1. Clear state
+      TwoBaseState.selectedItems = [];
+      if (window.state && window.state.selectedItems) {
+        window.state.selectedItems.clear();
+      }
+      
+      // 2. Clear DOM classes - query ALL likely candidates
+      const selectedEls = document.querySelectorAll(".selected, .context-active, .workspace-item.selected");
+      selectedEls.forEach((el) => {
+        el.classList.remove("selected");
+        el.classList.remove("context-active");
+      });
+
+      // 3. Force sidebar sync if available
+      if (typeof window.syncWorkspaceSelection === "function") {
+         // Force clear by passing dummy or just rely on the fact that we cleared state
+         // Better to re-render sidebar to be 100% sure if sync is tricky
+         if (typeof window.TwoBase.refreshSidebar === 'function') {
+             window.TwoBase.refreshSidebar();
+         }
+      }
+
       e.preventDefault();
       e.stopPropagation();
       showEmptySpaceContextMenu(e);

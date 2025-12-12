@@ -957,3 +957,81 @@
   -ms-user-select: none;
   cursor: crosshair;
 }
+
+/* ===================================
+   VIEW TRANSITIONS (Windows-like)
+   =================================== */
+
+/* Animation container styles are applied dynamically to workspaceSplit and noteBase */
+
+/* Base state for animated views */
+/* Base state for animated views */
+/* Base state for animated views */
+.view-animate {
+  transition: opacity 300ms cubic-bezier(0.2, 0, 0, 1), transform 300ms cubic-bezier(0.2, 0, 0, 1);
+  background: var(--bg);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 50; /* Higher z-index to overlay */
+  box-sizing: border-box;
+  will-change: opacity, transform;
+}
+
+/* Ensure parent has relative positioning when animation runs */
+.view-transition-container {
+  position: relative !important;
+  overflow: hidden !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+/* Active view */
+.view-active {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* Entering state (starting point for overlay) */
+.view-enter {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px); /* Slide up slightly */
+  pointer-events: none;
+}
+
+/* Exiting state (fade out) */
+.view-exit {
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
+  z-index: 40; /* Lower than entering view */
+}
+
+/* Compact Pinned Tabs */
+.note-tab.pinned.compact {
+  max-width: 120px !important; /* Allow some width for title */
+  min-width: 60px !important;
+  padding: 0 8px !important;
+  justify-content: flex-start; /* Align left to show start of title */
+}
+
+.note-tab.pinned.compact .note-tab-title {
+  display: block; /* Show title */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 4px; /* Space for unpin icon */
+}
+
+.note-tab.pinned.compact .note-tab-unpin {
+  margin-left: auto; /* Push unpin to right */
+  flex-shrink: 0;
+}
+
+/* Utility to ensure standard display:none is respected when not animating */
+.hidden {
+  display: none !important;
+}
