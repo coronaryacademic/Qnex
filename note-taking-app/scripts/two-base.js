@@ -1641,16 +1641,47 @@
 
   function switchToNoteBase() {
     TwoBaseState.currentBase = "note";
-    // el.workspaceSplit.style.display = "none";
-    // el.noteBase.classList.remove("hidden");
-    switchViewWithAnimation(el.noteBase, el.workspaceSplit);
+    console.log("[DEBUG] switchToNoteBase called");
+    
+    // Ensure elements exist
+    if (!el.workspaceSplit || !el.noteBase) {
+        console.error("CRITICAL: Missing elements for note view switch!");
+        // define them if missing from 'el' cache
+        el.workspaceSplit = document.getElementById("workspaceSplit");
+        el.noteBase = document.getElementById("noteBase");
+    }
+
+    if (el.workspaceSplit && el.noteBase) {
+        switchViewWithAnimation(el.noteBase, el.workspaceSplit);
+    } else {
+        // Absolute fallback
+        const ws = document.getElementById("workspaceSplit");
+        const nb = document.getElementById("noteBase");
+        if (ws) ws.style.display = "none";
+        if (nb) {
+            nb.classList.remove("hidden");
+            nb.style.display = "flex";
+        }
+    }
   }
 
   function switchToMainBase() {
     console.log("[DEBUG] switchToMainBase called");
-    console.trace();
+    console.log("Current Base before switch:", TwoBaseState.currentBase);
+    console.log("Elements - Workspace:", el.workspaceSplit, "NoteBase:", el.noteBase);
+    
     TwoBaseState.currentBase = "main";
-    switchViewWithAnimation(el.workspaceSplit, el.noteBase);
+    
+    if (el.workspaceSplit && el.noteBase) {
+        switchViewWithAnimation(el.workspaceSplit, el.noteBase);
+    } else {
+        console.error("CRITICAL: Missing elements for view switch!");
+        // Force fallback
+        const ws = document.getElementById("workspaceSplit");
+        const nb = document.getElementById("noteBase");
+        if (ws) ws.style.display = "flex";
+        if (nb) nb.classList.add("hidden");
+    }
 
     // Refresh workspace in case notes were edited
     renderWorkspaceSplit(TwoBaseState.currentFolder);
@@ -1699,6 +1730,25 @@
 
   function renderNoteTabs() {
     el.noteTabs.innerHTML = "";
+
+    // CLEANUP: Remove any note IDs that don't exist in state.notes
+    // This prevents "ghost tabs" that keep the layer open but are invisible
+    const originalCount = TwoBaseState.openNotes.length;
+    TwoBaseState.openNotes = TwoBaseState.openNotes.filter(id => state.notes.some(n => n.id === id));
+    
+    if (TwoBaseState.openNotes.length !== originalCount) {
+        console.warn(`[CLEANUP] Removed ${originalCount - TwoBaseState.openNotes.length} invalid notes from openNotes`);
+        saveTwoBaseSession();
+        
+        // If we cleaned up EVERYTHING, we should close the layer!
+        if (TwoBaseState.openNotes.length === 0) {
+            console.log("[CLEANUP] No valid notes left, switching to main base");
+            switchToMainBase();
+            return;
+        }
+    }
+
+    // Sort notes: pinned first (in their pinnedNotes order), then regular (in their openNotes order)
 
     // Sort notes: pinned first (in their pinnedNotes order), then regular (in their openNotes order)
     const sortedNotes = [...TwoBaseState.openNotes].sort((a, b) => {
@@ -2169,15 +2219,29 @@
       toolbarAlignment: TwoBaseState.toolbarAlignment,
     };
 
+    console.log("💾 Saving TwoBase Session:", sessionState);
+
     // Save to settings
     if (
       typeof window.Storage !== "undefined" &&
       typeof window.Storage.saveSettings === "function"
     ) {
+      if (!state.settings) state.settings = {};
+      
+      // Update global state settings first
+      state.settings.twoBaseSession = sessionState;
+      
+      // Force save
       window.Storage.saveSettings({
         ...state.settings,
         twoBaseSession: sessionState,
+      }).then(() => {
+          console.log("✅ Session saved successfully");
+      }).catch(err => {
+          console.error("❌ Failed to save session:", err);
       });
+    } else {
+        console.error("❌ window.Storage.saveSettings is not available!");
     }
   }
 
@@ -2852,20 +2916,32 @@
   }
 
   function closeNoteTab(noteId) {
+    console.log("🔴 closeNoteTab called for:", noteId);
+    console.log("Before close - openNotes:", [...TwoBaseState.openNotes]);
     const index = TwoBaseState.openNotes.indexOf(noteId);
     if (index > -1) {
       TwoBaseState.openNotes.splice(index, 1);
     }
 
+    // Check if NO notes are open - ensure we go back to main base
+    if (TwoBaseState.openNotes.length === 0) {
+      TwoBaseState.activeNote = null;
+      switchToMainBase();
+      saveTwoBaseSession();
+      return;
+    }
+
     // If this was the active note, switch to another or go back to main
     if (TwoBaseState.activeNote === noteId) {
-      if (TwoBaseState.openNotes.length > 0) {
-        // Switch to the previous tab or first tab
-        const newActiveIndex = Math.max(0, index - 1);
+      // Switch to the previous tab or first tab
+      // If we removed the item at 'index', the item at 'index' is now the next one (or undefined if end)
+      // Usually it's better to go to the left (index - 1)
+      const newActiveIndex = Math.max(0, index - 1);
+      if (TwoBaseState.openNotes[newActiveIndex]) {
         switchActiveNote(TwoBaseState.openNotes[newActiveIndex]);
-      } else {
-        // No more notes open, go back to main base
-        switchToMainBase();
+      } else if (TwoBaseState.openNotes.length > 0) {
+        // Fallback to first if index logic fails but we have notes
+        switchActiveNote(TwoBaseState.openNotes[0]);
       }
     } else {
       // Just update tabs
@@ -5521,26 +5597,114 @@
       viewToggleBtn.addEventListener("click", toggleViewMode);
     }
 
-    // Open notes drawer button (replaces view options)
+    // Event delegation for openNotesDrawerBtn is handled globally now to preventing DOM replacement issues
+    // But we'll keep the direct check for debugging
     const openNotesDrawerBtn = document.getElementById("openNotesDrawerBtn");
     if (openNotesDrawerBtn) {
-      openNotesDrawerBtn.addEventListener("click", openNotesDrawer);
+      console.log("✅ openNotesDrawerBtn found in initElements");
+    } else {
+      console.warn("⚠️ openNotesDrawerBtn NOT found in initElements");
     }
   }
 
+  // Add global delegation for the button
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("#openNotesDrawerBtn");
+    if (btn) {
+      console.log("🚀 Global delegation: openNotesDrawerBtn clicked");
+      e.preventDefault();
+      e.stopPropagation();
+      openNotesDrawer();
+    }
+  });
+
   function openNotesDrawer() {
-    // Switch to note base
+    console.log("🚀 openNotesDrawer called");
+    console.log("Current openNotes:", [...TwoBaseState.openNotes]);
+    
+    // Switch to note base FIRST to ensure we are in the right context
+    // This helps setup the DOM before rendering
     switchToNoteBase();
 
-    // If there are open notes, show them, otherwise do nothing (note base will show empty state)
+    // If there are open notes, show them
     if (TwoBaseState.openNotes.length > 0) {
       // The note base will automatically show the last active note
       renderNoteTabs();
+      // Ensure we re-focus/render the active editor
       if (TwoBaseState.activeNote) {
-        renderNoteEditor(TwoBaseState.activeNote);
+        // Small delay to ensure DOM is ready if it was hidden
+        requestAnimationFrame(() => {
+            renderNoteEditor(TwoBaseState.activeNote);
+        });
+      }
+    } else {
+      // If no notes are open, automatically create a default "Date Note"
+      const dateStr = new Date().toLocaleDateString('en-US', {
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric'
+      });
+      const title = `${dateStr} Note`;
+      
+      // Generate ID
+      let newId;
+      if (typeof window.uid === "function") {
+        newId = window.uid();
+      } else {
+        newId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+      }
+      
+      const now = new Date().toISOString();
+      const newNote = {
+        id: newId,
+        title: title,
+        contentHtml: "", // Empty content
+        tags: [],
+        folderId: null, // Root (Uncategorized or All Notes)
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      // Use global state
+      if (window.state && window.state.notes) {
+        console.log("📝 Creating new default note:", newId);
+        
+        // Add to state
+        window.state.notes.unshift(newNote);
+        
+        // Add to open notes
+        TwoBaseState.openNotes.push(newNote.id);
+        TwoBaseState.activeNote = newNote.id;
+        
+        // Save to backend explicit call
+        if (typeof window.saveNotes === "function") {
+          window.saveNotes();
+        }
+        
+        // Force session save immediately
+        saveTwoBaseSession();
+        
+        // Render
+        renderNoteTabs();
+        
+        // Render editor with a slight delay to ensuring container is visible
+        setTimeout(() => {
+            // Force switch again just in case animation failed or was cancelled
+            switchToNoteBase();
+            renderNoteEditor(newNote.id);
+        }, 50);
+        
+        // Update sidebar
+        if (typeof window.renderSidebar === "function") {
+          window.renderSidebar();
+        }
+      } else {
+        console.error("Cannot create default note: window.state.notes not available");
       }
     }
   }
+
+
 
   function openNoteInNoteBase(noteId) {
     // Switch to note base
