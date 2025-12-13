@@ -2986,7 +2986,12 @@ window.Storage = Storage;
     function updateSaveStatus(saved = false) {
       if (titleStatus) {
         if (saved) {
-          titleStatus.textContent = "✓";
+          titleStatus.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            <span style="color: #4ade80 !important; font-weight: 500;">Saved</span>
+          `;
           titleStatus.style.color = "#4ade80";
           setTimeout(() => {
             titleStatus.textContent = note.updatedAt
@@ -2995,8 +3000,15 @@ window.Storage = Storage;
             titleStatus.style.color = "";
           }, 2000);
         } else {
-          titleStatus.textContent = "●";
-          titleStatus.style.color = "#fbbf24";
+          titleStatus.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span style="color: #fb923c !important; font-weight: 500;">Unsaved</span>
+          `;
+          titleStatus.style.color = "#fb923c";
         }
       }
     }
@@ -3020,7 +3032,8 @@ window.Storage = Storage;
     node._saveNote = saveNote;
 
     function markUnsaved() {
-      // ... (unchanged)
+      hasUnsavedChanges = true;
+      updateSaveStatus(false);
     }
 
     // Link: markUnsaved is used by title input and editor changes
