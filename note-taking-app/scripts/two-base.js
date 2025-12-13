@@ -3072,17 +3072,25 @@
       const containerRect = el.noteBase.querySelector(".note-content-container").getBoundingClientRect();
       const x = e.clientX - containerRect.left;
       
-      // Calculate percentage
-      let percentage = (x / containerRect.width) * 100;
+      // Calculate active width in pixels
+      const containerWidth = containerRect.width;
+      const minWidthPx = 562;
+
+      // Check if container is wide enough to support split view with min width
+      if (containerWidth < minWidthPx * 2) {
+          // If container is too small, just clamp to 50% or don't allow resize?
+          // Let's allow default logic but maybe clamped near center.
+          // Or just enforce minWidth as much as possible (active pane wins?)
+          // For now, let's just apply the logic:
+      }
+
+      // Constrain width
+      let newLeftWidth = Math.max(minWidthPx, Math.min(containerWidth - minWidthPx, x));
       
-      // Limit min/max width (e.g. 20% to 80%)
-      percentage = Math.max(20, Math.min(80, percentage));
+      // Convert to percentage for responsiveness
+      let percentage = (newLeftWidth / containerWidth) * 100;
       
       el.notePaneLeft.style.flex = `0 0 ${percentage}%`;
-      // Right pane will take remaining space due to flex-grow: 1 or we set it too?
-      // Since el.notePaneRight usually has flex: 1, setting left flex basis works.
-      // But verify css. .note-pane { flex: 1; }
-      // So we need to override CSS.
     });
 
     document.addEventListener("mouseup", () => {

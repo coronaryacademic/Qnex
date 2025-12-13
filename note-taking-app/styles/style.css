@@ -2435,6 +2435,11 @@ body.fullscreen .sidebar-resizer {
   color: #000000 !important;
 }
 
+/* Ensure minimum width for note content and prevent dragging smaller */
+.note-pane-content {
+  min-width: 562px !important;
+}
+
 .header-tags {
   display: flex;
   gap: 4px;
