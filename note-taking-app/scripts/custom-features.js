@@ -830,32 +830,34 @@ function setupEditorFeatures(container) {
       });
 
       // Mouse wheel zoom for font size (Ctrl + Scroll)
-      let editorFontSize =
-        parseInt(window.getComputedStyle(contentEditable).fontSize) || 16;
       contentEditable.addEventListener(
         "wheel",
         (e) => {
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
+            const currentSize = parseInt(
+              window.getComputedStyle(contentEditable).fontSize
+            );
+            const delta = e.deltaY > 0 ? -2 : 2;
+            const newSize = Math.max(10, Math.min(32, currentSize + delta));
+            contentEditable.style.fontSize = newSize + "px";
 
-            // Determine zoom direction
-            if (e.deltaY < 0) {
-              // Scroll up - increase font size
-              editorFontSize = Math.min(32, editorFontSize + 2);
-            } else {
-              // Scroll down - decrease font size
-              editorFontSize = Math.max(12, editorFontSize - 2);
-            }
-
-            contentEditable.style.fontSize = editorFontSize + "px";
-
-            // Update font size label in the menu if it exists
+            // Update the font size label in the menu
             const editorMenu = editor.querySelector(".editor-menu");
             if (editorMenu) {
-              const fontSizeLabel =
-                editorMenu.querySelector(".font-size-label");
+              const fontSizeLabel = editorMenu.querySelector(".font-size-label");
               if (fontSizeLabel) {
-                fontSizeLabel.textContent = editorFontSize + "px";
+                fontSizeLabel.textContent = newSize + "px";
+              }
+            }
+            
+            // Save to note object
+            const noteId = editor.dataset.noteId;
+            if (noteId && window.state && window.state.notes) {
+              const note = window.state.notes.find(n => n.id === noteId);
+              if (note) {
+                note.fontSize = newSize;
+                if (window.saveNotes) window.saveNotes();
               }
             }
           }
