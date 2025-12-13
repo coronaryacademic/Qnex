@@ -1111,6 +1111,50 @@
   font-style: italic;
 }
 
+
+/* Highlight Menu (Matches Split Menu) */
+.highlight-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-width: 180px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10002;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.highlight-menu-header {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.highlight-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.highlight-colors-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 0 0.5rem;
+}
+
 /* Split View Drop Overlay */
 /* Split View Drop Overlay */
 .split-drop-overlay {

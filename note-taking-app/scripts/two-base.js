@@ -2713,19 +2713,6 @@
             <line x1="3" y1="22" x2="21" y2="22"></line>
           </svg>
         </button>
-        <div id="highlightMenu" class="color-palette hidden" style="position: absolute; top: 100%; left: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 120px;">
-          <button class="color-swatch" data-color="#ffff00" title="Yellow" style="background: #ffff00; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="#00ff00" title="Green" style="background: #00ff00; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="#00ffff" title="Blue" style="background: #00ffff; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="#ff00ff" title="Pink" style="background: #ff00ff; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="#ff0000" title="Red" style="background: #ff0000; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="#ff8000" title="Orange" style="background: #ff8000; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="#8000ff" title="Purple" style="background: #8000ff; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="#cccccc" title="Gray" style="background: #cccccc; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer;"></button>
-          <button class="color-swatch" data-color="transparent" title="No Highlight" style="background: white; width: 20px; height: 20px; border-radius: 3px; border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; grid-column: span 4; width: 100%;">
-            <span style="font-size: 10px; color: black;">None</span>
-          </button>
-        </div>
       </div>
 
       <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
@@ -2780,46 +2767,31 @@
 
     // Highlight menu toggle
     const highlightBtn = document.getElementById("highlightBtn");
-    const highlightMenu = document.getElementById("highlightMenu");
-
-    if (highlightBtn && highlightMenu) {
-      highlightBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        
-        // Close split menu if open
-        const splitMenu = document.querySelector(".split-menu");
-        if (splitMenu) splitMenu.remove();
-
-        highlightMenu.classList.toggle("hidden");
-      });
-
-      // Close menu when clicking outside
-      document.addEventListener("click", (e) => {
-        if (!highlightMenu.contains(e.target) && e.target !== highlightBtn) {
-          highlightMenu.classList.add("hidden");
-        }
-      });
-
-      // Color selection
-      highlightMenu.addEventListener("click", (e) => {
-        const swatch = e.target.closest(".color-swatch");
-        if (!swatch) return;
-
-        e.stopPropagation();
-        const color = swatch.dataset.color;
-
-        // Apply highlight
-        document.execCommand("hiliteColor", false, color);
-        highlightMenu.classList.add("hidden");
-
-        // Trigger change
-        if (
-          TwoBaseState.currentEditor &&
-          typeof TwoBaseState.currentEditor.triggerChange === "function"
-        ) {
-          TwoBaseState.currentEditor.triggerChange();
-        }
-      });
+    
+    // Remove old listeners by cloning or just assuming this is fresh render
+    if (highlightBtn) {
+       console.log("[HIGHLIGHT] Highlight button found, attaching listener");
+       // Use onclick to cleanly replace any previous listeners
+       highlightBtn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          console.log("[HIGHLIGHT] Button clicked");
+          
+          // Toggle logic
+          const existing = document.querySelector(".highlight-menu");
+          if (existing) {
+              console.log("[HIGHLIGHT] Closing existing menu");
+              existing.remove();
+              return;
+          }
+          
+          console.log("[HIGHLIGHT] Opening menu");
+          showHighlightMenu(e);
+       };
+    } else {
+        console.warn("[HIGHLIGHT] Highlight button NOT found");
     }
 
     // Add click handlers for toolbar buttons
@@ -3330,6 +3302,141 @@
         }
     }
   }
+  // ===================================
+  // Highlight Menu
+  // ===================================
+  function showHighlightMenu() {
+    const btn = document.getElementById("highlightBtn");
+    if (!btn) return;
+    
+    // Close existing menus
+    const existing = document.querySelector(".highlight-menu");
+    if (existing) existing.remove();
+    
+    // Close split menu logic is reciprocal
+    const splitMenu = document.querySelector(".split-menu");
+    if (splitMenu) splitMenu.remove();
+    
+    const menu = document.createElement("div");
+    menu.className = "highlight-menu";
+    
+    // Position
+    menu.style.position = "fixed";
+    const btnRect = btn.getBoundingClientRect();
+    menu.style.top = "79.4px";
+    menu.style.left = btnRect.left + "px";
+    
+    // Content
+    // 1. Auto Highlight Toggle
+    const autoRow = document.createElement("div");
+    autoRow.className = "highlight-menu-row";
+    
+    const label = document.createElement("span");
+    label.textContent = "Auto Highlight";
+    
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    // Safety check for state
+    const currentAutoState = (window.state && window.state.autoHighlight) || false;
+    toggle.checked = currentAutoState;
+    toggle.style.accentColor = "var(--primary)";
+    
+    toggle.onchange = (e) => {
+        e.stopPropagation();
+        if (window.state) {
+            window.state.autoHighlight = toggle.checked;
+            console.log("✨ Auto-highlight toggled:", window.state.autoHighlight ? "ON" : "OFF");
+        } else {
+            console.warn("⚠️ window.state is undefined, cannot save auto-highlight");
+        }
+        // Persist setting if needed (usually handled by app state saving)
+    };
+    
+    autoRow.appendChild(label);
+    autoRow.appendChild(toggle);
+    menu.appendChild(autoRow);
+    
+    // Divider
+    const hr = document.createElement("div");
+    hr.style.height = "1px";
+    hr.style.background = "var(--border)";
+    hr.style.margin = "4px 0";
+    menu.appendChild(hr);
+    
+    // 2. Colors
+    const colors = [
+        { c: "#ffff00", n: "Yellow" },
+        { c: "#00ff00", n: "Green" },
+        { c: "#00ffff", n: "Blue" },
+        { c: "#ff00ff", n: "Pink" },
+        { c: "#ff0000", n: "Red" },
+        { c: "#ff8000", n: "Orange" },
+        { c: "#8000ff", n: "Purple" },
+        { c: "#cccccc", n: "Gray" },
+    ];
+    
+    const grid = document.createElement("div");
+    grid.className = "highlight-colors-grid";
+    
+    colors.forEach(col => {
+       const btn = document.createElement("button");
+       btn.className = "color-swatch";
+       btn.style.background = col.c;
+       btn.style.width = "20px";
+       btn.style.height = "20px";
+       btn.style.borderRadius = "3px";
+       btn.style.border = "1px solid var(--border)";
+       btn.style.cursor = "pointer";
+       btn.title = col.n;
+       
+       btn.onclick = (e) => {
+           e.stopPropagation();
+           document.execCommand("hiliteColor", false, col.c);
+           menu.remove();
+           if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === "function") {
+               TwoBaseState.currentEditor.triggerChange();
+           }
+       };
+       
+       grid.appendChild(btn);
+    });
+    
+    // None button
+    const noneBtn = document.createElement("button");
+    noneBtn.textContent = "None";
+    noneBtn.style.gridColumn = "span 4";
+    noneBtn.style.width = "100%";
+    noneBtn.style.border = "1px solid var(--border)";
+    noneBtn.style.background = "var(--panel-active)";
+    noneBtn.style.fontSize = "10px";
+    noneBtn.style.cursor = "pointer";
+    noneBtn.style.borderRadius = "3px";
+    noneBtn.onclick = (e) => {
+        e.stopPropagation();
+        document.execCommand("hiliteColor", false, "transparent");
+        menu.remove();
+        if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === "function") {
+            TwoBaseState.currentEditor.triggerChange();
+        }
+    };
+    grid.appendChild(noneBtn);
+    
+    menu.appendChild(grid);
+    document.body.appendChild(menu);
+    
+    // Close on click outside
+    setTimeout(() => {
+        document.addEventListener("click", closeMenu);
+    }, 0);
+    
+    function closeMenu(evt) {
+        if (!menu.contains(evt.target) && evt.target !== btn) {
+            menu.remove();
+            document.removeEventListener("click", closeMenu);
+        }
+    }
+  }
+
   // ===================================
   // Drop Zone Overlay Helper
   // ===================================
