@@ -469,6 +469,13 @@ function setupEditorFeatures(container) {
           settingsMenu.classList.remove("open");
         }
 
+        // Close toolbar options menu if open
+        const toolbarOptionsMenu = document.getElementById("toolbarOptionsMenu");
+        if (toolbarOptionsMenu) {
+          toolbarOptionsMenu.classList.add("hidden");
+        }
+
+
         editorMenu.classList.toggle("open");
 
         // Position the menu correctly

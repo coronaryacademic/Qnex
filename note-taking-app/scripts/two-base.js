@@ -2942,6 +2942,11 @@
     el.toolbarOptionsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       el.toolbarOptionsMenu.classList.toggle("hidden");
+
+      // Close all open editor menus
+      document.querySelectorAll(".editor-menu.open").forEach((menu) => {
+        menu.classList.remove("open");
+      });
     });
 
     // Close menu when clicking outside

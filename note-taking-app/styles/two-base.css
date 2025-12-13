@@ -860,11 +860,6 @@
   color: #000000 !important;
 }
 
-/* Ensure all text and titles in editor are black */
-.note-pane-content * {
-  color: #000000 !important;
-}
-
 .note-resizer {
   width: 4px;
   background: var(--border);
