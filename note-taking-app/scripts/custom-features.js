@@ -768,6 +768,47 @@ function setupEditorFeatures(container) {
           editorMenu.classList.remove("open");
         });
       }
+      
+      // Folder & Tags button handling
+      const folderTagsBtn = editorMenu.querySelector('[data-action="folder-tags"]');
+      const settingsDropdown = editor.querySelector(".settings-dropdown");
+      
+      if (folderTagsBtn && settingsDropdown) {
+        // Remove existing listener if any (by replacing the node or just adding new one)
+        // Since we check data-custom-handled in some places, we can just add it here
+        if (!folderTagsBtn.hasAttribute("data-handled")) {
+          folderTagsBtn.setAttribute("data-handled", "true");
+          
+          folderTagsBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            console.log("📁 Folder & Tags button clicked from custom features");
+            
+            // Close the editor menu
+            editorMenu.classList.remove("open");
+            
+            // Toggle dropdown
+            const isHidden = settingsDropdown.style.display === "none";
+            settingsDropdown.style.display = isHidden ? "block" : "none";
+            
+            if (isHidden) {
+              // If showing, ensure we create a close listener
+              const closeDropdown = (ev) => {
+                if (!settingsDropdown.contains(ev.target) && ev.target !== folderTagsBtn) {
+                  settingsDropdown.style.display = "none";
+                  document.removeEventListener("click", closeDropdown);
+                }
+              };
+              // Add simple click listener to document
+              setTimeout(() => {
+                document.addEventListener("click", closeDropdown);
+              }, 0);
+              
+              // Prevent clicks inside dropdown from closing it
+              settingsDropdown.onclick = (ev) => ev.stopPropagation();
+            }
+          });
+        }
+      }
     }
 
     // Set up fullscreen button
