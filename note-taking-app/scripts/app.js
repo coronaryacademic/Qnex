@@ -772,7 +772,15 @@ window.Storage = Storage;
             state.notes.unshift(n);
             saveNotes();
             renderSidebar();
-            openInPane(n.id, "left");
+            saveNotes();
+            renderSidebar();
+            
+            // Auto-open in Two-Base mode if available
+            if (window.TwoBase && typeof window.TwoBase.openNoteInNoteBase === "function") {
+              window.TwoBase.openNoteInNoteBase(n.id);
+            } else {
+              openInPane(n.id, "left");
+            }
           },
           onNewFolder: async () => {
             const name = await modalPrompt("New Folder", "Folder name");
@@ -3460,7 +3468,15 @@ window.Storage = Storage;
     state.notes.unshift(n);
     saveNotes();
     renderSidebar();
-    openInPane(n.id, "left");
+    saveNotes();
+    renderSidebar();
+    
+    // Auto-open in Two-Base mode if available
+    if (window.TwoBase && typeof window.TwoBase.openNoteInNoteBase === "function") {
+      window.TwoBase.openNoteInNoteBase(n.id);
+    } else {
+      openInPane(n.id, "left");
+    }
   }
 
   // Import function for sidebar header button
