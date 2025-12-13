@@ -2785,6 +2785,11 @@
     if (highlightBtn && highlightMenu) {
       highlightBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+        
+        // Close split menu if open
+        const splitMenu = document.querySelector(".split-menu");
+        if (splitMenu) splitMenu.remove();
+
         highlightMenu.classList.toggle("hidden");
       });
 
@@ -2953,18 +2958,33 @@
   }
 
   function toggleSplitView(targetNoteIdForRightPane = null) {
+    console.log("[SPLIT] toggleSplitView called with target:", targetNoteIdForRightPane);
+    console.log("[SPLIT] Current state:", {
+        splitView: TwoBaseState.splitView,
+        activeNote: TwoBaseState.activeNote,
+        openNotes: TwoBaseState.openNotes
+    });
+
     // If turning ON
     if (!TwoBaseState.splitView) {
       // Check if we have enough notes
       if (TwoBaseState.openNotes.length < 2) {
-         console.warn("Not enough notes to split");
+         console.warn("[SPLIT] Not enough notes to split");
          return;
       }
       
       TwoBaseState.splitView = true;
-      el.notePaneRight.classList.remove("hidden");
-      el.noteResizer.classList.remove("hidden");
-      el.splitNoteBtn.classList.add("active");
+      
+      // Force display update
+      if (el.notePaneRight) {
+          el.notePaneRight.classList.remove("hidden");
+          el.notePaneRight.style.display = "flex"; // Ensure flex display
+      }
+      if (el.noteResizer) {
+          el.noteResizer.classList.remove("hidden");
+          el.noteResizer.style.display = "block";
+      }
+      if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
       
       // Setup Panes
       // Left Pane: Current Active Note
@@ -2980,22 +3000,38 @@
          
          if (!TwoBaseState.rightPaneNote) {
              // Should not happen if check passed, but safety
-             console.warn("Could not find secondary note for split view");
+             console.warn("[SPLIT] Could not find secondary note for split view");
              TwoBaseState.splitView = false;
              return;
          }
       }
       
+      console.log("[SPLIT] Rendering panes:", {
+          left: TwoBaseState.leftPaneNote,
+          right: TwoBaseState.rightPaneNote
+      });
+
       // Render both
       renderNoteEditor(TwoBaseState.leftPaneNote, "left");
       renderNoteEditor(TwoBaseState.rightPaneNote, "right");
       
+      // Setup resizer just in case
+      setupResizer();
+      
     } else {
       // Turning OFF
+      console.log("[SPLIT] Turning off split view");
       TwoBaseState.splitView = false;
-      el.notePaneRight.classList.add("hidden");
-      el.noteResizer.classList.add("hidden");
-      el.splitNoteBtn.classList.remove("active");
+      
+      if (el.notePaneRight) {
+          el.notePaneRight.classList.add("hidden");
+          el.notePaneRight.style.display = "none";
+      }
+      if (el.noteResizer) {
+          el.noteResizer.classList.add("hidden");
+          el.noteResizer.style.display = "none";
+      }
+      if (el.splitNoteBtn) el.splitNoteBtn.classList.remove("active");
       
       // Consolidate to left pane
       // If the right pane was the "active" one, move it to left?
@@ -3011,6 +3047,9 @@
       // Re-render single view
       renderNoteEditor(TwoBaseState.leftPaneNote, "left");
     }
+    
+    // Save state
+    saveTwoBaseSession();
   }
   
   // Drag and Drop Logic for Split View
@@ -3185,14 +3224,29 @@
      // but we can just assume this runs once or use onclick)
      // Better: use onclick to replace
      el.splitNoteBtn.onclick = (e) => {
+        e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
+        
         if (el.splitNoteBtn.classList.contains("disabled")) return;
         
+        console.log("[SPLIT] Button clicked. active:", TwoBaseState.splitView);
+        
+        // If split view is active, toggle it off
         if (TwoBaseState.splitView) {
-           toggleSplitView(); // Turn off
-        } else {
-           showSplitMenu(e); // Show menu
+           toggleSplitView(); 
+           return;
         }
+
+        // If menu is already open, close it (toggle behavior)
+        const existingMenu = document.querySelector(".split-menu");
+        if (existingMenu) {
+            existingMenu.remove();
+            return;
+        }
+
+        // Otherwise open menu
+        showSplitMenu(e);
      };
   }
 
@@ -3247,10 +3301,20 @@
     // Or we append to document body and position absolutely.
     // For toolbar options we used a container. Let's append to document.body and position.
     
+    // Close highlight menu if open
+    const highlightMenu = document.getElementById("highlightMenu");
+    if (highlightMenu) highlightMenu.classList.add("hidden");
+    
     menu.style.position = "fixed";
     const btnRect = el.splitNoteBtn.getBoundingClientRect();
-    menu.style.top = (btnRect.bottom + 5) + "px";
-    menu.style.left = (btnRect.right - 200) + "px"; // Align right edge
+    
+    // User requested fixed top position
+    menu.style.top = "79.4px";
+    
+    // Align left edge of menu with left edge of button
+    menu.style.left = btnRect.left + "px";
+    menu.style.right = "auto";
+    menu.style.transform = "none";
     
     document.body.appendChild(menu);
     
