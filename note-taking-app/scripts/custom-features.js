@@ -682,49 +682,9 @@ function setupEditorFeatures(container) {
           console.log("✓ Duplicate button clicked from editor menu");
         });
       }
-
-      // Set up highlight palette in editor menu
-      const editorPalette = editorMenu.querySelector(".editor-palette");
-      if (editorPalette) {
-        editorPalette.querySelectorAll("button[data-color]").forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (window.state) {
-              window.state.currentHighlightColor = btn.dataset.color;
-              // Update active state
-              editorPalette
-                .querySelectorAll("button[data-color]")
-                .forEach((b) => b.classList.remove("active"));
-              btn.classList.add("active");
-            }
-          });
-        });
-        // Set initial active state
-        const firstBtn = editorPalette.querySelector("button[data-color]");
-        if (firstBtn) {
-          firstBtn.classList.add("active");
-          if (window.state) {
-            window.state.currentHighlightColor = firstBtn.dataset.color;
-          }
-        }
-      }
-
-      // Set up auto highlight toggle in editor menu
-      const autoHlToggle = editorMenu.querySelector(".editor-auto-hl-toggle");
-      const autoHlLabel = editorMenu.querySelector(".auto-hl-label");
-      if (autoHlToggle) {
-        autoHlToggle.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (window.state) {
-            window.state.autoHighlight = !window.state.autoHighlight;
-            if (autoHlLabel) {
-              autoHlLabel.textContent =
-                "Auto Highlight: " +
-                (window.state.autoHighlight ? "ON" : "OFF");
-            }
-          }
-        });
-      }
+      
+      // Highlight palette and auto-highlight toggle moved to global toolbar
+      // See initGlobalToolbarFeatures()
 
       // Set up lock note button in editor menu
       const lockBtn = editorMenu.querySelector('[data-action="lock-note"]');
@@ -1706,3 +1666,115 @@ function setupBrowserFeature() {
 
   console.log("✓ Browser feature initialized (event delegation)");
 }
+
+// Initialize global toolbar features (Highlight colors & Auto-highlight)
+function initGlobalToolbarFeatures() {
+  const container = document.querySelector(".toolbar-highlight-section");
+  const dropdownBtn = document.getElementById("highlightDropdownBtn");
+  const dropdownMenu = document.querySelector(".toolbar-highlight-section .dropdown-menu");
+  
+  if (container && dropdownBtn) {
+    // Toggle dropdown
+    dropdownBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = container.classList.contains("open");
+      
+      // Close all other open menus
+      document.querySelectorAll(".open").forEach(el => {
+        if (el !== container) el.classList.remove("open");
+      });
+      
+      container.classList.toggle("open", !isOpen);
+      dropdownBtn.classList.toggle("active", !isOpen);
+    });
+    
+    // Close when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!container.contains(e.target)) {
+        container.classList.remove("open");
+        dropdownBtn.classList.remove("active");
+      }
+    });
+  }
+
+  // Highlight palette
+  const toolbarPalette = document.querySelector(".toolbar-highlight-section .palette");
+  if (toolbarPalette) {
+    const buttons = toolbarPalette.querySelectorAll("button[data-color]");
+    
+    // Set up click handlers
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (window.state) {
+          window.state.currentHighlightColor = btn.dataset.color;
+          
+          // Update active UI
+          buttons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          
+          console.log("🎨 Highlight color set to:", btn.dataset.color);
+        }
+      });
+    });
+
+    // Set initial active state from global state or default
+    const updatePaletteState = () => {
+      if (window.state && window.state.currentHighlightColor) {
+        buttons.forEach((b) => {
+          if (b.dataset.color === window.state.currentHighlightColor) {
+            b.classList.add("active");
+          } else {
+            b.classList.remove("active");
+          }
+        });
+      } else {
+        // Default to first one if no state
+        const firstBtn = buttons[0];
+        if (firstBtn) {
+          firstBtn.classList.add("active");
+          if (window.state) window.state.currentHighlightColor = firstBtn.dataset.color;
+        }
+      }
+    };
+    
+    updatePaletteState();
+    setTimeout(updatePaletteState, 500);
+  }
+
+  // Auto-highlight toggle
+  const autoHlToggle = document.querySelector(".toolbar-highlight-section .editor-auto-hl-toggle");
+  if (autoHlToggle) {
+    const updateToggleUI = () => {
+      if (window.state) {
+        if (window.state.autoHighlight) {
+          autoHlToggle.classList.add("active");
+          const label = autoHlToggle.querySelector(".auto-hl-label");
+          if (label) label.textContent = "Auto Highlight: ON";
+        } else {
+          autoHlToggle.classList.remove("active");
+          const label = autoHlToggle.querySelector(".auto-hl-label");
+          if (label) label.textContent = "Auto Highlight: OFF";
+        }
+      }
+    };
+
+    autoHlToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (window.state) {
+        window.state.autoHighlight = !window.state.autoHighlight;
+        updateToggleUI();
+        console.log("✨ Auto-highlight toggled:", window.state.autoHighlight ? "ON" : "OFF");
+      }
+    });
+    
+    updateToggleUI();
+    setTimeout(updateToggleUI, 500);
+  }
+}
+
+// Initialize on load
+window.addEventListener('DOMContentLoaded', initGlobalToolbarFeatures);
+
+// Expose to window for manual re-init if needed
+window.initGlobalToolbarFeatures = initGlobalToolbarFeatures;
