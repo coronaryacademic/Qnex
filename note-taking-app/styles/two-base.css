@@ -1024,7 +1024,132 @@
   flex-shrink: 0;
 }
 
+
 /* Utility to ensure standard display:none is respected when not animating */
 .hidden {
   display: none !important;
+}
+
+/* Split View Resizer */
+.note-resizer {
+  width: 4px;
+  background: var(--border);
+  cursor: col-resize;
+  transition: background 0.2s;
+  z-index: 10;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.note-resizer:hover,
+.note-resizer.resizing {
+  background: var(--accent);
+}
+
+.note-resizer.hidden {
+  display: none !important;
+}
+
+/* Split Menu */
+.split-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-width: 250px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10002;
+  margin-top: 0.5rem;
+}
+
+.split-menu-item {
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.split-menu-item:hover {
+  background: var(--panel-hover);
+}
+
+.split-menu-item .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.split-menu-header {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
+}
+
+.split-menu-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Split View Drop Overlay */
+/* Split View Drop Overlay */
+.split-drop-overlay {
+  background: rgba(127, 127, 127, 0.05); /* Reduced opacity */
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+  will-change: opacity, transform;
+  z-index: 1000;
+}
+
+.split-drop-overlay.active {
+  opacity: 1;
+  transform: scale(1);
+  background: rgba(127, 127, 127, 0.1); /* Reduced active opacity */
+  border-width: 3px;
+  border-style: solid;
+  /* Simplified shadow for performance */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.split-drop-overlay .drop-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 1.1rem;
+  background: var(--panel);
+  padding: 16px 32px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+}
+
+.split-drop-overlay .drop-message svg {
+  width: 32px;
+  height: 32px;
 }

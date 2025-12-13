@@ -24,6 +24,8 @@
     currentSaveFunction: null, // Current note's save function
     toolbarPosition: "top", // Toolbar position: 'top', 'right', 'bottom', 'left'
     toolbarAlignment: "center", // Toolbar alignment: 'left', 'center', 'right'
+    leftEditor: null, // Left pane BlockEditor instance
+    rightEditor: null, // Right pane BlockEditor instance
   };
 
   // DOM Elements
@@ -68,6 +70,15 @@
     el.toolbarOptionsBtn = document.getElementById("toolbarOptionsBtn");
     el.toolbarOptionsMenu = document.getElementById("toolbarOptionsMenu");
     el.noteToolbarSection = document.querySelector(".note-toolbar-section");
+    
+    // Initialize Drag & Drop for split view
+    setupDragAndDrop();
+    
+    // Initialize Resizer
+    setupResizer();
+    
+    // Initialize Split Button
+    setupSplitButton();
   }
 
   // Module-level state reference
@@ -1012,10 +1023,7 @@
             // Re-render workspace
             renderWorkspaceSplit(TwoBaseState.currentFolder);
             
-            // Auto-open the new note
-            if (typeof openNoteInNoteBase === "function") {
-              openNoteInNoteBase(note.id);
-            }
+
           },
           onChangeNoteIcon: async () => {
             if (typeof window.modalIconPicker !== "function") return;
@@ -1807,6 +1815,7 @@
         console.log("[DRAG] Dragstart event fired for tab:", noteId, "isPinned:", isPinned);
         e.dataTransfer.effectAllowed = "move";
         // Use different data types for pinned vs unpinned tabs
+        e.dataTransfer.setData("text/tab-id", noteId); // Common format for split view drop
         if (isPinned) {
           e.dataTransfer.setData("text/pinned-tab-id", noteId);
           console.log("[DRAG] Set pinned tab data:", noteId);
@@ -1815,6 +1824,13 @@
           console.log("[DRAG] Set unpinned tab data:", noteId);
         }
         tab.classList.add("dragging");
+        
+        // Setup drop zone on editor container
+        const container = document.querySelector(".note-content-container");
+        if (container) {
+          container.classList.add("drop-target-active");
+        }
+        
         // Add slight delay for visual effect
         setTimeout(() => (tab.style.opacity = "0.4"), 0);
       });
@@ -1901,6 +1917,35 @@
 
       el.noteTabs.appendChild(tab);
     });
+
+    
+    // Update split button state based on open notes
+    updateSplitButtonState();
+  }
+
+  function updateSplitButtonState() {
+    if (!el.splitNoteBtn) return;
+    
+    // Disable if only 1 or 0 notes open
+    // Also check if we have enough notes to actually split (need at least 2)
+    const canSplit = TwoBaseState.openNotes.length >= 2;
+    
+    if (canSplit) {
+      el.splitNoteBtn.classList.remove("disabled");
+      el.splitNoteBtn.title = "Split view";
+      el.splitNoteBtn.style.opacity = "1";
+      el.splitNoteBtn.style.pointerEvents = "auto";
+    } else {
+      el.splitNoteBtn.classList.add("disabled");
+      el.splitNoteBtn.title = "Open at least 2 notes to split view";
+      el.splitNoteBtn.style.opacity = "0.5";
+      el.splitNoteBtn.style.pointerEvents = "none";
+      
+      // key functionality: if we drop below 2 notes and split view is active, close it
+      if (TwoBaseState.splitView) {
+        toggleSplitView();
+      }
+    }
   }
 
   function reorderTabs(draggedNoteId, targetNoteId, insertAfter = false) {
@@ -2503,12 +2548,16 @@
     return TwoBaseState.pinnedNotes.includes(noteId);
   };
 
-  function renderNoteEditor(noteId) {
+  function renderNoteEditor(noteId, pane = "left") {
     const note = state.notes.find((n) => n.id === noteId);
     if (!note) return;
 
+    // determine target pane
+    const targetPane = pane === "right" ? el.notePaneRight : el.notePaneLeft;
+    if (!targetPane) return;
+
     // Clear pane content
-    const paneContent = el.notePaneLeft.querySelector(".note-pane-content");
+    const paneContent = targetPane.querySelector(".note-pane-content");
     paneContent.innerHTML = "";
 
     // buildEditor returns a DOM node with the editor, so we need to append it
@@ -2522,15 +2571,31 @@
 
       if (blockEditor) {
         // Store the editor instance globally for toolbar access
-        TwoBaseState.currentEditor = blockEditor;
-        TwoBaseState.currentEditorElement =
-          editorNode.querySelector(".content.editable");
-        TwoBaseState.currentSaveFunction = saveFunction;
+        // For split view, we track both. 'currentEditor' usually points to the recently focused one.
+        // We'll update currentEditor based on interaction.
+        
+        if (pane === "left") {
+          TwoBaseState.leftEditor = blockEditor;
+          // If not split or explicitly focusing left, set as current
+          if (!TwoBaseState.splitView || TwoBaseState.activeNote === noteId) {
+             TwoBaseState.currentEditor = blockEditor;
+             TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
+             TwoBaseState.currentSaveFunction = saveFunction;
+          }
+        } else {
+          TwoBaseState.rightEditor = blockEditor;
+           if (TwoBaseState.activeNote === noteId) {
+             TwoBaseState.currentEditor = blockEditor;
+             TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
+             TwoBaseState.currentSaveFunction = saveFunction;
+          }
+        }
 
         // Make sure the editor is visible and functional
         setTimeout(() => {
-          if (TwoBaseState.currentEditor) {
-            TwoBaseState.currentEditor.focus();
+          // Verify if we should focus this editor
+          if (TwoBaseState.activeNote === noteId) {
+             blockEditor.focus();
           }
         }, 100);
       }
@@ -2757,8 +2822,32 @@
 
   function switchActiveNote(noteId) {
     TwoBaseState.activeNote = noteId;
+    
+    // If in split view, decide which pane to update
+    if (TwoBaseState.splitView) {
+        // If the note is already in one of the panes, just focus it
+        if (TwoBaseState.leftPaneNote === noteId) {
+             // Already in left, just focus
+             // No render needed? Maybe just highlights
+        } else if (TwoBaseState.rightPaneNote === noteId) {
+             // Already in right
+        } else {
+             // Not in any pane, replace the "active" pane content logic?
+             // Since we don't track "active pane" explicitly, let's assume replacing LEFT for now, 
+             // OR replacing the one that isn't the other one.
+             // Simpler: Replace LEFT pane, move old left to right? or just replace left.
+             // A common behavior: click tab -> affects 'focused' pane. 
+             // We'll simplify: switch Left pane.
+             TwoBaseState.leftPaneNote = noteId;
+             renderNoteEditor(noteId, "left");
+        }
+    } else {
+        // Single view
+        TwoBaseState.leftPaneNote = noteId; // Standard pane
+        renderNoteEditor(noteId, "left");
+    }
+
     renderNoteTabs();
-    renderNoteEditor(noteId);
     saveTwoBaseSession();
   }
 
@@ -2787,19 +2876,424 @@
     saveTwoBaseSession();
   }
 
-  function toggleSplitView() {
-    TwoBaseState.splitView = !TwoBaseState.splitView;
-
-    if (TwoBaseState.splitView) {
+  function toggleSplitView(targetNoteIdForRightPane = null) {
+    // If turning ON
+    if (!TwoBaseState.splitView) {
+      // Check if we have enough notes
+      if (TwoBaseState.openNotes.length < 2) {
+         console.warn("Not enough notes to split");
+         return;
+      }
+      
+      TwoBaseState.splitView = true;
       el.notePaneRight.classList.remove("hidden");
       el.noteResizer.classList.remove("hidden");
       el.splitNoteBtn.classList.add("active");
+      
+      // Setup Panes
+      // Left Pane: Current Active Note
+      TwoBaseState.leftPaneNote = TwoBaseState.activeNote;
+      
+      // Right Pane: Targeted note OR Next available note
+      if (targetNoteIdForRightPane && targetNoteIdForRightPane !== TwoBaseState.activeNote) {
+         TwoBaseState.rightPaneNote = targetNoteIdForRightPane;
+      } else {
+         // Find a note that is NOT the active one
+         const other = TwoBaseState.openNotes.find(id => id !== TwoBaseState.activeNote);
+         TwoBaseState.rightPaneNote = other || null;
+         
+         if (!TwoBaseState.rightPaneNote) {
+             // Should not happen if check passed, but safety
+             console.warn("Could not find secondary note for split view");
+             TwoBaseState.splitView = false;
+             return;
+         }
+      }
+      
+      // Render both
+      renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+      renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+      
     } else {
+      // Turning OFF
+      TwoBaseState.splitView = false;
       el.notePaneRight.classList.add("hidden");
       el.noteResizer.classList.add("hidden");
       el.splitNoteBtn.classList.remove("active");
+      
+      // Consolidate to left pane
+      // If the right pane was the "active" one, move it to left?
+      // Or just keep the last interaction. 
+      // Let's keep whatever is currently "activeNote" as the main one
+      if (TwoBaseState.rightPaneNote === TwoBaseState.activeNote) {
+          TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
+      }
+      
+      TwoBaseState.rightPaneNote = null;
+      TwoBaseState.rightEditor = null;
+      
+      // Re-render single view
+      renderNoteEditor(TwoBaseState.leftPaneNote, "left");
     }
   }
+  
+  // Drag and Drop Logic for Split View
+  function setupDragAndDrop() {
+    const container = document.querySelector(".note-content-container");
+    if (!container) return;
+    
+    container.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      // Only allow if dragging a tab
+      if (e.dataTransfer.types.includes("text/tab-id")) {
+         container.classList.add("drag-over");
+         
+         // Calculate active side for overlay
+         const x = e.clientX;
+         const leftRect = el.notePaneLeft.getBoundingClientRect();
+         const rightRect = el.notePaneRight.getBoundingClientRect();
+         let side = null;
+         
+         if (TwoBaseState.splitView) {
+             if (x >= leftRect.left && x <= leftRect.right) side = 'left';
+             else if (x >= rightRect.left && x <= rightRect.right) side = 'right';
+         } else {
+             // In single view, anywhere in the container is a valid drop to split
+             // But we verify we are inside the container rect
+             const cRect = container.getBoundingClientRect();
+             if (x >= cRect.left && x <= cRect.right && e.clientY >= cRect.top && e.clientY <= cRect.bottom) {
+                side = 'split';
+             }
+         }
+         
+         // Only show overlays if we have a valid side
+         if (side) {
+             updateDropOverlays(true, side);
+         } else {
+             updateDropOverlays(false);
+         }
+      }
+    });
+    
+    container.addEventListener("dragleave", (e) => {
+        // Only remove if leaving the container entirely, not just entering a child
+        if (e.target === container) {
+            container.classList.remove("drag-over");
+            updateDropOverlays(false);
+        }
+    });
+
+    // Global listener to clear overlays if dragging outside container
+    document.addEventListener("dragover", (e) => {
+        if (!container.contains(e.target) && e.target !== container) {
+            updateDropOverlays(false);
+        }
+    });
+
+    // Also need to handle drop and dragend to clear overlays
+    container.addEventListener("dragend", () => updateDropOverlays(false)); // Should be on source but...
+    // Let's assume drop handles it.
+
+    container.addEventListener("drop", (e) => {
+      e.preventDefault();
+      container.classList.remove("drag-over");
+      updateDropOverlays(false); // Clear overlays
+      const noteId = e.dataTransfer.getData("text/tab-id");
+      if (!noteId) return;
+      
+      // Check if we are already in split view?
+      // The requirement says: "make it possible to drag the tab ... to the editor div so it can split"
+      // This implies triggering split view.
+      
+      if (!TwoBaseState.splitView) {
+          // Trigger split view with this note on the right
+          
+          if (TwoBaseState.activeNote === noteId) {
+             // Dragging current active note
+             return; // Do nothing if trying to split with same note
+          } else {
+             // Dragging a non-active note. 
+             toggleSplitView(noteId);
+          }
+      } else {
+         // Already in split view. Drop usually means "put in this pane".
+         // We need to know WHICH pane was dropped on.
+         // We can check mouse position relative to panes.
+         const x = e.clientX;
+         const leftRect = el.notePaneLeft.getBoundingClientRect();
+         const rightRect = el.notePaneRight.getBoundingClientRect();
+         
+         // Prevent dropping same note into pane where it already is
+         if (x >= leftRect.left && x <= leftRect.right) {
+             // Dropped on left
+             if (TwoBaseState.rightPaneNote === noteId && TwoBaseState.leftPaneNote !== noteId) {
+                // Determine logic: Swap? Copy? Ppl just want it to show.
+             }
+             if (TwoBaseState.leftPaneNote !== noteId) {
+                 TwoBaseState.leftPaneNote = noteId;
+                 renderNoteEditor(noteId, "left");
+                 TwoBaseState.activeNote = noteId;
+             }
+         } else if (x >= rightRect.left && x <= rightRect.right) {
+             // Dropped on right
+             if (TwoBaseState.leftPaneNote === noteId && TwoBaseState.rightPaneNote !== noteId) {
+                // ...
+             }
+             if (TwoBaseState.rightPaneNote !== noteId) {
+                 TwoBaseState.rightPaneNote = noteId;
+                 renderNoteEditor(noteId, "right");
+                 TwoBaseState.activeNote = noteId;
+             }
+         }
+         renderNoteTabs();
+      }
+    });
+  }
+
+  // ===================================
+  // Split View Helpers (Menu & Resizer)
+  // ===================================
+
+  function setupResizer() {
+    if (!el.noteResizer || !el.notePaneLeft || !el.notePaneRight) return;
+
+    let isResizing = false;
+
+    el.noteResizer.addEventListener("mousedown", (e) => {
+      isResizing = true;
+      document.body.style.cursor = "col-resize";
+      el.noteResizer.classList.add("resizing");
+      e.preventDefault(); // Prevent text selection
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isResizing) return;
+
+      const containerRect = el.noteBase.querySelector(".note-content-container").getBoundingClientRect();
+      const x = e.clientX - containerRect.left;
+      
+      // Calculate percentage
+      let percentage = (x / containerRect.width) * 100;
+      
+      // Limit min/max width (e.g. 20% to 80%)
+      percentage = Math.max(20, Math.min(80, percentage));
+      
+      el.notePaneLeft.style.flex = `0 0 ${percentage}%`;
+      // Right pane will take remaining space due to flex-grow: 1 or we set it too?
+      // Since el.notePaneRight usually has flex: 1, setting left flex basis works.
+      // But verify css. .note-pane { flex: 1; }
+      // So we need to override CSS.
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = "";
+        el.noteResizer.classList.remove("resizing");
+      }
+    });
+  }
+
+  function setupSplitButton() {
+     if (!el.splitNoteBtn) return;
+     
+     // Remove old listeners if possible (cloning might be needed if they were anonymous, 
+     // but we can just assume this runs once or use onclick)
+     // Better: use onclick to replace
+     el.splitNoteBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (el.splitNoteBtn.classList.contains("disabled")) return;
+        
+        if (TwoBaseState.splitView) {
+           toggleSplitView(); // Turn off
+        } else {
+           showSplitMenu(e); // Show menu
+        }
+     };
+  }
+
+  function showSplitMenu(e) {
+    // Close existing menu
+    const existing = document.querySelector(".split-menu");
+    if (existing) existing.remove();
+    
+    const menu = document.createElement("div");
+    menu.className = "split-menu";
+    
+    // Header
+    const header = document.createElement("div");
+    header.className = "split-menu-header";
+    header.textContent = "Split with...";
+    menu.appendChild(header);
+
+    // Filter available notes (open notes excluding current)
+    const available = TwoBaseState.openNotes.filter(id => id !== TwoBaseState.activeNote);
+    
+    if (available.length === 0) {
+       const empty = document.createElement("div");
+       empty.className = "split-menu-empty";
+       empty.textContent = "No other notes open";
+       menu.appendChild(empty);
+    } else {
+       available.forEach(noteId => {
+          const note = state.notes.find(n => n.id === noteId);
+          if (!note) return;
+          
+          const item = document.createElement("div");
+          item.className = "split-menu-item";
+          
+          item.innerHTML = `
+            <div class="icon">${getIcon(note.icon || 'default')}</div>
+            <span>${escapeHtml(note.title || 'Untitled')}</span>
+          `;
+          
+          item.addEventListener("click", (evt) => {
+             evt.stopPropagation();
+             toggleSplitView(noteId);
+             menu.remove();
+          });
+          
+          menu.appendChild(item);
+       });
+    }
+
+    // Position relative to button? Or absolute?
+    // Using simple absolute positioning near button
+    // The CSS .split-menu handles basic positioning relative to container if we put it there?
+    // Or we append to document body and position absolutely.
+    // For toolbar options we used a container. Let's append to document.body and position.
+    
+    menu.style.position = "fixed";
+    const btnRect = el.splitNoteBtn.getBoundingClientRect();
+    menu.style.top = (btnRect.bottom + 5) + "px";
+    menu.style.left = (btnRect.right - 200) + "px"; // Align right edge
+    
+    document.body.appendChild(menu);
+    
+    // Close on click outside
+    setTimeout(() => {
+        document.addEventListener("click", closeMenu);
+    }, 0);
+    
+    function closeMenu(evt) {
+        if (!menu.contains(evt.target) && evt.target !== el.splitNoteBtn) {
+            menu.remove();
+            document.removeEventListener("click", closeMenu);
+        }
+    }
+  }
+  // ===================================
+  // Drop Zone Overlay Helper
+  // ===================================
+  function updateDropOverlays(visible, activeSide = null) {
+     const existing = document.querySelector('.split-drop-overlay');
+     
+     if (!visible) {
+         if (existing) {
+             existing.classList.remove('active');
+             setTimeout(() => existing.remove(), 200); // Matches CSS transition duration
+         }
+         return;
+     }
+
+     // If already showing for this side, do nothing
+     if (existing && existing.dataset.side === activeSide) return;
+     
+     // Remove existing overlays distinct from current side (if any)
+     if (existing) existing.remove();
+     
+     // Create overlays
+     const createOverlay = (pane, side) => {
+         // Only show overlay if this is the active side
+         if (side !== activeSide) return;
+
+         let rect;
+         const contentEl = pane.querySelector('.note-pane-content');
+         if (contentEl) {
+             rect = contentEl.getBoundingClientRect();
+         } else {
+             // Fallback if no specific content area found
+             rect = pane.getBoundingClientRect();
+         }
+         
+         const margin = 12; // Add margin
+
+         const overlay = document.createElement("div");
+         overlay.className = "split-drop-overlay"; // Start inactive
+         overlay.dataset.side = side; // Track side for optimization
+         
+         requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('active')));
+         
+         overlay.style.position = "absolute";
+         overlay.style.top = (rect.top + margin) + "px";
+         overlay.style.left = (rect.left + margin) + "px";
+         overlay.style.width = (rect.width - (margin * 2)) + "px";
+         overlay.style.height = (rect.height - (margin * 2)) + "px";
+         overlay.style.zIndex = "999"; // Below drag item but above content
+         overlay.style.pointerEvents = "none"; // Let mouse events pass through to container
+         
+         overlay.innerHTML = `
+            <div class="drop-message">
+               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                 <line x1="12" y1="3" x2="12" y2="21"></line>
+               </svg>
+               <span>Display Here</span>
+            </div>
+         `;
+         document.body.appendChild(overlay);
+     };
+     
+     if (TwoBaseState.splitView) {
+         if (el.notePaneLeft) createOverlay(el.notePaneLeft, 'left');
+         if (el.notePaneRight) createOverlay(el.notePaneRight, 'right');
+     } else {
+         // Single view - overlay right half for split? Or whole?
+         // User wants "drag to editor div so it can split".
+         // Let's show "Split View" overlay on the right half?
+         // Or just one big overlay saying "Open in Split View"?
+         // Let's do right half overlay to indicate split.
+         
+         const container = el.noteBase.querySelector(".note-content-container");
+         if (container) {
+             let rect;
+             // Try to find the editor content in the left pane (default for single view)
+             const contentEl = el.notePaneLeft ? el.notePaneLeft.querySelector('.note-pane-content') : null;
+             
+             if (contentEl) {
+                 rect = contentEl.getBoundingClientRect();
+             } else {
+                 rect = container.getBoundingClientRect();
+             }
+             
+             const margin = 12; // Add margin
+
+             const overlay = document.createElement("div");
+             overlay.className = "split-drop-overlay";
+             overlay.dataset.side = 'split';
+             
+             requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('active')));
+             
+             overlay.style.position = "absolute";
+             overlay.style.top = (rect.top + margin) + "px";
+             overlay.style.left = (rect.left + margin) + "px";
+             overlay.style.width = (rect.width - (margin * 2)) + "px";
+             overlay.style.height = (rect.height - (margin * 2)) + "px";
+             
+             overlay.innerHTML = `
+                <div class="drop-message">
+                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                     <line x1="12" y1="3" x2="12" y2="21"></line>
+                   </svg>
+                   <span>Split View</span>
+                </div>
+             `;
+             document.body.appendChild(overlay);
+         }
+     }
+  }
+
   // View Options & Context Menu
   // ===================================
 

@@ -2422,7 +2422,19 @@ body.fullscreen .sidebar-resizer {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #000000 !important;
 }
+
+.title-with-tags .title::placeholder {
+  color: #000000 !important;
+  opacity: 0.5;
+}
+
+/* Force body text to black across all themes as requested */
+.editor-block.block-p.body-text {
+  color: #000000 !important;
+}
+
 .header-tags {
   display: flex;
   gap: 4px;
