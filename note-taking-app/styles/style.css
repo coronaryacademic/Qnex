@@ -1885,23 +1885,13 @@ body.fullscreen .sidebar-resizer {
   max-height: 300px;
   overflow-y: auto;
   z-index: 1000;
-  scrollbar-width: thin;
-  scrollbar-color: var(--muted) transparent;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
-/* Webkit scrollbar */
+/* Webkit scrollbar - hide it */
 .editor-menu-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.editor-menu-list::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 3px;
-}
-
-.editor-menu-list::-webkit-scrollbar-thumb {
-  background-color: var(--muted);
-  border-radius: 3px;
+  display: none; /* Chrome, Safari, Opera */
 }
 .editor-menu.open .editor-menu-list {
   display: block;

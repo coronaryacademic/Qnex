@@ -1679,30 +1679,6 @@
                   </div>
                 </div>
                 <hr />
-                <button class="menu-item editor-duplicate-btn">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <rect
-                      x="9"
-                      y="9"
-                      width="13"
-                      height="13"
-                      rx="2"
-                      ry="2"
-                    ></rect>
-                    <path
-                      d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                    ></path>
-                  </svg>
-                  Duplicate Active
-                </button>
-                <hr />
                 <button data-action="toggle-layout" class="menu-item">
                   <svg
                     width="16"
@@ -1712,61 +1688,11 @@
                     stroke="currentColor"
                     stroke-width="2"
                   >
-                    <rect
-                      x="3"
-                      y="3"
-                      width="18"
-                      height="18"
-                      rx="2"
-                      ry="2"
-                    ></rect>
-                    <line x1="9" y1="3" x2="9" y2="21"></line>
-                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                    <rect x="6" y="4" width="12" height="16" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"></rect>
+                    <line x1="6" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="2"></line>
+                    <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2"></line>
                   </svg>
                   <span class="layout-label">Centered Layout</span>
-                </button>
-                <button data-action="split-note" class="menu-item">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <line x1="12" y1="3" x2="12" y2="21" />
-                  </svg>
-                  Split View
-                </button>
-                <button data-action="open-window" class="menu-item">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <path d="M3 8h18" />
-                  </svg>
-                  Open in Window
-                </button>
-                <button data-action="fullscreen" class="menu-item">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
-                    ></path>
-                  </svg>
-                  Fullscreen (F12)
                 </button>
                 <button
                   data-action="lock-note"
@@ -1780,14 +1706,7 @@
                     stroke="currentColor"
                     stroke-width="2"
                   >
-                    <rect
-                      x="3"
-                      y="11"
-                      width="18"
-                      height="11"
-                      rx="2"
-                      ry="2"
-                    ></rect>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
                   <span class="lock-label">Lock Note (Ctrl+L)</span>
@@ -1840,7 +1759,10 @@
                   <span class="auto-hl-label">Auto Highlight: OFF</span>
                 </button>
                 <hr />
-                <button data-action="settings" class="menu-item settings-btn">
+                <button
+                  data-action="folder-tags"
+                  class="menu-item"
+                >
                   <svg
                     width="16"
                     height="16"
@@ -2330,5 +2252,6 @@
     <script src="scripts/markdown.js"></script>
     <script src="scripts/two-base.js"></script>
     <script src="scripts/custom-features.js"></script>
+    <script src="scripts/note-font-handler.js"></script>
   </body>
 </html>

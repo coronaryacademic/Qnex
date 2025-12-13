@@ -3067,50 +3067,54 @@ window.Storage = Storage;
       }, 100);
     });
 
-    folderSel.addEventListener("change", () => {
-      note.folderId = folderSel.value || null;
-      saveNote();
-    });
+    // Folder selection
+    if (folderSel) {
+      folderSel.addEventListener("change", () => {
+        note.folderId = folderSel.value || null;
+        saveNote();
+      });
+    } else {
+      console.warn("folderSel not found in editor template");
+    }
 
     // Settings dropdown toggle
-    let settingsOpen = false;
-    settingsBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      settingsOpen = !settingsOpen;
-      if (settingsOpen) {
-        settingsDropdown.style.display = "block";
-      } else {
-        settingsDropdown.style.display = "none";
-      }
-    });
-
-    // Close settings dropdown when clicking outside
-    document.addEventListener("click", () => {
-      if (settingsOpen) {
-        settingsOpen = false;
-        settingsDropdown.style.display = "none";
-      }
-    });
-
-    settingsDropdown.addEventListener("click", (e) => {
-      e.stopPropagation();
-    });
-
-    // left/right open buttons removed in new split model
-    node
-      .querySelector('[data-action="open-window"]')
-      .addEventListener("click", () => openWindow(note.id));
-
-    // Split note button - opens note in right pane
-    node
-      .querySelector('[data-action="split-note"]')
-      .addEventListener("click", () => {
-        if (!state.splitMode) {
-          enableSplit();
+    if (settingsBtn && settingsDropdown) {
+      let settingsOpen = false;
+      settingsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        console.log("📁 Folder & Tags button clicked");
+        
+        // Close the editor menu
+        const editorMenu = node.querySelector(".editor-menu");
+        if (editorMenu) {
+          editorMenu.classList.remove("open");
         }
-        openInPane(note.id, "right");
+        
+        settingsOpen = !settingsOpen;
+        if (settingsOpen) {
+          settingsDropdown.style.display = "block";
+          console.log("✅ Dropdown shown");
+        } else {
+          settingsDropdown.style.display = "none";
+          console.log("❌ Dropdown hidden");
+        }
       });
 
+      // Close settings dropdown when clicking outside
+      document.addEventListener("click", () => {
+        if (settingsOpen) {
+          settingsOpen = false;
+          settingsDropdown.style.display = "none";
+        }
+      });
+
+      settingsDropdown.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    }
+
+    // left/right open buttons removed in new split model
+    // open-window, split-note, and fullscreen buttons have been removed from the templatewindow
     return node;
   }
   window.buildEditor = buildEditor; // Expose globally for two-base.js
@@ -6457,29 +6461,52 @@ window.Storage = Storage;
     }
 
     // Check if right pane has focus
-    const rightContent = el.paneRight?.querySelector(".content.editable");
-    if (
-      !targetPane &&
-      rightContent &&
-      (document.activeElement === rightContent ||
-        rightContent.contains(document.activeElement))
-    ) {
-      targetPane = el.paneRight;
-      targetSide = "right";
+    console.log("🔒 toggleNoteLock called");
+    
+    // Try to find the currently focused editor
+    let targetEditor = document.activeElement?.closest('.editor');
+    
+    // If not found, try to find any visible editor in TwoBase
+    if (!targetEditor) {
+      // Check if we're in TwoBase architecture
+      if (typeof window.TwoBase !== "undefined") {
+        const noteBase = document.getElementById('noteBase');
+        if (noteBase && noteBase.style.display !== 'none') {
+          targetEditor = noteBase.querySelector('.editor');
+        }
+      }
+    }
+    
+    // Fallback to old pane system
+    if (!targetEditor) {
+      const targetSide = state.right.active ? "right" : "left";
+      const targetPane = targetSide === "left" ? el.paneLeft : el.paneRight;
+      if (targetPane) {
+        targetEditor = targetPane.querySelector('.editor');
+      }
+    }
+    
+    if (!targetEditor) {
+      console.warn("No editor found to lock/unlock");
+      return;
     }
 
-    // If no focus, use active side
-    if (!targetPane) {
-      targetSide = state.right.active ? "right" : "left";
-      targetPane = targetSide === "left" ? el.paneLeft : el.paneRight;
+    const content = targetEditor.querySelector(".content.editable");
+    const header = targetEditor.querySelector(".editor-header");
+
+    if (!content || !header) {
+      console.warn("Content or header not found in editor");
+      return;
     }
-
-    const content = targetPane.querySelector(".content.editable");
-    const header = targetPane.querySelector(".editor-header");
-
-    if (!content || !header) return;
 
     const isLocked = content.getAttribute("contenteditable") === "false";
+    
+    // Get the title input
+    const titleInput = targetEditor.querySelector(".title");
+    
+    // Get the note object to save lock status
+    const noteId = targetEditor.dataset.noteId;
+    const note = noteId ? state.notes.find(n => n.id === noteId) : null;
 
     // Remove existing lock icon if any
     const existingLock = header.querySelector(".lock-icon");
@@ -6489,12 +6516,48 @@ window.Storage = Storage;
       // Unlock
       content.setAttribute("contenteditable", "true");
       content.style.opacity = "1";
+      content.style.pointerEvents = "auto";
+      if (titleInput) {
+        titleInput.removeAttribute("readonly");
+        titleInput.style.opacity = "1";
+      }
+      
+      // Re-enable BlockEditor if it exists
+      const blockEditor = targetEditor._blockEditor;
+      if (blockEditor && blockEditor.enable) {
+        blockEditor.enable();
+      }
+      
+      // Save unlock status to note
+      if (note) {
+        note.isLocked = false;
+        saveNotes();
+      }
+      
+      console.log("✓ Note unlocked");
     } else {
-      // Lock
+      // Lock - make ALL content non-editable
       content.setAttribute("contenteditable", "false");
-      content.style.opacity = "0.9";
+      content.style.opacity = "0.7";
+      content.style.pointerEvents = "none"; // Prevent all mouse interactions
+      if (titleInput) {
+        titleInput.setAttribute("readonly", "true");
+        titleInput.style.opacity = "0.7";
+      }
+      
+      // Disable BlockEditor if it exists
+      const blockEditor = targetEditor._blockEditor;
+      if (blockEditor && blockEditor.disable) {
+        blockEditor.disable();
+      }
+      
+      // Save lock status to note
+      if (note) {
+        note.isLocked = true;
+        saveNotes();
+      }
 
-      // Add lock icon
+      // Add lock icon to header
       const lockIcon = document.createElement("span");
       lockIcon.className = "lock-icon";
       lockIcon.innerHTML = `
@@ -6503,11 +6566,17 @@ window.Storage = Storage;
           <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         </svg>
       `;
-
+      lockIcon.style.marginRight = "8px";
+      lockIcon.style.color = "#f59e0b";
+      lockIcon.style.display = "inline-flex";
+      lockIcon.style.alignItems = "center";
+      
       const titleContainer = header.querySelector(".title-with-tags");
       if (titleContainer) {
+        // Insert at the beginning (left side)
         titleContainer.insertBefore(lockIcon, titleContainer.firstChild);
       }
+      console.log("✓ Note locked");
     }
   }
 

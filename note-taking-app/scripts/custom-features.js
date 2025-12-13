@@ -653,6 +653,16 @@ function setupEditorFeatures(container) {
               : "Centered Layout";
           }
           updateLayoutIcon();
+          
+          // Save layout preference to note
+          const noteId = editor.dataset.noteId;
+          if (noteId && window.state && window.state.notes) {
+            const note = window.state.notes.find(n => n.id === noteId);
+            if (note) {
+              note.layoutMode = isFullWidth ? "full" : "centered";
+              if (window.saveNotes) window.saveNotes();
+            }
+          }
 
           console.log("✓ Layout toggled:", isFullWidth ? "full" : "centered");
         });
