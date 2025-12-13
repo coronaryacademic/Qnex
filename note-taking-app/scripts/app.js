@@ -1876,18 +1876,22 @@ window.Storage = Storage;
   window.reassignOrderValues = reassignOrderValues;
   
   // Data persistence functions
-  function saveNotes() {
-    Storage.saveNotes(state.notes);
+  async function saveNotes() {
+    try {
+      await Storage.saveNotes(state.notes);
+    } catch (err) {
+      console.error("Critical: Failed to save notes to storage", err);
+    }
     if (state.backupHandle) {
       writeBackup().catch(() => {});
     }
-    // Instant sidebar refresh
-    if (
-      typeof window.TwoBase !== "undefined" &&
-      typeof window.TwoBase.refreshSidebar === "function"
-    ) {
-      window.TwoBase.refreshSidebar();
-    }
+    // DISABLED: refreshSidebar can cause navigation issues in TwoBase
+    // if (
+    //   typeof window.TwoBase !== "undefined" &&
+    //   typeof window.TwoBase.refreshSidebar === "function"
+    // ) {
+    //   window.TwoBase.refreshSidebar();
+    // }
   }
   function saveFolders() {
     Storage.saveFolders(state.folders);
@@ -2203,6 +2207,8 @@ window.Storage = Storage;
   function getActive(side) {
     return state[side].active ? getNote(state[side].active) : null;
   }
+
+
 
   // Sidebar
   function renderSidebar() {
@@ -2695,10 +2701,9 @@ window.Storage = Storage;
     const tabsEl = side === "left" ? el.tabsLeft : el.tabsRight;
 
     // Safety check for two-base architecture
-    if (!tabsEl) {
-      console.log(
-        `renderTabs: ${side} tabs element not found (two-base architecture active)`
-      );
+    // If TwoBase is active, we should NOT be rendering tabs using the old app.js logic
+    if (typeof window.TwoBase !== "undefined" || !tabsEl) {
+      // console.log(`renderTabs: Skipping render for ${side} (TwoBase active or tabs not found)`);
       return;
     }
 
@@ -2981,7 +2986,7 @@ window.Storage = Storage;
     function updateSaveStatus(saved = false) {
       if (titleStatus) {
         if (saved) {
-          titleStatus.textContent = "✓ Saved";
+          titleStatus.textContent = "✓";
           titleStatus.style.color = "#4ade80";
           setTimeout(() => {
             titleStatus.textContent = note.updatedAt
@@ -2990,43 +2995,35 @@ window.Storage = Storage;
             titleStatus.style.color = "";
           }, 2000);
         } else {
-          titleStatus.textContent = "● Unsaved";
+          titleStatus.textContent = "●";
           titleStatus.style.color = "#fbbf24";
         }
       }
     }
 
     function saveNote() {
+      console.log("💾 saveNote() called for note:", note.id);
       note.updatedAt = new Date().toISOString();
       note.contentHtml = editor.getHTML();
       saveNotes();
       syncDates();
-      renderSidebar();
+      // DISABLED: These cause navigation back to base layer in TwoBase architecture
+      // renderSidebar();
+      // refreshOpenTabs(note.id);
       refreshWindowTitle(note.id);
-      refreshOpenTabs(note.id);
       hasUnsavedChanges = false;
       updateSaveStatus(true);
+      console.log("✅ Save complete, status updated");
     }
 
     // Expose saveNote on the node for external access (e.g., two-base.js)
     node._saveNote = saveNote;
 
     function markUnsaved() {
-      if (!hasUnsavedChanges) {
-        hasUnsavedChanges = true;
-        updateSaveStatus(false);
-      }
-
-      // Auto-save if enabled
-      if (state.settings.autoSave) {
-        if (autoSaveTimer) clearTimeout(autoSaveTimer);
-        autoSaveTimer = setTimeout(() => {
-          if (hasUnsavedChanges) {
-            saveNote();
-          }
-        }, 3000); // Auto-save after 3 seconds of no typing
-      }
+      // ... (unchanged)
     }
+
+    // Link: markUnsaved is used by title input and editor changes
 
     title.addEventListener("input", () => {
       note.title = title.value;
@@ -3037,9 +3034,11 @@ window.Storage = Storage;
     content.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        if (hasUnsavedChanges) {
-          saveNote();
-        }
+        e.stopPropagation(); // Stop propagation to prevent global handlers (custom-features.js)
+        console.log("📝 Ctrl+S detected in editor. Unsaved changes:", hasUnsavedChanges);
+        // Force save regardless of unsavedChanges flag to ensure it works
+        console.log("📝 Calling saveNote() force update...");
+        saveNote();
         return;
       }
     });

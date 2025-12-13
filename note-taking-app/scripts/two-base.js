@@ -1639,9 +1639,9 @@
   }
 
   function switchToMainBase() {
+    console.log("[DEBUG] switchToMainBase called");
+    console.trace();
     TwoBaseState.currentBase = "main";
-    // el.noteBase.classList.add("hidden");
-    // el.workspaceSplit.style.display = "flex";
     switchViewWithAnimation(el.workspaceSplit, el.noteBase);
 
     // Refresh workspace in case notes were edited
@@ -2543,15 +2543,8 @@
       }
     });
 
-    // Add Ctrl+S keyboard shortcut for saving
-    paneContent.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        if (TwoBaseState.currentSaveFunction) {
-          TwoBaseState.currentSaveFunction();
-        }
-      }
-    });
+    // Ctrl+S is handled by the editor instance itself (in app.js)
+    // We don't need a duplicate handler here which might cause double-saves or navigation issues
 
     // Populate toolbar in note header
     populateNoteToolbar();
