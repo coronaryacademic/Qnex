@@ -2923,6 +2923,62 @@ window.Storage = Storage;
       }
     );
     node._blockEditor = editor;
+    
+    // Restore saved note settings
+    // 1. Restore font size
+    if (note.fontSize) {
+      content.style.fontSize = note.fontSize + 'px';
+      const fontSizeLabel = node.querySelector('.font-size-label');
+      if (fontSizeLabel) fontSizeLabel.textContent = note.fontSize + 'px';
+    }
+    
+    // 2. Restore font family
+    if (note.fontFamily) {
+      content.style.fontFamily = note.fontFamily;
+      const fontFamilySelect = node.querySelector('.font-family-select');
+      if (fontFamilySelect) fontFamilySelect.value = note.fontFamily;
+    }
+    
+    // 3. Restore layout mode
+    if (note.layoutMode === 'full') {
+      content.classList.add('layout-full');
+      content.classList.remove('layout-centered');
+      const layoutLabel = node.querySelector('.layout-label');
+      if (layoutLabel) layoutLabel.textContent = 'Full-width Layout';
+    } else {
+      content.classList.add('layout-centered');
+      content.classList.remove('layout-full');
+    }
+    
+    // 4. Restore lock status
+    if (note.isLocked) {
+      content.setAttribute("contenteditable", "false");
+      content.style.opacity = "0.7";
+      content.style.pointerEvents = "none";
+      if (title) {
+        title.setAttribute("readonly", "true");
+        title.style.opacity = "0.7";
+      }
+      
+      // Add lock icon
+      const lockIcon = document.createElement("span");
+      lockIcon.className = "lock-icon";
+      lockIcon.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      `;
+      lockIcon.style.marginRight = "8px";
+      lockIcon.style.color = "#f59e0b";
+      lockIcon.style.display = "inline-flex";
+      lockIcon.style.alignItems = "center";
+      
+      const titleWithTags = node.querySelector(".title-with-tags");
+      if (titleWithTags) {
+        titleWithTags.insertBefore(lockIcon, titleWithTags.firstChild);
+      }
+    }
 
     function syncDates() {
       // Update title status
