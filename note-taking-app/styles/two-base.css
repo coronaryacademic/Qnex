@@ -329,10 +329,6 @@
   font-weight: 500;
 }
 
-/* Pinned tabs - slightly darker background */
-.note-tab.pinned {
-  background: rgba(0, 0, 0, 0.15);
-}
 
 .note-tab.pinned:hover {
   background: var(--hover);
