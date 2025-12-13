@@ -5096,7 +5096,9 @@ window.Storage = Storage;
         handlers.onOpenRight && handlers.onOpenRight();
         hideContextMenu();
       });
-    const bON = ctxEl.querySelector('[data-cmd="open-note"]');
+    const bON = visibleSection
+      ? visibleSection.querySelector('[data-cmd="open-note"]')
+      : ctxEl.querySelector('[data-cmd="open-note"]');
     if (bON)
       bON.addEventListener("click", (e) => {
         console.log("[CTX] Open Note clicked");
@@ -5114,7 +5116,9 @@ window.Storage = Storage;
         handlers.onRefreshApp && handlers.onRefreshApp();
       });
 
-    const bDN = ctxEl.querySelector('[data-cmd="delete-note"]');
+    const bDN = visibleSection
+      ? visibleSection.querySelector('[data-cmd="delete-note"]')
+      : ctxEl.querySelector('[data-cmd="delete-note"]');
     if (bDN)
       bDN.addEventListener("click", async (e) => {
         console.log("[CTX] Delete Note clicked");
@@ -5260,14 +5264,18 @@ window.Storage = Storage;
         });
       }
     }
-    const bRN = ctxEl.querySelector('[data-cmd="rename-note"]');
+    const bRN = visibleSection
+      ? visibleSection.querySelector('[data-cmd="rename-note"]')
+      : ctxEl.querySelector('[data-cmd="rename-note"]');
     if (bRN)
       bRN.addEventListener("click", async (e) => {
         e.stopPropagation();
         hideContextMenu();
         await handlers.onRenameNote?.();
       });
-    const bEN = ctxEl.querySelector('[data-cmd="export-note"]');
+    const bEN = visibleSection
+      ? visibleSection.querySelector('[data-cmd="export-note"]')
+      : ctxEl.querySelector('[data-cmd="export-note"]');
     if (bEN)
       bEN.addEventListener("click", async (e) => {
         e.stopPropagation();

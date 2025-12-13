@@ -982,6 +982,17 @@
         {
           onOpenNote: () => {
             console.log("[TWO-BASE] onOpenNote handler called for:", itemId);
+            
+            // Clear selection
+            TwoBaseState.selectedItems = [];
+            if (window.state && window.state.selectedItems) {
+              window.state.selectedItems.clear();
+            }
+            // Remove visual highlight
+            document.querySelectorAll(".workspace-item.selected, .workspace-item.context-active").forEach(el => {
+              el.classList.remove("selected", "context-active");
+            });
+
             // Open in note base
             openNoteInNoteBase(itemId);
           },
@@ -3568,6 +3579,17 @@
         const handlers = {
           onOpenNote: () => {
             console.log("[PINNED] onOpenNote handler called for:", note.id);
+            
+            // Clear selection
+            TwoBaseState.selectedItems = [];
+             if (window.state && window.state.selectedItems) {
+              window.state.selectedItems.clear();
+            }
+            // Remove visual highlight
+            document.querySelectorAll(".workspace-item.selected, .workspace-item.context-active, .sidebar-item.context-active").forEach(el => {
+              el.classList.remove("selected", "context-active");
+            });
+            
             openNoteInNoteBase(note.id);
           },
           onDuplicate: () => {
