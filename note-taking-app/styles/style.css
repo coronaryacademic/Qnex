@@ -322,10 +322,20 @@ body.theme-classic h2[style*="color: var(--text)"] {
 }
 
 /* Empty state SVG icons - Classic and Light themes */
-body.theme-classic svg[width="64"][height="64"],
+body.theme-classic svg[width="64"][height="64"] {
+  color: black !important;
+  stroke: black !important;
+}
+
+/* About modal icon overrides */
+body.theme-classic #about-modal-icon {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
 body.theme-light svg[width="64"][height="64"] {
-  color: white !important;
-  stroke: white !important;
+  color: black !important;
+  stroke: black !important;
 }
 
 /* Empty state SVG icons - Dark theme */
