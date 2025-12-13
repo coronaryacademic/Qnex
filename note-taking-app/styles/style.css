@@ -1864,9 +1864,10 @@ body.fullscreen .sidebar-resizer {
   min-width: 32px;
   min-height: 32px;
 }
+
 .editor-menu-btn:hover {
   background: var(--panel-hover);
-  color: var(--text);
+  color: black !important;
 }
 .editor-menu-list {
   display: none;
