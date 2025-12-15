@@ -1201,3 +1201,112 @@
   width: 32px;
   height: 32px;
 }
+
+/* Highlight Menu Redesign */
+.highlight-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 200px; /* Slightly wider */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 10002;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.highlight-menu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.highlight-colors-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  justify-items: center;
+}
+
+.color-swatch {
+  transition: transform 0.1s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Close Split Pane Button */
+.close-split-pane-btn {
+  position: absolute;
+  top: 10px;
+  right: 14px; /* Adjusted to not overlap scrollbar if any */
+  width: 28px;
+  height: 28px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 50%; /* Circle */
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20; /* Above editor content */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+/* Pane Header */
+.pane-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 4px 8px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.pane-close-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    border-radius: 4px;
+    transition: all 0.2s;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.pane-close-btn:hover {
+    background: var(--hover);
+    color: var(--text);
+}
+
+/* Dark mode hover adjustment */
+body.theme-dark .close-split-pane-btn:hover {
+    background: #450a0a;
+    color: #f87171;
+    border-color: #7f1d1d;
+}
+
+/* Ensure note pane content is positioned relative for absolute children */
+.note-pane-content {
+  position: relative;
+}

@@ -2624,9 +2624,141 @@
     const paneContent = targetPane.querySelector(".note-pane-content");
     paneContent.innerHTML = "";
 
+    // Create header for pane if in split view (REMOVED - now injected into editor header)
+    /*
+    if (TwoBaseState.splitView) {
+        ... removed ...
+    }
+    */
+
     // buildEditor returns a DOM node with the editor, so we need to append it
     if (typeof window.buildEditor === "function") {
       const editorNode = window.buildEditor(note);
+      
+      // Inject Split Controls into Editor Header if in Split View
+      if (TwoBaseState.splitView) {
+          const header = editorNode.querySelector(".editor-header");
+          const actionsDiv = editorNode.querySelector(".editor-header .actions");
+          const titleContainer = editorNode.querySelector(".title-with-tags");
+          
+          if (header) {
+              // Make header generally rigid but allow width to adapt to pane
+              header.style.flexShrink = "0"; 
+              
+              // Sticky positioning to keep it "locked in its place" while scrolling
+              header.style.position = "sticky";
+              header.style.top = "0";
+              header.style.zIndex = "10";
+              // header.style.background = "var(--bg)"; // Removed background per user request (User wants transparency/default)
+              
+              header.style.display = "flex"; // Ensure flex layout for our resizing logic
+              header.style.justifyContent = "space-between"; // Separate title and actions
+          }
+
+          if (titleContainer) {
+              // Allow title to shrink but take available space
+              // Using flex-basis: 0 and min-width: 0 is standard for shrinking flex items
+              titleContainer.style.flex = "1 1 0"; 
+              titleContainer.style.minWidth = "0"; 
+              titleContainer.style.maxWidth = "100%"; // Prevent growth beyond container
+              titleContainer.style.marginRight = "8px"; 
+          }
+          
+          const titleInput = editorNode.querySelector("input.title");
+          if (titleInput) {
+               // Inputs are stubborn. Force them to comply.
+               titleInput.style.minWidth = "0";
+               titleInput.style.flex = "1";
+               titleInput.style.width = "100%";
+          }
+          
+          const titleStatus = editorNode.querySelector(".title-status");
+          if (titleStatus) {
+              // Ensure status doesn't prevent shrinking of title or pushing of actions
+              // We can hide it if it gets too small (via CSS) or just let it shrink/truncate
+              titleStatus.style.flexShrink = "2"; // Shrink faster than title
+              titleStatus.style.minWidth = "0";
+              titleStatus.style.overflow = "hidden";
+              titleStatus.style.textOverflow = "ellipsis";
+              titleStatus.style.whiteSpace = "nowrap";
+          }
+          
+          if (actionsDiv) {
+              // Enforce generic flex spacing on the container for uniformity
+              actionsDiv.style.display = "flex";
+              actionsDiv.style.alignItems = "center";
+              actionsDiv.style.gap = "4px"; 
+              // CRITICAL: Prevent actions from shrinking/hiding
+              actionsDiv.style.flexShrink = "0";
+              actionsDiv.style.minWidth = "fit-content";
+              
+              // Swap Button
+              const swapBtn = document.createElement("button");
+              swapBtn.className = "icon-btn";
+              swapBtn.title = "Swap Panes";
+              swapBtn.style.padding = "4px";
+              swapBtn.style.color = "var(--muted)";
+              swapBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 3 4 7l4 4"/>
+                  <path d="M4 7h16"/>
+                  <path d="m16 21 4-4-4-4"/>
+                  <path d="M20 17H4"/>
+                </svg>
+              `;
+              swapBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  const temp = TwoBaseState.leftPaneNote;
+                  TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
+                  TwoBaseState.rightPaneNote = temp;
+                  
+                  if (el.notePaneLeft) renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+                  if (el.notePaneRight) renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+              };
+              
+              // Close Button
+              const closeBtn = document.createElement("button");
+              closeBtn.className = "icon-btn pane-close-btn";
+              closeBtn.title = "Close this pane";
+              closeBtn.style.color = "var(--muted)";
+              closeBtn.style.padding = "4px";
+              closeBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              `;
+              closeBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  if (pane === "left") {
+                       if (TwoBaseState.rightPaneNote) {
+                           TwoBaseState.activeNote = TwoBaseState.rightPaneNote;
+                           TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
+                       }
+                  } else {
+                      if (TwoBaseState.leftPaneNote) {
+                          TwoBaseState.activeNote = TwoBaseState.leftPaneNote;
+                      }
+                  }
+                  toggleSplitView();
+              };
+              
+              // Insert before existing content (Menu)
+              // Since there are multiple existing items potentially (Menu, Settings Dropdown), we prepend.
+              // Prepend in reverse order to keep Swap -> Close -> Menu ? 
+              // User likely wants [Swap] [Close] [Menu]. 
+              // Wait, previous code put [Swap] [Close] before [Menu].
+              
+              if (actionsDiv.firstChild) {
+                  actionsDiv.insertBefore(closeBtn, actionsDiv.firstChild);
+                  actionsDiv.insertBefore(swapBtn, actionsDiv.firstChild);
+              } else {
+                  actionsDiv.appendChild(swapBtn);
+                  actionsDiv.appendChild(closeBtn);
+              }
+          }
+      }
+
       paneContent.appendChild(editorNode);
 
       // Store reference to the BlockEditor instance for toolbar use
@@ -2929,6 +3061,7 @@
     saveTwoBaseSession();
   }
 
+
   function toggleSplitView(targetNoteIdForRightPane = null) {
     console.log("[SPLIT] toggleSplitView called with target:", targetNoteIdForRightPane);
     console.log("[SPLIT] Current state:", {
@@ -2956,6 +3089,7 @@
           el.noteResizer.classList.remove("hidden");
           el.noteResizer.style.display = "block";
       }
+      if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
       if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
       
       // Setup Panes
@@ -3003,6 +3137,7 @@
           el.noteResizer.classList.add("hidden");
           el.noteResizer.style.display = "none";
       }
+      if (el.splitNoteBtn) el.splitNoteBtn.classList.remove("active");
       if (el.splitNoteBtn) el.splitNoteBtn.classList.remove("active");
       
       // Consolidate to left pane
@@ -3053,8 +3188,9 @@
              }
          }
          
-         // Only show overlays if we have a valid side
+         // Fix: Always update overlays if we have a valid side, even (and especially) in split view
          if (side) {
+             console.log("[DRAG] Showing overlay for side:", side);
              updateDropOverlays(true, side);
          } else {
              updateDropOverlays(false);
@@ -3192,9 +3328,6 @@
   function setupSplitButton() {
      if (!el.splitNoteBtn) return;
      
-     // Remove old listeners if possible (cloning might be needed if they were anonymous, 
-     // but we can just assume this runs once or use onclick)
-     // Better: use onclick to replace
      el.splitNoteBtn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -3220,6 +3353,8 @@
         // Otherwise open menu
         showSplitMenu(e);
      };
+
+     // Note: Close button setup moved to renderNoteEditor per pane
   }
 
   function showSplitMenu(e) {
@@ -3267,25 +3402,59 @@
        });
     }
 
-    // Position relative to button? Or absolute?
-    // Using simple absolute positioning near button
-    // The CSS .split-menu handles basic positioning relative to container if we put it there?
-    // Or we append to document body and position absolutely.
-    // For toolbar options we used a container. Let's append to document.body and position.
-    
     // Close highlight menu if open
-    const highlightMenu = document.getElementById("highlightMenu");
-    if (highlightMenu) highlightMenu.classList.add("hidden");
+    const highlightMenu = document.querySelector(".highlight-menu");
+    if (highlightMenu) highlightMenu.remove();
     
     menu.style.position = "fixed";
+
+    // Auto-detect position based on button rect
     const btnRect = el.splitNoteBtn.getBoundingClientRect();
+    const isBottom = btnRect.bottom > window.innerHeight * 0.8;
+    const isRight = btnRect.left > window.innerWidth * 0.8;
+    const isLeft = btnRect.left < window.innerWidth * 0.2;
     
-    // User requested fixed top position
-    menu.style.top = "79.4px";
+    // Default styles (reset)
+    menu.style.top = "";
+    menu.style.bottom = "";
+    menu.style.left = "";
+    menu.style.right = "";
+    menu.style.transform = "";
     
-    // Align left edge of menu with left edge of button
-    menu.style.left = btnRect.left + "px";
-    menu.style.right = "auto";
+    if (isBottom) {
+        // Show above button
+        menu.style.bottom = (window.innerHeight - btnRect.top + 8) + "px";
+        if (isRight) {
+             menu.style.right = (window.innerWidth - btnRect.right) + "px";
+             menu.style.left = "auto";
+        } else if (isLeft) {
+             menu.style.left = btnRect.left + "px";
+        } else {
+             menu.style.left = btnRect.left + "px";
+        }
+    } else {
+        // Top or Side-Top
+        if (isRight && !isBottom && btnRect.top > 100) {
+            // Probably toolbar on Right
+            menu.style.top = btnRect.top + "px";
+            menu.style.right = (window.innerWidth - btnRect.left + 8) + "px";
+        } else if (isLeft && !isBottom && btnRect.top > 100) {
+            // Probably toolbar on Left
+             menu.style.top = btnRect.top + "px";
+             menu.style.left = (btnRect.right + 8) + "px";
+        } else {
+            // Default Top Bar behavior
+            menu.style.top = (btnRect.bottom + 8) + "px";
+            if (isRight) {
+                menu.style.right = (window.innerWidth - btnRect.right) + "px";
+                menu.style.left = "auto";
+            } else {
+                menu.style.left = btnRect.left + "px";
+            }
+        }
+    }
+    
+    // Ensure menu doesn't go off screen horizontally
     menu.style.transform = "none";
     
     document.body.appendChild(menu);
@@ -3322,17 +3491,68 @@
     
     // Position
     menu.style.position = "fixed";
+
+    // Auto-detect position
     const btnRect = btn.getBoundingClientRect();
-    menu.style.top = "79.4px";
-    menu.style.left = btnRect.left + "px";
+    const isBottom = btnRect.bottom > window.innerHeight * 0.8;
+    const isRight = btnRect.left > window.innerWidth * 0.8;
+    const isLeft = btnRect.left < window.innerWidth * 0.2;
+    
+    // Default styles (reset)
+    menu.style.top = "";
+    menu.style.bottom = "";
+    menu.style.left = "";
+    menu.style.right = "";
+    
+    if (isBottom) {
+        menu.style.bottom = (window.innerHeight - btnRect.top + 8) + "px";
+        if (isRight) {
+             menu.style.right = (window.innerWidth - btnRect.right) + "px";
+             menu.style.left = "auto";
+        } else {
+             menu.style.left = btnRect.left + "px";
+        }
+    } else {
+        // Top / Side
+         if (isRight && !isBottom && btnRect.top > 100) {
+            // Right Side
+            menu.style.top = btnRect.top + "px";
+            menu.style.right = (window.innerWidth - btnRect.left + 8) + "px";
+        } else if (isLeft && !isBottom && btnRect.top > 100) {
+            // Left Side
+             menu.style.top = btnRect.top + "px";
+             menu.style.left = (btnRect.right + 8) + "px";
+        } else {
+            // Top Bar
+            menu.style.top = (btnRect.bottom + 8) + "px";
+            if (isRight) {
+                 menu.style.right = (window.innerWidth - btnRect.right) + "px";
+                 menu.style.left = "auto";
+            } else {
+                 menu.style.left = btnRect.left + "px";
+            }
+        }
+    }
     
     // Content
     // 1. Auto Highlight Toggle
     const autoRow = document.createElement("div");
     autoRow.className = "highlight-menu-row";
     
+    // Icon + Label container
+    const labelContainer = document.createElement("div");
+    labelContainer.style.display = "flex";
+    labelContainer.style.alignItems = "center";
+    labelContainer.style.gap = "8px";
+    
+    const icon = document.createElement("span");
+    icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 1 1 3.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
+    
     const label = document.createElement("span");
     label.textContent = "Auto Highlight";
+    
+    labelContainer.appendChild(icon);
+    labelContainer.appendChild(label);
     
     const toggle = document.createElement("input");
     toggle.type = "checkbox";
@@ -3340,6 +3560,7 @@
     const currentAutoState = (window.state && window.state.autoHighlight) || false;
     toggle.checked = currentAutoState;
     toggle.style.accentColor = "var(--primary)";
+    toggle.style.cursor = "pointer";
     
     toggle.onchange = (e) => {
         e.stopPropagation();
@@ -3349,10 +3570,9 @@
         } else {
             console.warn("⚠️ window.state is undefined, cannot save auto-highlight");
         }
-        // Persist setting if needed (usually handled by app state saving)
     };
     
-    autoRow.appendChild(label);
+    autoRow.appendChild(labelContainer);
     autoRow.appendChild(toggle);
     menu.appendChild(autoRow);
     
@@ -3382,15 +3602,28 @@
        const btn = document.createElement("button");
        btn.className = "color-swatch";
        btn.style.background = col.c;
-       btn.style.width = "20px";
-       btn.style.height = "20px";
-       btn.style.borderRadius = "3px";
+       btn.style.width = "24px"; // Slightly larger
+       btn.style.height = "24px";
+       btn.style.borderRadius = "4px";
        btn.style.border = "1px solid var(--border)";
        btn.style.cursor = "pointer";
        btn.title = col.n;
        
+       // Mark active color
+       if (window.state && window.state.currentHighlightColor === col.c) {
+           btn.style.borderColor = "var(--text)";
+           btn.style.transform = "scale(1.1)";
+           btn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+       }
+       
        btn.onclick = (e) => {
            e.stopPropagation();
+           
+           // Save current color
+           if (window.state) {
+               window.state.currentHighlightColor = col.c;
+           }
+           
            document.execCommand("hiliteColor", false, col.c);
            menu.remove();
            if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === "function") {
@@ -3403,14 +3636,27 @@
     
     // None button
     const noneBtn = document.createElement("button");
-    noneBtn.textContent = "None";
+    noneBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        No Highlight
+    `;
     noneBtn.style.gridColumn = "span 4";
     noneBtn.style.width = "100%";
     noneBtn.style.border = "1px solid var(--border)";
     noneBtn.style.background = "var(--panel-active)";
-    noneBtn.style.fontSize = "10px";
+    noneBtn.style.fontSize = "11px";
     noneBtn.style.cursor = "pointer";
-    noneBtn.style.borderRadius = "3px";
+    noneBtn.style.borderRadius = "4px";
+    noneBtn.style.padding = "4px";
+    noneBtn.style.display = "flex";
+    noneBtn.style.alignItems = "center";
+    noneBtn.style.justifyContent = "center";
+    noneBtn.style.marginTop = "4px";
+    noneBtn.style.color = "var(--text-muted)";
+    
     noneBtn.onclick = (e) => {
         e.stopPropagation();
         document.execCommand("hiliteColor", false, "transparent");
@@ -3437,10 +3683,44 @@
     }
   }
 
+  // Auto-Highlight Listener
+  // Attach this globally or per-editor. Since we have multiple editors potentialy, 
+  // global mouseup is safest to catch selection end anywhere.
+  document.addEventListener("mouseup", (e) => {
+      // Only if feature is ON
+      if (!window.state || !window.state.autoHighlight) return;
+      
+      // Check if we are inside an editor
+      const editorContent = e.target.closest(".editor .content");
+      if (!editorContent) return;
+      
+      const selection = window.getSelection();
+      // If there is text selected
+      if (selection && selection.toString().length > 0 && !selection.isCollapsed) {
+          // Check if the selection is within our editor (sanity check)
+          if (editorContent.contains(selection.anchorNode)) {
+             const color = window.state.currentHighlightColor || "#ffff00"; // Default yellow
+             console.log("✨ Auto-highlighting selection with:", color);
+             document.execCommand("hiliteColor", false, color);
+             
+             // Trigger change for persistence
+             // Find which editor instance this belongs to
+             // We can access TwoBaseState.currentEditor if it was focused.
+             // Or find the pane.
+             const pane = editorContent.closest(".pane");
+             if (pane && pane.dataset.pane) {
+                 // Trigger change on appropriate editor if possible, 
+                 // or just rely on the next event loop save if user types.
+             }
+          }
+      }
+  });
+
   // ===================================
   // Drop Zone Overlay Helper
   // ===================================
   function updateDropOverlays(visible, activeSide = null) {
+     // console.log("updateDropOverlays", visible, activeSide, TwoBaseState.splitView);
      const existing = document.querySelector('.split-drop-overlay');
      
      if (!visible) {
@@ -3493,7 +3773,7 @@
                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                  <line x1="12" y1="3" x2="12" y2="21"></line>
                </svg>
-               <span>Display Here</span>
+               <span>${TwoBaseState.splitView ? "Swap Note" : "Display Here"}</span>
             </div>
          `;
          document.body.appendChild(overlay);
