@@ -79,6 +79,9 @@
     
     // Initialize Split Button
     setupSplitButton();
+    
+    // Restore Session State
+    restoreTwoBaseSession();
   }
 
   // Module-level state reference
@@ -3295,7 +3298,7 @@
       
       // Calculate active width in pixels
       const containerWidth = containerRect.width;
-      const minWidthPx = 562;
+      const minWidthPx = 300;
 
       // Check if container is wide enough to support split view with min width
       if (containerWidth < minWidthPx * 2) {
