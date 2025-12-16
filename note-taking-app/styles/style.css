@@ -5365,3 +5365,20 @@ ol.editor-block {
   color: #dc2626 !important;
   background-color: rgba(239, 68, 68, 0.1) !important;
 }
+
+/* Fix for overlapping text in editor blocks */
+.editor .content.editable .editor-block,
+.editor .content.editable li,
+.editor .content.editable p,
+.editor .content.editable div {
+  height: auto !important;
+  min-height: min-content;
+  overflow: visible !important;
+}
+
+/* Ensure list items don't collapse */
+.editor .content.editable ul li,
+.editor .content.editable ol li {
+  height: auto !important;
+  display: list-item !important;
+}

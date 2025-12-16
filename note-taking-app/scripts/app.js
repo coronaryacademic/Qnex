@@ -7278,25 +7278,13 @@ window.Storage = Storage;
       osc.start(this.context.currentTime);
       osc.stop(this.context.currentTime + 0.15);
     },
-
+    
     playStartup() {
-      const audio = document.getElementById("startupSound");
-      if (audio) {
-        audio.currentTime = 0;
-        audio
-          .play()
-          .catch((err) => console.log("Startup sound play failed:", err));
-      }
+       // Disabled per user request
     },
 
     playReload() {
-      const audio = document.getElementById("reloadSound");
-      if (audio) {
-        audio.currentTime = 0;
-        audio
-          .play()
-          .catch((err) => console.log("Reload sound play failed:", err));
-      }
+       // Disabled per user request
     },
   };
 

@@ -2697,7 +2697,6 @@
               swapBtn.className = "icon-btn";
               swapBtn.title = "Swap Panes";
               swapBtn.style.padding = "4px";
-              swapBtn.style.color = "var(--muted)";
               swapBtn.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M8 3 4 7l4 4"/>
@@ -2720,7 +2719,6 @@
               const closeBtn = document.createElement("button");
               closeBtn.className = "icon-btn pane-close-btn";
               closeBtn.title = "Close this pane";
-              closeBtn.style.color = "var(--muted)";
               closeBtn.style.padding = "4px";
               closeBtn.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

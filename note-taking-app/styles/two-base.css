@@ -1295,7 +1295,6 @@
 }
 
 .pane-close-btn:hover {
-    background: var(--hover);
     color: var(--text);
 }
 
