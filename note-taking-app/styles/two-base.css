@@ -863,7 +863,7 @@
 }
 
 .note-resizer {
-  width: 4px;
+  width: 2px;
   background: var(--border);
   cursor: col-resize;
   transition: background 0.2s;
@@ -1034,7 +1034,7 @@
 
 /* Split View Resizer */
 .note-resizer {
-  width: 4px;
+  width: 2px;
   background: var(--border);
   cursor: col-resize;
   transition: background 0.2s;
