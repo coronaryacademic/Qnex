@@ -4062,17 +4062,12 @@
   }
 
   function loadToolbarPreferences() {
-    if (!state || !state.settings) return;
+    // TwoBaseState is already restored by restoreTwoBaseSession
+    // We just need to update the active button states in the menu
+    if (!el.toolbarOptionsMenu) return;
 
-    // Load position
-    const savedPosition = state.settings.toolbarPosition || "top";
-    TwoBaseState.toolbarPosition = savedPosition;
-    setToolbarPosition(savedPosition);
-
-    // Load alignment
-    const savedAlignment = state.settings.toolbarAlignment || "center";
-    TwoBaseState.toolbarAlignment = savedAlignment;
-    setToolbarAlignment(savedAlignment);
+    const savedPosition = TwoBaseState.toolbarPosition || "top";
+    const savedAlignment = TwoBaseState.toolbarAlignment || "center";
 
     // Update active states in menu
     const positionBtn = el.toolbarOptionsMenu.querySelector(
@@ -4097,23 +4092,9 @@
   }
 
   function saveToolbarPreferences() {
-    if (!state || !state.settings) return;
-
-    state.settings.toolbarPosition = TwoBaseState.toolbarPosition;
-    state.settings.toolbarAlignment = TwoBaseState.toolbarAlignment;
-
-    if (
-      typeof window.Storage !== "undefined" &&
-      typeof window.Storage.saveSettings === "function"
-    ) {
-      window.Storage.saveSettings(state.settings)
-        .then(() => {
-          console.log("Toolbar preferences saved");
-        })
-        .catch((err) => {
-          console.error("Failed to save toolbar preferences:", err);
-        });
-    }
+    // Use the central session saver to ensure consistency
+    // This saves to state.settings.twoBaseSession which is where restoreTwoBaseSession looks
+    saveTwoBaseSession();
   }
 
   function duplicateNote(noteId, targetFolderId = null) {
