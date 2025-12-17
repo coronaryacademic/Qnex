@@ -2668,7 +2668,6 @@ body.fullscreen .sidebar-resizer {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
-  scrollbar-width: thin;
   font-family: Arial, sans-serif;
   font-size: 16px;
   line-height: 1.6;
