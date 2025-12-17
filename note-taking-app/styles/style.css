@@ -127,6 +127,15 @@ body.theme-classic .workspace-item {
   background: #dcdcdc !important;
 }
 
+body.theme-classic .note-tab.active {
+  background-color: rgb(39 39 39) !important;
+}
+
+body.theme-classic .toolbar-align-btn,
+body.theme-classic .toolbar-position-btn {
+  background: #2a2a2a !important;
+}
+
 /* Workspace item title - keep white */
 body.theme-classic .workspace-item-title {
   color: #2c3e50 !important;

@@ -249,9 +249,11 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem 0.5rem;
+  padding-bottom: 0px;
+  padding-top: 0px;
   background: var(--panel-2);
-  min-height: 50px;
-  border-bottom: 2px solid var(--border);
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
 }
 
 .note-header-left {
