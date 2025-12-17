@@ -3160,6 +3160,154 @@
     saveTwoBaseSession();
   }
   
+  // ===================================
+  // Drop Zone Overlay Helper
+  // ===================================
+  function updateDropOverlays(visible, activeSide = null) {
+    console.log("[OVERLAY] updateDropOverlays called", {visible, activeSide});
+    const existing = document.querySelector('.split-drop-overlay');
+    
+    if (!visible) {
+      if (existing) {
+        existing.remove();
+      }
+      return;
+    }
+
+    // If already showing for the same side, don't recreate (prevents flickering)
+    if (existing && existing.dataset.side === activeSide) {
+      console.log("[OVERLAY] Already showing for side:", activeSide);
+      return;
+    }
+
+    // Remove existing overlay if showing for different side
+    if (existing) {
+      console.log("[OVERLAY] Removing existing overlay");
+      existing.remove();
+    }
+
+    // Create overlay for the active side
+    if (activeSide === 'split') {
+      console.log("[OVERLAY] Creating 'split' overlay");
+      // Single view - show overlay on entire container
+      const container = document.querySelector('.note-content-container');
+      if (!container) {
+        console.warn("[OVERLAY] Container not found");
+        return;
+      }
+      
+      const rect = container.getBoundingClientRect();
+      const margin = 12;
+
+      const overlay = document.createElement("div");
+      overlay.className = "split-drop-overlay";
+      overlay.dataset.side = 'split';
+      overlay.style.cssText = `
+        position: fixed;
+        top: ${rect.top + margin + 50}px;
+        left: ${rect.left + margin}px;
+        width: ${rect.width - (margin * 2)}px;
+        height: ${rect.height - (margin * 2) - 50}px;
+        background: rgba(59, 130, 246, 0.1);
+        border: 2px dashed var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s;
+      `;
+      
+      overlay.innerHTML = `
+        <div style="
+          background: var(--accent);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="12" y1="3" x2="12" y2="21"></line>
+          </svg>
+          <span>Split View</span>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      console.log("[OVERLAY] Split overlay appended to body");
+      setTimeout(() => overlay.style.opacity = '1', 10);
+      
+    } else if (activeSide === 'left' || activeSide === 'right') {
+      console.log("[OVERLAY] Creating overlay for pane:", activeSide);
+      // Split view - show overlay on specific pane
+      const pane = activeSide === 'left' ? el.notePaneLeft : el.notePaneRight;
+      if (!pane) {
+        console.warn("[OVERLAY] Pane not found:", activeSide);
+        return;
+      }
+      
+      const contentEl = pane.querySelector('.note-pane-content');
+      const rect = contentEl ? contentEl.getBoundingClientRect() : pane.getBoundingClientRect();
+      const margin = 12;
+
+      console.log("[OVERLAY] Pane rect:", rect);
+
+      const overlay = document.createElement("div");
+      overlay.className = "split-drop-overlay";
+      overlay.dataset.side = activeSide;
+      overlay.style.cssText = `
+        position: fixed;
+        top: ${rect.top + margin}px;
+        left: ${rect.left + margin}px;
+        width: ${rect.width - (margin * 2)}px;
+        height: ${rect.height - (margin * 2)}px;
+        background: rgba(59, 130, 246, 0.1);
+        border: 2px dashed var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s;
+      `;
+      
+      overlay.innerHTML = `
+        <div style="
+          background: var(--accent);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4"></path>
+          </svg>
+          <span>Swap</span>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      console.log("[OVERLAY] Pane overlay appended to body, opacity:", overlay.style.opacity);
+      setTimeout(() => {
+        overlay.style.opacity = '1';
+        console.log("[OVERLAY] Opacity set to 1");
+      }, 10);
+    } else {
+      console.warn("[OVERLAY] Unknown activeSide:", activeSide);
+    }
+  }
+
   // Drag and Drop Logic for Split View
   function setupDragAndDrop() {
     const container = document.querySelector(".note-content-container");
@@ -3173,28 +3321,58 @@
          
          // Calculate active side for overlay
          const x = e.clientX;
-         const leftRect = el.notePaneLeft.getBoundingClientRect();
-         const rightRect = el.notePaneRight.getBoundingClientRect();
+         const y = e.clientY;
          let side = null;
          
          if (TwoBaseState.splitView) {
-             if (x >= leftRect.left && x <= leftRect.right) side = 'left';
-             else if (x >= rightRect.left && x <= rightRect.right) side = 'right';
+             // In split view, check which pane we're over
+             if (!el.notePaneLeft || !el.notePaneRight) {
+                 console.warn("[DRAG] Pane elements not found");
+                 return;
+             }
+             
+             const leftRect = el.notePaneLeft.getBoundingClientRect();
+             const rightRect = el.notePaneRight.getBoundingClientRect();
+             
+             console.log("[DRAG] Split view - checking panes", {
+                 mouseX: x,
+                 mouseY: y,
+                 leftRect: {left: leftRect.left, right: leftRect.right, top: leftRect.top, bottom: leftRect.bottom},
+                 rightRect: {left: rightRect.left, right: rightRect.right, top: rightRect.top, bottom: rightRect.bottom}
+             });
+             
+             // Check if mouse is within pane boundaries (including Y axis)
+             if (x >= leftRect.left && x <= leftRect.right && y >= leftRect.top && y <= leftRect.bottom) {
+                 side = 'left';
+             } else if (x >= rightRect.left && x <= rightRect.right && y >= rightRect.top && y <= rightRect.bottom) {
+                 side = 'right';
+             }
+             
+             console.log("[DRAG] Detected side:", side);
          } else {
              // In single view, anywhere in the container is a valid drop to split
-             // But we verify we are inside the container rect
              const cRect = container.getBoundingClientRect();
-             if (x >= cRect.left && x <= cRect.right && e.clientY >= cRect.top && e.clientY <= cRect.bottom) {
+             if (x >= cRect.left && x <= cRect.right && y >= cRect.top && y <= cRect.bottom) {
                 side = 'split';
              }
          }
          
-         // Fix: Always update overlays if we have a valid side, even (and especially) in split view
+         // Update overlays if we have a valid side
          if (side) {
              console.log("[DRAG] Showing overlay for side:", side);
-             updateDropOverlays(true, side);
+             console.log("[DRAG] About to call updateDropOverlays, function exists?", typeof updateDropOverlays);
+             try {
+                 updateDropOverlays(true, side);
+             } catch (err) {
+                 console.error("[DRAG] Error calling updateDropOverlays:", err);
+             }
          } else {
-             updateDropOverlays(false);
+             console.log("[DRAG] No valid side detected, hiding overlays");
+             try {
+                 updateDropOverlays(false);
+             } catch (err) {
+                 console.error("[DRAG] Error calling updateDropOverlays:", err);
+             }
          }
       }
     });
@@ -3716,119 +3894,6 @@
           }
       }
   });
-
-  // ===================================
-  // Drop Zone Overlay Helper
-  // ===================================
-  function updateDropOverlays(visible, activeSide = null) {
-     // console.log("updateDropOverlays", visible, activeSide, TwoBaseState.splitView);
-     const existing = document.querySelector('.split-drop-overlay');
-     
-     if (!visible) {
-         if (existing) {
-             existing.classList.remove('active');
-             setTimeout(() => existing.remove(), 200); // Matches CSS transition duration
-         }
-         return;
-     }
-
-     // If already showing for this side, do nothing
-     if (existing && existing.dataset.side === activeSide) return;
-     
-     // Remove existing overlays distinct from current side (if any)
-     if (existing) existing.remove();
-     
-     // Create overlays
-     const createOverlay = (pane, side) => {
-         // Only show overlay if this is the active side
-         if (side !== activeSide) return;
-
-         let rect;
-         const contentEl = pane.querySelector('.note-pane-content');
-         if (contentEl) {
-             rect = contentEl.getBoundingClientRect();
-         } else {
-             // Fallback if no specific content area found
-             rect = pane.getBoundingClientRect();
-         }
-         
-         const margin = 12; // Add margin
-
-         const overlay = document.createElement("div");
-         overlay.className = "split-drop-overlay"; // Start inactive
-         overlay.dataset.side = side; // Track side for optimization
-         
-         requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('active')));
-         
-         overlay.style.position = "absolute";
-         overlay.style.top = (rect.top + margin) + "px";
-         overlay.style.left = (rect.left + margin) + "px";
-         overlay.style.width = (rect.width - (margin * 2)) + "px";
-         overlay.style.height = (rect.height - (margin * 2)) + "px";
-         overlay.style.zIndex = "999"; // Below drag item but above content
-         overlay.style.pointerEvents = "none"; // Let mouse events pass through to container
-         
-         overlay.innerHTML = `
-            <div class="drop-message">
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                 <line x1="12" y1="3" x2="12" y2="21"></line>
-               </svg>
-               <span>${TwoBaseState.splitView ? "Swap Note" : "Display Here"}</span>
-            </div>
-         `;
-         document.body.appendChild(overlay);
-     };
-     
-     if (TwoBaseState.splitView) {
-         if (el.notePaneLeft) createOverlay(el.notePaneLeft, 'left');
-         if (el.notePaneRight) createOverlay(el.notePaneRight, 'right');
-     } else {
-         // Single view - overlay right half for split? Or whole?
-         // User wants "drag to editor div so it can split".
-         // Let's show "Split View" overlay on the right half?
-         // Or just one big overlay saying "Open in Split View"?
-         // Let's do right half overlay to indicate split.
-         
-         const container = el.noteBase.querySelector(".note-content-container");
-         if (container) {
-             let rect;
-             // Try to find the editor content in the left pane (default for single view)
-             const contentEl = el.notePaneLeft ? el.notePaneLeft.querySelector('.note-pane-content') : null;
-             
-             if (contentEl) {
-                 rect = contentEl.getBoundingClientRect();
-             } else {
-                 rect = container.getBoundingClientRect();
-             }
-             
-             const margin = 12; // Add margin
-
-             const overlay = document.createElement("div");
-             overlay.className = "split-drop-overlay";
-             overlay.dataset.side = 'split';
-             
-             requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('active')));
-             
-             overlay.style.position = "absolute";
-             overlay.style.top = (rect.top + margin) + "px";
-             overlay.style.left = (rect.left + margin) + "px";
-             overlay.style.width = (rect.width - (margin * 2)) + "px";
-             overlay.style.height = (rect.height - (margin * 2)) + "px";
-             
-             overlay.innerHTML = `
-                <div class="drop-message">
-                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                     <line x1="12" y1="3" x2="12" y2="21"></line>
-                   </svg>
-                   <span>Split View</span>
-                </div>
-             `;
-             document.body.appendChild(overlay);
-         }
-     }
-  }
 
   // View Options & Context Menu
   // ===================================
