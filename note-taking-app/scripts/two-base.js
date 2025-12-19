@@ -2648,11 +2648,8 @@
               // Make header generally rigid but allow width to adapt to pane
               header.style.flexShrink = "0"; 
               
-              // Sticky positioning to keep it "locked in its place" while scrolling
-              header.style.position = "sticky";
-              header.style.top = "0";
-              header.style.zIndex = "10";
               // header.style.background = "var(--bg)"; // Removed background per user request (User wants transparency/default)
+
               
               header.style.display = "flex"; // Ensure flex layout for our resizing logic
               header.style.justifyContent = "space-between"; // Separate title and actions

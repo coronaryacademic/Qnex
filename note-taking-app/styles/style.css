@@ -2394,12 +2394,13 @@ body.fullscreen .sidebar-resizer {
 }
 
 .editor {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 0;
+  display: block;
   padding: 0;
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 .editor-header {
   display: flex;
@@ -2434,8 +2435,8 @@ body.fullscreen .sidebar-resizer {
   opacity: 0.5;
 }
 
-/* Force body text to black across all themes as requested */
-.editor-block.block-p.body-text {
+/* Force all editor blocks and their content to black across all themes as requested */
+.editor-block, .editor-block * {
   color: #000000 !important;
 }
 
@@ -2649,14 +2650,13 @@ body.fullscreen .sidebar-resizer {
 }
 .editor .content.editable {
   width: 100%;
-  height: calc(100% - 40px);
+  height: auto;
+  min-height: calc(100% - 60px);
   padding: 20px;
-  overflow-x: auto;
-  overflow-y: auto;
-  padding-bottom: 20px;
+  padding-bottom: 40px;
   border: none;
   border-radius: 0;
-  color: var(--text);
+  color: #000000 !important;
   min-height: 0;
   user-select: text;
   -webkit-user-select: text;
@@ -2709,22 +2709,21 @@ body.fullscreen .sidebar-resizer {
   padding-left: 60px;
   padding-right: 60px;
 }
-.editor .content.editable::-webkit-scrollbar {
-  display: block;
-  width: 8px;
+.editor::-webkit-scrollbar {
+  display: none;
 }
 
-.editor .content.editable::-webkit-scrollbar-track {
+.editor::-webkit-scrollbar-track {
   background: var(--panel-2);
   border-radius: 4px;
 }
 
-.editor .content.editable::-webkit-scrollbar-thumb {
+.editor::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 4px;
 }
 
-.editor .content.editable::-webkit-scrollbar-thumb:hover {
+.editor::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
 .editor .content.editable:focus {
