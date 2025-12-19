@@ -1296,9 +1296,7 @@
     cursor: pointer;
 }
 
-.pane-close-btn:hover {
-    color: var(--text);
-}
+
 
 /* Dark mode hover adjustment */
 body.theme-dark .close-split-pane-btn:hover {

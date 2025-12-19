@@ -1740,10 +1740,7 @@ body.fullscreen .sidebar-resizer {
   transition: all 0.2s;
 }
 
-.icon-btn:hover {
-  background: var(--panel-hover);
-  color: var(--text);
-}
+
 
 .icon-btn svg {
   width: 18px;
@@ -1874,10 +1871,7 @@ body.fullscreen .sidebar-resizer {
   min-height: 32px;
 }
 
-.editor-menu-btn:hover {
-  background: var(--panel-hover);
-  color: black !important;
-}
+
 .editor-menu-list {
   display: none;
   position: absolute;
