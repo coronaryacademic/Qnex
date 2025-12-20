@@ -2780,13 +2780,39 @@
           }
         }
 
-        // Make sure the editor is visible and functional
+      // Make sure the editor is visible and functional
         setTimeout(() => {
           // Verify if we should focus this editor
           if (TwoBaseState.activeNote === noteId) {
              blockEditor.focus();
           }
         }, 100);
+
+        // SPLIT VIEW: Activate pane on interaction
+        editorNode.addEventListener("click", () => {
+             if (TwoBaseState.splitView && TwoBaseState.activeNote !== noteId) {
+                 console.log("👆 Split Pane Activated (Click):", noteId);
+                 TwoBaseState.activeNote = noteId;
+                 TwoBaseState.currentEditor = blockEditor;
+                 TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
+                 TwoBaseState.currentSaveFunction = saveFunction;
+                 renderNoteTabs();
+             }
+        });
+
+        const contentEditable = editorNode.querySelector(".content.editable");
+        if (contentEditable) {
+            contentEditable.addEventListener("focus", () => {
+                 if (TwoBaseState.splitView && TwoBaseState.activeNote !== noteId) {
+                     console.log("👆 Split Pane Activated (Focus):", noteId);
+                     TwoBaseState.activeNote = noteId;
+                     TwoBaseState.currentEditor = blockEditor;
+                     TwoBaseState.currentEditorElement = contentEditable;
+                     TwoBaseState.currentSaveFunction = saveFunction;
+                     renderNoteTabs();
+                 }
+            });
+        }
       }
     }
 
