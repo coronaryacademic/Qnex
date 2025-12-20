@@ -2951,13 +2951,10 @@ window.Storage = Storage;
     }
     
     // 4. Restore lock status
-    if (note.isLocked) {
-      content.setAttribute("contenteditable", "false");
-      content.style.opacity = "0.7";
-      content.style.pointerEvents = "none";
-      if (title) {
-        title.setAttribute("readonly", "true");
-        title.style.opacity = "0.7";
+    if (note.isReadOnly) {
+      if (content) {
+        content.contentEditable = "false";
+        content.classList.add("read-only");
       }
       
       // Add lock icon
@@ -2981,7 +2978,7 @@ window.Storage = Storage;
     }
 
     function syncDates() {
-      // Update title status
+      // Restore date display in header
       if (titleStatus) {
         titleStatus.textContent = note.updatedAt
           ? `${fmt(note.updatedAt)}`
@@ -3040,31 +3037,38 @@ window.Storage = Storage;
     let autoSaveTimer = null;
 
     function updateSaveStatus(saved = false) {
-      if (titleStatus) {
+      // Update global status (bottom right)
+      const globalStatus = document.getElementById("globalSaveStatus");
+      if (globalStatus) {
         if (saved) {
-          titleStatus.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
-            <span style="color: #4ade80 !important; font-weight: 500;">Saved</span>
+          globalStatus.innerHTML = `
+            <div class="status-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+            <span class="status-text" style="color: #4ade80;">Saved</span>
           `;
-          titleStatus.style.color = "#4ade80";
-          setTimeout(() => {
-            titleStatus.textContent = note.updatedAt
-              ? `${fmt(note.updatedAt)}`
-              : "";
-            titleStatus.style.color = "";
-          }, 2000);
+          globalStatus.className = "global-save-status show saved";
+          
+          // Clear any existing timeout on the element
+          if (globalStatus._hideTimeout) clearTimeout(globalStatus._hideTimeout);
+          globalStatus._hideTimeout = setTimeout(() => {
+            globalStatus.classList.remove("show");
+          }, 2500);
         } else {
-          titleStatus.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span style="color: #fb923c !important; font-weight: 500;">Unsaved</span>
+          globalStatus.innerHTML = `
+            <div class="status-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <span class="status-text" style="color: #fb923c;">Unsaved</span>
           `;
-          titleStatus.style.color = "#fb923c";
+          globalStatus.className = "global-save-status show unsaved";
+          if (globalStatus._hideTimeout) clearTimeout(globalStatus._hideTimeout);
         }
       }
     }

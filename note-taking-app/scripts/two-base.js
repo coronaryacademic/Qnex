@@ -101,6 +101,12 @@
     if (el.workspaceSplit) el.workspaceSplit.style.display = "flex";
     if (el.noteBase) el.noteBase.classList.add("hidden");
 
+    // Hide global save status when in workspace
+    const globalSaveStatus = document.getElementById("globalSaveStatus");
+    if (globalSaveStatus) {
+      globalSaveStatus.classList.remove("show");
+    }
+
     const emptyState = document.getElementById("empty-state");
     if (emptyState) emptyState.classList.add("hidden");
 
@@ -2670,17 +2676,6 @@
                titleInput.style.minWidth = "0";
                titleInput.style.flex = "1";
                titleInput.style.width = "100%";
-          }
-          
-          const titleStatus = editorNode.querySelector(".title-status");
-          if (titleStatus) {
-              // Ensure status doesn't prevent shrinking of title or pushing of actions
-              // We can hide it if it gets too small (via CSS) or just let it shrink/truncate
-              titleStatus.style.flexShrink = "2"; // Shrink faster than title
-              titleStatus.style.minWidth = "0";
-              titleStatus.style.overflow = "hidden";
-              titleStatus.style.textOverflow = "ellipsis";
-              titleStatus.style.whiteSpace = "nowrap";
           }
           
           if (actionsDiv) {

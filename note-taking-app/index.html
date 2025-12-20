@@ -121,6 +121,9 @@
         <span id="connectionStatusText">No internet connection</span>
       </div>
     </div>
+    
+    <!-- Global Save Status Indicator -->
+    <div id="globalSaveStatus" class="global-save-status"></div>
 
     <div id="app">
       <aside id="sidebar" class="sidebar">
@@ -1623,7 +1626,7 @@
             <input class="title" placeholder="Title" />
             <div class="header-tags"></div>
           </div>
-          <span class="title-status"></span>
+          <span class="title-status" style="margin-left: auto; margin-right: 12px; font-size: 11px; color: var(--muted); white-space: nowrap;"></span>
           <div class="actions">
             <div class="editor-menu">
               <button class="editor-menu-btn" title="More options">
