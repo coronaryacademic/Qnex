@@ -2510,6 +2510,25 @@ body.fullscreen .sidebar-resizer {
   background: var(--panel-hover) !important;
   color: var(--text);
 }
+
+/* Specific Header Buttons Hover Effect */
+.editor-header .actions .icon-btn,
+.editor-header .actions .pane-close-btn,
+.editor-header .actions .editor-menu-btn {
+  transition: background-color 0.2s;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: transparent !important; /* Force transparent default */
+  color: var(--muted) !important; /* Maintain icon color */
+  border: none;
+}
+
+.editor-header .actions .icon-btn:hover,
+.editor-header .actions .pane-close-btn:hover,
+.editor-header .actions .editor-menu-btn:hover {
+  background-color: rgba(128, 128, 128, 0.15) !important; /* Slight grayish */
+  color: var(--muted) !important; /* Don't change icon color */
+}
 .editor-header .actions .settings-dropdown {
   position: absolute;
   top: calc(100% + 4px);
