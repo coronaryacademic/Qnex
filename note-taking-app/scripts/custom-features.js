@@ -4,13 +4,89 @@
 let topbar, sidebar, footer;
 
 // Show loading spinner on startup
-window.addEventListener("load", () => {
+// Show loader and perform system check
+window.addEventListener("load", async () => {
   const loader = document.getElementById("appLoader");
-  if (loader) {
-    setTimeout(() => {
-      loader.classList.add("hidden");
-      console.log("✓ App loaded");
+  const retryBtn = document.getElementById("loaderRetryBtn");
+  const progressBar = document.getElementById("loaderProgress");
+  
+  if (loader && window.electronAPI && window.electronAPI.isElectron) {
+    let progress = 0;
+    const updateProgress = (val) => {
+      progress = Math.min(val, 90); // Cap at 90 until verified
+      if (progressBar) progressBar.style.width = `${progress}%`;
+    };
+
+    // Retry handler
+    if (retryBtn) {
+      retryBtn.addEventListener("click", () => window.location.reload());
+    }
+
+    // Server check loop
+    let attempts = 0;
+    const maxAttempts = 30; // 15 seconds
+    
+    updateProgress(30);
+    
+    const checkServer = async () => {
+      try {
+        // Only advance progress here if we are below 90%
+        if (progress < 90) updateProgress(progress + 2);
+        
+        const response = await fetch('http://localhost:3002/api/health');
+        if (response.ok) {
+          // Server is ready! 
+          // But wait for logs to finish typing
+          if (window.typingActive || (window.logQueueLength && window.logQueueLength > 0)) {
+            // Logs still active, hold at 95%
+             if (progressBar) progressBar.style.width = '95%';
+             return false; // Keep the loop running
+          }
+          
+          // Success & Logs Done!
+          if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.style.boxShadow = '0 0 20px #10b981';
+          }
+          
+          setTimeout(() => {
+            loader.classList.add("hidden");
+            console.log("✓ System boot complete");
+          }, 800);
+          return true;
+        }
+      } catch (e) {
+        // Failed
+      }
+      return false;
+    };
+
+    const interval = setInterval(async () => {
+      attempts++;
+      const success = await checkServer();
+      
+      if (success) {
+        clearInterval(interval);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        // Show failure
+        if (loaderTerminal) {
+          const errLine = document.createElement('div');
+          errLine.className = 'terminal-line error';
+          errLine.textContent = 'CRITICAL: FS Server unresponsive.';
+          loaderTerminal.appendChild(errLine);
+        }
+        if (progressBar) {
+            progressBar.classList.add('error');
+            progressBar.style.width = '100%';
+        }
+        if (retryBtn) retryBtn.style.display = 'block';
+      }
     }, 500);
+
+  } else if (loader) {
+    // Web version fallback
+    setTimeout(() => loader.classList.add("hidden"), 500);
   }
 });
 
@@ -1826,3 +1902,128 @@ window.addEventListener('DOMContentLoaded', initGlobalToolbarFeatures);
 
 // Expose to window for manual re-init if needed
 window.initGlobalToolbarFeatures = initGlobalToolbarFeatures;
+
+// Debug Log Initialization
+function initDebugLog() {
+  const debugLogModal = document.getElementById('debugLogModal');
+  const debugLogOutput = document.getElementById('debugLogOutput');
+  const openDebugBtn = document.getElementById('openDebugLogBtn');
+  const closeDebugBtn = document.getElementById('closeDebugLogBtn');
+  
+  // Typewriter State
+  const logQueue = [];
+  let isTyping = false;
+
+  function addLog(msg) {
+    if (debugLogOutput) {
+      const line = document.createElement('div');
+      line.textContent = msg;
+      line.style.borderBottom = '1px solid #333';
+      line.style.padding = '2px 0';
+      debugLogOutput.appendChild(line);
+      // Auto-scroll logic
+      setTimeout(() => {
+          debugLogOutput.scrollTop = debugLogOutput.scrollHeight;
+      }, 10);
+    }
+
+
+
+    // Modern Loader Logs with Typewriter Effect
+    const loaderTerminal = document.getElementById('loaderTerminal');
+    if (loaderTerminal) {
+      logQueue.push({ msg, terminal: loaderTerminal });
+      processLogQueue();
+    }
+  }
+
+  // Typewriter queue processor
+  function processLogQueue() {
+    if (isTyping || logQueue.length === 0) return;
+    
+    isTyping = true;
+    const { msg, terminal } = logQueue.shift();
+    
+    const line = document.createElement('div');
+    let className = 'terminal-line';
+    const text = msg.replace(/^\[.*?\] /, ''); // Remove timestamp
+    
+    if (text.includes('Error') || text.includes('Failed') || text.includes('CRITICAL')) className += ' error';
+    else if (text.includes('Success') || text.includes('Running') || text.includes('OK') || text.includes('Embedded server')) className += ' success';
+    else className += ' info';
+    
+    line.className = className;
+    
+    // Add cursor
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    line.appendChild(cursor);
+    
+    terminal.appendChild(line);
+    
+
+    terminal.scrollTop = terminal.scrollHeight;
+
+    let i = 0;
+    function type() {
+      if (i < text.length) {
+        line.insertBefore(document.createTextNode(text.charAt(i)), cursor);
+        i++;
+        // Typewriter speed: Fast (2-8ms)
+        setTimeout(type, Math.random() * 6 + 2); 
+      } else {
+        line.removeChild(cursor);
+        isTyping = false;
+        
+        // Update global flags for loader sync
+        window.typingActive = false;
+        window.logQueueLength = logQueue.length;
+        
+        setTimeout(processLogQueue, 50);
+      }
+    }
+    
+    // Update global flags
+    window.typingActive = true;
+    window.logQueueLength = logQueue.length;
+    
+    type();
+  }
+
+  // Listen for IPC logs
+  if (window.electronAPI) {
+    // Initial logs fetch
+    window.electronAPI.getStartupLogs().then(logs => {
+      if (logs && Array.isArray(logs)) {
+        logs.forEach(msg => addLog(msg));
+      }
+    });
+    
+    // Live logs listener
+    window.electronAPI.onStartupLog((msg) => addLog(msg));
+  } 
+
+  if (openDebugBtn) {
+    openDebugBtn.addEventListener('click', () => {
+      if (debugLogModal) debugLogModal.style.display = 'flex';
+      // Close settings menu if open
+      const settingsMenu = document.getElementById("settingsMenu");
+      if (settingsMenu) settingsMenu.classList.remove("open");
+    });
+  }
+
+  if (closeDebugBtn) {
+    closeDebugBtn.addEventListener('click', () => {
+      if (debugLogModal) debugLogModal.style.display = 'none';
+    });
+  }
+
+  if (debugLogModal) {
+    debugLogModal.addEventListener('click', (e) => {
+      if (e.target === debugLogModal) debugLogModal.style.display = 'none';
+    });
+  }
+}
+
+// Initialize on load
+document.addEventListener("DOMContentLoaded", initDebugLog);

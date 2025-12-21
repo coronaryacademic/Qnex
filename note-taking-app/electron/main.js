@@ -5,6 +5,18 @@ const cors = require('cors');
 const fs = require('fs-extra');
 const { v4: uuidv4 } = require('uuid');
 
+// Internal logging for "Debug Log" feature
+const startupLogs = [];
+function log(message) {
+  const timestamp = new Date().toISOString();
+  const logEntry = `[${timestamp}] ${message}`;
+  console.log(logEntry); // Keep console generic logging
+  startupLogs.push(logEntry);
+  if (mainWindow) {
+    mainWindow.webContents.send('startup-log', logEntry);
+  }
+}
+
 let mainWindow;
 let server;
 const SERVER_PORT = 3002; // Use different port to avoid conflicts
@@ -156,6 +168,27 @@ function createServer() {
       const { noteId } = req.params;
       const noteData = req.body;
       
+      // AUTO-FORMATTING FOR READABILITY
+      if (noteData.contentHtml && typeof noteData.contentHtml === 'string') {
+        // 1. Create a plain text version with newlines (stripping HTML tags)
+        // This makes it easy to read/copy the raw text from the JSON file
+        const plainText = noteData.contentHtml
+          .replace(/<\/p>/g, '\n') // Newline after paragraphs
+          .replace(/<br\s*\/?>/g, '\n') // Newline for br tags
+          .replace(/<[^>]*>/g, '') // Remove all other tags
+          .replace(/&nbsp;/g, ' ') // Fix spaces
+          .trim();
+          
+        noteData.contentPlain = plainText; 
+
+        // 2. Create an array version of HTML for structure readability
+        // This splits the long HTML string into an array of lines
+        noteData.contentHtmlArray = noteData.contentHtml
+          .replace(/>\s*</g, '>\n<') // Add newlines between tags
+          .split('\n')
+          .filter(line => line.trim().length > 0);
+      }
+      
       const notesDir = path.join(NOTES_BASE_DIR, 'notes');
       const filePath = path.join(notesDir, `${noteId}.json`);
       
@@ -167,6 +200,7 @@ function createServer() {
       res.status(500).json({ error: 'Failed to save note' });
     }
   });
+
 
   expressApp.delete('/api/notes/:noteId', async (req, res) => {
     try {
@@ -382,11 +416,12 @@ function createServer() {
 
 // Start the embedded server
 function startServer() {
+  log('Initializing embedded server...');
   const expressApp = createServer();
   
   server = expressApp.listen(SERVER_PORT, () => {
-    console.log(`Embedded server running on http://localhost:${SERVER_PORT}`);
-    console.log(`Base directory: ${NOTES_BASE_DIR}`);
+    log(`Embedded server running on http://localhost:${SERVER_PORT}`);
+    log(`Base directory: ${NOTES_BASE_DIR}`);
   });
 }
 
@@ -394,18 +429,27 @@ function startServer() {
 function stopServer() {
   if (server) {
     server.close();
-    console.log('Embedded server stopped');
+    log('Embedded server stopped');
   }
 }
 
 function createWindow() {
+  log('Welcome Back Momen');
+  log('Starting embedded server and app...');
+
   // Start the embedded server first
   startServer();
+
+  log(`Your notes will be saved to: ${NOTES_BASE_DIR}`);
+  log('Checking dependencies... OK');
+  log('Launching Electron app...');
   
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    show: true, // Show immediately to see startup logs
+    backgroundColor: '#121212', // Dark background to avoid white flash
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -415,8 +459,7 @@ function createWindow() {
       experimentalFeatures: true,
       preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, 'icon.png'), // Add an icon if you have one
-    show: false // Don't show until ready
+    icon: path.join(__dirname, 'icon.png') // Add an icon if you have one
   });
 
   // Load the app
@@ -462,4 +505,8 @@ ipcMain.handle('shell:openPath', async (event, path) => {
 
 ipcMain.handle('app:getVersion', () => {
   return app.getVersion();
+});
+
+ipcMain.handle('app:getStartupLogs', () => {
+  return startupLogs;
 });
