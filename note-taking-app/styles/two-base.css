@@ -286,7 +286,7 @@
 }
 
 .note-tab {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.8rem;
   border-radius: 3px 3px 0 0;
   cursor: default;
   white-space: nowrap;
@@ -316,7 +316,7 @@
   transform: translateY(-50%);
   width: 1px;
   height: 60%;
-  background: var(--border);
+  background: #494949;
   border-radius: 1px;
 }
 
@@ -349,10 +349,10 @@
 
 .note-tab-close {
   position: absolute;
-  right: 0.5rem;
+  right: 0.3rem;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 0;
+  opacity: 1;
   padding: 0.25rem;
   border-radius: 4px;
   transition: all 0.2s;
@@ -361,24 +361,44 @@
   justify-content: center;
   flex-shrink: 0;
   cursor: pointer;
+  color: var(--muted);
 }
 
-.note-tab:hover .note-tab-close {
+.note-tab-menu-btn {
+  position: absolute;
+  left: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--muted);
   opacity: 1;
+  z-index: 2;
+}
+
+.note-tab-menu-btn:hover {
+  background: var(--panel-hover); /* Use panel-hover variable for consistency */
+  color: var(--text);
 }
 
 .note-tab-close:hover {
-  background: var(--hover);
+  background: var(--panel-hover);
   color: var(--danger);
 }
 
 /* Unpin button for pinned tabs */
 .note-tab-unpin {
   position: absolute;
-  right: 0.5rem;
+  right: 0.3rem;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 0;
+  opacity: 1;
   padding: 0.25rem;
   border-radius: 4px;
   transition: all 0.2s;
@@ -389,6 +409,7 @@
   cursor: pointer;
   color: var(--muted);
   pointer-events: auto; /* Allow this button to receive clicks */
+  z-index: 2;
 }
 
 .note-tab:hover .note-tab-unpin {
@@ -396,7 +417,7 @@
 }
 
 .note-tab-unpin:hover {
-  background: var(--hover);
+  background: var(--panel-hover);
 }
 
 /* Drag and drop states */
@@ -1007,10 +1028,10 @@
 
 /* Compact Pinned Tabs */
 .note-tab.pinned.compact {
-  max-width: 120px !important; /* Allow some width for title */
-  min-width: 60px !important;
-  padding: 0.5rem 8px !important;
-  justify-content: flex-start; /* Align left to show start of title */
+  max-width: 150px !important; /* Allow some width for title */
+  min-width: 90px !important;
+  padding: 0.5rem 1.8rem !important;
+  justify-content: center; /* Center content */
 }
 
 .note-tab.pinned.compact .note-tab-title {
@@ -1018,7 +1039,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 4px; /* Space for unpin icon */
+  margin-right: 0px; /* Space handled by padding */
+  text-align: center;
 }
 
 .note-tab.pinned.compact .note-tab-unpin {

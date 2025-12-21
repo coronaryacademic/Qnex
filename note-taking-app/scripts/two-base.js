@@ -1828,6 +1828,11 @@
       // Pinned tabs show unpin button, regular tabs show close button
       if (isPinned) {
         tab.innerHTML = `
+          <span class="note-tab-menu-btn" title="Tab options">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
           <span class="note-tab-title">${escapeHtml(
             note.title || "Untitled"
           )}</span>
@@ -1841,6 +1846,16 @@
             </svg>
           </span>
         `;
+        
+        // Menu button handler
+        const menuBtn = tab.querySelector('.note-tab-menu-btn');
+        if (menuBtn) {
+          menuBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+          menuBtn.addEventListener('click', (e) => {
+             e.stopPropagation();
+             showTabContextMenu(e, noteId, true);
+          });
+        }
         
         // Make the unpin button not interfere with dragging
         const unpinBtn = tab.querySelector('.note-tab-unpin');
@@ -1862,11 +1877,26 @@
         }
       } else {
         tab.innerHTML = `
+          <span class="note-tab-menu-btn" title="Tab options">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
           <span class="note-tab-title">${escapeHtml(
             note.title || "Untitled"
           )}</span>
           <span class="note-tab-close">×</span>
         `;
+        
+        // Menu button handler
+        const menuBtn = tab.querySelector('.note-tab-menu-btn');
+        if (menuBtn) {
+          menuBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+          menuBtn.addEventListener('click', (e) => {
+             e.stopPropagation();
+             showTabContextMenu(e, noteId, true);
+          });
+        }
         
         // Close button handler
         const closeBtn = tab.querySelector('.note-tab-close');
@@ -1884,7 +1914,7 @@
       // Click handler for tab body (not buttons)
       tab.addEventListener("click", (e) => {
         // Only switch tab if not clicking on buttons
-        if (!e.target.closest(".note-tab-unpin") && !e.target.closest(".note-tab-close")) {
+        if (!e.target.closest(".note-tab-unpin") && !e.target.closest(".note-tab-close") && !e.target.closest(".note-tab-menu-btn")) {
           switchActiveNote(noteId);
         }
       });
@@ -2080,13 +2110,19 @@
     saveTwoBaseSession();
   }
 
-  function showTabContextMenu(event, noteId) {
+  function showTabContextMenu(event, noteId, isToggle = false) {
     // Remove any existing context menu
     const existingMenu = document.querySelector(".tab-context-menu");
+    const sameMenu = existingMenu && existingMenu.dataset.noteId === noteId;
+    
     if (existingMenu) existingMenu.remove();
+    
+    // If we're toggling and we just closed the menu for this tab, stop here
+    if (isToggle && sameMenu) return;
 
     // Create context menu
     const menu = document.createElement("div");
+    menu.dataset.noteId = noteId;
     menu.className = "tab-context-menu";
     menu.style.position = "fixed";
     menu.style.left = event.clientX + "px";
