@@ -22,8 +22,9 @@
                   leftPaneNote: TwoBaseState.leftPaneNote,
                   rightPaneNote: TwoBaseState.rightPaneNote,
                   activeNote: TwoBaseState.activeNote,
-                  openNotes: TwoBaseState.openNotes
-                  // Add other state if needed
+                  openNotes: TwoBaseState.openNotes,
+                  // Save the split ratio if split view is active
+                  splitPercentage: TwoBaseState.splitView && el.notePaneLeft ? el.notePaneLeft.style.flexBasis || el.notePaneLeft.style.flex : null
               };
               
               // 2. Merge
@@ -80,6 +81,17 @@
                    }
                    if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
                    
+                   // Restore split percentage if available
+                   if (savedState.splitPercentage && el.notePaneLeft) {
+                       // Handle both "flex" and "flex-basis" style strings, or simple percentage
+                       let pct = savedState.splitPercentage;
+                       // Clean up if it contains "0 0 " (flex shorthand)
+                       if (pct.includes("0 0 ")) {
+                           pct = pct.replace("0 0 ", "");
+                       }
+                       el.notePaneLeft.style.flex = `0 0 ${pct}`;
+                   }
+
                    // Set Active
                    TwoBaseState.activeNote = savedState.activeNote || left;
                    

@@ -2294,10 +2294,17 @@
 
         // Now load the main app
         await import("./scripts/app.js");
+        
+        // Wait for app to finish loading notes then restore session
+        // app.js is async, but we can't await its internal IIFE easily.
+        // Instead, we will augment app.js to trigger a custom event or we can rely on 
+        // app.js having a global 'window.appReady' promise if we made one?
+        // Or better yet, just modify app.js to call restoreTwoBaseSession().
       })();
     </script>
     <script src="scripts/markdown.js"></script>
     <script src="scripts/two-base.js"></script>
+    <script src="scripts/two-base-persistence.js"></script>
     <script src="scripts/custom-features.js"></script>
     <script src="scripts/note-font-handler.js"></script>
     

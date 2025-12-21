@@ -800,8 +800,25 @@ window.Storage = Storage;
               if (!file) return;
 
               try {
-                const text = await file.text();
-                let data = JSON.parse(text);
+            // Read text and strip BOM if present
+            let text = await file.text();
+            if (text.charCodeAt(0) === 0xFEFF) {
+                text = text.slice(1);
+            }
+            
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                 console.warn("Standard JSON parse failed, trying to clean input", e);
+                 try {
+                     text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+                     data = JSON.parse(text);
+                 } catch (e2) {
+                     alert("Invalid JSON format. Please check the file.");
+                     return;
+                 }
+            }
 
                 // Handle plain array format (from "Export All Notes")
                 if (Array.isArray(data)) {
@@ -917,8 +934,61 @@ window.Storage = Storage;
                       data.notes.length !== 1 ? "s" : ""
                     } into "${folderName}" folder`
                   );
+                } else if (Array.isArray(data)) {
+                  // Top-level array of notes
+                  const folderName = `Imported - ${new Date().toLocaleString()}`;
+                  let importFolder = state.folders.find(f => f.name === folderName);
+                  if (!importFolder) {
+                    importFolder = { id: uid(), name: folderName, parentId: null, createdAt: new Date().toISOString() };
+                    state.folders.push(importFolder);
+                  }
+
+                  let count = 0;
+                  data.forEach(n => {
+                    // Quick validation that it looks like a note
+                    if (n.title || n.content || n.contentHtml) {
+                       state.notes.push({
+                         id: uid(),
+                         title: n.title || "Untitled Import",
+                         contentHtml: n.contentHtml || n.content || "",
+                         tags: n.tags || [],
+                         folderId: importFolder.id,
+                         createdAt: n.createdAt || new Date().toISOString(),
+                         updatedAt: n.updatedAt || new Date().toISOString()
+                       });
+                       count++;
+                    }
+                  });
+
+                  await saveNotes();
+                  await saveFolders();
+                  renderSidebar();
+                  alert(`✓ Imported ${count} notes from array`);
+
+                } else if (data.contentHtml !== undefined || data.content !== undefined || data.title) {
+                  // Implicit single note import (missing type="note", title optional)
+                  const newNote = {
+                    ...data, 
+                    id: uid(),
+                    title: data.title || "Untitled Import",
+                    folderId: null, // Uncategorized
+                  };
+                  // Ensure critical fields exist
+                  if (!newNote.createdAt) newNote.createdAt = new Date().toISOString();
+                  if (!newNote.updatedAt) newNote.updatedAt = new Date().toISOString();
+                  if (!newNote.contentHtml) newNote.contentHtml = data.content || "";
+                  
+                  state.notes.push(newNote);
+                  await saveNotes();
+                  renderSidebar();
+
+                  console.log(
+                    `Imported note "${newNote.title}" to uncategorized (implicit type)`
+                  );
+                  alert(`✓ Imported note "${newNote.title}"`);
                 } else {
-                  alert("Unknown import format");
+                  console.warn("Unknown import object:", data);
+                  alert("Unknown import format. Please ensure the JSON file is a valid note export.\n\nDebug: Object keys: " + Object.keys(data).join(", "));
                 }
               } catch (error) {
                 console.error("Error importing:", error);
@@ -1357,8 +1427,28 @@ window.Storage = Storage;
             if (!file) return;
 
             try {
-              const text = await file.text();
-              let data = JSON.parse(text);
+              // Read text and strip BOM if present
+              let text = await file.text();
+              if (text.charCodeAt(0) === 0xFEFF) {
+                text = text.slice(1);
+              }
+              
+              let data;
+              try {
+                  data = JSON.parse(text);
+              } catch (e) {
+                  // If standard parse fails, try to clean up the JSON
+                  console.warn("Standard JSON parse failed, trying to clean input", e);
+                  try {
+                      // Remove non-printable characters
+                      text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+                      data = JSON.parse(text);
+                  } catch (e2) {
+                     alert("Invalid JSON format. Please ensure the file is a valid JSON export.");
+                     console.error("JSON Parse Error:", e2);
+                     return;
+                  }
+              }
 
               // Handle plain array format (from "Export All Notes")
               if (Array.isArray(data)) {
@@ -1448,22 +1538,69 @@ window.Storage = Storage;
                   `Imported plain note "${newNote.title}" to "${folder.name}"`
                 );
               } else if (data.notes && Array.isArray(data.notes)) {
-                // Import multiple notes (from multi-select export)
+                // Import multiple notes (from multi-select export or Array wrapper)
+                let count = 0;
                 data.notes.forEach((n) => {
-                  const now = new Date().toISOString();
-                  state.notes.unshift({
-                    id: uid(),
-                    title: n.title || "Imported",
-                    contentHtml: n.contentHtml || n.content || "",
-                    tags: n.tags || [],
-                    folderId: fid,
-                    images: n.images || [],
-                    history: n.history || [],
-                    historyIndex: n.historyIndex || -1,
-                    createdAt: n.createdAt || now,
-                    updatedAt: n.updatedAt || now,
-                  });
+                  if (n.title || n.content || n.contentHtml) {
+                    const now = new Date().toISOString();
+                    state.notes.unshift({
+                      id: uid(),
+                      title: n.title || "Imported Note",
+                      contentHtml: n.contentHtml || n.content || "",
+                      tags: n.tags || [],
+                      folderId: fid,
+                      images: n.images || [],
+                      history: n.history || [],
+                      historyIndex: n.historyIndex || -1,
+                      createdAt: n.createdAt || now,
+                      updatedAt: n.updatedAt || now,
+                    });
+                    count++;
+                  }
                 });
+                
+                await saveNotes();
+                await saveFolders();
+                renderSidebar();
+                alert(`✓ Imported ${count} notes into "${folder.name}"`);
+
+              } else if (Array.isArray(data)) {
+                 // Should have been handled by earlier Array check wrapper but safe fallback
+                 let count = 0;
+                 data.forEach(n => {
+                   if (n.title || n.content || n.contentHtml) {
+                     state.notes.push({
+                        id: uid(),
+                        title: n.title || "Imported Note",
+                        contentHtml: n.contentHtml || n.content || "",
+                        tags: n.tags || [],
+                        folderId: fid,
+                        createdAt: n.createdAt || new Date().toISOString(),
+                        updatedAt: n.updatedAt || new Date().toISOString()
+                     });
+                     count++;
+                   }
+                 });
+                 await saveNotes();
+                 renderSidebar();
+                 alert(`✓ Imported ${count} notes from array`);
+              
+              } else if (data.contentHtml !== undefined || data.content !== undefined || data.title) {
+                 // Implicit single note (no type field, title optional)
+                 const newNote = {
+                    ...data, 
+                    id: uid(),
+                    title: data.title || "Untitled Import",
+                    folderId: fid, 
+                  };
+                  if (!newNote.createdAt) newNote.createdAt = new Date().toISOString();
+                  if (!newNote.updatedAt) newNote.updatedAt = new Date().toISOString();
+                  if (!newNote.contentHtml) newNote.contentHtml = data.content || "";
+                  
+                  state.notes.push(newNote);
+                  await saveNotes();
+                  renderSidebar();
+                  alert(`✓ Imported note "${newNote.title}" to "${folder.name}"`);
 
                 await saveNotes();
                 renderSidebar();
@@ -7861,4 +7998,12 @@ window.Storage = Storage;
 
     Storage.saveSettings(state.settings);
   });
+  
+  // Final Initialization Step: Restore Split View Session
+  // We do this here because we are sure notes are loaded.
+  if (typeof window.restoreTwoBaseSession === "function") {
+      console.log("[APP] Notes loaded. Restoring TwoBase Session...");
+      setTimeout(() => window.restoreTwoBaseSession(), 100); 
+  }
+
 })();

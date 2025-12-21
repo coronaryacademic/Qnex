@@ -1722,6 +1722,15 @@
     if (existingIndex !== -1) {
       // Just activate the existing tab
       switchActiveNote(noteId);
+      
+      // If in split view, ensure this note becomes visible (e.g. on the left)
+      if (TwoBaseState.splitView) {
+          if (TwoBaseState.rightPaneNote !== noteId && TwoBaseState.leftPaneNote !== noteId) {
+              TwoBaseState.leftPaneNote = noteId;
+              renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+              saveTwoBaseSession();
+          }
+      }
       return;
     }
 
@@ -1731,7 +1740,18 @@
 
     // Render tabs and editor
     renderNoteTabs();
-    renderNoteEditor(noteId);
+    
+    if (TwoBaseState.splitView) {
+        // If split view is active, update the Left pane to be the new note (standard behavior)
+        TwoBaseState.leftPaneNote = noteId;
+        renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+        // Right pane remains as is
+        if (TwoBaseState.rightPaneNote) {
+            renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+        }
+    } else {
+        renderNoteEditor(noteId);
+    }
 
     // Save session state
     saveTwoBaseSession();
@@ -2226,6 +2246,12 @@
       currentFolder: TwoBaseState.currentFolder,
       toolbarPosition: TwoBaseState.toolbarPosition,
       toolbarAlignment: TwoBaseState.toolbarAlignment,
+      
+      // Split View State
+      splitView: TwoBaseState.splitView,
+      leftPaneNote: TwoBaseState.leftPaneNote,
+      rightPaneNote: TwoBaseState.rightPaneNote,
+      splitPercentage: TwoBaseState.splitView && el.notePaneLeft ? el.notePaneLeft.style.flexBasis || el.notePaneLeft.style.flex : null
     };
 
     console.log("💾 Saving TwoBase Session:", sessionState);
@@ -2302,8 +2328,63 @@
       // Show note editor
       switchToNoteBase();
       renderNoteTabs();
-      if (TwoBaseState.activeNote) {
-        renderNoteEditor(TwoBaseState.activeNote);
+      
+      // Restore Split View State
+      if (savedSession.splitView && savedSession.leftPaneNote && savedSession.rightPaneNote) {
+          
+          // Safety: Check if notes actually exist in state.notes
+          const leftExists = state.notes.some(n => n.id === savedSession.leftPaneNote);
+          const rightExists = state.notes.some(n => n.id === savedSession.rightPaneNote);
+
+          if (!leftExists || !rightExists) {
+             console.warn("[TWO-BASE] Cannot restore split view: One or more notes not found in state.");
+             // If notes aren't loaded yet, we should wait.
+             // But if this is called after load, then they truly don't exist.
+             // We'll fall back to single view for the one that exists, or home.
+             if (leftExists) {
+                 renderNoteEditor(savedSession.leftPaneNote);
+             } else if (rightExists) {
+                 renderNoteEditor(savedSession.rightPaneNote);
+             }
+             return; 
+          }
+
+          console.log("[TWO-BASE] Restoring split view");
+          TwoBaseState.splitView = true;
+          TwoBaseState.leftPaneNote = savedSession.leftPaneNote;
+          TwoBaseState.rightPaneNote = savedSession.rightPaneNote;
+          
+          // Update UI for split view
+          if (el.notePaneRight) {
+              el.notePaneRight.classList.remove("hidden");
+              el.notePaneRight.style.display = "flex";
+          }
+          if (el.noteResizer) {
+              el.noteResizer.classList.remove("hidden");
+              el.noteResizer.style.display = "block";
+          }
+          if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
+          
+          // Apply split percentage
+          if (savedSession.splitPercentage && el.notePaneLeft) {
+               let pct = savedSession.splitPercentage;
+               if (pct.includes("0 0 ")) pct = pct.replace("0 0 ", "");
+               el.notePaneLeft.style.flex = `0 0 ${pct}`;
+          }
+          
+          // Render both panes
+          renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+          renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+          
+          // Ensure resizer is active
+          setupResizer();
+          
+      } else {
+          // Single View
+          TwoBaseState.splitView = false;
+          if (TwoBaseState.activeNote) {
+             renderNoteEditor(TwoBaseState.activeNote);
+          }
       }
     } else {
       // Show workspace
@@ -2702,18 +2783,27 @@
               `;
               swapBtn.onclick = (e) => {
                   e.stopPropagation();
-                  const temp = TwoBaseState.leftPaneNote;
-                  TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
-                  TwoBaseState.rightPaneNote = temp;
-                  
-                  if (el.notePaneLeft) renderNoteEditor(TwoBaseState.leftPaneNote, "left");
-                  if (el.notePaneRight) renderNoteEditor(TwoBaseState.rightPaneNote, "right");
-              };
+                  // Swap panes
+                const temp = TwoBaseState.leftPaneNote;
+                TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
+                TwoBaseState.rightPaneNote = temp;
+                
+                // If active note was one of them, update it to follow the swap if desired, 
+                // OR just ensure activeNote points to the one in the "left" (main) position?
+                // Actually, users usually expect the "active" note to be the one they clicked last.
+                // But for persistence simplicity, let's just save.
+                
+                // Re-render
+                if (el.notePaneLeft) renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+                if (el.notePaneRight) renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+                
+                // Save state immediately
+                saveTwoBaseSession();
+            };
               
               // Close Button
               const closeBtn = document.createElement("button");
               closeBtn.className = "icon-btn pane-close-btn";
-              closeBtn.title = "Close this pane";
               closeBtn.style.padding = "4px";
               closeBtn.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3518,8 +3608,11 @@
         isResizing = false;
         document.body.style.cursor = "";
         el.noteResizer.classList.remove("resizing");
-      }
-    });
+        
+        // Save the new split state
+      saveTwoBaseSession();
+    }
+  });
   }
 
   function setupSplitButton() {
