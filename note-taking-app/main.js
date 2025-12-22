@@ -1,11 +1,13 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, shell } = require("electron");
 const path = require("path");
 const fs = require("fs").promises;
 const http = require("http");
 const handler = require("serve-handler");
 
-// Track main window
+// Track main window and tray
 let mainWindow = null;
+let tray = null;
+let currentSettings = {};
 
 // Define data directory on D: drive
 const dataDir = path.join("D:", "MyNotes");
@@ -14,6 +16,7 @@ const dataDir = path.join("D:", "MyNotes");
 async function ensureDataDir() {
   try {
     await fs.mkdir(dataDir, { recursive: true });
+    await fs.mkdir(path.join(dataDir, 'notes'), { recursive: true });
   } catch (err) {
     console.error("Failed to create data directory:", err);
   }
@@ -21,7 +24,7 @@ async function ensureDataDir() {
 
 // File paths
 const FILES = {
-  notes: path.join(dataDir, "notes.json"),
+  // notes: path.join(dataDir, "notes.json"), // Deprecated
   folders: path.join(dataDir, "folders.json"),
   settings: path.join(dataDir, "settings.json"),
   trash: path.join(dataDir, "trash.json"),
@@ -50,6 +53,53 @@ async function writeFile(filePath, data) {
     console.error("[ERROR] Write error:", err);
     return { success: false, error: err.message };
   }
+}
+
+function createTray() {
+  if (tray) return;
+
+  const iconPath = path.join(__dirname, "icon.png");
+  tray = new Tray(iconPath);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { 
+      label: 'Open My Notes', 
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      } 
+    },
+    { type: 'separator' },
+    { 
+      label: 'Quit', 
+      click: () => {
+        if (mainWindow) {
+          // Force quit
+          mainWindow.destroy();
+        }
+        if (server) {
+          server.close();
+        }
+        app.quit();
+      } 
+    }
+  ]);
+  
+  tray.setToolTip('My Notes');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.hide();
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    }
+  });
 }
 
 // Create main window
@@ -93,11 +143,26 @@ function createWindow() {
   });
 
   // Intercept window close
-  win.on('close', (e) => {
+  win.on('close', async (e) => {
     // Always prevent default close
     e.preventDefault();
-    // Ask renderer to show confirmation
-    win.webContents.send('app-close-requested');
+
+    // Check settings for minimize to tray preference
+    // Always read fresh settings from file to ensure we rely on latest state
+    const settings = await readFile(FILES.settings, {});
+
+    if (settings.minimizeToTray) {
+      // Minimize/Hide to tray
+      win.hide();
+      
+      // Ensure tray exists
+      if (!tray) {
+        createTray();
+      }
+    } else {
+      // Ask renderer to show confirmation for full quit
+      win.webContents.send('app-close-requested');
+    }
   });
 
   // Load via localhost for Firebase auth
@@ -111,17 +176,78 @@ function createWindow() {
   return win;
 }
 
+// Import gray-matter
+const matter = require('gray-matter');
+
 // IPC Handlers for file operations
 ipcMain.handle("read-notes", async () => {
-  return await readFile(FILES.notes, []);
+  const notesDir = path.join(dataDir, 'notes');
+  try {
+    const files = await fs.readdir(notesDir);
+    const notes = [];
+    for (const file of files) {
+      if (file.endsWith('.md')) {
+        try {
+          const content = await fs.readFile(path.join(notesDir, file), 'utf8');
+          const parsed = matter(content);
+          notes.push({
+            ...parsed.data,
+            contentHtml: parsed.content, // Map content back to contentHtml
+            id: parsed.data.id || path.basename(file, '.md')
+          });
+        } catch (e) {
+          console.error(`Error parsing note ${file}:`, e);
+        }
+      }
+    }
+    return notes;
+  } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    console.error("Error reading notes directory:", err);
+    return [];
+  }
 });
 
 ipcMain.handle("write-notes", async (event, data) => {
-  const result = await writeFile(FILES.notes, data);
-  if (result.success) {
-    console.log(`[INFO] ${data.length} note(s) in database`);
+  const notesDir = path.join(dataDir, 'notes');
+  try {
+    await fs.mkdir(notesDir, { recursive: true });
+    
+    // 1. Get existing files to identify deletions
+    let existingFiles = [];
+    try {
+      existingFiles = await fs.readdir(notesDir);
+    } catch (e) {}
+    
+    const existingIds = existingFiles
+        .filter(f => f.endsWith('.md'))
+        .map(f => path.basename(f, '.md'));
+        
+    const newIds = data.map(n => n.id);
+    
+    // 2. Delete removed notes
+    const toDelete = existingIds.filter(id => !newIds.includes(id));
+    for (const id of toDelete) {
+        await fs.unlink(path.join(notesDir, `${id}.md`)).catch(console.error);
+    }
+
+    // 3. Write/Update notes
+    for (const note of data) {
+      const filePath = path.join(notesDir, `${note.id}.md`);
+      // extract content to be body
+      const { contentHtml, content, ...meta } = note;
+      const body = contentHtml || content || '';
+      
+      const fileContent = matter.stringify(body, meta);
+      await fs.writeFile(filePath, fileContent, 'utf8');
+    }
+
+    console.log(`[INFO] ${data.length} notes synced to Markdown files`);
+    return { success: true };
+  } catch (err) {
+    console.error("[ERROR] Write notes error:", err);
+    return { success: false, error: err.message };
   }
-  return result;
 });
 
 ipcMain.handle("read-folders", async () => {
@@ -137,14 +263,19 @@ ipcMain.handle("write-folders", async (event, data) => {
 });
 
 ipcMain.handle("read-settings", async () => {
-  return await readFile(FILES.settings, {});
+  const settings = await readFile(FILES.settings, {});
+  currentSettings = settings; // Cache settings on read
+  return settings;
 });
 
 ipcMain.handle("write-settings", async (event, data) => {
   console.log("[SAVE] Writing settings to:", FILES.settings);
   const result = await writeFile(FILES.settings, data);
-  if (result.success && data.todos) {
-    console.log(`[SAVE] ${data.todos.length} todo(s) saved`);
+  if (result.success) {
+    currentSettings = data; // Update cache
+    if (data.todos) {
+      console.log(`[SAVE] ${data.todos.length} todo(s) saved`);
+    }
   }
   return result;
 });
@@ -161,13 +292,16 @@ ipcMain.handle("get-data-dir", async () => {
   return dataDir;
 });
 
+ipcMain.handle("open-data-directory", async () => {
+  await shell.openPath(dataDir);
+  return true;
+});
+
 // Handle close confirmation from renderer
 ipcMain.on('app-close-confirmed', () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    // Remove the close listener to allow actual close
-    mainWindow.removeAllListeners('close');
-    // Now close the window
-    mainWindow.close();
+    // Force close regardless of settings for "Close App" button
+    mainWindow.destroy();
     mainWindow = null;
     
     // Close server and quit app
@@ -200,11 +334,15 @@ app.whenReady().then(async () => {
   console.log("\n");
 
   await ensureDataDir();
+  // Load settings immediately to have them ready
+  currentSettings = await readFile(FILES.settings, {});
+  
   await startLocalServer();
   console.log("[OK] Ready! Starting application...");
   console.log("Notes saved to:", dataDir);
   console.log("");
   mainWindow = createWindow();
+  createTray(); // Initialize tray
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -214,6 +352,9 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  // Don't quit automatically - wait for user confirmation
-  // Server will be closed when app actually quits
+  // If minimizing to tray is enabled, we don't quit here usually
+  // But since we intercept close event, this might not even be reached unless we destroy window
+  if (process.platform !== 'darwin' && (!currentSettings || !currentSettings.minimizeToTray)) {
+    // app.quit(); // We rely on explicit quit
+  }
 });

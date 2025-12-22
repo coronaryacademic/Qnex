@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "electron-store": "^8.1.0",
+    "gray-matter": "^4.0.3",
     "serve-handler": "^6.1.6"
   },
   "devDependencies": {

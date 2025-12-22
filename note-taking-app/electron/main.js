@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs-extra');
 const { v4: uuidv4 } = require('uuid');
+const matter = require('gray-matter');
 
 // Internal logging for "Debug Log" feature
 const startupLogs = [];
@@ -50,6 +51,128 @@ function createServer() {
     return path.join(basePath, safeName);
   }
 
+  // Helper to parse MD note
+  async function readMdNote(filePath) {
+    try {
+      const fileContent = await fs.readFile(filePath, 'utf8');
+      const parsed = matter(fileContent);
+      
+      return {
+        ...parsed.data,
+        contentHtml: parsed.content, // Plain text content from MD body
+        id: parsed.data.id || path.basename(filePath, '.md') 
+      };
+    } catch (error) {
+      console.error(`Error parsing MD file ${filePath}:`, error);
+      return null;
+    }
+  }
+
+  // Helper to sanitize filename
+  function sanitizeFilename(title) {
+    if (!title || title.trim() === '') return 'Untitled';
+    return title
+      .replace(/[<>:"/\\|?*]/g, '') // Remove invalid chars
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .substring(0, 100); // Limit length
+  }
+
+  // Helper to convert HTML to Markdown
+  function htmlToMarkdown(html) {
+    if (!html) return '';
+    
+    let md = html;
+    
+    // Convert headings (h1-h6)
+    md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
+    md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
+    md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
+    md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
+    md = md.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n');
+    md = md.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n');
+    
+    // Convert bold
+    md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+    md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+    
+    // Convert italic
+    md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+    md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+    
+    // Convert code
+    md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+    
+    // Convert links
+    md = md.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+    
+    // Convert ordered lists (BEFORE unordered to avoid conflicts)
+    md = md.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
+      let counter = 1;
+      const listItems = content.replace(/<li[^>]*>(.*?)<\/li>/gi, (m, item) => {
+        return `${counter++}. ${item.trim()}\n`;
+      });
+      return '\n' + listItems + '\n';
+    });
+    
+    // Convert unordered lists
+    md = md.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
+      const listItems = content.replace(/<li[^>]*>(.*?)<\/li>/gi, (m, item) => {
+        return `- ${item.trim()}\n`;
+      });
+      return '\n' + listItems + '\n';
+    });
+    
+    // Convert blockquotes
+    md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, (match, content) => {
+      return content.split('\n').map(line => '> ' + line).join('\n') + '\n\n';
+    });
+    
+    // Convert line breaks
+    md = md.replace(/<br\s*\/?>/gi, '\n');
+    
+    // Convert paragraphs
+    md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
+    
+    // Convert horizontal rules
+    md = md.replace(/<hr\s*\/?>/gi, '\n---\n\n');
+    
+    // Remove remaining HTML tags
+    md = md.replace(/<[^>]+>/g, '');
+    
+    // Decode HTML entities
+    md = md.replace(/&nbsp;/g, ' ');
+    md = md.replace(/&lt;/g, '<');
+    md = md.replace(/&gt;/g, '>');
+    md = md.replace(/&amp;/g, '&');
+    md = md.replace(/&quot;/g, '"');
+    md = md.replace(/&#39;/g, "'");
+    
+    // Clean up extra whitespace
+    md = md.replace(/\n{3,}/g, '\n\n'); // Max 2 newlines
+    md = md.trim();
+    
+    return md;
+  }
+
+  // Helper to get unique file path (adds _2, _3, etc. if file exists)
+  async function getUniqueFilePath(baseDir, filename) {
+    const ext = '.md';
+    let filePath = path.join(baseDir, `${filename}${ext}`);
+    
+    // If file doesn't exist, use it
+    if (!await fs.pathExists(filePath)) {
+      return filePath;
+    }
+    
+    // File exists, try with numbers
+    let counter = 2;
+    while (await fs.pathExists(path.join(baseDir, `${filename}_${counter}${ext}`))) {
+      counter++;
+    }
+    
+    return path.join(baseDir, `${filename}_${counter}${ext}`);
+  }
+
   // NOTES ENDPOINTS
   expressApp.get('/api/notes', async (req, res) => {
     try {
@@ -58,10 +181,12 @@ function createServer() {
       const notes = [];
       
       for (const file of files) {
-        if (file.endsWith('.json')) {
+        if (file.endsWith('.md')) {
           const filePath = path.join(notesDir, file);
-          const noteData = await fs.readJson(filePath);
-          notes.push(noteData);
+          const noteData = await readMdNote(filePath);
+          if (noteData) {
+            notes.push(noteData);
+          }
         }
       }
       
@@ -80,7 +205,7 @@ function createServer() {
         // Remove all note files
         const files = await fs.readdir(notesDir);
         for (const file of files) {
-          if (file.endsWith('.json')) {
+          if (file.endsWith('.md')) {
             await fs.remove(path.join(notesDir, file));
           }
         }
@@ -113,9 +238,11 @@ function createServer() {
       if (await fs.pathExists(notesDir)) {
         const noteFiles = await fs.readdir(notesDir);
         for (const file of noteFiles) {
-          if (file.endsWith('.json')) {
-            const noteData = await fs.readJson(path.join(notesDir, file));
-            backupData.notes.push(noteData);
+          if (file.endsWith('.md')) {
+            const noteData = await readMdNote(path.join(notesDir, file));
+            if (noteData) {
+              backupData.notes.push(noteData);
+            }
           }
         }
       }
@@ -168,31 +295,49 @@ function createServer() {
       const { noteId } = req.params;
       const noteData = req.body;
       
-      // AUTO-FORMATTING FOR READABILITY
-      if (noteData.contentHtml && typeof noteData.contentHtml === 'string') {
-        // 1. Create a plain text version with newlines (stripping HTML tags)
-        // This makes it easy to read/copy the raw text from the JSON file
-        const plainText = noteData.contentHtml
-          .replace(/<\/p>/g, '\n') // Newline after paragraphs
-          .replace(/<br\s*\/?>/g, '\n') // Newline for br tags
-          .replace(/<[^>]*>/g, '') // Remove all other tags
-          .replace(/&nbsp;/g, ' ') // Fix spaces
-          .trim();
-          
-        noteData.contentPlain = plainText; 
-
-        // 2. Create an array version of HTML for structure readability
-        // This splits the long HTML string into an array of lines
-        noteData.contentHtmlArray = noteData.contentHtml
-          .replace(/>\s*</g, '>\n<') // Add newlines between tags
-          .split('\n')
-          .filter(line => line.trim().length > 0);
-      }
+      // Extract contentHtml and convert to Markdown
+      const { content, contentHtml, ...metadata } = noteData;
       
       const notesDir = path.join(NOTES_BASE_DIR, 'notes');
-      const filePath = path.join(notesDir, `${noteId}.json`);
       
-      await fs.writeJson(filePath, noteData, { spaces: 2 });
+      // Check if this note already exists (find by ID in frontmatter)
+      let existingFilePath = null;
+      try {
+        const files = await fs.readdir(notesDir);
+        for (const file of files) {
+          if (file.endsWith('.md')) {
+            const filePath = path.join(notesDir, file);
+            const fileContent = await fs.readFile(filePath, 'utf8');
+            const parsed = matter(fileContent);
+            
+            // If this file has the same ID, update it
+            if (parsed.data.id === noteId) {
+              existingFilePath = filePath;
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        // Directory doesn't exist yet, will be created
+      }
+      
+      let filePath;
+      if (existingFilePath) {
+        // Update existing file
+        filePath = existingFilePath;
+      } else {
+        // New note - use title for filename
+        const filename = sanitizeFilename(noteData.title || noteId);
+        filePath = await getUniqueFilePath(notesDir, filename);
+      }
+      
+      // Convert HTML to proper Markdown syntax
+      const markdownContent = htmlToMarkdown(contentHtml || content || '');
+      
+      // Create MD file with frontmatter (metadata) and Markdown body
+      const fileContent = matter.stringify(markdownContent, metadata);
+      
+      await fs.writeFile(filePath, fileContent, 'utf8');
       
       res.json({ success: true, message: 'Note saved successfully' });
     } catch (error) {
@@ -205,7 +350,7 @@ function createServer() {
   expressApp.delete('/api/notes/:noteId', async (req, res) => {
     try {
       const { noteId } = req.params;
-      const filePath = path.join(NOTES_BASE_DIR, 'notes', `${noteId}.json`);
+      const filePath = path.join(NOTES_BASE_DIR, 'notes', `${noteId}.md`);
       
       if (await fs.pathExists(filePath)) {
         await fs.remove(filePath);

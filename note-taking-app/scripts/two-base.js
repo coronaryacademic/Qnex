@@ -110,6 +110,12 @@
     const emptyState = document.getElementById("empty-state");
     if (emptyState) emptyState.classList.add("hidden");
 
+    // Ensure breadcrumb actions are visible (might have been hidden by Settings)
+    const breadcrumbActions = document.querySelector(".breadcrumb-actions");
+    if (breadcrumbActions) {
+      breadcrumbActions.style.display = "flex";
+    }
+
     // Update breadcrumb
     renderBreadcrumb();
 

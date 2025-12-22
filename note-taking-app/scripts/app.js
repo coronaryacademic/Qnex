@@ -2,46 +2,80 @@ import fileSystemService from "./file-system-service.js";
 import { medicalIcons, getIcon } from "./medical-icons.js";
 import { BlockEditor } from "./editor-core.js";
 
+// Initialize Log Capture
+window.appLogs = [];
+const maxLogs = 1000;
+const captureLog = (type, args) => {
+    try {
+        const message = args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        const timestamp = new Date().toLocaleTimeString();
+        window.appLogs.push(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
+        if (window.appLogs.length > maxLogs) window.appLogs.shift();
+    } catch (e) { /* ignore circular structure errors etc */ }
+};
+
+const originalLog = console.log;
+const originalWarn = console.warn;
+const originalError = console.error;
+
+console.log = function(...args) { captureLog('info', args); originalLog.apply(console, args); };
+console.warn = function(...args) { captureLog('warn', args); originalWarn.apply(console, args); };
+console.error = function(...args) { captureLog('error', args); originalError.apply(console, args); };
+console.log("App logging initialized.");
+
 // Storage adapter: uses File System API, Electron file system, or localStorage
 const Storage = {
-  isElectron: typeof window.electronAPI !== "undefined",
+  // Strict check: verified that the API object AND crucial methods exist
+  isElectron: typeof window.electronAPI !== "undefined" && typeof window.electronAPI.readNotes === 'function',
   useFileSystem: true, // Set to true to use File System API
 
   async loadNotes() {
+    if (this.isElectron) {
+      if (typeof window.electronAPI.readNotes === 'function') {
+        return await window.electronAPI.readNotes();
+      }
+      console.warn("Electron detected but readNotes missing - falling back");
+    } 
+    
     if (this.useFileSystem) {
       return await fileSystemService.loadNotes();
-    } else if (this.isElectron) {
-      return await window.electronAPI.readNotes();
     } else {
-      // NO BROWSER CACHE - Force file system only
       console.warn("File system not available - no notes loaded");
       return [];
     }
   },
 
   async saveNotes(data) {
+    if (this.isElectron) {
+      if (typeof window.electronAPI.writeNotes === 'function') {
+        await window.electronAPI.writeNotes(data);
+        return;
+      }
+      console.warn("Electron detected but writeNotes missing - falling back");
+    }
+    
     if (this.useFileSystem) {
-      // Save each note individually for file system
       for (const note of data) {
         await fileSystemService.saveNote(note.id, note);
       }
-    } else if (this.isElectron) {
-      await window.electronAPI.writeNotes(data);
     } else {
-      // NO BROWSER CACHE - Force file system only
-      console.warn(
-        "File system not available - notes not saved to browser cache"
-      );
+      console.warn("File system not available - notes not saved");
     }
   },
 
   async loadFolders() {
+    if (this.isElectron) {
+      if (typeof window.electronAPI.readFolders === 'function') {
+        return await window.electronAPI.readFolders();
+      }
+      console.warn("Electron detected but readFolders missing - falling back");
+    }
+    
     if (this.useFileSystem) {
       return await fileSystemService.loadFolders();
-    } else if (this.isElectron) {
-      return await window.electronAPI.readFolders();
     } else {
-      // NO BROWSER CACHE - Force file system only
       console.warn("File system not available - no folders loaded");
       return [];
     }
@@ -49,85 +83,73 @@ const Storage = {
 
   async saveFolders(data) {
     try {
+      if (this.isElectron) {
+         if (typeof window.electronAPI.writeFolders === 'function') {
+            await window.electronAPI.writeFolders(data);
+            return;
+         }
+      }
+      
       if (this.useFileSystem) {
         await fileSystemService.saveFolders(data);
-      } else if (this.isElectron) {
-        await window.electronAPI.writeFolders(data);
       } else {
-        // NO BROWSER CACHE - Force file system only
-        console.warn(
-          "File system not available - folders not saved to browser cache"
-        );
+        console.warn("File system not available - folders not saved");
       }
     } catch (error) {
       console.error("Error saving folders:", error);
-      // NO FALLBACK TO BROWSER CACHE - File system only
       throw error;
     }
   },
 
   async loadSettings() {
+    if (this.isElectron) {
+       if (typeof window.electronAPI.readSettings === 'function') {
+          const settings = await window.electronAPI.readSettings();
+          return {
+            theme: "dark",
+            foldersOpen: [],
+            autoSave: false,
+            autoSplitMode: true,
+            ...settings, 
+          };
+       }
+    }
+    
     if (this.useFileSystem) {
       try {
         const settings = await fileSystemService.loadSettings();
-        // Ensure we have default values
         return {
           theme: "dark",
           foldersOpen: [],
           autoSave: false,
           autoSplitMode: true,
-          ...settings, // Override with loaded settings
+          ...settings,
         };
       } catch (error) {
-        console.warn(
-          "Failed to load settings from file system, using defaults:",
-          error
-        );
-        // Return defaults if file system fails
-        return {
-          theme: "dark",
-          foldersOpen: [],
-          autoSave: false,
-          autoSplitMode: true,
-        };
+        console.warn("Failed to load settings from fs, using defaults:", error);
+        return { theme: "dark", foldersOpen: [], autoSave: false, autoSplitMode: true };
       }
-    } else if (this.isElectron) {
-      const settings = await window.electronAPI.readSettings();
-      return {
-        theme: "dark",
-        foldersOpen: [],
-        autoSave: false,
-        autoSplitMode: true,
-        ...settings, // Override with loaded settings
-      };
     } else {
-      // NO BROWSER CACHE - Force file system only
-      console.warn("File system not available - using default settings");
-      return {
-        theme: "dark",
-        foldersOpen: [],
-        autoSave: false,
-        autoSplitMode: true,
-      };
+      return { theme: "dark", foldersOpen: [], autoSave: false, autoSplitMode: true };
     }
   },
 
   async saveSettings(data) {
+    if (this.isElectron) {
+       if (typeof window.electronAPI.writeSettings === 'function') {
+          await window.electronAPI.writeSettings(data);
+          return;
+       }
+    }
+    
     if (this.useFileSystem) {
       try {
         await fileSystemService.saveSettings(data);
-        console.log("✅ Settings saved to file system:", data);
       } catch (error) {
-        console.error("❌ Failed to save settings to file system:", error);
-        throw error;
+        console.error("Error saving settings:", error);
       }
-    } else if (this.isElectron) {
-      await window.electronAPI.writeSettings(data);
     } else {
-      // NO BROWSER CACHE - Force file system only
-      console.warn(
-        "File system not available - settings not saved to browser cache"
-      );
+      console.warn("File system not available - settings not saved");
     }
   },
 
@@ -441,13 +463,23 @@ window.startImportProcess = function() {
     exportBtn: document.getElementById("exportBtn"),
     importBtn: document.getElementById("importBtn"),
     settingsBtn: document.getElementById("settingsBtn"),
-    settingsMenu: document.getElementById("settingsMenu"),
-    themeOptions: document.querySelectorAll(".theme-option"),
+    // New Settings Page Elements
+    settingsOverlay: document.getElementById("settingsOverlay"),
+    closeSettingsBtn: document.getElementById("closeSettingsBtn"),
+    minimizeToTrayCheck: document.getElementById("minimizeToTrayCheck"),
+    autoSaveToggle: document.getElementById("autoSaveToggle"),
+    settingsNavBtns: document.querySelectorAll(".settings-nav-btn[data-section]"),
+    settingsSections: document.querySelectorAll(".settings-section"),
+    themeCards: document.querySelectorAll(".theme-card"),
+    
+    // settingsMenu: document.getElementById("settingsMenu"), // Removed
+    // themeOptions: document.querySelectorAll(".theme-option"), // Removed
     clearAllBtn: document.getElementById("clearAllBtn"),
     autoBackupBtn: document.getElementById("autoBackupBtn"),
     hlPalette: document.getElementById("hlPalette"),
     autoHlToggle: document.getElementById("autoHlToggle"),
     newFolderBtn: document.getElementById("newFolderBtn"),
+    // minimizeToTrayToggle: document.getElementById("minimizeToTrayToggle"), // Removed
     ctxTemplate: document.getElementById("context-menu-template"),
     exportHtmlBtn: document.getElementById("exportHtmlBtn"),
     exportPdfBtn: document.getElementById("exportPdfBtn"),
@@ -4711,36 +4743,482 @@ window.startImportProcess = function() {
     dragSourceSide = null;
   }
 
+  // Settings Page Logic
+  function openSettings() {
+    // Switch to main base view if not already there
+    if (window.TwoBaseState) {
+        window.TwoBaseState.currentBase = "main";
+        if (el.workspaceSplit) el.workspaceSplit.style.display = "flex";
+        if (el.noteBase) el.noteBase.classList.add("hidden");
+        // Hide empty state
+        const emptyState = document.getElementById("empty-state");
+        if (emptyState) emptyState.classList.add("hidden");
+    }
+
+    const workspaceContent = document.getElementById("workspaceContent");
+    if (!workspaceContent) return;
+
+    // Hide breadcrumb actions
+    const breadcrumbActions = document.querySelector(".breadcrumb-actions");
+    if (breadcrumbActions) {
+        breadcrumbActions.style.display = "none";
+    }
+
+    // Update Breadcrumb
+    const breadcrumbPath = document.getElementById("breadcrumbPath");
+    const breadcrumbBack = document.getElementById("breadcrumbBack");
+    if (breadcrumbPath) breadcrumbPath.textContent = "Settings";
+    if (breadcrumbBack) {
+        breadcrumbBack.style.display = "flex";
+        // Hijack back button for this view
+        const oldOnClick = breadcrumbBack.onclick;
+        breadcrumbBack.onclick = (e) => {
+            // Restore default behavior (render root or current folder)
+            if (window.TwoBase) {
+                window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+            }
+            // Reset click handler (it gets reset by renderWorkspaceSplit anyway typically, but just in case)
+            breadcrumbBack.onclick = oldOnClick;
+        };
+    }
+
+    // Render Settings View
+    workspaceContent.innerHTML = `
+        <div id="settingsView" class="settings-view"> 
+          <div class="settings-container">
+            <!-- Sidebar -->
+            <aside class="settings-sidebar">
+              <button class="settings-nav-btn active" data-section="general">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                General
+              </button>
+              <button class="settings-nav-btn" data-section="appearance">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                Appearance
+              </button>
+              <button class="settings-nav-btn" data-section="data">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Data Management
+              </button>
+              <button class="settings-nav-btn" data-section="about">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                About
+              </button>
+              <div style="flex:1"></div>
+              <button class="settings-nav-btn" style="color: #ef4444;" id="closeAppBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Quit App
+              </button>
+            </aside>
+            
+            <!-- Main Content -->
+            <main class="settings-content">
+              <!-- GENERAL SECTION -->
+              <div id="settings-general" class="settings-section active">
+                <h2>General</h2>
+                
+                <div class="setting-group">
+                  <h3>Application Behavior</h3>
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Hide after close</h4>
+                      <p>When enabled, closing the window will minimize the app to the system tray instead of quitting.</p>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="minimizeToTrayCheck">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Auto Save</h4>
+                      <p>Automatically save changes as you type. </p>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="autoSaveToggle">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="setting-group">
+                  <h3>Maintenance</h3>
+                   <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Safe Refresh</h4>
+                      <p>Reloads the application interface. Useful if the UI glitches.</p>
+                    </div>
+                    <button id="safeRefreshBtn" class="settings-btn">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                      Reload Interface
+                    </button>
+                  </div>
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Startup Logs</h4>
+                      <p>View the application startup sequence logs for debugging.</p>
+                    </div>
+                    <button id="openDebugLogBtn" class="settings-btn">View Logs</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- APPEARANCE SECTION -->
+              <div id="settings-appearance" class="settings-section">
+                <h2>Appearance</h2>
+                <div class="setting-group">
+                  <h3>Theme</h3>
+                  <p style="margin-bottom: 1rem;">Choose your preferred visual style.</p>
+                  <div class="theme-grid">
+                    <div class="theme-card" data-theme="dark">
+                      <div class="theme-preview">
+                        <div class="sidebar-prev" style="background:#111; border-right:1px solid #333;"></div>
+                        <div class="main-prev" style="background:#1a1a1a;"></div>
+                      </div>
+                      <span class="theme-label">Dark</span>
+                    </div>
+                    <div class="theme-card" data-theme="light">
+                      <div class="theme-preview">
+                        <div class="sidebar-prev" style="background:#f3f4f6; border-right:1px solid #e5e7eb;"></div>
+                        <div class="main-prev" style="background:#fff;"></div>
+                      </div>
+                      <span class="theme-label">Light</span>
+                    </div>
+                    <div class="theme-card" data-theme="classic">
+                       <div class="theme-preview">
+                        <div class="sidebar-prev" style="background:#e0e0e0; border-right:1px solid #999;"></div>
+                        <div class="main-prev" style="background:#c0c0c0;"></div>
+                      </div>
+                      <span class="theme-label">Classic</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DATA SECTION -->
+              <div id="settings-data" class="settings-section">
+                <h2>Data Management</h2>
+                
+                <div class="setting-group">
+                  <h3>Storage Location</h3>
+                  <div class="setting-row">
+                     <div class="setting-info">
+                      <h4>Local Folder</h4>
+                      <p>Your notes are stored locally on your device.</p>
+                      <code style="display:block; margin-top:4px; font-size: 12px; background:var(--bg-primary); padding:4px; border-radius:4px;">D:\\MyNotes</code>
+                    </div>
+                    <button id="openFileLocationBtn" class="settings-btn">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                      Open Folder
+                    </button>
+                  </div>
+                   <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Force Save All</h4>
+                      <p>Manually trigger a save for all application data.</p>
+                    </div>
+                    <button id="backupToFileSystemBtn" class="settings-btn">Save Now</button>
+                  </div>
+                </div>
+
+                <div class="setting-group">
+                  <h3>Import / Export</h3>
+                  <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Export All Notes</h4>
+                      <p>Export all your notes to a single JSON file.</p>
+                    </div>
+                    <button id="exportBtn" class="settings-btn editor-export-notes-btn">Export JSON</button>
+                  </div>
+                   <div class="setting-row">
+                    <div class="setting-info">
+                      <h4>Import Notes</h4>
+                      <p>Import notes from a previously exported JSON file.</p>
+                    </div>
+                    <button id="importBtn" class="settings-btn editor-import-btn">Import JSON</button>
+                  </div>
+                </div>
+
+                <div class="setting-group" style="border-color: #fecaca; background-color: #fff1f2;">
+                  <h3 style="color: #dc2626;">Danger Zone</h3>
+                  <div class="setting-row" style="border-bottom: none;">
+                    <div class="setting-info">
+                      <h4 style="color: #dc2626;">Delete All Notes</h4>
+                      <p>Permanently remove all notes and folders. This cannot be undone.</p>
+                    </div>
+                    <button id="clearAllBtn" class="settings-btn danger">Delete Everything</button>
+                  </div>
+                </div>
+              </div>
+
+               <!-- ABOUT SECTION -->
+              <div id="settings-about" class="settings-section">
+                <h2>About</h2>
+                <div class="setting-group" style="text-align: center; padding: 3rem;">
+                   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1rem;">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                  </svg>
+                  <h3>My Notes</h3>
+                  <p style="color: var(--muted); margin-bottom: 2rem;">Version 1.12BL</p>
+                  <p>Created by Momen</p>
+                  <p style="font-size: 0.9rem; color: var(--muted); font-style: italic; max-width: 400px; margin: 1rem auto;">
+                    Built to show that anyone can create their own tools. Freedom is always an option to go for.
+                  </p>
+                </div>
+              </div>
+
+            </main>
+          </div>
+        </div>
+    `;
+
+    // Re-bind elements and listeners
+    // update el references for this new view
+    el.minimizeToTrayCheck = document.getElementById("minimizeToTrayCheck");
+    el.autoSaveToggle = document.getElementById("autoSaveToggle");
+    el.settingsNavBtns = document.querySelectorAll(".settings-nav-btn[data-section]");
+    el.settingsSections = document.querySelectorAll(".settings-section");
+    el.themeCards = document.querySelectorAll(".theme-card");
+    
+    // Prevent context menu in settings
+    const settingsView = document.getElementById("settingsView");
+    if (settingsView) {
+        settingsView.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    }
+    
+    // Initialize state
+    if (el.minimizeToTrayCheck) {
+        el.minimizeToTrayCheck.checked = !!state.settings.minimizeToTray;
+        el.minimizeToTrayCheck.addEventListener("change", (e) => {
+            state.settings.minimizeToTray = e.target.checked;
+            Storage.saveSettings(state.settings);
+        });
+    }
+    if (el.autoSaveToggle) {
+        el.autoSaveToggle.checked = !!state.settings.autoSave;
+        el.autoSaveToggle.addEventListener("change", async (e) => {
+            state.settings.autoSave = e.target.checked;
+            Storage.saveSettings(state.settings);
+            
+            // Trigger backend save if enabled
+            if (state.settings.autoSave && typeof window.saveNotes === 'function') {
+                await window.saveNotes();
+                console.log("[Settings] Auto-save enabled and triggered.");
+            }
+        });
+    }
+
+    // Theme Cards Logic
+    const currentTheme = state.settings.theme || "dark";
+    if (el.themeCards && el.themeCards.length > 0) {
+        el.themeCards.forEach(card => {
+            if (card.dataset.theme === currentTheme) {
+                card.classList.add("active");
+            } else {
+                card.classList.remove("active");
+            }
+            card.addEventListener("click", () => {
+                console.log("[Settings] Apply theme:", card.dataset.theme);
+                if (typeof applyTheme === 'function') {
+                    applyTheme(card.dataset.theme);
+                    // Update UI immediately for responsiveness
+                    el.themeCards.forEach(c => c.classList.remove("active"));
+                    card.classList.add("active");
+                } else {
+                    console.error("[Settings] applyTheme function not found");
+                }
+            });
+        });
+    } else {
+        console.warn("[Settings] No theme cards found in DOM");
+    }
+
+    // Navigation Logic
+    if (el.settingsNavBtns) {
+        el.settingsNavBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                el.settingsNavBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                const targetId = `settings-${btn.dataset.section}`;
+                el.settingsSections.forEach(sec => {
+                    if (sec.id === targetId) {
+                        sec.classList.add("active");
+                    } else {
+                        sec.classList.remove("active");
+                    }
+                });
+            });
+        });
+    }
+
+    // Action Buttons
+    const safeRefreshBtn = document.getElementById("safeRefreshBtn");
+    if (safeRefreshBtn) safeRefreshBtn.addEventListener("click", () => window.location.reload());
+
+    const openDebugLogBtn = document.getElementById("openDebugLogBtn");
+    if (openDebugLogBtn) { 
+        openDebugLogBtn.addEventListener("click", () => {
+             const logContent = window.appLogs.join('\n');
+             createModernModal("Application Logs", "", [
+                { text: "Close", bg: "#3b82f6", color: "white", callback: () => {} },
+                { text: "Copy", bg: "#10b981", color: "white", callback: () => {
+                    navigator.clipboard.writeText(logContent);
+                    modalAlert("Logs copied to clipboard");
+                    // Don't close, return false to keep open if desired, but helper closes automatically.
+                }}
+             ]);
+             
+             // Inject logs into the modal
+             const overlay = document.querySelector(".active-modal");
+             if (overlay) {
+                 const contentDiv = overlay.querySelector("p"); // createModernModal puts content in p
+                 if (contentDiv) {
+                     contentDiv.innerHTML = `<textarea style="width:100%; height:300px; background:var(--bg-primary); color:var(--text); border:1px solid var(--border); padding:8px; font-family:monospace; font-size:12px; resize:vertical;" readonly>${logContent}</textarea>`;
+                 }
+                 // Make modal wider
+                 const dialog = overlay.querySelector("div:nth-child(1)");
+                 if (dialog) dialog.style.maxWidth = "800px";
+             }
+        });
+    }
+
+    const openFileLocationBtn = document.getElementById("openFileLocationBtn");
+    if (openFileLocationBtn) {
+        openFileLocationBtn.addEventListener("click", () => {
+             console.log("[Settings] openFileLocationBtn clicked");
+             if (Storage.isElectron) {
+                 window.electronAPI.openDataDirectory();
+             } else {
+                 console.warn("[Settings] Not in Electron mode");
+             }
+        });
+    }
+    
+    const backupToFileSystemBtn = document.getElementById("backupToFileSystemBtn");
+    if (backupToFileSystemBtn) {
+        backupToFileSystemBtn.addEventListener("click", async () => {
+            console.log("[Settings] Force Save All clicked");
+            await window.saveNotes();
+            await window.saveFolders();
+            modalAlert("All data saved to file system.");
+        });
+    }
+
+    const exportBtn = document.getElementById("exportBtn");
+    if (exportBtn) {
+         exportBtn.addEventListener("click", () => {
+            console.log("[Settings] Export JSON clicked");
+            const blob = new Blob([JSON.stringify(state.notes, null, 2)], {
+                type: "application/json",
+            });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "notes-export.json";
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+    }
+    
+    const importBtn = document.getElementById("importBtn");
+    if (importBtn) {
+        importBtn.addEventListener("click", () => {
+            console.log("[Settings] Import JSON clicked");
+            if (window.startImportProcess) window.startImportProcess();
+        });
+    }
+
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", async () => {
+            console.log("[Settings] Delete All clicked");
+            const ok = await modalConfirm("Delete ALL notes? This cannot be undone.");
+            if (!ok) return;
+            try {
+                await Storage.deleteAllNotes();
+                state.notes = [];
+                state.folders = [];
+                // Refresh views
+                if (typeof renderSidebar === 'function') renderSidebar();
+                if (typeof renderPane === 'function') ["left", "right"].forEach(renderPane);
+                if (window.TwoBase && window.TwoBase.refreshSidebar) window.TwoBase.refreshSidebar();
+                
+                modalAlert("All notes deleted.");
+            } catch(e) { console.error(e); }
+        });
+    }
+
+    // About App button removed from HTML, so this listener not needed, but safe to leave check
+    const aboutAppBtn = document.getElementById("aboutAppBtn");
+    if (aboutAppBtn) {
+        aboutAppBtn.addEventListener("click", showAboutModal);
+    }
+
+    const closeAppBtn = document.getElementById("closeAppBtn");
+    if (closeAppBtn) {
+        closeAppBtn.addEventListener("click", () => {
+             console.log("[Settings] Quit App clicked");
+             // Force quit via IPC to bypass minimize-to-tray
+             if (Storage.isElectron && window.electronAPI && window.electronAPI.confirmAppClose) {
+                 window.electronAPI.confirmAppClose();
+             } else {
+                 window.close();
+             }
+        });
+    }
+
+    // Close other menus
+    if (el.toolsMenu) el.toolsMenu.classList.remove("open");
+    closeMenus();
+  }
+
+  function closeSettings() {
+     // No longer an overlay, so "closing" just means navigating away
+     // Typically navigating back to home
+     if (window.TwoBase) {
+        window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+     }
+  }
+
   // Tools menu
   function toggleMenu(menuEl) {
-    menuEl.classList.toggle("open");
+    if (menuEl) menuEl.classList.toggle("open");
   }
   function closeMenus() {
     if (el.toolsMenu) el.toolsMenu.classList.remove("open");
-    el.settingsMenu.classList.remove("open");
+    // Settings overlay is handled separately via closeSettings()
   }
+  
   if (el.toolsBtn) {
     el.toolsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleMenu(el.toolsMenu);
-      el.settingsMenu.classList.remove("open");
     });
   }
-  el.settingsBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggleMenu(el.settingsMenu);
-    if (el.toolsMenu) el.toolsMenu.classList.remove("open");
-
-    // Close all editor menus
-    document.querySelectorAll(".editor-menu.open").forEach((menu) => {
-      menu.classList.remove("open");
+  
+  if (el.settingsBtn) {
+    el.settingsBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSettings();
     });
-  });
+  }
+  
+  if (el.closeSettingsBtn) {
+    el.closeSettingsBtn.addEventListener("click", () => {
+      closeSettings();
+    });
+  }
+
   document.addEventListener("click", (e) => {
     // Don't close menus if clicking inside them or inside modals
     if (
       (el.toolsMenu && el.toolsMenu.contains(e.target)) ||
-      el.settingsMenu.contains(e.target) ||
+      e.target.closest(".settings-overlay") || // Don't close if clicking inside settings
       e.target.closest(".modal-overlay")
     ) {
       return;
@@ -4871,7 +5349,8 @@ window.startImportProcess = function() {
       "theme-forest",
       "theme-sunset",
       "theme-purple",
-      "theme-nord"
+      "theme-nord",
+      "theme-classic"
     );
 
     // Apply new theme (dark is default, no class needed)
@@ -4879,73 +5358,28 @@ window.startImportProcess = function() {
       document.body.classList.add(`theme-${themeName}`);
     }
 
-    // Update active indicator
-    el.themeOptions.forEach((btn) => {
-      if (btn.dataset.theme === themeName) {
-        btn.style.background = "var(--accent)";
-        btn.style.color = "#fff";
-      } else {
-        btn.style.background = "";
-        btn.style.color = "";
-      }
-    });
+    // Update active indicator (Cards)
+    if (el.themeCards) {
+      el.themeCards.forEach((card) => {
+        if (card.dataset.theme === themeName) {
+          card.classList.add("active");
+        } else {
+          card.classList.remove("active");
+        }
+      });
+    }
 
     state.settings.theme = themeName;
     Storage.saveSettings(state.settings);
   }
 
-  // Theme selector
-  el.themeOptions.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      applyTheme(btn.dataset.theme);
-    });
-  });
-  el.clearAllBtn.addEventListener("click", async () => {
-    const ok = await modalConfirm("Delete ALL notes? This cannot be undone.");
-    if (!ok) return;
+  /* 
+   * Obsolete listeners removed (themeCards, clearAllBtn, aboutAppBtn)
+   * These are now handled dynamically in openSettings() since the 
+   * settings view is rendered on demand.
+   */
 
-    try {
-      // Delete all notes from file system
-      await Storage.deleteAllNotes();
-
-      // Clear local state
-      state.notes = [];
-      state.left = { tabs: [], active: null };
-      state.right = { tabs: [], active: null };
-      Object.keys(state.windows).forEach(closeWindow);
-
-      renderSidebar();
-      ["left", "right"].forEach(renderPane);
-
-      // Refresh TwoBase sidebar sections (Notebooks and Folders)
-      if (
-        typeof window.TwoBase !== "undefined" &&
-        typeof window.TwoBase.refreshSidebar === "function"
-      ) {
-        window.TwoBase.refreshSidebar();
-      }
-
-      // Refresh the base layer workspace view
-      if (
-        typeof window.TwoBaseState !== "undefined" &&
-        typeof window.TwoBase !== "undefined"
-      ) {
-        if (typeof window.TwoBase.renderWorkspaceSplit === "function") {
-          window.TwoBase.renderWorkspaceSplit(
-            window.TwoBaseState.currentFolder
-          );
-        }
-      }
-
-      // Show success message
-      modalAlert("All notes have been deleted successfully.");
-    } catch (error) {
-      console.error("Error deleting all notes:", error);
-      modalAlert("Failed to delete all notes. Please try again.");
-    }
-  });
-
-  // Auto Backup using File System Access API
+  // Auto Backup functions (kept for reference or future use if re-enabled)
   async function enableAutoBackup() {
     if (!window.showSaveFilePicker) {
       modalAlert(
@@ -4961,8 +5395,8 @@ window.startImportProcess = function() {
         ],
       });
       state.backupHandle = handle;
-      el.autoBackupBtn.textContent = "Auto Backup: ON";
-      el.autoBackupBtn.classList.add("active");
+      // el.autoBackupBtn no longer exists in main view
+      // if (el.autoBackupBtn) { ... }
       await writeBackup();
     } catch (err) {
       /* user canceled */
@@ -4977,17 +5411,6 @@ window.startImportProcess = function() {
       })
     );
     await writable.close();
-  }
-  // Auto backup removed - now using File System backup in settings
-
-  // About App button
-  const aboutAppBtn = document.getElementById("aboutAppBtn");
-  if (aboutAppBtn) {
-    aboutAppBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      el.settingsMenu.classList.remove("open");
-      showAboutModal();
-    });
   }
 
   function showAboutModal() {
@@ -5065,16 +5488,18 @@ window.startImportProcess = function() {
 
   // Auto-save toggle
   if (el.autoSaveToggle) {
-    el.autoSaveToggle.addEventListener("click", (e) => {
-      e.stopPropagation();
-      state.settings.autoSave = !state.settings.autoSave;
+    el.autoSaveToggle.addEventListener("change", (e) => {
+      state.settings.autoSave = e.target.checked;
       Storage.saveSettings(state.settings);
-      el.autoSaveToggle.textContent =
-        "Auto Save: " + (state.settings.autoSave ? "ON" : "OFF");
     });
-    // Initialize text
-    el.autoSaveToggle.textContent =
-      "Auto Save: " + (state.settings.autoSave ? "ON" : "OFF");
+  }
+
+  // Minimize to Tray toggle
+  if (el.minimizeToTrayCheck) {
+    el.minimizeToTrayCheck.addEventListener("change", (e) => {
+      state.settings.minimizeToTray = e.target.checked;
+      Storage.saveSettings(state.settings);
+    });
   }
 
   // Folders
