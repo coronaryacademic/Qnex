@@ -6,39 +6,54 @@ import { BlockEditor } from "./editor-core.js";
 window.appLogs = [];
 const maxLogs = 1000;
 const captureLog = (type, args) => {
-    try {
-        const message = args.map(arg => 
-            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        ).join(' ');
-        const timestamp = new Date().toLocaleTimeString();
-        window.appLogs.push(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
-        if (window.appLogs.length > maxLogs) window.appLogs.shift();
-    } catch (e) { /* ignore circular structure errors etc */ }
+  try {
+    const message = args
+      .map((arg) =>
+        typeof arg === "object" ? JSON.stringify(arg) : String(arg)
+      )
+      .join(" ");
+    const timestamp = new Date().toLocaleTimeString();
+    window.appLogs.push(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
+    if (window.appLogs.length > maxLogs) window.appLogs.shift();
+  } catch (e) {
+    /* ignore circular structure errors etc */
+  }
 };
 
 const originalLog = console.log;
 const originalWarn = console.warn;
 const originalError = console.error;
 
-console.log = function(...args) { captureLog('info', args); originalLog.apply(console, args); };
-console.warn = function(...args) { captureLog('warn', args); originalWarn.apply(console, args); };
-console.error = function(...args) { captureLog('error', args); originalError.apply(console, args); };
+console.log = function (...args) {
+  captureLog("info", args);
+  originalLog.apply(console, args);
+};
+console.warn = function (...args) {
+  captureLog("warn", args);
+  originalWarn.apply(console, args);
+};
+console.error = function (...args) {
+  captureLog("error", args);
+  originalError.apply(console, args);
+};
 console.log("App logging initialized.");
 
 // Storage adapter: uses File System API, Electron file system, or localStorage
 const Storage = {
   // Strict check: verified that the API object AND crucial methods exist
-  isElectron: typeof window.electronAPI !== "undefined" && typeof window.electronAPI.readNotes === 'function',
+  isElectron:
+    typeof window.electronAPI !== "undefined" &&
+    typeof window.electronAPI.readNotes === "function",
   useFileSystem: true, // Set to true to use File System API
 
   async loadNotes() {
     if (this.isElectron) {
-      if (typeof window.electronAPI.readNotes === 'function') {
+      if (typeof window.electronAPI.readNotes === "function") {
         return await window.electronAPI.readNotes();
       }
       console.warn("Electron detected but readNotes missing - falling back");
-    } 
-    
+    }
+
     if (this.useFileSystem) {
       return await fileSystemService.loadNotes();
     } else {
@@ -49,13 +64,13 @@ const Storage = {
 
   async saveNotes(data) {
     if (this.isElectron) {
-      if (typeof window.electronAPI.writeNotes === 'function') {
+      if (typeof window.electronAPI.writeNotes === "function") {
         await window.electronAPI.writeNotes(data);
         return;
       }
       console.warn("Electron detected but writeNotes missing - falling back");
     }
-    
+
     if (this.useFileSystem) {
       for (const note of data) {
         await fileSystemService.saveNote(note.id, note);
@@ -67,12 +82,12 @@ const Storage = {
 
   async loadFolders() {
     if (this.isElectron) {
-      if (typeof window.electronAPI.readFolders === 'function') {
+      if (typeof window.electronAPI.readFolders === "function") {
         return await window.electronAPI.readFolders();
       }
       console.warn("Electron detected but readFolders missing - falling back");
     }
-    
+
     if (this.useFileSystem) {
       return await fileSystemService.loadFolders();
     } else {
@@ -84,12 +99,12 @@ const Storage = {
   async saveFolders(data) {
     try {
       if (this.isElectron) {
-         if (typeof window.electronAPI.writeFolders === 'function') {
-            await window.electronAPI.writeFolders(data);
-            return;
-         }
+        if (typeof window.electronAPI.writeFolders === "function") {
+          await window.electronAPI.writeFolders(data);
+          return;
+        }
       }
-      
+
       if (this.useFileSystem) {
         await fileSystemService.saveFolders(data);
       } else {
@@ -103,18 +118,18 @@ const Storage = {
 
   async loadSettings() {
     if (this.isElectron) {
-       if (typeof window.electronAPI.readSettings === 'function') {
-          const settings = await window.electronAPI.readSettings();
-          return {
-            theme: "dark",
-            foldersOpen: [],
-            autoSave: false,
-            autoSplitMode: true,
-            ...settings, 
-          };
-       }
+      if (typeof window.electronAPI.readSettings === "function") {
+        const settings = await window.electronAPI.readSettings();
+        return {
+          theme: "dark",
+          foldersOpen: [],
+          autoSave: false,
+          autoSplitMode: true,
+          ...settings,
+        };
+      }
     }
-    
+
     if (this.useFileSystem) {
       try {
         const settings = await fileSystemService.loadSettings();
@@ -127,21 +142,31 @@ const Storage = {
         };
       } catch (error) {
         console.warn("Failed to load settings from fs, using defaults:", error);
-        return { theme: "dark", foldersOpen: [], autoSave: false, autoSplitMode: true };
+        return {
+          theme: "dark",
+          foldersOpen: [],
+          autoSave: false,
+          autoSplitMode: true,
+        };
       }
     } else {
-      return { theme: "dark", foldersOpen: [], autoSave: false, autoSplitMode: true };
+      return {
+        theme: "dark",
+        foldersOpen: [],
+        autoSave: false,
+        autoSplitMode: true,
+      };
     }
   },
 
   async saveSettings(data) {
     if (this.isElectron) {
-       if (typeof window.electronAPI.writeSettings === 'function') {
-          await window.electronAPI.writeSettings(data);
-          return;
-       }
+      if (typeof window.electronAPI.writeSettings === "function") {
+        await window.electronAPI.writeSettings(data);
+        return;
+      }
     }
-    
+
     if (this.useFileSystem) {
       try {
         await fileSystemService.saveSettings(data);
@@ -173,6 +198,13 @@ const Storage = {
 
   // File system deletion methods
   async deleteNoteFromFileSystem(noteId) {
+    if (this.isElectron) {
+      if (typeof window.electronAPI.deleteNote === "function") {
+        await window.electronAPI.deleteNote(noteId);
+        return;
+      }
+    }
+
     if (this.useFileSystem) {
       await fileSystemService.deleteNoteFromCollection(noteId);
     }
@@ -232,7 +264,7 @@ const Storage = {
 window.Storage = Storage;
 
 // Shared import logic
-window.startImportProcess = function() {
+window.startImportProcess = function () {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "application/json";
@@ -243,22 +275,72 @@ window.startImportProcess = function() {
     try {
       // Read text and strip BOM if present
       let text = await file.text();
-      if (text.charCodeAt(0) === 0xFEFF) {
+      if (text.charCodeAt(0) === 0xfeff) {
         text = text.slice(1);
       }
-      
+
       let data;
       try {
-          data = JSON.parse(text);
+        data = JSON.parse(text);
       } catch (e) {
-           console.warn("Standard JSON parse failed, trying to clean input", e);
-           try {
-               text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-               data = JSON.parse(text);
-           } catch (e2) {
-               modalAlert("Invalid JSON format. Please check the file.");
-               return;
-           }
+        console.warn("Standard JSON parse failed, trying to clean input", e);
+        try {
+          text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+          data = JSON.parse(text);
+        } catch (e2) {
+          modalAlert("Invalid JSON format. Please check the file.");
+          return;
+        }
+      }
+
+      const uid = () =>
+        Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+      // Handle full backup format (notes, folders, settings)
+      if (data.notes && data.folders && data.settings) {
+        const confirmed = await modalConfirm(
+          `Import backup from ${new Date(
+            data.exportedAt
+          ).toLocaleDateString()}?\n\nThis will add ${
+            data.notes.length
+          } notes and ${data.folders.length} folders to your existing data.`
+        );
+        if (!confirmed) return;
+
+        // Create ID mapping for folders to avoid conflicts
+        const folderIdMap = new Map();
+
+        // Import folders with new IDs
+        data.folders.forEach((folder) => {
+          const newId = uid();
+          folderIdMap.set(folder.id, newId);
+          state.folders.push({
+            ...folder,
+            id: newId,
+            parentId: folder.parentId
+              ? folderIdMap.get(folder.parentId) || null
+              : null,
+          });
+        });
+
+        // Import notes with new IDs and updated folder references
+        data.notes.forEach((note) => {
+          state.notes.push({
+            ...note,
+            id: uid(),
+            folderId: note.folderId
+              ? folderIdMap.get(note.folderId) || null
+              : null,
+          });
+        });
+
+        await saveNotes();
+        await saveFolders();
+        renderSidebar();
+        modalAlert(
+          `Successfully imported ${data.notes.length} notes and ${data.folders.length} folders!`
+        );
+        return;
       }
 
       // Handle plain array format (from "Export All Notes")
@@ -266,34 +348,19 @@ window.startImportProcess = function() {
         data = { notes: data };
       }
 
-      const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
-
+      // Handle folder import
       if (data.type === "folder") {
         // Import the folder as a new root folder
         const newFolderId = uid();
         const idMap = new Map();
         idMap.set(data.folder.id, newFolderId);
 
-        // Create the main folder
         const newFolder = {
           ...data.folder,
           id: newFolderId,
-          parentId: null, // Root level
+          parentId: null, // Import to root
         };
         state.folders.push(newFolder);
-
-        // Import subfolders with new IDs
-        const importedSubfolders = data.subfolders || [];
-        importedSubfolders.forEach((subfolder) => {
-          const newSubId = uid();
-          idMap.set(subfolder.id, newSubId);
-          const newSub = {
-            ...subfolder,
-            id: newSubId,
-            parentId: idMap.get(subfolder.parentId) || newFolderId,
-          };
-          state.folders.push(newSub);
-        });
 
         // Import notes with new IDs
         const importedNotes = data.notes || [];
@@ -313,7 +380,6 @@ window.startImportProcess = function() {
 
         console.log(`Imported folder "${newFolder.name}" to root`);
         modalAlert(`Imported folder "${newFolder.name}" to root`);
-
       } else if (data.type === "note") {
         // Import single note to uncategorized
         const newNote = {
@@ -327,7 +393,6 @@ window.startImportProcess = function() {
 
         console.log(`Imported note "${newNote.title}" to uncategorized`);
         modalAlert(`Imported note "${newNote.title}"`);
-
       } else if (data.notes && Array.isArray(data.notes)) {
         // Import multiple notes (from multi-select export)
         const timestamp = new Date().toLocaleString("en-US", {
@@ -338,9 +403,7 @@ window.startImportProcess = function() {
         });
         const folderName = `Imported - ${timestamp}`;
 
-        let importFolder = state.folders.find(
-          (f) => f.name === folderName
-        );
+        let importFolder = state.folders.find((f) => f.name === folderName);
         if (!importFolder) {
           importFolder = {
             id: uid(),
@@ -349,87 +412,30 @@ window.startImportProcess = function() {
             createdAt: new Date().toISOString(),
           };
           state.folders.push(importFolder);
-          state.foldersOpen.add(importFolder.id);
+          state.foldersOpen.add(importFolder.id); // Auto-open the folder
         }
 
         let count = 0;
-        data.notes.forEach((n) => {
-           if (n.title || n.content || n.contentHtml) {
-              const now = new Date().toISOString();
-              state.notes.unshift({
-                id: uid(),
-                title: n.title || "Imported",
-                contentHtml: n.contentHtml || n.content || "",
-                tags: n.tags || [],
-                folderId: importFolder.id,
-                images: n.images || [],
-                history: n.history || [],
-                historyIndex: n.historyIndex || -1,
-                createdAt: n.createdAt || now,
-                updatedAt: n.updatedAt || now,
-              });
-              count++;
-           }
+        data.notes.forEach((note) => {
+          if (note.title || note.content || note.contentHtml) {
+            state.notes.push({
+              ...note,
+              id: uid(),
+              folderId: importFolder.id,
+            });
+            count++;
+          }
         });
 
         await saveNotes();
         await saveFolders();
         renderSidebar();
 
-        modalAlert(
-          `✓ Imported ${count} note${
-            count !== 1 ? "s" : ""
-          } into "${folderName}" folder`
-        );
-      } else if (Array.isArray(data)) {
-         const folderName = `Imported - ${new Date().toLocaleString()}`;
-         let importFolder = state.folders.find(f => f.name === folderName);
-         if (!importFolder) {
-           importFolder = { id: uid(), name: folderName, parentId: null, createdAt: new Date().toISOString() };
-           state.folders.push(importFolder);
-         }
-
-         let count = 0;
-         data.forEach(n => {
-           if (n.title || n.content || n.contentHtml) {
-              state.notes.push({
-                id: uid(),
-                title: n.title || "Untitled Import",
-                contentHtml: n.contentHtml || n.content || "",
-                tags: n.tags || [],
-                folderId: importFolder.id,
-                createdAt: n.createdAt || new Date().toISOString(),
-                updatedAt: n.updatedAt || new Date().toISOString()
-              });
-              count++;
-           }
-         });
-
-         await saveNotes();
-         await saveFolders();
-         renderSidebar();
-         modalAlert(`✓ Imported ${count} notes from array`);
-
-      } else if (data.contentHtml !== undefined || data.content !== undefined || data.title) {
-        const newNote = {
-          ...data, 
-          id: uid(),
-          title: data.title || "Untitled Import",
-          folderId: null, 
-        };
-        if (!newNote.createdAt) newNote.createdAt = new Date().toISOString();
-        if (!newNote.updatedAt) newNote.updatedAt = new Date().toISOString();
-        if (!newNote.contentHtml) newNote.contentHtml = data.content || "";
-        
-        state.notes.push(newNote);
-        await saveNotes();
-        renderSidebar();
-
-        console.log(`Imported note "${newNote.title}" to uncategorized (implicit type)`);
-        modalAlert(`✓ Imported note "${newNote.title}"`);
+        modalAlert(`Imported ${count} notes to "${folderName}"`);
       } else {
-        console.warn("Unknown import object:", data);
-        modalAlert("Unknown import format. Please ensure the JSON file is a valid note export.");
+        modalAlert(
+          "Unknown import format. Please ensure the JSON file is a valid note export."
+        );
       }
     } catch (error) {
       console.error("Error importing:", error);
@@ -466,12 +472,13 @@ window.startImportProcess = function() {
     // New Settings Page Elements
     settingsOverlay: document.getElementById("settingsOverlay"),
     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
-    minimizeToTrayCheck: document.getElementById("minimizeToTrayCheck"),
     autoSaveToggle: document.getElementById("autoSaveToggle"),
-    settingsNavBtns: document.querySelectorAll(".settings-nav-btn[data-section]"),
+    settingsNavBtns: document.querySelectorAll(
+      ".settings-nav-btn[data-section]"
+    ),
     settingsSections: document.querySelectorAll(".settings-section"),
     themeCards: document.querySelectorAll(".theme-card"),
-    
+
     // settingsMenu: document.getElementById("settingsMenu"), // Removed
     // themeOptions: document.querySelectorAll(".theme-option"), // Removed
     clearAllBtn: document.getElementById("clearAllBtn"),
@@ -931,10 +938,10 @@ window.startImportProcess = function() {
     item.folderId = tgt?.folderId ?? null;
     state.notes.splice(insertAt, 0, item);
     item.updatedAt = new Date().toISOString();
-    
+
     // Reassign order values to persist custom order
     reassignOrderValues(state.notes);
-    
+
     saveNotes();
     renderSidebar();
     refreshOpenTabs(item.id);
@@ -1014,9 +1021,12 @@ window.startImportProcess = function() {
             renderSidebar();
             saveNotes();
             renderSidebar();
-            
+
             // Auto-open in Two-Base mode if available
-            if (window.TwoBase && typeof window.TwoBase.openNoteInNoteBase === "function") {
+            if (
+              window.TwoBase &&
+              typeof window.TwoBase.openNoteInNoteBase === "function"
+            ) {
               window.TwoBase.openNoteInNoteBase(n.id);
             } else {
               openInPane(n.id, "left");
@@ -1222,9 +1232,9 @@ window.startImportProcess = function() {
             }
           },
           onDuplicate: () => {
-             if (typeof window.duplicateNote === "function") {
-               window.duplicateNote(id);
-             }
+            if (typeof window.duplicateNote === "function") {
+              window.duplicateNote(id);
+            }
           },
           onRenameNote: async () => {
             if (!note) return;
@@ -1464,25 +1474,30 @@ window.startImportProcess = function() {
             try {
               // Read text and strip BOM if present
               let text = await file.text();
-              if (text.charCodeAt(0) === 0xFEFF) {
+              if (text.charCodeAt(0) === 0xfeff) {
                 text = text.slice(1);
               }
-              
+
               let data;
               try {
-                  data = JSON.parse(text);
+                data = JSON.parse(text);
               } catch (e) {
-                  // If standard parse fails, try to clean up the JSON
-                  console.warn("Standard JSON parse failed, trying to clean input", e);
-                  try {
-                      // Remove non-printable characters
-                      text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-                      data = JSON.parse(text);
-                  } catch (e2) {
-                     alert("Invalid JSON format. Please ensure the file is a valid JSON export.");
-                     console.error("JSON Parse Error:", e2);
-                     return;
-                  }
+                // If standard parse fails, try to clean up the JSON
+                console.warn(
+                  "Standard JSON parse failed, trying to clean input",
+                  e
+                );
+                try {
+                  // Remove non-printable characters
+                  text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+                  data = JSON.parse(text);
+                } catch (e2) {
+                  alert(
+                    "Invalid JSON format. Please ensure the file is a valid JSON export."
+                  );
+                  console.error("JSON Parse Error:", e2);
+                  return;
+                }
               }
 
               // Handle plain array format (from "Export All Notes")
@@ -1593,49 +1608,54 @@ window.startImportProcess = function() {
                     count++;
                   }
                 });
-                
+
                 await saveNotes();
                 await saveFolders();
                 renderSidebar();
                 alert(`✓ Imported ${count} notes into "${folder.name}"`);
-
               } else if (Array.isArray(data)) {
-                 // Should have been handled by earlier Array check wrapper but safe fallback
-                 let count = 0;
-                 data.forEach(n => {
-                   if (n.title || n.content || n.contentHtml) {
-                     state.notes.push({
-                        id: uid(),
-                        title: n.title || "Imported Note",
-                        contentHtml: n.contentHtml || n.content || "",
-                        tags: n.tags || [],
-                        folderId: fid,
-                        createdAt: n.createdAt || new Date().toISOString(),
-                        updatedAt: n.updatedAt || new Date().toISOString()
-                     });
-                     count++;
-                   }
-                 });
-                 await saveNotes();
-                 renderSidebar();
-                 alert(`✓ Imported ${count} notes from array`);
-              
-              } else if (data.contentHtml !== undefined || data.content !== undefined || data.title) {
-                 // Implicit single note (no type field, title optional)
-                 const newNote = {
-                    ...data, 
-                    id: uid(),
-                    title: data.title || "Untitled Import",
-                    folderId: fid, 
-                  };
-                  if (!newNote.createdAt) newNote.createdAt = new Date().toISOString();
-                  if (!newNote.updatedAt) newNote.updatedAt = new Date().toISOString();
-                  if (!newNote.contentHtml) newNote.contentHtml = data.content || "";
-                  
-                  state.notes.push(newNote);
-                  await saveNotes();
-                  renderSidebar();
-                  alert(`✓ Imported note "${newNote.title}" to "${folder.name}"`);
+                // Should have been handled by earlier Array check wrapper but safe fallback
+                let count = 0;
+                data.forEach((n) => {
+                  if (n.title || n.content || n.contentHtml) {
+                    state.notes.push({
+                      id: uid(),
+                      title: n.title || "Imported Note",
+                      contentHtml: n.contentHtml || n.content || "",
+                      tags: n.tags || [],
+                      folderId: fid,
+                      createdAt: n.createdAt || new Date().toISOString(),
+                      updatedAt: n.updatedAt || new Date().toISOString(),
+                    });
+                    count++;
+                  }
+                });
+                await saveNotes();
+                renderSidebar();
+                alert(`✓ Imported ${count} notes from array`);
+              } else if (
+                data.contentHtml !== undefined ||
+                data.content !== undefined ||
+                data.title
+              ) {
+                // Implicit single note (no type field, title optional)
+                const newNote = {
+                  ...data,
+                  id: uid(),
+                  title: data.title || "Untitled Import",
+                  folderId: fid,
+                };
+                if (!newNote.createdAt)
+                  newNote.createdAt = new Date().toISOString();
+                if (!newNote.updatedAt)
+                  newNote.updatedAt = new Date().toISOString();
+                if (!newNote.contentHtml)
+                  newNote.contentHtml = data.content || "";
+
+                state.notes.push(newNote);
+                await saveNotes();
+                renderSidebar();
+                alert(`✓ Imported note "${newNote.title}" to "${folder.name}"`);
 
                 await saveNotes();
                 renderSidebar();
@@ -1654,10 +1674,10 @@ window.startImportProcess = function() {
                 modalAlert(errorMessage);
               }
             } catch (error) {
-                console.error("Error importing:", error);
-                modalAlert("Error importing file. Please check the file format.");
+              console.error("Error importing:", error);
+              modalAlert("Error importing file. Please check the file format.");
             }
-            };
+          };
 
           input.click();
         };
@@ -1751,6 +1771,15 @@ window.startImportProcess = function() {
             try {
               // Delete the main folder
               await Storage.deleteFolderFromFileSystem(fid);
+
+              // Delete all notes inside folder/subfolders from file system
+              for (const n of allNotes) {
+                try {
+                  await Storage.deleteNoteFromFileSystem(n.id);
+                } catch (e) {
+                  // Ignore if already deleted
+                }
+              }
 
               // Delete all subfolders
               for (const subfolder of subfolders) {
@@ -2043,10 +2072,10 @@ window.startImportProcess = function() {
       item.order = index;
     });
   }
-  
+
   // Expose to window for two-base.js
   window.reassignOrderValues = reassignOrderValues;
-  
+
   // Data persistence functions
   async function saveNotes() {
     try {
@@ -2192,54 +2221,74 @@ window.startImportProcess = function() {
     state.folders = await Storage.loadFolders();
     state.trash = await Storage.loadTrash();
     state.settings = await Storage.loadSettings();
-    
-    console.log("[Order Debug] Loaded notes:", state.notes.map(n => ({ id: n.id, title: n.title, order: n.order })));
-    console.log("[Order Debug] Loaded folders:", state.folders.map(f => ({ id: f.id, name: f.name, order: f.order })));
-    
+
+    console.log(
+      "[Order Debug] Loaded notes:",
+      state.notes.map((n) => ({ id: n.id, title: n.title, order: n.order }))
+    );
+    console.log(
+      "[Order Debug] Loaded folders:",
+      state.folders.map((f) => ({ id: f.id, name: f.name, order: f.order }))
+    );
+
     // CRITICAL: Sort by order field immediately after load, because backend returns in wrong order
     state.notes.sort((a, b) => {
       const aOrder = a.order !== undefined ? a.order : Infinity;
       const bOrder = b.order !== undefined ? b.order : Infinity;
       return aOrder - bOrder;
     });
-    
+
     state.folders.sort((a, b) => {
       const aOrder = a.order !== undefined ? a.order : Infinity;
       const bOrder = b.order !== undefined ? b.order : Infinity;
       return aOrder - bOrder;
     });
-    
-    console.log("[Order Debug] After backend sort:", state.notes.map(n => ({ id: n.id, title: n.title, order: n.order })));
+
+    console.log(
+      "[Order Debug] After backend sort:",
+      state.notes.map((n) => ({ id: n.id, title: n.title, order: n.order }))
+    );
 
     // Initialize order field for notes and folders that don't have one (backward compatibility)
     let notesNeedSaving = false;
     let foldersNeedSaving = false;
-    
+
     state.notes.forEach((note, index) => {
       if (note.order === undefined) {
         note.order = index;
         notesNeedSaving = true;
       }
     });
-    
+
     state.folders.forEach((folder, index) => {
       if (folder.order === undefined) {
         folder.order = index;
         foldersNeedSaving = true;
       }
     });
-    
+
     // Save if we added order fields
     if (notesNeedSaving) {
-      console.log("[Order Init] Assigned order to", state.notes.length, "notes");
+      console.log(
+        "[Order Init] Assigned order to",
+        state.notes.length,
+        "notes"
+      );
       await Storage.saveNotes(state.notes);
     }
     if (foldersNeedSaving) {
-      console.log("[Order Init] Assigned order to", state.folders.length, "folders");
+      console.log(
+        "[Order Init] Assigned order to",
+        state.folders.length,
+        "folders"
+      );
       await Storage.saveFolders(state.folders);
     }
-    
-    console.log("[Order Debug] After init:", state.notes.map(n => ({ id: n.id, title: n.title, order: n.order })));
+
+    console.log(
+      "[Order Debug] After init:",
+      state.notes.map((n) => ({ id: n.id, title: n.title, order: n.order }))
+    );
 
     // Restore image placeholder handlers for all loaded notes
     restoreAllImagePlaceholders();
@@ -2380,8 +2429,6 @@ window.startImportProcess = function() {
     return state[side].active ? getNote(state[side].active) : null;
   }
 
-
-
   // Sidebar
   function renderSidebar() {
     el.noteList.innerHTML = "";
@@ -2463,14 +2510,12 @@ window.startImportProcess = function() {
       groups.get(key).push(n);
     });
 
-    const sortedFolders = foldersToShow
-      .slice()
-      .sort((a, b) => {
-        // Sort by order field (ascending), fallback to infinity if undefined
-        const aOrder = a.order !== undefined ? a.order : Infinity;
-        const bOrder = b.order !== undefined ? b.order : Infinity;
-        return aOrder - bOrder;
-      });
+    const sortedFolders = foldersToShow.slice().sort((a, b) => {
+      // Sort by order field (ascending), fallback to infinity if undefined
+      const aOrder = a.order !== undefined ? a.order : Infinity;
+      const bOrder = b.order !== undefined ? b.order : Infinity;
+      return aOrder - bOrder;
+    });
     const makeNoteBtn = (n) => {
       const btn = document.createElement("button");
       btn.dataset.noteId = n.id;
@@ -3095,40 +3140,40 @@ window.startImportProcess = function() {
       }
     );
     node._blockEditor = editor;
-    
+
     // Restore saved note settings
     // 1. Restore font size
     if (note.fontSize) {
-      content.style.fontSize = note.fontSize + 'px';
-      const fontSizeLabel = node.querySelector('.font-size-label');
-      if (fontSizeLabel) fontSizeLabel.textContent = note.fontSize + 'px';
+      content.style.fontSize = note.fontSize + "px";
+      const fontSizeLabel = node.querySelector(".font-size-label");
+      if (fontSizeLabel) fontSizeLabel.textContent = note.fontSize + "px";
     }
-    
+
     // 2. Restore font family
     if (note.fontFamily) {
       content.style.fontFamily = note.fontFamily;
-      const fontFamilySelect = node.querySelector('.font-family-select');
+      const fontFamilySelect = node.querySelector(".font-family-select");
       if (fontFamilySelect) fontFamilySelect.value = note.fontFamily;
     }
-    
+
     // 3. Restore layout mode
-    if (note.layoutMode === 'full') {
-      content.classList.add('layout-full');
-      content.classList.remove('layout-centered');
-      const layoutLabel = node.querySelector('.layout-label');
-      if (layoutLabel) layoutLabel.textContent = 'Full-width Layout';
+    if (note.layoutMode === "full") {
+      content.classList.add("layout-full");
+      content.classList.remove("layout-centered");
+      const layoutLabel = node.querySelector(".layout-label");
+      if (layoutLabel) layoutLabel.textContent = "Full-width Layout";
     } else {
-      content.classList.add('layout-centered');
-      content.classList.remove('layout-full');
+      content.classList.add("layout-centered");
+      content.classList.remove("layout-full");
     }
-    
+
     // 4. Restore lock status
     if (note.isReadOnly) {
       if (content) {
         content.contentEditable = "false";
         content.classList.add("read-only");
       }
-      
+
       // Add lock icon
       const lockIcon = document.createElement("span");
       lockIcon.className = "lock-icon";
@@ -3142,7 +3187,7 @@ window.startImportProcess = function() {
       lockIcon.style.color = "#f59e0b";
       lockIcon.style.display = "inline-flex";
       lockIcon.style.alignItems = "center";
-      
+
       const titleWithTags = node.querySelector(".title-with-tags");
       if (titleWithTags) {
         titleWithTags.insertBefore(lockIcon, titleWithTags.firstChild);
@@ -3222,9 +3267,10 @@ window.startImportProcess = function() {
             <span class="status-text" style="color: #4ade80;">Saved</span>
           `;
           globalStatus.className = "global-save-status show saved";
-          
+
           // Clear any existing timeout on the element
-          if (globalStatus._hideTimeout) clearTimeout(globalStatus._hideTimeout);
+          if (globalStatus._hideTimeout)
+            clearTimeout(globalStatus._hideTimeout);
           globalStatus._hideTimeout = setTimeout(() => {
             globalStatus.classList.remove("show");
           }, 2500);
@@ -3240,7 +3286,8 @@ window.startImportProcess = function() {
             <span class="status-text" style="color: #fb923c;">Unsaved</span>
           `;
           globalStatus.className = "global-save-status show unsaved";
-          if (globalStatus._hideTimeout) clearTimeout(globalStatus._hideTimeout);
+          if (globalStatus._hideTimeout)
+            clearTimeout(globalStatus._hideTimeout);
         }
       }
     }
@@ -3280,7 +3327,10 @@ window.startImportProcess = function() {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         e.stopPropagation(); // Stop propagation to prevent global handlers (custom-features.js)
-        console.log("📝 Ctrl+S detected in editor. Unsaved changes:", hasUnsavedChanges);
+        console.log(
+          "📝 Ctrl+S detected in editor. Unsaved changes:",
+          hasUnsavedChanges
+        );
         // Force save regardless of unsavedChanges flag to ensure it works
         console.log("📝 Calling saveNote() force update...");
         saveNote();
@@ -3315,13 +3365,13 @@ window.startImportProcess = function() {
       settingsBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         console.log("📁 Folder & Tags button clicked");
-        
+
         // Close the editor menu
         const editorMenu = node.querySelector(".editor-menu");
         if (editorMenu) {
           editorMenu.classList.remove("open");
         }
-        
+
         settingsOpen = !settingsOpen;
         if (settingsOpen) {
           settingsDropdown.style.display = "block";
@@ -3718,9 +3768,12 @@ window.startImportProcess = function() {
     renderSidebar();
     saveNotes();
     renderSidebar();
-    
+
     // Auto-open in Two-Base mode if available
-    if (window.TwoBase && typeof window.TwoBase.openNoteInNoteBase === "function") {
+    if (
+      window.TwoBase &&
+      typeof window.TwoBase.openNoteInNoteBase === "function"
+    ) {
       window.TwoBase.openNoteInNoteBase(n.id);
     } else {
       openInPane(n.id, "left");
@@ -3877,13 +3930,13 @@ window.startImportProcess = function() {
       sidebarActionMenu.classList.toggle("open");
     });
 
-  // Close menu when clicking outside (right click too)
+    // Close menu when clicking outside (right click too)
     document.addEventListener("contextmenu", (e) => {
       // Don't close if right-clicking inside the menu button itself (though uncommon)
-        if (!e.target.closest("#sidebarActionBtn")) {
-            sidebarActionBtn.classList.remove("open");
-            sidebarActionMenu.classList.remove("open");
-        }
+      if (!e.target.closest("#sidebarActionBtn")) {
+        sidebarActionBtn.classList.remove("open");
+        sidebarActionMenu.classList.remove("open");
+      }
     });
 
     document.addEventListener("click", (e) => {
@@ -3904,7 +3957,9 @@ window.startImportProcess = function() {
   }
 
   // Import button in sidebar menu
-  const sidebarImportBtn = document.querySelector('#sidebarActionMenu [data-cmd="import-root"]');
+  const sidebarImportBtn = document.querySelector(
+    '#sidebarActionMenu [data-cmd="import-root"]'
+  );
   if (sidebarImportBtn) {
     sidebarImportBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -4747,12 +4802,12 @@ window.startImportProcess = function() {
   function openSettings() {
     // Switch to main base view if not already there
     if (window.TwoBaseState) {
-        window.TwoBaseState.currentBase = "main";
-        if (el.workspaceSplit) el.workspaceSplit.style.display = "flex";
-        if (el.noteBase) el.noteBase.classList.add("hidden");
-        // Hide empty state
-        const emptyState = document.getElementById("empty-state");
-        if (emptyState) emptyState.classList.add("hidden");
+      window.TwoBaseState.currentBase = "main";
+      if (el.workspaceSplit) el.workspaceSplit.style.display = "flex";
+      if (el.noteBase) el.noteBase.classList.add("hidden");
+      // Hide empty state
+      const emptyState = document.getElementById("empty-state");
+      if (emptyState) emptyState.classList.add("hidden");
     }
 
     const workspaceContent = document.getElementById("workspaceContent");
@@ -4761,7 +4816,7 @@ window.startImportProcess = function() {
     // Hide breadcrumb actions
     const breadcrumbActions = document.querySelector(".breadcrumb-actions");
     if (breadcrumbActions) {
-        breadcrumbActions.style.display = "none";
+      breadcrumbActions.style.display = "none";
     }
 
     // Update Breadcrumb
@@ -4769,17 +4824,19 @@ window.startImportProcess = function() {
     const breadcrumbBack = document.getElementById("breadcrumbBack");
     if (breadcrumbPath) breadcrumbPath.textContent = "Settings";
     if (breadcrumbBack) {
-        breadcrumbBack.style.display = "flex";
-        // Hijack back button for this view
-        const oldOnClick = breadcrumbBack.onclick;
-        breadcrumbBack.onclick = (e) => {
-            // Restore default behavior (render root or current folder)
-            if (window.TwoBase) {
-                window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
-            }
-            // Reset click handler (it gets reset by renderWorkspaceSplit anyway typically, but just in case)
-            breadcrumbBack.onclick = oldOnClick;
-        };
+      breadcrumbBack.style.display = "flex";
+      // Hijack back button for this view
+      const oldOnClick = breadcrumbBack.onclick;
+      breadcrumbBack.onclick = (e) => {
+        // Restore default behavior (render root or current folder)
+        if (window.TwoBase) {
+          window.TwoBase.renderWorkspaceSplit(
+            window.TwoBaseState.currentFolder
+          );
+        }
+        // Reset click handler (it gets reset by renderWorkspaceSplit anyway typically, but just in case)
+        breadcrumbBack.onclick = oldOnClick;
+      };
     }
 
     // Render Settings View
@@ -4819,17 +4876,7 @@ window.startImportProcess = function() {
                 
                 <div class="setting-group">
                   <h3>Application Behavior</h3>
-                  <div class="setting-row">
-                    <div class="setting-info">
-                      <h4>Hide after close</h4>
-                      <p>When enabled, closing the window will minimize the app to the system tray instead of quitting.</p>
-                    </div>
-                    <label class="switch">
-                      <input type="checkbox" id="minimizeToTrayCheck">
-                      <span class="slider"></span>
-                    </label>
-                  </div>
-                  
+                                    
                   <div class="setting-row">
                     <div class="setting-info">
                       <h4>Auto Save</h4>
@@ -4977,199 +5024,236 @@ window.startImportProcess = function() {
 
     // Re-bind elements and listeners
     // update el references for this new view
-    el.minimizeToTrayCheck = document.getElementById("minimizeToTrayCheck");
     el.autoSaveToggle = document.getElementById("autoSaveToggle");
-    el.settingsNavBtns = document.querySelectorAll(".settings-nav-btn[data-section]");
+    el.settingsNavBtns = document.querySelectorAll(
+      ".settings-nav-btn[data-section]"
+    );
     el.settingsSections = document.querySelectorAll(".settings-section");
     el.themeCards = document.querySelectorAll(".theme-card");
-    
+
     // Prevent context menu in settings
     const settingsView = document.getElementById("settingsView");
     if (settingsView) {
-        settingsView.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
+      settingsView.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
     }
-    
+
     // Initialize state
-    if (el.minimizeToTrayCheck) {
-        el.minimizeToTrayCheck.checked = !!state.settings.minimizeToTray;
-        el.minimizeToTrayCheck.addEventListener("change", (e) => {
-            state.settings.minimizeToTray = e.target.checked;
-            Storage.saveSettings(state.settings);
-        });
-    }
     if (el.autoSaveToggle) {
-        el.autoSaveToggle.checked = !!state.settings.autoSave;
-        el.autoSaveToggle.addEventListener("change", async (e) => {
-            state.settings.autoSave = e.target.checked;
-            Storage.saveSettings(state.settings);
-            
-            // Trigger backend save if enabled
-            if (state.settings.autoSave && typeof window.saveNotes === 'function') {
-                await window.saveNotes();
-                console.log("[Settings] Auto-save enabled and triggered.");
-            }
-        });
+      el.autoSaveToggle.checked = !!state.settings.autoSave;
+      el.autoSaveToggle.addEventListener("change", async (e) => {
+        state.settings.autoSave = e.target.checked;
+        Storage.saveSettings(state.settings);
+
+        // Trigger backend save if enabled
+        if (state.settings.autoSave && typeof window.saveNotes === "function") {
+          await window.saveNotes();
+          console.log("[Settings] Auto-save enabled and triggered.");
+        }
+      });
     }
 
     // Theme Cards Logic
     const currentTheme = state.settings.theme || "dark";
     if (el.themeCards && el.themeCards.length > 0) {
-        el.themeCards.forEach(card => {
-            if (card.dataset.theme === currentTheme) {
-                card.classList.add("active");
-            } else {
-                card.classList.remove("active");
-            }
-            card.addEventListener("click", () => {
-                console.log("[Settings] Apply theme:", card.dataset.theme);
-                if (typeof applyTheme === 'function') {
-                    applyTheme(card.dataset.theme);
-                    // Update UI immediately for responsiveness
-                    el.themeCards.forEach(c => c.classList.remove("active"));
-                    card.classList.add("active");
-                } else {
-                    console.error("[Settings] applyTheme function not found");
-                }
-            });
+      el.themeCards.forEach((card) => {
+        if (card.dataset.theme === currentTheme) {
+          card.classList.add("active");
+        } else {
+          card.classList.remove("active");
+        }
+        card.addEventListener("click", () => {
+          console.log("[Settings] Apply theme:", card.dataset.theme);
+          if (typeof applyTheme === "function") {
+            applyTheme(card.dataset.theme);
+            // Update UI immediately for responsiveness
+            el.themeCards.forEach((c) => c.classList.remove("active"));
+            card.classList.add("active");
+          } else {
+            console.error("[Settings] applyTheme function not found");
+          }
         });
+      });
     } else {
-        console.warn("[Settings] No theme cards found in DOM");
+      console.warn("[Settings] No theme cards found in DOM");
     }
 
     // Navigation Logic
     if (el.settingsNavBtns) {
-        el.settingsNavBtns.forEach(btn => {
-            btn.addEventListener("click", () => {
-                el.settingsNavBtns.forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                const targetId = `settings-${btn.dataset.section}`;
-                el.settingsSections.forEach(sec => {
-                    if (sec.id === targetId) {
-                        sec.classList.add("active");
-                    } else {
-                        sec.classList.remove("active");
-                    }
-                });
-            });
+      el.settingsNavBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          el.settingsNavBtns.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const targetId = `settings-${btn.dataset.section}`;
+          el.settingsSections.forEach((sec) => {
+            if (sec.id === targetId) {
+              sec.classList.add("active");
+            } else {
+              sec.classList.remove("active");
+            }
+          });
         });
+      });
     }
 
     // Action Buttons
     const safeRefreshBtn = document.getElementById("safeRefreshBtn");
-    if (safeRefreshBtn) safeRefreshBtn.addEventListener("click", () => window.location.reload());
+    if (safeRefreshBtn)
+      safeRefreshBtn.addEventListener("click", () => window.location.reload());
 
     const openDebugLogBtn = document.getElementById("openDebugLogBtn");
-    if (openDebugLogBtn) { 
-        openDebugLogBtn.addEventListener("click", () => {
-             const logContent = window.appLogs.join('\n');
-             createModernModal("Application Logs", "", [
-                { text: "Close", bg: "#3b82f6", color: "white", callback: () => {} },
-                { text: "Copy", bg: "#10b981", color: "white", callback: () => {
-                    navigator.clipboard.writeText(logContent);
-                    modalAlert("Logs copied to clipboard");
-                    // Don't close, return false to keep open if desired, but helper closes automatically.
-                }}
-             ]);
-             
-             // Inject logs into the modal
-             const overlay = document.querySelector(".active-modal");
-             if (overlay) {
-                 const contentDiv = overlay.querySelector("p"); // createModernModal puts content in p
-                 if (contentDiv) {
-                     contentDiv.innerHTML = `<textarea style="width:100%; height:300px; background:var(--bg-primary); color:var(--text); border:1px solid var(--border); padding:8px; font-family:monospace; font-size:12px; resize:vertical;" readonly>${logContent}</textarea>`;
-                 }
-                 // Make modal wider
-                 const dialog = overlay.querySelector("div:nth-child(1)");
-                 if (dialog) dialog.style.maxWidth = "800px";
-             }
-        });
+    if (openDebugLogBtn) {
+      openDebugLogBtn.addEventListener("click", () => {
+        const logContent = window.appLogs.join("\n");
+        createModernModal("Application Logs", "", [
+          { text: "Close", bg: "#3b82f6", color: "white", callback: () => {} },
+          {
+            text: "Copy",
+            bg: "#10b981",
+            color: "white",
+            callback: () => {
+              navigator.clipboard.writeText(logContent);
+              modalAlert("Logs copied to clipboard");
+              // Don't close, return false to keep open if desired, but helper closes automatically.
+            },
+          },
+        ]);
+
+        // Inject logs into the modal
+        const overlay = document.querySelector(".active-modal");
+        if (overlay) {
+          const contentDiv = overlay.querySelector("p"); // createModernModal puts content in p
+          if (contentDiv) {
+            contentDiv.innerHTML = `<textarea style="width:100%; height:300px; background:var(--bg-primary); color:var(--text); border:1px solid var(--border); padding:8px; font-family:monospace; font-size:12px; resize:vertical;" readonly>${logContent}</textarea>`;
+          }
+          // Make modal wider
+          const dialog = overlay.querySelector("div:nth-child(1)");
+          if (dialog) dialog.style.maxWidth = "800px";
+        }
+      });
     }
 
     const openFileLocationBtn = document.getElementById("openFileLocationBtn");
     if (openFileLocationBtn) {
-        openFileLocationBtn.addEventListener("click", () => {
-             console.log("[Settings] openFileLocationBtn clicked");
-             if (Storage.isElectron) {
-                 window.electronAPI.openDataDirectory();
-             } else {
-                 console.warn("[Settings] Not in Electron mode");
-             }
-        });
+      openFileLocationBtn.addEventListener("click", () => {
+        console.log("[Settings] openFileLocationBtn clicked");
+        if (
+          Storage.isElectron &&
+          window.electronAPI &&
+          window.electronAPI.openDataDirectory
+        ) {
+          window.electronAPI.openDataDirectory();
+        } else {
+          // For browser mode, show the current data directory path
+          const dataPath = "D:\\MyNotes"; // Default path from the UI
+          navigator.clipboard
+            .writeText(dataPath)
+            .then(() => {
+              modalAlert(
+                `Data directory path copied to clipboard:\n${dataPath}`
+              );
+            })
+            .catch(() => {
+              modalAlert(`Data directory:\n${dataPath}`);
+            });
+        }
+      });
     }
-    
-    const backupToFileSystemBtn = document.getElementById("backupToFileSystemBtn");
+
+    const backupToFileSystemBtn = document.getElementById(
+      "backupToFileSystemBtn"
+    );
     if (backupToFileSystemBtn) {
-        backupToFileSystemBtn.addEventListener("click", async () => {
-            console.log("[Settings] Force Save All clicked");
-            await window.saveNotes();
-            await window.saveFolders();
-            modalAlert("All data saved to file system.");
-        });
+      backupToFileSystemBtn.addEventListener("click", async () => {
+        console.log("[Settings] Force Save All clicked");
+        await window.saveNotes();
+        await window.saveFolders();
+        modalAlert("All data saved to file system.");
+      });
     }
 
     const exportBtn = document.getElementById("exportBtn");
     if (exportBtn) {
-         exportBtn.addEventListener("click", () => {
-            console.log("[Settings] Export JSON clicked");
-            const blob = new Blob([JSON.stringify(state.notes, null, 2)], {
-                type: "application/json",
-            });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "notes-export.json";
-            a.click();
-            URL.revokeObjectURL(a.href);
+      exportBtn.addEventListener("click", () => {
+        console.log("[Settings] Export JSON clicked");
+        const exportData = {
+          notes: state.notes,
+          folders: state.folders,
+          settings: state.settings,
+          exportedAt: new Date().toISOString(),
+          version: "1.0",
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+          type: "application/json",
         });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `notes-backup-${
+          new Date().toISOString().split("T")[0]
+        }.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        modalAlert("Export completed successfully!");
+      });
     }
-    
+
     const importBtn = document.getElementById("importBtn");
     if (importBtn) {
-        importBtn.addEventListener("click", () => {
-            console.log("[Settings] Import JSON clicked");
-            if (window.startImportProcess) window.startImportProcess();
-        });
+      importBtn.addEventListener("click", () => {
+        console.log("[Settings] Import JSON clicked");
+        if (window.startImportProcess) window.startImportProcess();
+      });
     }
 
     const clearAllBtn = document.getElementById("clearAllBtn");
     if (clearAllBtn) {
-        clearAllBtn.addEventListener("click", async () => {
-            console.log("[Settings] Delete All clicked");
-            const ok = await modalConfirm("Delete ALL notes? This cannot be undone.");
-            if (!ok) return;
-            try {
-                await Storage.deleteAllNotes();
-                state.notes = [];
-                state.folders = [];
-                // Refresh views
-                if (typeof renderSidebar === 'function') renderSidebar();
-                if (typeof renderPane === 'function') ["left", "right"].forEach(renderPane);
-                if (window.TwoBase && window.TwoBase.refreshSidebar) window.TwoBase.refreshSidebar();
-                
-                modalAlert("All notes deleted.");
-            } catch(e) { console.error(e); }
-        });
+      clearAllBtn.addEventListener("click", async () => {
+        console.log("[Settings] Delete All clicked");
+        const ok = await modalConfirm(
+          "Delete ALL notes? This cannot be undone."
+        );
+        if (!ok) return;
+        try {
+          await Storage.deleteAllNotes();
+          state.notes = [];
+          state.folders = [];
+          // Refresh views
+          if (typeof renderSidebar === "function") renderSidebar();
+          if (typeof renderPane === "function")
+            ["left", "right"].forEach(renderPane);
+          if (window.TwoBase && window.TwoBase.refreshSidebar)
+            window.TwoBase.refreshSidebar();
+
+          modalAlert("All notes deleted.");
+        } catch (e) {
+          console.error(e);
+        }
+      });
     }
 
     // About App button removed from HTML, so this listener not needed, but safe to leave check
     const aboutAppBtn = document.getElementById("aboutAppBtn");
     if (aboutAppBtn) {
-        aboutAppBtn.addEventListener("click", showAboutModal);
+      aboutAppBtn.addEventListener("click", showAboutModal);
     }
 
     const closeAppBtn = document.getElementById("closeAppBtn");
     if (closeAppBtn) {
-        closeAppBtn.addEventListener("click", () => {
-             console.log("[Settings] Quit App clicked");
-             // Force quit via IPC to bypass minimize-to-tray
-             if (Storage.isElectron && window.electronAPI && window.electronAPI.confirmAppClose) {
-                 window.electronAPI.confirmAppClose();
-             } else {
-                 window.close();
-             }
-        });
+      closeAppBtn.addEventListener("click", () => {
+        console.log("[Settings] Quit App clicked");
+        // Force quit via IPC to bypass minimize-to-tray
+        if (
+          Storage.isElectron &&
+          window.electronAPI &&
+          window.electronAPI.confirmAppClose
+        ) {
+          window.electronAPI.confirmAppClose();
+        } else {
+          window.close();
+        }
+      });
     }
 
     // Close other menus
@@ -5178,11 +5262,11 @@ window.startImportProcess = function() {
   }
 
   function closeSettings() {
-     // No longer an overlay, so "closing" just means navigating away
-     // Typically navigating back to home
-     if (window.TwoBase) {
-        window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
-     }
+    // No longer an overlay, so "closing" just means navigating away
+    // Typically navigating back to home
+    if (window.TwoBase) {
+      window.TwoBase.renderWorkspaceSplit(window.TwoBaseState.currentFolder);
+    }
   }
 
   // Tools menu
@@ -5193,21 +5277,21 @@ window.startImportProcess = function() {
     if (el.toolsMenu) el.toolsMenu.classList.remove("open");
     // Settings overlay is handled separately via closeSettings()
   }
-  
+
   if (el.toolsBtn) {
     el.toolsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleMenu(el.toolsMenu);
     });
   }
-  
+
   if (el.settingsBtn) {
     el.settingsBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       openSettings();
     });
   }
-  
+
   if (el.closeSettingsBtn) {
     el.closeSettingsBtn.addEventListener("click", () => {
       closeSettings();
@@ -5269,6 +5353,7 @@ window.startImportProcess = function() {
       if (idx >= 0) {
         const [note] = state.notes.splice(idx, 1);
         state.trash.push({ ...note, deletedAt: new Date().toISOString() });
+        await Storage.deleteNoteFromFileSystem(id);
       }
       closeTab("left", id);
       closeTab("right", id);
@@ -5373,9 +5458,9 @@ window.startImportProcess = function() {
     Storage.saveSettings(state.settings);
   }
 
-  /* 
+  /*
    * Obsolete listeners removed (themeCards, clearAllBtn, aboutAppBtn)
-   * These are now handled dynamically in openSettings() since the 
+   * These are now handled dynamically in openSettings() since the
    * settings view is rendered on demand.
    */
 
@@ -5490,14 +5575,6 @@ window.startImportProcess = function() {
   if (el.autoSaveToggle) {
     el.autoSaveToggle.addEventListener("change", (e) => {
       state.settings.autoSave = e.target.checked;
-      Storage.saveSettings(state.settings);
-    });
-  }
-
-  // Minimize to Tray toggle
-  if (el.minimizeToTrayCheck) {
-    el.minimizeToTrayCheck.addEventListener("change", (e) => {
-      state.settings.minimizeToTray = e.target.checked;
       Storage.saveSettings(state.settings);
     });
   }
@@ -7015,30 +7092,30 @@ window.startImportProcess = function() {
 
     // Check if right pane has focus
     console.log("🔒 toggleNoteLock called");
-    
+
     // Try to find the currently focused editor
-    let targetEditor = document.activeElement?.closest('.editor');
-    
+    let targetEditor = document.activeElement?.closest(".editor");
+
     // If not found, try to find any visible editor in TwoBase
     if (!targetEditor) {
       // Check if we're in TwoBase architecture
       if (typeof window.TwoBase !== "undefined") {
-        const noteBase = document.getElementById('noteBase');
-        if (noteBase && noteBase.style.display !== 'none') {
-          targetEditor = noteBase.querySelector('.editor');
+        const noteBase = document.getElementById("noteBase");
+        if (noteBase && noteBase.style.display !== "none") {
+          targetEditor = noteBase.querySelector(".editor");
         }
       }
     }
-    
+
     // Fallback to old pane system
     if (!targetEditor) {
       const targetSide = state.right.active ? "right" : "left";
       const targetPane = targetSide === "left" ? el.paneLeft : el.paneRight;
       if (targetPane) {
-        targetEditor = targetPane.querySelector('.editor');
+        targetEditor = targetPane.querySelector(".editor");
       }
     }
-    
+
     if (!targetEditor) {
       console.warn("No editor found to lock/unlock");
       return;
@@ -7053,13 +7130,13 @@ window.startImportProcess = function() {
     }
 
     const isLocked = content.getAttribute("contenteditable") === "false";
-    
+
     // Get the title input
     const titleInput = targetEditor.querySelector(".title");
-    
+
     // Get the note object to save lock status
     const noteId = targetEditor.dataset.noteId;
-    const note = noteId ? state.notes.find(n => n.id === noteId) : null;
+    const note = noteId ? state.notes.find((n) => n.id === noteId) : null;
 
     // Remove existing lock icon if any
     const existingLock = header.querySelector(".lock-icon");
@@ -7074,19 +7151,19 @@ window.startImportProcess = function() {
         titleInput.removeAttribute("readonly");
         titleInput.style.opacity = "1";
       }
-      
+
       // Re-enable BlockEditor if it exists
       const blockEditor = targetEditor._blockEditor;
       if (blockEditor && blockEditor.enable) {
         blockEditor.enable();
       }
-      
+
       // Save unlock status to note
       if (note) {
         note.isLocked = false;
         saveNotes();
       }
-      
+
       console.log("✓ Note unlocked");
     } else {
       // Lock - make ALL content non-editable
@@ -7097,13 +7174,13 @@ window.startImportProcess = function() {
         titleInput.setAttribute("readonly", "true");
         titleInput.style.opacity = "0.7";
       }
-      
+
       // Disable BlockEditor if it exists
       const blockEditor = targetEditor._blockEditor;
       if (blockEditor && blockEditor.disable) {
         blockEditor.disable();
       }
-      
+
       // Save lock status to note
       if (note) {
         note.isLocked = true;
@@ -7123,7 +7200,7 @@ window.startImportProcess = function() {
       lockIcon.style.color = "#f59e0b";
       lockIcon.style.display = "inline-flex";
       lockIcon.style.alignItems = "center";
-      
+
       const titleContainer = header.querySelector(".title-with-tags");
       if (titleContainer) {
         // Insert at the beginning (left side)
@@ -7775,13 +7852,13 @@ window.startImportProcess = function() {
       osc.start(this.context.currentTime);
       osc.stop(this.context.currentTime + 0.15);
     },
-    
+
     playStartup() {
-       // Disabled per user request
+      // Disabled per user request
     },
 
     playReload() {
-       // Disabled per user request
+      // Disabled per user request
     },
   };
 
@@ -8354,12 +8431,11 @@ window.startImportProcess = function() {
 
     Storage.saveSettings(state.settings);
   });
-  
+
   // Final Initialization Step: Restore Split View Session
   // We do this here because we are sure notes are loaded.
   if (typeof window.restoreTwoBaseSession === "function") {
-      console.log("[APP] Notes loaded. Restoring TwoBase Session...");
-      setTimeout(() => window.restoreTwoBaseSession(), 100); 
+    console.log("[APP] Notes loaded. Restoring TwoBase Session...");
+    setTimeout(() => window.restoreTwoBaseSession(), 100);
   }
-
 })();

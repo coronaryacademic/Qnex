@@ -208,6 +208,19 @@ ipcMain.handle("read-notes", async () => {
   }
 });
 
+ipcMain.handle("delete-note", async (event, id) => {
+  const notesDir = path.join(dataDir, 'notes');
+  try {
+    const filePath = path.join(notesDir, `${id}.md`);
+    await fs.unlink(filePath);
+    return { success: true };
+  } catch (err) {
+    if (err.code === 'ENOENT') return { success: true }; 
+    console.error(`[ERROR] Delete note ${id} error:`, err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle("write-notes", async (event, data) => {
   const notesDir = path.join(dataDir, 'notes');
   try {

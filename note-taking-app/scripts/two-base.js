@@ -845,11 +845,7 @@
                   window.Storage.useFileSystem
                 ) {
                   try {
-                    if (typeof window.fileSystemService !== "undefined") {
-                      await window.fileSystemService.deleteNoteFromCollection(
-                        cleanId
-                      );
-                    }
+                    await window.Storage.deleteNoteFromFileSystem(cleanId);
                   } catch (error) {
                     console.error(
                       "Error deleting note from backend:",
@@ -901,11 +897,13 @@
                     window.Storage.useFileSystem
                   ) {
                     try {
-                      if (typeof window.fileSystemService !== "undefined") {
-                        await window.fileSystemService.deleteFolderFromCollection(
-                          cleanId
-                        );
+                      // Delete notes inside folder first
+                      for (const n of notesInFolder) {
+                          try {
+                              await window.Storage.deleteNoteFromFileSystem(n.id);
+                          } catch (e) {}
                       }
+                      await window.Storage.deleteFolderFromFileSystem(cleanId);
                     } catch (error) {
                       console.error(
                         "Error deleting folder from backend:",
@@ -1120,11 +1118,7 @@
                   window.Storage.useFileSystem
                 ) {
                   try {
-                    if (typeof window.fileSystemService !== "undefined") {
-                      await window.fileSystemService.deleteNoteFromCollection(
-                        itemId
-                      );
-                    }
+                      await window.Storage.deleteNoteFromFileSystem(itemId);
                   } catch (error) {
                     console.error(
                       "Error deleting note from backend:",
@@ -1543,6 +1537,20 @@
 
         // Remove notes
         state.notes = state.notes.filter((n) => n.folderId !== itemId);
+
+        // Delete from backend (Folder + Notes)
+        if (typeof window.Storage !== "undefined" && window.Storage.useFileSystem) {
+             try {
+                 // Delete notes inside folder
+                 for (const n of notesInFolder) {
+                     await window.Storage.deleteNoteFromFileSystem(n.id);
+                 }
+                 // Delete folder
+                 await window.Storage.deleteFolderFromFileSystem(itemId);
+             } catch (e) {
+                 console.error("Error deleting folder/notes from backend:", e);
+             }
+        }
 
         // Move folder to trash
         const ix = state.folders.findIndex((f) => f.id === itemId);
@@ -4851,7 +4859,10 @@
               const noteIndex = state.notes.findIndex((n) => n.id === note.id);
               if (noteIndex > -1) {
                 state.notes.splice(noteIndex, 1);
-                console.log("[PINNED] Note removed from state");
+                if (typeof window.Storage !== "undefined") {
+                  await window.Storage.deleteNoteFromFileSystem(note.id);
+                }
+                console.log("[PINNED] Note removed from state and backend");
 
                 // Also remove from pinned if it was pinned
                 const pinnedIndex = TwoBaseState.pinnedNotes.indexOf(note.id);
@@ -5033,8 +5044,8 @@
 
         const handlers = {
           onDeleteNotes: () => {
-            showDeleteConfirmation(noteIds.length, () => {
-              noteIds.forEach((noteId) => {
+            showDeleteConfirmation(noteIds.length, async () => {
+              for (const noteId of noteIds) {
                 const noteIndex = window.state.notes.findIndex(
                   (n) => n.id === noteId
                 );
@@ -5058,11 +5069,7 @@
                     window.Storage.useFileSystem
                   ) {
                     try {
-                      if (typeof window.fileSystemService !== "undefined") {
-                        window.fileSystemService.deleteNoteFromCollection(
-                          noteId
-                        );
-                      }
+                        await window.Storage.deleteNoteFromFileSystem(noteId);
                     } catch (error) {
                       console.error(
                         "Error deleting note from backend:",
@@ -5072,7 +5079,7 @@
                     }
                   }
                 }
-              });
+              }
 
               // Save to backend
               if (typeof window.saveNotes === "function") {
@@ -5212,8 +5219,8 @@
 
         const handlers = {
           onDeleteNotes: () => {
-            showDeleteConfirmation(noteIds.length, () => {
-              noteIds.forEach((noteId) => {
+            showDeleteConfirmation(noteIds.length, async () => {
+              for (const noteId of noteIds) {
                 const noteIndex = window.state.notes.findIndex(
                   (n) => n.id === noteId
                 );
@@ -5237,11 +5244,7 @@
                     window.Storage.useFileSystem
                   ) {
                     try {
-                      if (typeof window.fileSystemService !== "undefined") {
-                        window.fileSystemService.deleteNoteFromCollection(
-                          noteId
-                        );
-                      }
+                        await window.Storage.deleteNoteFromFileSystem(noteId);
                     } catch (error) {
                       console.error(
                         "Error deleting note from backend:",
@@ -5251,7 +5254,7 @@
                     }
                   }
                 }
-              });
+              }
 
               // Save to backend
               if (typeof window.saveNotes === "function") {
@@ -5744,8 +5747,8 @@
 
         const handlers = {
           onDeleteNotes: () => {
-            showDeleteConfirmation(noteIds.length, () => {
-              noteIds.forEach((noteId) => {
+            showDeleteConfirmation(noteIds.length, async () => {
+              for (const noteId of noteIds) {
                 const noteIndex = window.state.notes.findIndex(
                   (n) => n.id === noteId
                 );
@@ -5769,11 +5772,7 @@
                     window.Storage.useFileSystem
                   ) {
                     try {
-                      if (typeof window.fileSystemService !== "undefined") {
-                        window.fileSystemService.deleteNoteFromCollection(
-                          noteId
-                        );
-                      }
+                        await window.Storage.deleteNoteFromFileSystem(noteId);
                     } catch (error) {
                       console.error(
                         "Error deleting note from backend:",
@@ -5783,7 +5782,7 @@
                     }
                   }
                 }
-              });
+              }
 
               // Save to backend
               if (typeof window.saveNotes === "function") {
@@ -7124,9 +7123,7 @@
                 window.Storage.useFileSystem
               ) {
                 try {
-                  if (typeof window.fileSystemService !== "undefined") {
-                    window.fileSystemService.deleteNoteFromCollection(noteId);
-                  }
+                    await window.Storage.deleteNoteFromFileSystem(noteId);
                 } catch (error) {
                   console.error(
                     "Error deleting note from backend:",
@@ -7721,11 +7718,7 @@
               window.Storage.useFileSystem
             ) {
               try {
-                if (typeof window.fileSystemService !== "undefined") {
-                  await window.fileSystemService.deleteNoteFromCollection(
-                    cleanId
-                  );
-                }
+                  await window.Storage.deleteNoteFromFileSystem(cleanId);
               } catch (error) {
                 console.error(
                   "Error deleting note from backend:",
@@ -7762,12 +7755,48 @@
               };
               state.trash.push(trashItem);
 
-              // Move notes in folder to uncategorized
-              notesInFolder.forEach((note) => {
-                note.folderId = null;
-              });
+              // Remove notes in folder from state
+              state.notes = state.notes.filter(
+                (n) => n.folderId !== cleanId
+              );
+
+              // Delete folder from backend
+              if (
+                typeof window.Storage !== "undefined" &&
+                window.Storage.useFileSystem
+              ) {
+                try {
+                    // Delete notes inside folder first
+                    for (const n of notesInFolder) {
+                        try {
+                            await window.Storage.deleteNoteFromFileSystem(n.id);
+                        } catch (e) {}
+                    }
+                    await window.Storage.deleteFolderFromFileSystem(cleanId);
+                } catch (error) {
+                  console.error(
+                    "Error deleting folder from backend:",
+                    cleanId,
+                    error
+                  );
+                }
+              }
             }
           }
+        }
+
+        // Save changes to backend
+        if (typeof window.saveNotes === "function") {
+          window.saveNotes();
+        }
+        if (typeof window.saveFolders === "function") {
+          window.saveFolders();
+        }
+        if (
+          typeof window.Storage !== "undefined" &&
+          typeof window.Storage.saveTrash === "function"
+        ) {
+          window.Storage.saveTrash(window.state.trash);
         }
 
         // Clear selection
