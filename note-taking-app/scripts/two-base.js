@@ -823,94 +823,80 @@
             console.log("[BASE LAYER] Deleting items:", allSelectedIds);
 
             // Delete all selected items (notes and folders)
+            const notesToDelete = [];
+            const foldersToDelete = [];
+            
+            // Helper to get all subfolders and notes recursively
+            const collectDescendants = (folderId) => {
+              const subfolders = state.folders.filter(f => f.parentId === folderId);
+              const notes = state.notes.filter(n => n.folderId === folderId);
+              
+              notesToDelete.push(...notes);
+              foldersToDelete.push(...subfolders);
+              
+              subfolders.forEach(sf => collectDescendants(sf.id));
+            };
+
             for (const cleanId of allSelectedIds) {
-              console.log("[BASE LAYER] Processing item:", cleanId);
-
-              // Try to find in notes first
               const noteIdx = state.notes.findIndex((n) => n.id === cleanId);
-              console.log("[BASE LAYER] Note index:", noteIdx);
-
               if (noteIdx >= 0) {
-                const [deletedNote] = state.notes.splice(noteIdx, 1);
-                const trashItem = {
-                  ...deletedNote,
-                  deletedAt: new Date().toISOString(),
-                };
-                state.trash.push(trashItem);
-                console.log("[BASE LAYER] Moved note to trash:", cleanId);
-
-                // Delete from backend
-                if (
-                  typeof window.Storage !== "undefined" &&
-                  window.Storage.useFileSystem
-                ) {
-                  try {
-                    await window.Storage.deleteNoteFromFileSystem(cleanId);
-                  } catch (error) {
-                    console.error(
-                      "Error deleting note from backend:",
-                      cleanId,
-                      error
-                    );
-                  }
-                }
-
-                // Close tabs
-                if (typeof window.closeTab === "function") {
-                  window.closeTab("left", cleanId);
-                  window.closeTab("right", cleanId);
-                }
+                notesToDelete.push(state.notes[noteIdx]);
               } else {
-                // Try to find in folders
-                const folderIdx = state.folders.findIndex(
-                  (f) => f.id === cleanId
-                );
-                console.log("[BASE LAYER] Folder index:", folderIdx);
-
+                const folderIdx = state.folders.findIndex((f) => f.id === cleanId);
                 if (folderIdx >= 0) {
                   const folder = state.folders[folderIdx];
-                  const notesInFolder = state.notes.filter(
-                    (n) => n.folderId === cleanId
-                  );
+                  foldersToDelete.push(folder);
+                  collectDescendants(cleanId);
+                }
+              }
+            }
 
-                  // Remove folder
-                  state.folders.splice(folderIdx, 1);
+            // Deduplicate
+            const uniqueNotesToDelete = Array.from(new Set(notesToDelete));
+            const uniqueFoldersToDelete = Array.from(new Set(foldersToDelete));
+            
+            console.log(`[BASE LAYER] Recursive delete: ${uniqueNotesToDelete.length} notes and ${uniqueFoldersToDelete.length} folders identified.`);
 
-                  // Move folder to trash with its notes
-                  const trashItem = {
-                    ...folder,
-                    type: "folder",
-                    notes: notesInFolder,
-                    deletedAt: new Date().toISOString(),
-                  };
-                  state.trash.push(trashItem);
-                  console.log("[BASE LAYER] Moved folder to trash:", cleanId);
-
-                  // Remove notes in folder
-                  state.notes = state.notes.filter(
-                    (n) => n.folderId !== cleanId
-                  );
-
-                  // Delete from backend
-                  if (
-                    typeof window.Storage !== "undefined" &&
-                    window.Storage.useFileSystem
-                  ) {
-                    try {
-                      // Delete notes inside folder first
-                      for (const n of notesInFolder) {
-                          try {
-                              await window.Storage.deleteNoteFromFileSystem(n.id);
-                          } catch (e) {}
-                      }
-                      await window.Storage.deleteFolderFromFileSystem(cleanId);
-                    } catch (error) {
-                      console.error(
-                        "Error deleting folder from backend:",
-                        cleanId,
-                        error
-                      );
-                    }
+            // Move to trash and delete from backend
+            for (const note of uniqueNotesToDelete) {
+              const idx = state.notes.findIndex(n => n.id === note.id);
+              if (idx >= 0) {
+                const [deletedNote] = state.notes.splice(idx, 1);
+                state.trash.push({
+                  ...deletedNote,
+                  deletedAt: new Date().toISOString()
+                });
+                
+                if (window.Storage?.useFileSystem) {
+                  try {
+                    await window.Storage.deleteNoteFromFileSystem(note.id);
+                  } catch (e) {
+                    console.error(`Failed to delete note ${note.id}:`, e);
+                  }
+                }
+                
+                if (typeof window.closeTab === "function") {
+                  window.closeTab("left", note.id);
+                  window.closeTab("right", note.id);
+                }
+              }
+            }
+            
+            for (const folder of uniqueFoldersToDelete) {
+              const idx = state.folders.findIndex(f => f.id === folder.id);
+              if (idx >= 0) {
+                const [deletedFolder] = state.folders.splice(idx, 1);
+                state.trash.push({
+                  ...deletedFolder,
+                  type: "folder",
+                  deletedAt: new Date().toISOString()
+                });
+                
+                if (window.Storage?.useFileSystem) {
+                  try {
+                    await window.Storage.deleteFolderFromFileSystem(folder.id);
+                  } catch (e) {
+                    console.error(`Failed to delete folder ${folder.id}:`, e);
                   }
                 }
               }
@@ -1520,9 +1506,20 @@
       handlers.onDeleteFolder = async () => {
         if (typeof window.modalConfirm !== "function") return;
 
-        // Get notes in folder
-        const notesInFolder = state.notes.filter((n) => n.folderId === itemId);
-        const noteCount = notesInFolder.length;
+        // Recursive collection of items to delete
+        const notesToDelete = [];
+        const foldersToDelete = [folder];
+        
+        const collectDescendants = (fid) => {
+          const subs = state.folders.filter(f => f.parentId === fid);
+          const notes = state.notes.filter(n => n.folderId === fid);
+          notesToDelete.push(...notes);
+          foldersToDelete.push(...subs);
+          subs.forEach(s => collectDescendants(s.id));
+        };
+        
+        collectDescendants(itemId);
+        const noteCount = notesToDelete.length;
 
         const ok = await window.modalConfirm(
           `Delete folder "${folder.name}"?${
@@ -1535,53 +1532,38 @@
         );
         if (!ok) return;
 
-        // Remove notes
-        state.notes = state.notes.filter((n) => n.folderId !== itemId);
-
-        // Delete from backend (Folder + Notes)
-        if (typeof window.Storage !== "undefined" && window.Storage.useFileSystem) {
-             try {
-                 // Delete notes inside folder
-                 for (const n of notesInFolder) {
-                     await window.Storage.deleteNoteFromFileSystem(n.id);
-                 }
-                 // Delete folder
-                 await window.Storage.deleteFolderFromFileSystem(itemId);
-             } catch (e) {
-                 console.error("Error deleting folder/notes from backend:", e);
-             }
+        // Backend deletion loops (await all)
+        if (window.Storage?.useFileSystem) {
+          for (const note of notesToDelete) {
+            try { await window.Storage.deleteNoteFromFileSystem(note.id); } catch(e) {}
+          }
+          for (const f of foldersToDelete) {
+            try { await window.Storage.deleteFolderFromFileSystem(f.id); } catch(e) {}
+          }
         }
 
-        // Move folder to trash
-        const ix = state.folders.findIndex((f) => f.id === itemId);
-        if (ix >= 0) {
-          const [deletedFolder] = state.folders.splice(ix, 1);
-          const trashItem = {
-            ...deletedFolder,
-            type: "folder",
-            notes: notesInFolder,
-            deletedAt: new Date().toISOString(),
-          };
-          state.trash.push(trashItem);
+        // State update loops
+        for (const note of notesToDelete) {
+          const idx = state.notes.findIndex(n => n.id === note.id);
+          if (idx >= 0) {
+            const [deleted] = state.notes.splice(idx, 1);
+            state.trash.push({ ...deleted, deletedAt: new Date().toISOString() });
+          }
+        }
+        
+        for (const f of foldersToDelete) {
+          const idx = state.folders.findIndex(x => x.id === f.id);
+          if (idx >= 0) {
+             const [deleted] = state.folders.splice(idx, 1);
+             state.trash.push({ ...deleted, type: "folder", deletedAt: new Date().toISOString() });
+          }
         }
 
-        if (typeof window.saveFolders === "function") {
-          window.saveFolders();
-        }
-        if (typeof window.saveNotes === "function") {
-          window.saveNotes();
-        }
-        if (
-          typeof window.Storage !== "undefined" &&
-          typeof window.Storage.saveTrash === "function"
-        ) {
-          window.Storage.saveTrash(state.trash);
-        }
+        if (typeof window.saveFolders === "function") await window.saveFolders();
+        if (typeof window.saveNotes === "function") await window.saveNotes();
+        if (window.Storage?.saveTrash) await window.Storage.saveTrash(state.trash);
 
-        // Refresh sidebar and workspace
-        if (typeof window.renderSidebar === "function") {
-          window.renderSidebar();
-        }
+        if (typeof window.renderSidebar === "function") window.renderSidebar();
         renderWorkspaceSplit(TwoBaseState.currentFolder);
       };
 
@@ -7698,90 +7680,62 @@
         console.log("[KEYBOARD DELETE] User confirmed delete");
 
         // Delete all selected items (notes and folders)
+        const notesToDelete = [];
+        const foldersToDelete = [];
+        
+        const collectDescendants = (fid) => {
+          state.folders.filter(f => f.parentId === fid).forEach(sf => {
+            foldersToDelete.push(sf);
+            collectDescendants(sf.id);
+          });
+          state.notes.filter(n => n.folderId === fid).forEach(n => {
+            notesToDelete.push(n);
+          });
+        };
+
         for (const id of [...TwoBaseState.selectedItems]) {
-          const cleanId = id.replace(/^(note-|folder-)/, "");
+          const cleanId = id.replace(/^(note-|folder-|section-)/, "");
 
-          // Try to find in notes first
           const noteIdx = state.notes.findIndex((n) => n.id === cleanId);
-
           if (noteIdx >= 0) {
-            const [deletedNote] = state.notes.splice(noteIdx, 1);
-            const trashItem = {
-              ...deletedNote,
-              deletedAt: new Date().toISOString(),
-            };
-            state.trash.push(trashItem);
-
-            // Delete from backend
-            if (
-              typeof window.Storage !== "undefined" &&
-              window.Storage.useFileSystem
-            ) {
-              try {
-                  await window.Storage.deleteNoteFromFileSystem(cleanId);
-              } catch (error) {
-                console.error(
-                  "Error deleting note from backend:",
-                  cleanId,
-                  error
-                );
-              }
-            }
-
-            // Close tabs
-            if (typeof window.closeTab === "function") {
-              window.closeTab("left", cleanId);
-              window.closeTab("right", cleanId);
-            }
+            notesToDelete.push(state.notes[noteIdx]);
           } else {
-            // Try to find in folders
             const folderIdx = state.folders.findIndex((f) => f.id === cleanId);
-
             if (folderIdx >= 0) {
-              const folder = state.folders[folderIdx];
-              const notesInFolder = state.notes.filter(
-                (n) => n.folderId === cleanId
-              );
-
-              // Remove folder
-              state.folders.splice(folderIdx, 1);
-
-              // Move folder to trash with its notes
-              const trashItem = {
-                ...folder,
-                type: "folder",
-                notes: notesInFolder,
-                deletedAt: new Date().toISOString(),
-              };
-              state.trash.push(trashItem);
-
-              // Remove notes in folder from state
-              state.notes = state.notes.filter(
-                (n) => n.folderId !== cleanId
-              );
-
-              // Delete folder from backend
-              if (
-                typeof window.Storage !== "undefined" &&
-                window.Storage.useFileSystem
-              ) {
-                try {
-                    // Delete notes inside folder first
-                    for (const n of notesInFolder) {
-                        try {
-                            await window.Storage.deleteNoteFromFileSystem(n.id);
-                        } catch (e) {}
-                    }
-                    await window.Storage.deleteFolderFromFileSystem(cleanId);
-                } catch (error) {
-                  console.error(
-                    "Error deleting folder from backend:",
-                    cleanId,
-                    error
-                  );
-                }
-              }
+              foldersToDelete.push(state.folders[folderIdx]);
+              collectDescendants(cleanId);
             }
+          }
+        }
+
+        // Backend deletion loops
+        if (window.Storage?.useFileSystem) {
+          for (const n of notesToDelete) {
+            try { await window.Storage.deleteNoteFromFileSystem(n.id); } catch(e) {}
+          }
+          for (const f of foldersToDelete) {
+            try { await window.Storage.deleteFolderFromFileSystem(f.id); } catch(e) {}
+          }
+        }
+
+        // State update loops
+        for (const note of notesToDelete) {
+          const idx = state.notes.findIndex(n => n.id === note.id);
+          if (idx >= 0) {
+            const [deleted] = state.notes.splice(idx, 1);
+            state.trash.push({ ...deleted, deletedAt: new Date().toISOString() });
+            if (typeof window.closeTab === "function") {
+              window.closeTab("left", note.id);
+              window.closeTab("right", note.id);
+            }
+          }
+        }
+        
+        for (const folder of foldersToDelete) {
+          const idx = state.folders.findIndex(f => f.id === folder.id);
+          if (idx >= 0) {
+             const [deleted] = state.folders.splice(idx, 1);
+             state.trash.push({ ...deleted, type: "folder", deletedAt: new Date().toISOString() });
           }
         }
 

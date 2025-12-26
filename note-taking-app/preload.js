@@ -13,6 +13,7 @@ try {
     // Folders
     readFolders: () => ipcRenderer.invoke('read-folders'),
     writeFolders: (data) => ipcRenderer.invoke('write-folders', data),
+    deleteFolder: (id) => ipcRenderer.invoke('delete-folder', id),
     
     // Settings
     readSettings: () => ipcRenderer.invoke('read-settings'),

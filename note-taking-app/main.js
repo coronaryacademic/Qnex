@@ -210,55 +210,147 @@ ipcMain.handle("read-notes", async () => {
 
 ipcMain.handle("delete-note", async (event, id) => {
   const notesDir = path.join(dataDir, 'notes');
+  console.log(`[IPC] delete-note requested for ID: ${id}`);
   try {
-    const filePath = path.join(notesDir, `${id}.md`);
-    await fs.unlink(filePath);
-    return { success: true };
+    // 1. Try direct ID-based path (fastest)
+    const idPath = path.join(notesDir, `${id}.md`);
+    console.log(`[IPC] Checking for direct note path: ${idPath}`);
+    if (await fs.stat(idPath).then(() => true).catch(() => false)) {
+      await fs.unlink(idPath);
+      console.log(`[IPC] ✅ Deleted note file via direct path: ${id}.md`);
+      return { success: true };
+    }
+
+    // 2. Search for the file in the entire notes directory (including subdirectories)
+    console.log(`[IPC] Note not found via direct path. Starting recursive search for ID: ${id}...`);
+    const findAndDelete = async (dir) => {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          console.log(`[IPC] Searching in subdirectory: ${entry.name}`);
+          if (await findAndDelete(fullPath)) return true;
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          try {
+            const content = await fs.readFile(fullPath, 'utf8');
+            const parsed = matter(content);
+            if (parsed.data.id === id) {
+              console.log(`[IPC] ✅ Found matching note! Deleting: ${fullPath}`);
+              await fs.unlink(fullPath);
+              return true;
+            }
+          } catch (e) {
+            console.warn(`[IPC] ⚠️ Failed to read ${fullPath} during search:`, e);
+          }
+        }
+      }
+      return false;
+    };
+
+    if (await findAndDelete(notesDir)) {
+      console.log(`[IPC] ✅ Successfully found and deleted note ${id} during search.`);
+      return { success: true };
+    }
+
+    console.warn(`[IPC] ❌ Note ${id} NOT found on disk after full search.`);
+    return { success: true }; // Return success even if not found (idempotent)
   } catch (err) {
-    if (err.code === 'ENOENT') return { success: true }; 
-    console.error(`[ERROR] Delete note ${id} error:`, err);
+    console.error(`[IPC] 🔴 Error during delete-note ${id}:`, err);
     return { success: false, error: err.message };
   }
 });
 
 ipcMain.handle("write-notes", async (event, data) => {
   const notesDir = path.join(dataDir, 'notes');
+  console.log(`[IPC] write-notes called with ${data.length} notes`);
+  
   try {
     await fs.mkdir(notesDir, { recursive: true });
     
-    // 1. Get existing files to identify deletions
-    let existingFiles = [];
-    try {
-      existingFiles = await fs.readdir(notesDir);
-    } catch (e) {}
-    
-    const existingIds = existingFiles
-        .filter(f => f.endsWith('.md'))
-        .map(f => path.basename(f, '.md'));
-        
-    const newIds = data.map(n => n.id);
-    
-    // 2. Delete removed notes
-    const toDelete = existingIds.filter(id => !newIds.includes(id));
-    for (const id of toDelete) {
-        await fs.unlink(path.join(notesDir, `${id}.md`)).catch(console.error);
+    // 1. Get all folders to reconstruct paths
+    const folders = await readFile(FILES.folders, []);
+    const folderMap = new Map(folders.map(f => [f.id, f]));
+
+    const getFolderPath = (folderId) => {
+      const pathSegments = [];
+      let currentId = folderId;
+      while (currentId) {
+        const folder = folderMap.get(currentId);
+        if (folder) {
+          // Use name for path, sanitized
+          const safeName = (folder.name || 'Untitled').replace(/[<>:"/\\|?*]/g, '_');
+          pathSegments.unshift(safeName);
+          currentId = folder.parentId;
+        } else {
+          break;
+        }
+      }
+      return path.join(notesDir, ...pathSegments);
+    };
+
+    // 2. Map notes to intended paths
+    const notePathMap = new Map();
+    for (const note of data) {
+      if (!note.id) continue;
+      const dirPath = note.folderId ? getFolderPath(note.folderId) : notesDir;
+      const fileName = `${note.id}.md`;
+      notePathMap.set(note.id, path.join(dirPath, fileName));
     }
 
-    // 3. Write/Update notes
+    // 3. Write/Update notes and create directories
     for (const note of data) {
-      const filePath = path.join(notesDir, `${note.id}.md`);
-      // extract content to be body
+      if (!note.id) continue;
+      const filePath = notePathMap.get(note.id);
+      const dirPath = path.dirname(filePath);
+      
+      await fs.mkdir(dirPath, { recursive: true });
+      
       const { contentHtml, content, ...meta } = note;
       const body = contentHtml || content || '';
-      
       const fileContent = matter.stringify(body, meta);
+      
       await fs.writeFile(filePath, fileContent, 'utf8');
     }
 
-    console.log(`[INFO] ${data.length} notes synced to Markdown files`);
+    // 4. Cleanup orphaned files and empty directories
+    const cleanup = async (currentDir) => {
+      const entries = await fs.readdir(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          await cleanup(fullPath);
+          // Delete directory if empty
+          const remaining = await fs.readdir(fullPath);
+          if (remaining.length === 0) {
+            await fs.rmdir(fullPath);
+            console.log(`[IPC] Cleaned up empty directory: ${fullPath}`);
+          }
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          // Check if this file is in our new notePathMap
+          try {
+            const content = await fs.readFile(fullPath, 'utf8');
+            const parsed = matter(content);
+            const noteId = parsed.data.id || path.basename(entry.name, '.md');
+            
+            const intendedPath = notePathMap.get(noteId);
+            // If the note doesn't exist in the current collection, or is in the wrong place
+            if (!intendedPath || path.resolve(intendedPath) !== path.resolve(fullPath)) {
+              await fs.unlink(fullPath);
+              console.log(`[IPC] Cleaned up orphaned/misplaced note: ${fullPath}`);
+            }
+          } catch (e) {
+            console.warn(`[IPC] Failed to verify ${fullPath} during cleanup:`, e);
+          }
+        }
+      }
+    };
+
+    await cleanup(notesDir);
+
+    console.log(`[INFO] ${data.length} notes synced successfully to disk`);
     return { success: true };
   } catch (err) {
-    console.error("[ERROR] Write notes error:", err);
+    console.error("[ERROR] Write notes sync error:", err);
     return { success: false, error: err.message };
   }
 });
@@ -270,9 +362,53 @@ ipcMain.handle("read-folders", async () => {
 ipcMain.handle("write-folders", async (event, data) => {
   const result = await writeFile(FILES.folders, data);
   if (result.success) {
-    console.log(`[INFO] ${data.length} folder(s) in database`);
+    console.log(`[INFO] ${data.length} folder(s) saved to folders.json`);
   }
   return result;
+});
+
+ipcMain.handle("delete-folder", async (event, id) => {
+  console.log(`[IPC] delete-folder requested for: ${id}`);
+  const notesDir = path.join(dataDir, 'notes');
+  
+  try {
+    const folders = await readFile(FILES.folders, []);
+    const folder = folders.find(f => f.id === id);
+    
+    if (folder) {
+      console.log(`[IPC] Reconstructing path for folder: "${folder.name}" (${id})`);
+      // Reconstruct intended directory path
+      const folderMap = new Map(folders.map(f => [f.id, f]));
+      const getFolderPath = (fid) => {
+        const segments = [];
+        let cid = fid;
+        while (cid) {
+          const f = folderMap.get(cid);
+          if (f) {
+            segments.unshift(f.name.replace(/[<>:"/\\|?*]/g, '_'));
+            cid = f.parentId;
+          } else break;
+        }
+        return path.join(notesDir, ...segments);
+      };
+
+      const dirPath = getFolderPath(id);
+      console.log(`[IPC] Targeted physical path for deletion: ${dirPath}`);
+      if (await fs.stat(dirPath).then(s => s.isDirectory()).catch(() => false)) {
+        await fs.rm(dirPath, { recursive: true, force: true });
+        console.log(`[IPC] ✅ Successfully deleted physical folder: ${dirPath}`);
+      } else {
+        console.log(`[IPC] ℹ️ Physical folder does not exist at path: ${dirPath}`);
+      }
+    } else {
+      console.warn(`[IPC] ⚠️ Folder ${id} not found in folders.json metadata.`);
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error(`[IPC] 🔴 Delete folder ${id} error:`, err);
+    return { success: false, error: err.message };
+  }
 });
 
 ipcMain.handle("read-settings", async () => {

@@ -198,21 +198,56 @@ const Storage = {
 
   // File system deletion methods
   async deleteNoteFromFileSystem(noteId) {
+    console.log(`[STORAGE] Deleting note from file system: ${noteId}`);
     if (this.isElectron) {
       if (typeof window.electronAPI.deleteNote === "function") {
-        await window.electronAPI.deleteNote(noteId);
-        return;
+        try {
+          const result = await window.electronAPI.deleteNote(noteId);
+          console.log(`[STORAGE] Electron deleteNote result for ${noteId}:`, result);
+          return result;
+        } catch (err) {
+          console.error(`[STORAGE] Electron deleteNote failed for ${noteId}:`, err);
+          throw err;
+        }
       }
     }
 
     if (this.useFileSystem) {
-      await fileSystemService.deleteNoteFromCollection(noteId);
+      try {
+        const result = await fileSystemService.deleteNoteFromCollection(noteId);
+        console.log(`[STORAGE] fileSystemService deleteNote result for ${noteId}:`, result);
+        return result;
+      } catch (err) {
+        console.error(`[STORAGE] fileSystemService deleteNote failed for ${noteId}:`, err);
+        throw err;
+      }
     }
   },
 
   async deleteFolderFromFileSystem(folderId) {
+    console.log(`[STORAGE] Deleting folder from file system: ${folderId}`);
+    if (this.isElectron) {
+      if (typeof window.electronAPI.deleteFolder === "function") {
+        try {
+          const result = await window.electronAPI.deleteFolder(folderId);
+           console.log(`[STORAGE] Electron deleteFolder result for ${folderId}:`, result);
+           return result;
+        } catch (err) {
+           console.error(`[STORAGE] Electron deleteFolder failed for ${folderId}:`, err);
+           // Don't throw here yet as it might not be implemented in all versions of main.js
+        }
+      }
+    }
+
     if (this.useFileSystem) {
-      await fileSystemService.deleteFolderFromCollection(folderId);
+      try {
+        const result = await fileSystemService.deleteFolderFromCollection(folderId);
+        console.log(`[STORAGE] fileSystemService deleteFolder result for ${folderId}:`, result);
+        return result;
+      } catch (err) {
+        console.error(`[STORAGE] fileSystemService deleteFolder failed for ${folderId}:`, err);
+        throw err;
+      }
     }
   },
 

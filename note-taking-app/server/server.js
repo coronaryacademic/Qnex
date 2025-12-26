@@ -217,15 +217,8 @@ app.post('/api/notes/:noteId', async (req, res) => {
       // Directory doesn't exist yet, will be created
     }
     
-    let filePath;
-    if (existingFilePath) {
-      // Update existing file
-      filePath = existingFilePath;
-    } else {
-      // New note - use title for filename
-      const filename = sanitizeFilename(noteData.title || noteId);
-      filePath = await getUniqueFilePath(notesDir, filename);
-    }
+    // Use ID for filename to ensure perfect matching and avoid title-based mismatch
+    const filePath = path.join(notesDir, `${noteId}.md`);
     
     // Convert HTML to proper Markdown syntax
     const markdownContent = htmlToMarkdown(contentHtml || content || '');
@@ -234,6 +227,9 @@ app.post('/api/notes/:noteId', async (req, res) => {
     const fileContent = matter.stringify(markdownContent, metadata);
     
     await fs.writeFile(filePath, fileContent, 'utf8');
+    
+    // Log for debugging
+    console.log(`[SERVER] Saved note: ${noteId}.md`);
     
     res.json({ success: true, message: 'Note saved successfully' });
   } catch (error) {
@@ -246,16 +242,56 @@ app.post('/api/notes/:noteId', async (req, res) => {
 app.delete('/api/notes/:noteId', async (req, res) => {
   try {
     const { noteId } = req.params;
-    const filePath = path.join(NOTES_BASE_DIR, 'notes', `${noteId}.md`); // Changed to .md
+    const notesDir = path.join(NOTES_BASE_DIR, 'notes');
+    console.log(`[SERVER] DELETE request for note ID: ${noteId}`);
     
-    if (await fs.pathExists(filePath)) {
-      await fs.remove(filePath);
-      res.json({ success: true, message: 'Note deleted successfully' });
-    } else {
-      res.status(404).json({ error: 'Note not found' });
+    // 1. Try direct ID-based path
+    const directPath = path.join(notesDir, `${noteId}.md`);
+    console.log(`[SERVER] Checking direct path: ${directPath}`);
+    if (await fs.pathExists(directPath)) {
+      await fs.remove(directPath);
+      console.log(`[SERVER] ✅ Deleted note via direct path: ${noteId}.md`);
+      return res.json({ success: true, message: 'Note deleted successfully' });
     }
+
+    // 2. Search for the file recursively by reading frontmatter
+    console.log(`[SERVER] Note not found via direct path. Starting recursive search for ID: ${noteId}...`);
+    
+    const findAndDelete = async (dir) => {
+      const files = await fs.readdir(dir);
+      for (const file of files) {
+        const filePath = path.join(dir, file);
+        const stats = await fs.stat(filePath);
+
+        if (stats.isDirectory()) {
+          console.log(`[SERVER] Searching in subdirectory: ${file}`);
+          if (await findAndDelete(filePath)) return true;
+        } else if (file.endsWith('.md')) {
+          try {
+            const fileContent = await fs.readFile(filePath, 'utf8');
+            const parsed = matter(fileContent);
+            if (parsed.data.id === noteId) {
+              console.log(`[SERVER] ✅ Found matching note! Deleting: ${filePath}`);
+              await fs.remove(filePath);
+              return true;
+            }
+          } catch (e) {
+            console.warn(`[SERVER] ⚠️ Failed to read ${filePath}:`, e);
+          }
+        }
+      }
+      return false;
+    };
+
+    if (await findAndDelete(notesDir)) {
+      return res.json({ success: true, message: 'Note deleted successfully' });
+    }
+    
+    // If not found, still return success (idempotent)
+    console.log(`[SERVER] ℹ️ Note ${noteId} not found on disk after recursive search.`);
+    res.json({ success: true, message: 'Note already deleted or not found' });
   } catch (error) {
-    console.error('Error deleting note:', error);
+    console.error(`[SERVER] 🔴 Error deleting note ${noteId}:`, error);
     res.status(500).json({ error: 'Failed to delete note' });
   }
 });
@@ -315,16 +351,58 @@ app.post('/api/folders', async (req, res) => {
 app.delete('/api/folders/:folderId', async (req, res) => {
   try {
     const { folderId } = req.params;
-    const filePath = path.join(NOTES_BASE_DIR, 'folders', `${folderId}.json`);
+    const metadataPath = path.join(NOTES_BASE_DIR, 'folders', `${folderId}.json`);
+    const notesDir = path.join(NOTES_BASE_DIR, 'notes');
     
-    if (await fs.pathExists(filePath)) {
-      await fs.remove(filePath);
-      res.json({ success: true, message: 'Folder deleted successfully' });
-    } else {
-      res.status(404).json({ error: 'Folder not found' });
+    console.log(`[SERVER] DELETE request for folder ID: ${folderId}`);
+
+    // 1. Reconstruct logical path to physical directory
+    const loadAllFolders = async () => {
+      const fDir = path.join(NOTES_BASE_DIR, 'folders');
+      const files = await fs.readdir(fDir);
+      const items = [];
+      for (const file of files) {
+        if (file.endsWith('.json')) items.push(await fs.readJson(path.join(fDir, file)));
+      }
+      return items;
+    };
+
+    const folders = await loadAllFolders();
+    const folder = folders.find(f => f.id === folderId);
+    
+    if (folder) {
+      const folderMap = new Map(folders.map(f => [f.id, f]));
+      const getPhysicalPath = (fid) => {
+        const segments = [];
+        let cid = fid;
+        while (cid) {
+          const f = folderMap.get(cid);
+          if (f) {
+            segments.unshift(f.name.replace(/[<>:"/\\|?*]/g, '_'));
+            cid = f.parentId;
+          } else break;
+        }
+        return path.join(notesDir, ...segments);
+      };
+
+      const physicalPath = getPhysicalPath(folderId);
+      console.log(`[SERVER] Attempting to delete physical folder: ${physicalPath}`);
+      
+      if (await fs.pathExists(physicalPath)) {
+        await fs.remove(physicalPath);
+        console.log(`[SERVER] ✅ Deleted physical folder: ${physicalPath}`);
+      }
     }
+
+    // 2. Delete metadata file
+    if (await fs.pathExists(metadataPath)) {
+      await fs.remove(metadataPath);
+      console.log(`[SERVER] ✅ Deleted folder metadata: ${folderId}.json`);
+    }
+
+    res.json({ success: true, message: 'Folder deleted successfully' });
   } catch (error) {
-    console.error('Error deleting folder:', error);
+    console.error(`[SERVER] 🔴 Error deleting folder ${folderId}:`, error);
     res.status(500).json({ error: 'Failed to delete folder' });
   }
 });
@@ -609,9 +687,13 @@ app.post('/api/tasks', async (req, res) => {
 
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Notes file system server running on http://localhost:${PORT}`);
-  console.log(`Base directory: ${NOTES_BASE_DIR}`);
+// Start server
+const serverInstance = app.listen(PORT, () => {
+  console.log('==================================================');
+  console.log(`[${new Date().toLocaleTimeString()}] NOTES SERVER UPDATED (v1.1)`);
+  console.log(`Running on http://localhost:${PORT}`);
+  console.log(`Storage: ${NOTES_BASE_DIR}`);
+  console.log('==================================================');
   console.log('Available endpoints:');
   console.log('  GET  /api/health - Health check');
   console.log('  GET  /api/notes - Get all notes (MD supported)');
@@ -626,6 +708,18 @@ app.listen(PORT, () => {
   console.log('  GET  /api/settings - Get settings');
   console.log('  POST /api/settings - Save settings');
   console.log('  GET  /api/file-structure - Get file structure for sidebar');
+});
+
+// Handle server errors
+serverInstance.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n[ERROR] Port ${PORT} is already in use!`);
+    console.error(`Please close any existing command prompt windows running the server.`);
+    console.error(`If you cannot find the window, restart your computer or kill the 'node' process.\n`);
+  } else {
+    console.error('\n[ERROR] Failed to start server:', err);
+  }
+  process.exit(1);
 });
 
 module.exports = app;

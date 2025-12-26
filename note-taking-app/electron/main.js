@@ -298,38 +298,13 @@ function createServer() {
       // Extract contentHtml and convert to Markdown
       const { content, contentHtml, ...metadata } = noteData;
       
+      // Ensure ID is in metadata
+      if (!metadata.id) metadata.id = noteId;
+
       const notesDir = path.join(NOTES_BASE_DIR, 'notes');
       
-      // Check if this note already exists (find by ID in frontmatter)
-      let existingFilePath = null;
-      try {
-        const files = await fs.readdir(notesDir);
-        for (const file of files) {
-          if (file.endsWith('.md')) {
-            const filePath = path.join(notesDir, file);
-            const fileContent = await fs.readFile(filePath, 'utf8');
-            const parsed = matter(fileContent);
-            
-            // If this file has the same ID, update it
-            if (parsed.data.id === noteId) {
-              existingFilePath = filePath;
-              break;
-            }
-          }
-        }
-      } catch (err) {
-        // Directory doesn't exist yet, will be created
-      }
-      
-      let filePath;
-      if (existingFilePath) {
-        // Update existing file
-        filePath = existingFilePath;
-      } else {
-        // New note - use title for filename
-        const filename = sanitizeFilename(noteData.title || noteId);
-        filePath = await getUniqueFilePath(notesDir, filename);
-      }
+      // ALWAYS use ID for filename to ensure perfect matching and avoid title-based mismatch
+      const filePath = path.join(notesDir, `${noteId}.md`);
       
       // Convert HTML to proper Markdown syntax
       const markdownContent = htmlToMarkdown(contentHtml || content || '');
@@ -339,6 +314,7 @@ function createServer() {
       
       await fs.writeFile(filePath, fileContent, 'utf8');
       
+      console.log(`[EMBEDDED SERVER] Saved note: ${noteId}.md`);
       res.json({ success: true, message: 'Note saved successfully' });
     } catch (error) {
       console.error('Error saving note:', error);
@@ -350,14 +326,47 @@ function createServer() {
   expressApp.delete('/api/notes/:noteId', async (req, res) => {
     try {
       const { noteId } = req.params;
-      const filePath = path.join(NOTES_BASE_DIR, 'notes', `${noteId}.md`);
+      const notesDir = path.join(NOTES_BASE_DIR, 'notes');
+      console.log(`[EMBEDDED SERVER] DELETE request for note ID: ${noteId}`);
       
-      if (await fs.pathExists(filePath)) {
-        await fs.remove(filePath);
-        res.json({ success: true, message: 'Note deleted successfully' });
-      } else {
-        res.status(404).json({ error: 'Note not found' });
+      // 1. Try direct ID-based path
+      const directPath = path.join(notesDir, `${noteId}.md`);
+      if (await fs.pathExists(directPath)) {
+        await fs.remove(directPath);
+        console.log(`[EMBEDDED SERVER] ✅ Deleted note via direct path: ${noteId}.md`);
+        return res.json({ success: true, message: 'Note deleted successfully' });
       }
+
+      // 2. Search for the file recursively by reading frontmatter
+      console.log(`[EMBEDDED SERVER] Starting recursive search for ID: ${noteId}...`);
+      const findAndDelete = async (dir) => {
+        const files = await fs.readdir(dir);
+        for (const file of files) {
+          const filePath = path.join(dir, file);
+          const stats = await fs.stat(filePath);
+
+          if (stats.isDirectory()) {
+            if (await findAndDelete(filePath)) return true;
+          } else if (file.endsWith('.md')) {
+            try {
+              const fileContent = await fs.readFile(filePath, 'utf8');
+              const parsed = matter(fileContent);
+              if (parsed.data.id === noteId) {
+                console.log(`[EMBEDDED SERVER] ✅ Found matching note! Deleting: ${filePath}`);
+                await fs.remove(filePath);
+                return true;
+              }
+            } catch (e) {}
+          }
+        }
+        return false;
+      };
+
+      if (await findAndDelete(notesDir)) {
+        return res.json({ success: true, message: 'Note deleted successfully' });
+      }
+      
+      res.json({ success: true, message: 'Note already deleted or not found' });
     } catch (error) {
       console.error('Error deleting note:', error);
       res.status(500).json({ error: 'Failed to delete note' });
@@ -416,14 +425,53 @@ function createServer() {
   expressApp.delete('/api/folders/:folderId', async (req, res) => {
     try {
       const { folderId } = req.params;
-      const filePath = path.join(NOTES_BASE_DIR, 'folders', `${folderId}.json`);
+      const metadataPath = path.join(NOTES_BASE_DIR, 'folders', `${folderId}.json`);
+      const notesDir = path.join(NOTES_BASE_DIR, 'notes');
       
-      if (await fs.pathExists(filePath)) {
-        await fs.remove(filePath);
-        res.json({ success: true, message: 'Folder deleted successfully' });
-      } else {
-        res.status(404).json({ error: 'Folder not found' });
+      console.log(`[EMBEDDED SERVER] DELETE request for folder ID: ${folderId}`);
+
+      // 1. Reconstruct logical path to physical directory
+      const loadAllFolders = async () => {
+        const fDir = path.join(NOTES_BASE_DIR, 'folders');
+        const files = await fs.readdir(fDir);
+        const items = [];
+        for (const file of files) {
+          if (file.endsWith('.json')) items.push(await fs.readJson(path.join(fDir, file)));
+        }
+        return items;
+      };
+
+      const folders = await loadAllFolders();
+      const folder = folders.find(f => f.id === folderId);
+      
+      if (folder) {
+        const folderMap = new Map(folders.map(f => [f.id, f]));
+        const getPhysicalPath = (fid) => {
+          const segments = [];
+          let cid = fid;
+          while (cid) {
+            const f = folderMap.get(cid);
+            if (f) {
+              segments.unshift(f.name.replace(/[<>:"/\\|?*]/g, '_'));
+              cid = f.parentId;
+            } else break;
+          }
+          return path.join(notesDir, ...segments);
+        };
+
+        const physicalPath = getPhysicalPath(folderId);
+        if (await fs.pathExists(physicalPath)) {
+          await fs.remove(physicalPath);
+          console.log(`[EMBEDDED SERVER] ✅ Deleted physical folder: ${physicalPath}`);
+        }
       }
+
+      // 2. Delete metadata file
+      if (await fs.pathExists(metadataPath)) {
+        await fs.remove(metadataPath);
+      }
+
+      res.json({ success: true, message: 'Folder deleted successfully' });
     } catch (error) {
       console.error('Error deleting folder:', error);
       res.status(500).json({ error: 'Failed to delete folder' });
@@ -564,10 +612,25 @@ function startServer() {
   log('Initializing embedded server...');
   const expressApp = createServer();
   
-  server = expressApp.listen(SERVER_PORT, () => {
-    log(`Embedded server running on http://localhost:${SERVER_PORT}`);
-    log(`Base directory: ${NOTES_BASE_DIR}`);
-  });
+  try {
+    server = expressApp.listen(SERVER_PORT, () => {
+      log(`Embedded server running on http://localhost:${SERVER_PORT}`);
+      log(`Base directory: ${NOTES_BASE_DIR}`);
+      log(`VERSION: Notes Engine v1.2 (ID-Based Fixed)`);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        log(`FATAL ERROR: Port ${SERVER_PORT} is already in use.`);
+        log('Please close any other instances of the app or server.');
+      } else {
+        log(`SERVER ERROR: ${err.message}`);
+      }
+    });
+
+  } catch (err) {
+    log(`CRITICAL: Failed to start server: ${err.message}`);
+  }
 }
 
 // Stop the embedded server

@@ -17,85 +17,56 @@ class FileSystemService {
       ...options,
     };
 
-    // Try primary URL (Electron port 3002) first
-    for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
-      try {
-        const response = await fetch(`${this.baseUrl}${url}`, defaultOptions);
+    const tryRequest = async (targetBaseUrl) => {
+      for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
+        try {
+          const response = await fetch(`${targetBaseUrl}${url}`, defaultOptions);
 
-        // Handle 404 errors specially - don't throw, just return error object
-        if (response.status === 404) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          return await response.json();
-        } else {
-          return await response.text();
-        }
-      } catch (error) {
-        // Check if this is a 404 error
-        const is404 =
-          error.message?.includes("404") ||
-          error.message?.includes("Not Found");
-
-        // For 404 errors, don't retry - just throw immediately
-        if (is404) {
-          throw error;
-        }
-
-        // For other errors, log and retry
-        console.error(
-          `Request attempt ${attempt} to ${this.baseUrl} failed:`,
-          error
-        );
-
-        if (attempt === this.retryAttempts) {
-          // If primary URL fails, try fallback URL (standalone server port 3001)
-          try {
-            const response = await fetch(
-              `${this.fallbackUrl}${url}`,
-              defaultOptions
-            );
-
-            // Handle 404 on fallback too
-            if (response.status === 404) {
-              throw new Error(
-                `HTTP ${response.status}: ${response.statusText}`
-              );
-            }
-
-            if (!response.ok) {
-              throw new Error(
-                `HTTP ${response.status}: ${response.statusText}`
-              );
-            }
-
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-              // Switch to fallback URL for future requests
-              this.baseUrl = this.fallbackUrl;
-              return await response.json();
-            } else {
-              this.baseUrl = this.fallbackUrl;
-              return await response.text();
-            }
-          } catch (fallbackError) {
-            throw new Error(
-              `Failed to connect to both Electron (3002) and standalone (3001) servers: ${error.message}`
-            );
+          // If it's a 404, we don't retry on the SAME port, 
+          // but we might want to try the OTHER port if this is the primary.
+          if (response.status === 404) {
+             return { status: 404, statusText: response.statusText };
           }
-        }
 
-        // Wait before retrying
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.retryDelay * attempt)
-        );
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            return await response.json();
+          } else {
+            return await response.text();
+          }
+        } catch (error) {
+          if (attempt === this.retryAttempts) throw error;
+          await new Promise(r => setTimeout(r, this.retryDelay * attempt));
+        }
       }
+    };
+
+    try {
+      const result = await tryRequest(this.baseUrl);
+      // if 404 and we have a fallback, try fallback
+      if (result && result.status === 404 && this.baseUrl !== this.fallbackUrl) {
+        console.log(`[SERVICE] 404 on ${this.baseUrl}, trying fallback ${this.fallbackUrl}`);
+        this.baseUrl = this.fallbackUrl;
+        return await this.makeRequest(url, options);
+      }
+      
+      // If result is a 404 object (meaning it's the final fallback that 404'd)
+      if (result && result.status === 404) {
+        throw new Error(`HTTP 404: ${result.statusText}`);
+      }
+      
+      return result;
+    } catch (error) {
+      if (this.baseUrl !== this.fallbackUrl) {
+         console.log(`[SERVICE] Error on ${this.baseUrl}, trying fallback ${this.fallbackUrl}`);
+         this.baseUrl = this.fallbackUrl;
+         return await this.makeRequest(url, options);
+      }
+      throw error;
     }
   }
 
