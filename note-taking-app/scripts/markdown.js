@@ -243,10 +243,53 @@
     console.log("\u2713 Markdown inline shortcuts initialized");
   }
 
+  // --- Simple Frontmatter Parsing ---
+  function parseFrontmatter(text) {
+    if (!text || typeof text !== "string") return { data: {}, content: text };
+
+    const regex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
+    const match = text.match(regex);
+
+    if (match) {
+      const yamlStr = match[1];
+      const content = match[2];
+      const data = {};
+
+      yamlStr.split("\n").forEach((line) => {
+        const parts = line.split(":");
+        if (parts.length >= 2) {
+          const key = parts[0].trim();
+          const value = parts.slice(1).join(":").trim().replace(/^["'](.*)["']$/, "$1");
+          data[key] = value;
+        }
+      });
+
+      return { data, content };
+    }
+
+    return { data: {}, content: text };
+  }
+
+  // Helper to escape HTML for MD
+  function escapeHtmlForMarkdown(html) {
+    if (!html) return "";
+    let md = html;
+    md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, "# $1\n\n");
+    md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, "## $1\n\n");
+    md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, "### $1\n\n");
+    md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, "$1\n\n");
+    md = md.replace(/<br\s*\/?>/gi, "\n");
+    md = md.replace(/&nbsp;/g, " ");
+    md = md.replace(/<[^>]+>/g, ""); // Remove other tags
+    return md.trim();
+  }
+
   // Expose markdown utilities globally for existing code to use
   window.Markdown = {
     parseMarkdownTable,
     setupNotionHeaders,
+    parseFrontmatter,
+    escapeHtmlForMarkdown,
   };
 
   // Initialize header behavior on DOM ready (or immediately if DOM is already loaded)

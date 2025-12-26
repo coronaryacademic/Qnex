@@ -182,8 +182,8 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("⚠ Not running in Electron - file saving disabled");
   }
 
-  // Setup global Ctrl+S handler
-  setupGlobalCtrlS();
+  // Setup global Ctrl+S handler - now handled by app.js
+  // setupGlobalCtrlS();
 
   // Initialize workspace system
   initializeWorkspaces();
@@ -1672,15 +1672,8 @@ function updateAllFontSizes(size) {
 }
 
 // Setup global Ctrl+S handler
-function setupGlobalCtrlS() {
-  document.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-      e.preventDefault();
-      console.log("Ctrl+S pressed - auto-save triggered");
-      // The actual save is handled by app.js
-    }
-  });
-}
+// Setup global Ctrl+S handler removed - now handled by app.js unified handler
+// setupGlobalCtrlS();
 
 // Initialize auto-recovery system
 function initializeAutoRecovery() {

@@ -1,4 +1,4 @@
-import fileSystemService from "./file-system-service.js";
+﻿import fileSystemService from "./file-system-service.js";
 import { medicalIcons, getIcon } from "./medical-icons.js";
 import { BlockEditor } from "./editor-core.js";
 
@@ -298,185 +298,244 @@ const Storage = {
 // Expose Storage globally for other modules
 window.Storage = Storage;
 
+// Shared Export logic
+window.startExportProcess = async function () {
+  console.log("[V1.12-DEBUG] window.startExportProcess - ENTER");
+  if (typeof JSZip === "undefined") {
+    console.error("[V1.12-DEBUG] JSZip is still UNDEFINED");
+    modalAlert("JSZip library not loaded. Please check your internet connection.");
+    return;
+  }
+  
+  const notesCount = (state && state.notes) ? state.notes.length : 0;
+  console.log("[V1.12-DEBUG] Exporting", notesCount, "notes");
+
+  const zip = new JSZip();
+  const dateStr = new Date().toISOString().split("T")[0];
+  const zipFolderName = `notes-backup-${dateStr}`;
+  const notesFolder = zip.folder("notes");
+
+  // Add individual notes as .md files with frontmatter
+  state.notes.forEach(note => {
+    const metadata = {
+      id: note.id,
+      title: note.title,
+      tags: note.tags ? (Array.isArray(note.tags) ? note.tags.join(", ") : note.tags) : "",
+      folderId: note.folderId,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
+      pinned: (window.TwoBaseState && window.TwoBaseState.pinnedNotes) ? window.TwoBaseState.pinnedNotes.includes(note.id) : false,
+      fontSize: note.fontSize,
+      fontFamily: note.fontFamily,
+      layoutMode: note.layoutMode,
+      isReadOnly: note.isReadOnly
+    };
+
+    // Construct frontmatter
+    let frontmatter = "---\n";
+    for (const [key, value] of Object.entries(metadata)) {
+      if (value !== undefined && value !== null) {
+        frontmatter += `${key}: ${value}\n`;
+      }
+    }
+    frontmatter += "---\n\n";
+
+    // Convert HTML to MD
+    const mdContent = window.Markdown.escapeHtmlForMarkdown(note.contentHtml || "");
+    const fileContent = frontmatter + mdContent;
+    
+    // Clean filename
+    const safeTitle = (note.title || "Untitled").replace(/[/\\?%*:|"<>]/g, "-");
+    notesFolder.file(`${safeTitle}_${note.id.substring(0, 5)}.md`, fileContent);
+  });
+
+  // Add metadata as JSON
+  const metaData = {
+    folders: state.folders,
+    settings: state.settings,
+    trash: state.trash,
+    exportedAt: new Date().toISOString(),
+    appName: "My Notes",
+    version: "1.2"
+  };
+  zip.file("metadata.json", JSON.stringify(metaData, null, 2));
+
+  // Generate ZIP
+  const content = await zip.generateAsync({ type: "blob" });
+  const a = document.createElement("a");
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.href = URL.createObjectURL(content);
+  a.download = `${zipFolderName}.zip`;
+  a.click();
+  
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    if (typeof AudioFX !== "undefined" && AudioFX.playComplete) AudioFX.playComplete();
+  }, 100);
+  
+  modalAlert("Portable ZIP backup created successfully!");
+};
+
 // Shared import logic
 window.startImportProcess = function () {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/json";
+  console.log("[V1.12-DEBUG] window.startImportProcess - ENTER");
+  let input = document.getElementById("hiddenImportInput");
+  if (!input) {
+    console.log("[V1.12-DEBUG] Creating hidden import input");
+    input = document.createElement("input");
+    input.id = "hiddenImportInput";
+    input.type = "file";
+    input.accept = ".json,.md,.zip";
+    input.multiple = true; 
+    input.style.position = "fixed";
+    input.style.top = "-1000px";
+    input.style.left = "-1000px";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+  } else {
+    console.log("[V1.12-DEBUG] Reusing existing hidden import input");
+  }
+
   input.onchange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    console.log("[V1.12-DEBUG] Input onchange triggered, files:", e.target.files?.length);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    try {
-      // Read text and strip BOM if present
-      let text = await file.text();
-      if (text.charCodeAt(0) === 0xfeff) {
-        text = text.slice(1);
-      }
+    let importedCount = 0;
+    let folderImportedCount = 0;
 
-      let data;
+    for (const file of files) {
+      const fileName = file.name.toLowerCase();
+      console.log("[IMPORT] Processing:", fileName);
+      
       try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.warn("Standard JSON parse failed, trying to clean input", e);
-        try {
-          text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
-          data = JSON.parse(text);
-        } catch (e2) {
-          modalAlert("Invalid JSON format. Please check the file.");
-          return;
-        }
-      }
-
-      const uid = () =>
-        Date.now().toString(36) + Math.random().toString(36).substr(2);
-
-      // Handle full backup format (notes, folders, settings)
-      if (data.notes && data.folders && data.settings) {
-        const confirmed = await modalConfirm(
-          `Import backup from ${new Date(
-            data.exportedAt
-          ).toLocaleDateString()}?\n\nThis will add ${
-            data.notes.length
-          } notes and ${data.folders.length} folders to your existing data.`
-        );
-        if (!confirmed) return;
-
-        // Create ID mapping for folders to avoid conflicts
-        const folderIdMap = new Map();
-
-        // Import folders with new IDs
-        data.folders.forEach((folder) => {
-          const newId = uid();
-          folderIdMap.set(folder.id, newId);
-          state.folders.push({
-            ...folder,
-            id: newId,
-            parentId: folder.parentId
-              ? folderIdMap.get(folder.parentId) || null
-              : null,
-          });
-        });
-
-        // Import notes with new IDs and updated folder references
-        data.notes.forEach((note) => {
-          state.notes.push({
-            ...note,
-            id: uid(),
-            folderId: note.folderId
-              ? folderIdMap.get(note.folderId) || null
-              : null,
-          });
-        });
-
-        await saveNotes();
-        await saveFolders();
-        renderSidebar();
-        modalAlert(
-          `Successfully imported ${data.notes.length} notes and ${data.folders.length} folders!`
-        );
-        return;
-      }
-
-      // Handle plain array format (from "Export All Notes")
-      if (Array.isArray(data)) {
-        data = { notes: data };
-      }
-
-      // Handle folder import
-      if (data.type === "folder") {
-        // Import the folder as a new root folder
-        const newFolderId = uid();
-        const idMap = new Map();
-        idMap.set(data.folder.id, newFolderId);
-
-        const newFolder = {
-          ...data.folder,
-          id: newFolderId,
-          parentId: null, // Import to root
-        };
-        state.folders.push(newFolder);
-
-        // Import notes with new IDs
-        const importedNotes = data.notes || [];
-        importedNotes.forEach((note) => {
-          const newNote = {
-            ...note,
-            id: uid(),
-            folderId: idMap.get(note.folderId) || newFolderId,
-          };
-          state.notes.push(newNote);
-        });
-
-        state.foldersOpen.add(newFolderId); // Auto-expand
-        await saveNotes();
-        await saveFolders();
-        renderSidebar();
-
-        console.log(`Imported folder "${newFolder.name}" to root`);
-        modalAlert(`Imported folder "${newFolder.name}" to root`);
-      } else if (data.type === "note") {
-        // Import single note to uncategorized
-        const newNote = {
-          ...data.note,
-          id: uid(),
-          folderId: null, // Uncategorized
-        };
-        state.notes.push(newNote);
-        await saveNotes();
-        renderSidebar();
-
-        console.log(`Imported note "${newNote.title}" to uncategorized`);
-        modalAlert(`Imported note "${newNote.title}"`);
-      } else if (data.notes && Array.isArray(data.notes)) {
-        // Import multiple notes (from multi-select export)
-        const timestamp = new Date().toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const folderName = `Imported - ${timestamp}`;
-
-        let importFolder = state.folders.find((f) => f.name === folderName);
-        if (!importFolder) {
-          importFolder = {
-            id: uid(),
-            name: folderName,
-            parentId: null,
-            createdAt: new Date().toISOString(),
-          };
-          state.folders.push(importFolder);
-          state.foldersOpen.add(importFolder.id); // Auto-open the folder
-        }
-
-        let count = 0;
-        data.notes.forEach((note) => {
-          if (note.title || note.content || note.contentHtml) {
-            state.notes.push({
-              ...note,
-              id: uid(),
-              folderId: importFolder.id,
-            });
-            count++;
+        if (fileName.endsWith(".zip")) {
+          // Handle ZIP Import
+          if (typeof JSZip === "undefined") {
+            modalAlert("JSZip not available.");
+            continue;
           }
-        });
+          const zipContent = await JSZip.loadAsync(file);
+          const zipFiles = Object.keys(zipContent.files);
+          
+          // Look for metadata.json
+          let folders = [];
+          if (zipContent.files["metadata.json"]) {
+            const metaStr = await zipContent.files["metadata.json"].async("string");
+            const meta = JSON.parse(metaStr);
+            if (meta.folders) folders = meta.folders;
+          }
 
-        await saveNotes();
-        await saveFolders();
-        renderSidebar();
+          // Generate ID mapping for folders
+          const folderIdMap = new Map();
+          const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+          
+          folders.forEach(f => {
+             const newId = uid();
+             folderIdMap.set(f.id, newId);
+             state.folders.push({
+               ...f,
+               id: newId,
+               parentId: f.parentId ? folderIdMap.get(f.parentId) || null : null
+             });
+             folderImportedCount++;
+          });
 
-        modalAlert(`Imported ${count} notes to "${folderName}"`);
-      } else {
-        modalAlert(
-          "Unknown import format. Please ensure the JSON file is a valid note export."
-        );
+          // Process all .md files in the zip
+          for (const path of zipFiles) {
+            if (path.endsWith(".md")) {
+              const text = await zipContent.files[path].async("string");
+              const { data, content } = window.Markdown.parseFrontmatter(text);
+              
+              const newNote = {
+                id: uid(),
+                title: data.title || path.split("/").pop().replace(".md", ""),
+                contentHtml: window.Markdown.escapeHtmlForMarkdown(content),
+                tags: data.tags ? (typeof data.tags === 'string' ? data.tags.split(",").map(t => t.trim()) : data.tags) : [],
+                createdAt: data.createdAt || new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                folderId: data.folderId ? folderIdMap.get(data.folderId) || null : null
+              };
+              state.notes.push(newNote);
+              importedCount++;
+            }
+          }
+        } else if (fileName.endsWith(".json")) {
+          let text = await file.text();
+          if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+            data = JSON.parse(text);
+          }
+
+          const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+          if (data.notes && data.folders) {
+            const confirmed = await modalConfirm(`Import backup containing ${data.notes.length} notes?`);
+            if (!confirmed) continue;
+
+            const folderIdMap = new Map();
+            data.folders.forEach((folder) => {
+              const newId = uid();
+              folderIdMap.set(folder.id, newId);
+              state.folders.push({
+                ...folder,
+                id: newId,
+                parentId: folder.parentId ? folderIdMap.get(folder.parentId) || null : null,
+              });
+            });
+
+            data.notes.forEach((note) => {
+              state.notes.push({
+                ...note,
+                id: uid(),
+                folderId: note.folderId ? folderIdMap.get(note.folderId) || null : null,
+              });
+            });
+            importedCount += data.notes.length;
+            folderImportedCount += data.folders.length;
+          }
+        } else if (fileName.endsWith(".md")) {
+          const text = await file.text();
+          const { data, content } = window.Markdown.parseFrontmatter(text);
+          
+          const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+          const newNote = {
+            id: uid(),
+            title: data.title || file.name.replace(".md", ""),
+            contentHtml: window.Markdown.escapeHtmlForMarkdown(content),
+            tags: data.tags ? (Array.isArray(data.tags) ? data.tags : data.tags.split(",").map(t => t.trim())) : [],
+            createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            folderId: null,
+          };
+
+          state.notes.push(newNote);
+          importedCount++;
+        }
+      } catch (err) {
+        console.error(`Failed to import ${file.name}:`, err);
       }
-    } catch (error) {
-      console.error("Error importing:", error);
-      modalAlert("Error importing file. Please check the file format.");
     }
+
+    if (importedCount > 0) {
+      await saveNotes();
+      if (folderImportedCount > 0) await saveFolders();
+      renderSidebar();
+      if (typeof AudioFX !== "undefined" && AudioFX.playComplete) AudioFX.playComplete();
+      modalAlert(`Successfully imported ${importedCount} notes and ${folderImportedCount} folders!`);
+    } else {
+      modalAlert("No valid data found to import.");
+    }
+    
+    input.value = ""; 
   };
+  
   input.click();
 };
 
@@ -912,7 +971,7 @@ window.startImportProcess = function () {
       node.nodeType === 3
         ? node.parentElement?.textContent || ""
         : node.textContent || "";
-    const matchBullet = /^\s*[-•]\s/.exec(fullText);
+    const matchBullet = /^\s*[-â€¢]\s/.exec(fullText);
     const matchNum = /^\s*(\d+)\.\s/.exec(fullText || "");
     if (matchBullet || matchNum) {
       e.preventDefault();
@@ -1023,7 +1082,7 @@ window.startImportProcess = function () {
   document.addEventListener("contextmenu", async (e) => {
     e.preventDefault();
     const target = e.target;
-    // Sidebar space → show sidebar context
+    // Sidebar space â†’ show sidebar context
     const inSidebar = el.sidebar.contains(target);
     const onNoteBtn = target.closest("button[data-note-id], .folder-note-item");
     const onFolderRow = target.closest(".folder-item, .folder-header");
@@ -1647,7 +1706,7 @@ window.startImportProcess = function () {
                 await saveNotes();
                 await saveFolders();
                 renderSidebar();
-                alert(`✓ Imported ${count} notes into "${folder.name}"`);
+                alert(`âœ“ Imported ${count} notes into "${folder.name}"`);
               } else if (Array.isArray(data)) {
                 // Should have been handled by earlier Array check wrapper but safe fallback
                 let count = 0;
@@ -1667,7 +1726,7 @@ window.startImportProcess = function () {
                 });
                 await saveNotes();
                 renderSidebar();
-                alert(`✓ Imported ${count} notes from array`);
+                alert(`âœ“ Imported ${count} notes from array`);
               } else if (
                 data.contentHtml !== undefined ||
                 data.content !== undefined ||
@@ -1690,13 +1749,13 @@ window.startImportProcess = function () {
                 state.notes.push(newNote);
                 await saveNotes();
                 renderSidebar();
-                alert(`✓ Imported note "${newNote.title}" to "${folder.name}"`);
+                alert(`âœ“ Imported note "${newNote.title}" to "${folder.name}"`);
 
                 await saveNotes();
                 renderSidebar();
 
                 alert(
-                  `✓ Imported ${data.notes.length} note${
+                  `âœ“ Imported ${data.notes.length} note${
                     data.notes.length !== 1 ? "s" : ""
                   } into "${folder.name}" folder`
                 );
@@ -1886,10 +1945,10 @@ window.startImportProcess = function () {
 
   // In-app modal helpers
   function modalBase() {
-    console.log("🔧 modalBase: Creating new modal");
+    console.log("ðŸ”§ modalBase: Creating new modal");
     const tpl = document.getElementById("modal-template");
     if (!tpl) {
-      console.error("❌ modalBase: Template not found");
+      console.error("âŒ modalBase: Template not found");
       return null;
     }
     const node = tpl.content.firstElementChild.cloneNode(true);
@@ -1897,23 +1956,23 @@ window.startImportProcess = function () {
 
     // Add a class to mark this as a valid modal to prevent cleanup
     node.classList.add("active-modal");
-    console.log("✅ modalBase: Modal added to DOM with active-modal class");
+    console.log("âœ… modalBase: Modal added to DOM with active-modal class");
 
     // Add overlay click handler to close modal when clicking outside
     // Add delay to prevent immediate closing from the click that opened it
     const overlay = node.querySelector(".modal-overlay");
     if (overlay) {
       setTimeout(() => {
-        console.log("🔧 modalBase: Adding overlay click handler");
+        console.log("ðŸ”§ modalBase: Adding overlay click handler");
         overlay.addEventListener("click", (e) => {
           console.log(
-            "🖱️ modalBase: Overlay clicked",
+            "ðŸ–±ï¸ modalBase: Overlay clicked",
             e.target,
             e.target === overlay
           );
           if (e.target === overlay) {
             // Only close if clicking on the overlay itself, not the modal content
-            console.log("❌ modalBase: Closing modal via overlay click");
+            console.log("âŒ modalBase: Closing modal via overlay click");
             node.remove();
           }
         });
@@ -1923,7 +1982,7 @@ window.startImportProcess = function () {
     return node;
   }
   function modalAlert(message) {
-    console.log("🚨 modalAlert called with:", message);
+    console.log("ðŸš¨ modalAlert called with:", message);
     return new Promise((res) => {
       createModernModal("Notice", message, [
         {
@@ -1938,7 +1997,7 @@ window.startImportProcess = function () {
   }
 
   function modalConfirm(message) {
-    console.log("❓ modalConfirm called with:", message);
+    console.log("â“ modalConfirm called with:", message);
     return new Promise((resolve) => {
       createModernModal("Confirm", message, [
         {
@@ -1959,7 +2018,7 @@ window.startImportProcess = function () {
   }
 
   function modalPrompt(title, placeholder, value = "") {
-    console.log("⌨️ modalPrompt called with:", { title, placeholder, value });
+    console.log("âŒ¨ï¸ modalPrompt called with:", { title, placeholder, value });
     return new Promise((res) => {
       // Close all context menus when opening a dialog
       const contextMenus = document.querySelectorAll(
@@ -2019,7 +2078,7 @@ window.startImportProcess = function () {
         "padding: 8px 16px; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 14px; font-weight: 500;";
 
       const close = () => {
-        console.log("❌ modalPrompt: Modal closed");
+        console.log("âŒ modalPrompt: Modal closed");
         overlay.remove();
       };
 
@@ -2660,7 +2719,7 @@ window.startImportProcess = function () {
 
         const caret = document.createElement("span");
         caret.className = "folder-caret";
-        caret.textContent = isExpanded ? "▾" : "▸";
+        caret.textContent = isExpanded ? "â–¾" : "â–¸";
         const icon = document.createElement("span");
         icon.className = "folder-icon";
         // Folders use a dedicated folder default emoji when no custom icon is set
@@ -2815,7 +2874,7 @@ window.startImportProcess = function () {
       const isUncatExpanded = query ? true : state.foldersOpen.has("");
       const caret = document.createElement("span");
       caret.className = "folder-caret";
-      caret.textContent = isUncatExpanded ? "▾" : "▸";
+      caret.textContent = isUncatExpanded ? "â–¾" : "â–¸";
       const icon = document.createElement("span");
       icon.className = "folder-icon";
       const uncategorizedIconKey = "folderDefault";
@@ -2981,7 +3040,7 @@ window.startImportProcess = function () {
       // Add close button with spacing for pin icon
       const close = document.createElement("button");
       close.className = "close";
-      close.textContent = "×";
+      close.textContent = "Ã—";
       close.title = "Close tab";
 
       // Add pin indicator for pinned tabs
@@ -3254,7 +3313,7 @@ window.startImportProcess = function () {
         chip.className = "chip";
         chip.innerHTML = `<span>${escapeHtml(
           t
-        )}</span><span class="x" title="Remove">×</span>`;
+        )}</span><span class="x" title="Remove">Ã—</span>`;
         chip.querySelector(".x").addEventListener("click", () => {
           note.tags.splice(idx, 1);
           saveNote();
@@ -3328,7 +3387,7 @@ window.startImportProcess = function () {
     }
 
     function saveNote() {
-      console.log("💾 saveNote() called for note:", note.id);
+      console.log("ðŸ’¾ saveNote() called for note:", note.id);
       note.updatedAt = new Date().toISOString();
       note.contentHtml = editor.getHTML();
       saveNotes();
@@ -3339,7 +3398,7 @@ window.startImportProcess = function () {
       refreshWindowTitle(note.id);
       hasUnsavedChanges = false;
       updateSaveStatus(true);
-      console.log("✅ Save complete, status updated");
+      console.log("âœ… Save complete, status updated");
     }
 
     // Expose saveNote on the node for external access (e.g., two-base.js)
@@ -3359,16 +3418,15 @@ window.startImportProcess = function () {
 
     // Ctrl+S to save manually
     content.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
-        e.stopPropagation(); // Stop propagation to prevent global handlers (custom-features.js)
-        console.log(
-          "📝 Ctrl+S detected in editor. Unsaved changes:",
-          hasUnsavedChanges
-        );
-        // Force save regardless of unsavedChanges flag to ensure it works
-        console.log("📝 Calling saveNote() force update...");
+        e.stopPropagation(); // Stop propagation to prevent global handlers
+        console.log("ðŸ“ Ctrl+S detected in editor for note:", note.id);
         saveNote();
+        // Visual feedback
+        if (typeof AudioFX !== "undefined" && AudioFX.playComplete) {
+          AudioFX.playComplete();
+        }
         return;
       }
     });
@@ -3399,7 +3457,7 @@ window.startImportProcess = function () {
       let settingsOpen = false;
       settingsBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        console.log("📁 Folder & Tags button clicked");
+        console.log("ðŸ“ Folder & Tags button clicked");
 
         // Close the editor menu
         const editorMenu = node.querySelector(".editor-menu");
@@ -3410,10 +3468,10 @@ window.startImportProcess = function () {
         settingsOpen = !settingsOpen;
         if (settingsOpen) {
           settingsDropdown.style.display = "block";
-          console.log("✅ Dropdown shown");
+          console.log("âœ… Dropdown shown");
         } else {
           settingsDropdown.style.display = "none";
-          console.log("❌ Dropdown hidden");
+          console.log("âŒ Dropdown hidden");
         }
       });
 
@@ -3934,7 +3992,7 @@ window.startImportProcess = function () {
           renderSidebar();
 
           alert(
-            `✓ Imported ${data.notes.length} note${
+            `âœ“ Imported ${data.notes.length} note${
               data.notes.length !== 1 ? "s" : ""
             } into "${folderName}" folder`
           );
@@ -4361,7 +4419,7 @@ window.startImportProcess = function () {
         <h2>Trash (${state.trash.length} items)</h2>
         <div class="trash-actions">
           <button class="empty-all-btn">Empty All</button>
-          <button class="close-modal-btn">×</button>
+          <button class="close-modal-btn">Ã—</button>
         </div>
       </div>
       <div class="search-results-list" id="trashList" style="max-height: 300px; overflow-y: auto;"></div>
@@ -4425,7 +4483,7 @@ window.startImportProcess = function () {
             const noteCount = item.notes ? item.notes.length : 0;
             const expandIcon =
               noteCount > 0
-                ? '<span class="folder-expand-icon" style="display: inline-block; margin-right: 4px; transition: transform 0.2s;">▶</span>'
+                ? '<span class="folder-expand-icon" style="display: inline-block; margin-right: 4px; transition: transform 0.2s;">â–¶</span>'
                 : "";
             title.innerHTML = `${expandIcon}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; margin-right: 6px; vertical-align: middle;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${
               item.name || "Untitled Folder"
@@ -4443,7 +4501,7 @@ window.startImportProcess = function () {
           meta.className = "search-result-meta";
           meta.textContent = `${
             item.type === "folder" ? "Folder" : "Note"
-          } • Deleted: ${fmt(item.deletedAt)}`;
+          } â€¢ Deleted: ${fmt(item.deletedAt)}`;
           trashItem.appendChild(meta);
 
           const actions = document.createElement("div");
@@ -4835,8 +4893,10 @@ window.startImportProcess = function () {
 
   // Settings Page Logic
   function openSettings() {
+    console.log("[V1.12-DEBUG] openSettings() called");
     // Switch to main base view if not already there
     if (window.TwoBaseState) {
+      console.log("[V1.12-DEBUG] Switching TwoBaseState.currentBase back to 'main' for settings view");
       window.TwoBaseState.currentBase = "main";
       if (el.workspaceSplit) el.workspaceSplit.style.display = "flex";
       if (el.noteBase) el.noteBase.classList.add("hidden");
@@ -5008,17 +5068,17 @@ window.startImportProcess = function () {
                   <h3>Import / Export</h3>
                   <div class="setting-row">
                     <div class="setting-info">
-                      <h4>Export All Notes</h4>
-                      <p>Export all your notes to a single JSON file.</p>
+                      <h4>Portable Backup</h4>
+                      <p>Backup all notes, folders, and settings into a portable ZIP archive for migration or safety.</p>
                     </div>
-                    <button id="exportBtn" class="settings-btn editor-export-notes-btn">Export JSON</button>
+                    <button id="settingsExportBtn" class="settings-btn editor-export-notes-btn">Download Backup</button>
                   </div>
                    <div class="setting-row">
                     <div class="setting-info">
-                      <h4>Import Notes</h4>
-                      <p>Import notes from a previously exported JSON file.</p>
+                      <h4>Import Notes / Backup</h4>
+                      <p>Import a backup file (.json) or individual Markdown notes (.md).</p>
                     </div>
-                    <button id="importBtn" class="settings-btn editor-import-btn">Import JSON</button>
+                    <button id="settingsImportBtn" class="settings-btn editor-import-btn">Select Files</button>
                   </div>
                 </div>
 
@@ -5209,38 +5269,42 @@ window.startImportProcess = function () {
       });
     }
 
-    const exportBtn = document.getElementById("exportBtn");
+    const exportBtn = document.getElementById("settingsExportBtn");
+    console.log("[V1.12-DEBUG] settingsExportBtn search result:", !!exportBtn);
     if (exportBtn) {
       exportBtn.addEventListener("click", () => {
-        console.log("[Settings] Export JSON clicked");
-        const exportData = {
-          notes: state.notes,
-          folders: state.folders,
-          settings: state.settings,
-          exportedAt: new Date().toISOString(),
-          version: "1.0",
-        };
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-          type: "application/json",
-        });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `notes-backup-${
-          new Date().toISOString().split("T")[0]
-        }.json`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        modalAlert("Export completed successfully!");
+        console.log("[V1.12-DEBUG] settingsExportBtn CLICKED");
+        if (window.startExportProcess) {
+          console.log("[V1.12-DEBUG] Triggering window.startExportProcess");
+          window.startExportProcess();
+        } else {
+          console.error("[V1.12-DEBUG] window.startExportProcess is MISSING");
+          modalAlert("Export system failed to initialize. Try refreshing.");
+        }
       });
+    } else {
+      console.warn("[V1.12-DEBUG] settingsExportBtn NOT FOUND in Settings HTML (Conflict resolved)");
     }
 
-    const importBtn = document.getElementById("importBtn");
+    const importBtn = document.getElementById("settingsImportBtn");
+    console.log("[V1.12-DEBUG] settingsImportBtn search result:", !!importBtn);
     if (importBtn) {
       importBtn.addEventListener("click", () => {
-        console.log("[Settings] Import JSON clicked");
-        if (window.startImportProcess) window.startImportProcess();
+        console.log("[V1.12-DEBUG] settingsImportBtn CLICKED");
+        if (window.startImportProcess) {
+          console.log("[V1.12-DEBUG] Triggering window.startImportProcess");
+          window.startImportProcess();
+        } else {
+          console.error("[V1.12-DEBUG] window.startImportProcess is MISSING");
+          modalAlert("Import system failed to initialize. Try refreshing.");
+        }
       });
+    } else {
+      console.warn("[V1.12-DEBUG] settingsImportBtn NOT FOUND in Settings HTML");
     }
+
+    console.log("[V1.12-DEBUG] openSettings binding complete");
+
 
     const clearAllBtn = document.getElementById("clearAllBtn");
     if (clearAllBtn) {
@@ -5534,14 +5598,14 @@ window.startImportProcess = function () {
   }
 
   function showAboutModal() {
-    console.log("ℹ️ showAboutModal called");
+    console.log("â„¹ï¸ showAboutModal called");
     createModernModal("About My Notes", "", [
       {
         text: "Close",
         bg: "#3b82f6",
         color: "white",
         weight: "500",
-        callback: () => console.log("❌ showAboutModal: Modal closed"),
+        callback: () => console.log("âŒ showAboutModal: Modal closed"),
       },
     ]);
 
@@ -6516,7 +6580,7 @@ window.startImportProcess = function () {
     const div = document.createElement("div");
     div.className = "sel-tools";
     div.innerHTML =
-      '<button data-t="b">B</button><button data-t="i">I</button><button data-t="u">U</button><button data-t="ul">•</button><button data-t="ol">1.</button><button data-t="hl">HL</button>';
+      '<button data-t="b">B</button><button data-t="i">I</button><button data-t="u">U</button><button data-t="ul">â€¢</button><button data-t="ol">1.</button><button data-t="hl">HL</button>';
     document.body.appendChild(div);
     selToolsEl = div;
     return div;
@@ -6696,17 +6760,17 @@ window.startImportProcess = function () {
   // Delete selected items function
   async function deleteSelectedItems() {
     console.log(
-      "🗑️ deleteSelectedItems called, selectedItems:",
+      "ðŸ—‘ï¸ deleteSelectedItems called, selectedItems:",
       Array.from(state.selectedItems)
     );
     if (state.selectedItems.size === 0) {
-      console.log("❌ No items selected");
+      console.log("âŒ No items selected");
       return;
     }
 
     // Items are stored as plain IDs, not with prefixes
     const selectedIds = Array.from(state.selectedItems);
-    console.log("📋 Selected IDs:", selectedIds);
+    console.log("ðŸ“‹ Selected IDs:", selectedIds);
 
     const selectedNotes = selectedIds.filter((id) => {
       const note = state.notes.find((n) => n.id === id);
@@ -6720,7 +6784,7 @@ window.startImportProcess = function () {
 
     const totalCount = selectedNotes.length + selectedFolders.length;
     console.log(
-      `📊 Total count: ${totalCount} (notes: ${selectedNotes.length}, folders: ${selectedFolders.length})`
+      `ðŸ“Š Total count: ${totalCount} (notes: ${selectedNotes.length}, folders: ${selectedFolders.length})`
     );
 
     const confirmed = await modalConfirm(
@@ -6728,11 +6792,11 @@ window.startImportProcess = function () {
     );
 
     if (!confirmed) {
-      console.log("❌ User cancelled deletion");
+      console.log("âŒ User cancelled deletion");
       return;
     }
 
-    console.log("✅ User confirmed deletion");
+    console.log("âœ… User confirmed deletion");
 
     // Delete selected notes
     selectedNotes.forEach((noteId) => {
@@ -7126,7 +7190,7 @@ window.startImportProcess = function () {
     }
 
     // Check if right pane has focus
-    console.log("🔒 toggleNoteLock called");
+    console.log("ðŸ”’ toggleNoteLock called");
 
     // Try to find the currently focused editor
     let targetEditor = document.activeElement?.closest(".editor");
@@ -7199,7 +7263,7 @@ window.startImportProcess = function () {
         saveNotes();
       }
 
-      console.log("✓ Note unlocked");
+      console.log("âœ“ Note unlocked");
     } else {
       // Lock - make ALL content non-editable
       content.setAttribute("contenteditable", "false");
@@ -7241,7 +7305,7 @@ window.startImportProcess = function () {
         // Insert at the beginning (left side)
         titleContainer.insertBefore(lockIcon, titleContainer.firstChild);
       }
-      console.log("✓ Note locked");
+      console.log("âœ“ Note locked");
     }
   }
 
@@ -7606,6 +7670,24 @@ window.startImportProcess = function () {
       el.newNoteBtn.click();
     }
 
+    // Ctrl+S: Save changes (Works everywhere)
+    if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+      e.preventDefault();
+      console.log("[Shortcut] Global Ctrl+S triggered");
+      
+      // If there's an active editor's save function in TwoBase architecture, use it
+      if (window.TwoBaseState && typeof window.TwoBaseState.currentSaveFunction === "function") {
+          console.log("[Shortcut] Using active editor's save function");
+          window.TwoBaseState.currentSaveFunction();
+      } else {
+          saveNotes();
+          // Visual feedback
+          if (typeof AudioFX !== "undefined" && AudioFX.playComplete) {
+            AudioFX.playComplete();
+          }
+      }
+    }
+
     // Ctrl+F: Toggle search bar
     if ((e.ctrlKey || e.metaKey) && e.key === "f") {
       e.preventDefault();
@@ -7922,10 +8004,10 @@ window.startImportProcess = function () {
           const saved = localStorage.getItem("todos");
           todos = saved ? JSON.parse(saved) : [];
         }
-        console.log("✅ Tasks loaded from file system:", todos.length);
+        console.log("âœ… Tasks loaded from file system:", todos.length);
       } catch (error) {
         console.warn(
-          "⚠️ Failed to load tasks from file system, using fallback:",
+          "âš ï¸ Failed to load tasks from file system, using fallback:",
           error
         );
         // Fallback to settings
@@ -7949,9 +8031,9 @@ window.startImportProcess = function () {
         } else {
           localStorage.setItem("todos", JSON.stringify(todos));
         }
-        console.log("✅ Tasks saved to file system");
+        console.log("âœ… Tasks saved to file system");
       } catch (error) {
-        console.error("❌ Failed to save tasks:", error);
+        console.error("âŒ Failed to save tasks:", error);
         // Fallback to settings
         state.settings.todos = todos;
         if (Storage.isElectron) {
@@ -8009,7 +8091,7 @@ window.startImportProcess = function () {
         item.draggable = true;
         item.dataset.index = index;
         item.innerHTML = `
-          <div class="todo-drag-handle">⋮⋮</div>
+          <div class="todo-drag-handle">â‹®â‹®</div>
           <div class="todo-checkbox ${
             todo.completed ? "checked" : ""
           }" data-index="${index}"></div>
@@ -8019,7 +8101,7 @@ window.startImportProcess = function () {
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
             </svg>
           </button>
-          <button class="todo-delete" data-index="${index}">×</button>
+          <button class="todo-delete" data-index="${index}">Ã—</button>
         `;
 
         // Add drag event listeners
@@ -8196,7 +8278,7 @@ window.startImportProcess = function () {
 
       // Create save button
       const saveBtn = document.createElement("button");
-      saveBtn.textContent = "✓";
+      saveBtn.textContent = "âœ“";
       saveBtn.className = "todo-save";
       saveBtn.title = "Save";
       saveBtn.style.cssText =
@@ -8204,7 +8286,7 @@ window.startImportProcess = function () {
 
       // Create cancel button
       const cancelBtn = document.createElement("button");
-      cancelBtn.textContent = "✕";
+      cancelBtn.textContent = "âœ•";
       cancelBtn.className = "todo-cancel";
       cancelBtn.title = "Cancel";
       cancelBtn.style.cssText =
