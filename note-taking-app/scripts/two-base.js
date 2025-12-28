@@ -70,16 +70,16 @@
     el.toolbarOptionsBtn = document.getElementById("toolbarOptionsBtn");
     el.toolbarOptionsMenu = document.getElementById("toolbarOptionsMenu");
     el.noteToolbarSection = document.querySelector(".note-toolbar-section");
-    
+
     // Initialize Drag & Drop for split view
     setupDragAndDrop();
-    
+
     // Initialize Resizer
     setupResizer();
-    
+
     // Initialize Split Button
     setupSplitButton();
-    
+
     // Restore Session State
     restoreTwoBaseSession();
   }
@@ -609,8 +609,8 @@
     item.innerHTML = `
       <div class="workspace-item-icon">${icon}</div>
       <div class="workspace-item-title">${escapeHtml(
-        note.title || "Untitled"
-      )}</div>
+      note.title || "Untitled"
+    )}</div>
       <div class="workspace-item-meta">Notebook</div>
     `;
 
@@ -825,15 +825,15 @@
             // Delete all selected items (notes and folders)
             const notesToDelete = [];
             const foldersToDelete = [];
-            
+
             // Helper to get all subfolders and notes recursively
             const collectDescendants = (folderId) => {
               const subfolders = state.folders.filter(f => f.parentId === folderId);
               const notes = state.notes.filter(n => n.folderId === folderId);
-              
+
               notesToDelete.push(...notes);
               foldersToDelete.push(...subfolders);
-              
+
               subfolders.forEach(sf => collectDescendants(sf.id));
             };
 
@@ -854,7 +854,7 @@
             // Deduplicate
             const uniqueNotesToDelete = Array.from(new Set(notesToDelete));
             const uniqueFoldersToDelete = Array.from(new Set(foldersToDelete));
-            
+
             console.log(`[BASE LAYER] Recursive delete: ${uniqueNotesToDelete.length} notes and ${uniqueFoldersToDelete.length} folders identified.`);
 
             // Move to trash and delete from backend
@@ -866,7 +866,7 @@
                   ...deletedNote,
                   deletedAt: new Date().toISOString()
                 });
-                
+
                 if (window.Storage?.useFileSystem) {
                   try {
                     await window.Storage.deleteNoteFromFileSystem(note.id);
@@ -874,14 +874,14 @@
                     console.error(`Failed to delete note ${note.id}:`, e);
                   }
                 }
-                
+
                 if (typeof window.closeTab === "function") {
                   window.closeTab("left", note.id);
                   window.closeTab("right", note.id);
                 }
               }
             }
-            
+
             for (const folder of uniqueFoldersToDelete) {
               const idx = state.folders.findIndex(f => f.id === folder.id);
               if (idx >= 0) {
@@ -891,7 +891,7 @@
                   type: "folder",
                   deletedAt: new Date().toISOString()
                 });
-                
+
                 if (window.Storage?.useFileSystem) {
                   try {
                     await window.Storage.deleteFolderFromFileSystem(folder.id);
@@ -992,7 +992,7 @@
         {
           onOpenNote: () => {
             console.log("[TWO-BASE] onOpenNote handler called for:", itemId);
-            
+
             // Clear selection
             TwoBaseState.selectedItems = [];
             if (window.state && window.state.selectedItems) {
@@ -1021,7 +1021,7 @@
             }
             // Re-render workspace
             renderWorkspaceSplit(TwoBaseState.currentFolder);
-            
+
 
           },
           onChangeNoteIcon: async () => {
@@ -1104,7 +1104,7 @@
                   window.Storage.useFileSystem
                 ) {
                   try {
-                      await window.Storage.deleteNoteFromFileSystem(itemId);
+                    await window.Storage.deleteNoteFromFileSystem(itemId);
                   } catch (error) {
                     console.error(
                       "Error deleting note from backend:",
@@ -1133,22 +1133,11 @@
               }
             }); // Close showDeleteConfirmation callback
           },
+          // Hide "Move to Uncategorized" if note is already in uncategorized
+          hideMoveToUncategorized: !note.folderId,
         },
         "baselayer-note"
       );
-
-      // Hide "Move to Uncategorized" if note is already in uncategorized
-      if (!note.folderId) {
-        // Update the context menu after creation to hide the button
-        setTimeout(() => {
-          const moveToButton = document.querySelector(
-            '[data-cmd="move-to-root"]'
-          );
-          if (moveToButton) {
-            moveToButton.style.display = "none";
-          }
-        }, 0);
-      }
     } else if (itemType === "folder") {
       const folder = state.folders.find((f) => f.id === itemId);
       if (!folder) return;
@@ -1461,8 +1450,7 @@
               renderWorkspaceSplit(TwoBaseState.currentFolder);
 
               alert(
-                `✓ Imported ${data.notes.length} note${
-                  data.notes.length !== 1 ? "s" : ""
+                `✓ Imported ${data.notes.length} note${data.notes.length !== 1 ? "s" : ""
                 } into "${folder.name}" folder`
               );
             } else {
@@ -1509,7 +1497,7 @@
         // Recursive collection of items to delete
         const notesToDelete = [];
         const foldersToDelete = [folder];
-        
+
         const collectDescendants = (fid) => {
           const subs = state.folders.filter(f => f.parentId === fid);
           const notes = state.notes.filter(n => n.folderId === fid);
@@ -1517,17 +1505,15 @@
           foldersToDelete.push(...subs);
           subs.forEach(s => collectDescendants(s.id));
         };
-        
+
         collectDescendants(itemId);
         const noteCount = notesToDelete.length;
 
         const ok = await window.modalConfirm(
-          `Delete folder "${folder.name}"?${
-            noteCount > 0
-              ? `\n\n${noteCount} note${
-                  noteCount !== 1 ? "s" : ""
-                } inside will be moved to trash.`
-              : ""
+          `Delete folder "${folder.name}"?${noteCount > 0
+            ? `\n\n${noteCount} note${noteCount !== 1 ? "s" : ""
+            } inside will be moved to trash.`
+            : ""
           }\n\nYou can restore from trash later.`
         );
         if (!ok) return;
@@ -1535,10 +1521,10 @@
         // Backend deletion loops (await all)
         if (window.Storage?.useFileSystem) {
           for (const note of notesToDelete) {
-            try { await window.Storage.deleteNoteFromFileSystem(note.id); } catch(e) {}
+            try { await window.Storage.deleteNoteFromFileSystem(note.id); } catch (e) { }
           }
           for (const f of foldersToDelete) {
-            try { await window.Storage.deleteFolderFromFileSystem(f.id); } catch(e) {}
+            try { await window.Storage.deleteFolderFromFileSystem(f.id); } catch (e) { }
           }
         }
 
@@ -1550,12 +1536,12 @@
             state.trash.push({ ...deleted, deletedAt: new Date().toISOString() });
           }
         }
-        
+
         for (const f of foldersToDelete) {
           const idx = state.folders.findIndex(x => x.id === f.id);
           if (idx >= 0) {
-             const [deleted] = state.folders.splice(idx, 1);
-             state.trash.push({ ...deleted, type: "folder", deletedAt: new Date().toISOString() });
+            const [deleted] = state.folders.splice(idx, 1);
+            state.trash.push({ ...deleted, type: "folder", deletedAt: new Date().toISOString() });
           }
         }
 
@@ -1576,13 +1562,13 @@
   // ===================================
 
   // Helper for view transitions
-    // Helper for view transitions (Overlay Style)
+  // Helper for view transitions (Overlay Style)
   function switchViewWithAnimation(toView, fromView, direction = "forward") {
     if (!toView || !fromView) return;
 
     // If already in that view, do nothing
-    if (!toView.classList.contains("hidden") && toView.style.display !== "none" && 
-        (fromView.classList.contains("hidden") || fromView.style.display === "none")) {
+    if (!toView.classList.contains("hidden") && toView.style.display !== "none" &&
+      (fromView.classList.contains("hidden") || fromView.style.display === "none")) {
       return;
     }
 
@@ -1596,8 +1582,8 @@
 
     // Ensure 'to' view is visible
     toView.classList.remove("hidden");
-    toView.style.display = "flex"; 
-    
+    toView.style.display = "flex";
+
     // Add animation classes
     toView.classList.add("view-animate");
     fromView.classList.add("view-animate");
@@ -1629,15 +1615,15 @@
       // But eventually we usually want to hide the inactive view to avoid interaction issues.
       fromView.style.display = "none";
       fromView.classList.add("hidden");
-      
+
       // Clean up classes
       toView.classList.remove("view-animate", "view-active");
       fromView.classList.remove("view-animate", "view-exit");
-      
+
       // Clean up inline styles
       toView.style.transform = "";
       toView.style.opacity = "";
-      
+
       if (container) {
         container.classList.remove("view-transition-container");
       }
@@ -1647,26 +1633,26 @@
   function switchToNoteBase() {
     TwoBaseState.currentBase = "note";
     console.log("[DEBUG] switchToNoteBase called");
-    
+
     // Ensure elements exist
     if (!el.workspaceSplit || !el.noteBase) {
-        console.error("CRITICAL: Missing elements for note view switch!");
-        // define them if missing from 'el' cache
-        el.workspaceSplit = document.getElementById("workspaceSplit");
-        el.noteBase = document.getElementById("noteBase");
+      console.error("CRITICAL: Missing elements for note view switch!");
+      // define them if missing from 'el' cache
+      el.workspaceSplit = document.getElementById("workspaceSplit");
+      el.noteBase = document.getElementById("noteBase");
     }
 
     if (el.workspaceSplit && el.noteBase) {
-        switchViewWithAnimation(el.noteBase, el.workspaceSplit);
+      switchViewWithAnimation(el.noteBase, el.workspaceSplit);
     } else {
-        // Absolute fallback
-        const ws = document.getElementById("workspaceSplit");
-        const nb = document.getElementById("noteBase");
-        if (ws) ws.style.display = "none";
-        if (nb) {
-            nb.classList.remove("hidden");
-            nb.style.display = "flex";
-        }
+      // Absolute fallback
+      const ws = document.getElementById("workspaceSplit");
+      const nb = document.getElementById("noteBase");
+      if (ws) ws.style.display = "none";
+      if (nb) {
+        nb.classList.remove("hidden");
+        nb.style.display = "flex";
+      }
     }
   }
 
@@ -1674,18 +1660,18 @@
     console.log("[DEBUG] switchToMainBase called");
     console.log("Current Base before switch:", TwoBaseState.currentBase);
     console.log("Elements - Workspace:", el.workspaceSplit, "NoteBase:", el.noteBase);
-    
+
     TwoBaseState.currentBase = "main";
-    
+
     if (el.workspaceSplit && el.noteBase) {
-        switchViewWithAnimation(el.workspaceSplit, el.noteBase);
+      switchViewWithAnimation(el.workspaceSplit, el.noteBase);
     } else {
-        console.error("CRITICAL: Missing elements for view switch!");
-        // Force fallback
-        const ws = document.getElementById("workspaceSplit");
-        const nb = document.getElementById("noteBase");
-        if (ws) ws.style.display = "flex";
-        if (nb) nb.classList.add("hidden");
+      console.error("CRITICAL: Missing elements for view switch!");
+      // Force fallback
+      const ws = document.getElementById("workspaceSplit");
+      const nb = document.getElementById("noteBase");
+      if (ws) ws.style.display = "flex";
+      if (nb) nb.classList.add("hidden");
     }
 
     // Refresh workspace in case notes were edited
@@ -1704,13 +1690,13 @@
 
     // Use animation if elements are available
     if (workspaceSplit && noteBase && workspaceSplit.style.display !== "none") {
-       switchViewWithAnimation(noteBase, workspaceSplit);
+      switchViewWithAnimation(noteBase, workspaceSplit);
     } else {
-       // Fallback or if already switched
-       if (workspaceSplit) workspaceSplit.style.display = "none";
-       if (noteBase) noteBase.classList.remove("hidden");
+      // Fallback or if already switched
+      if (workspaceSplit) workspaceSplit.style.display = "none";
+      if (noteBase) noteBase.classList.remove("hidden");
     }
-    
+
     if (emptyState) emptyState.classList.add("hidden");
 
     // Check if note is already open
@@ -1718,14 +1704,14 @@
     if (existingIndex !== -1) {
       // Just activate the existing tab
       switchActiveNote(noteId);
-      
+
       // If in split view, ensure this note becomes visible (e.g. on the left)
       if (TwoBaseState.splitView) {
-          if (TwoBaseState.rightPaneNote !== noteId && TwoBaseState.leftPaneNote !== noteId) {
-              TwoBaseState.leftPaneNote = noteId;
-              renderNoteEditor(TwoBaseState.leftPaneNote, "left");
-              saveTwoBaseSession();
-          }
+        if (TwoBaseState.rightPaneNote !== noteId && TwoBaseState.leftPaneNote !== noteId) {
+          TwoBaseState.leftPaneNote = noteId;
+          renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+          saveTwoBaseSession();
+        }
       }
       return;
     }
@@ -1736,17 +1722,17 @@
 
     // Render tabs and editor
     renderNoteTabs();
-    
+
     if (TwoBaseState.splitView) {
-        // If split view is active, update the Left pane to be the new note (standard behavior)
-        TwoBaseState.leftPaneNote = noteId;
-        renderNoteEditor(TwoBaseState.leftPaneNote, "left");
-        // Right pane remains as is
-        if (TwoBaseState.rightPaneNote) {
-            renderNoteEditor(TwoBaseState.rightPaneNote, "right");
-        }
+      // If split view is active, update the Left pane to be the new note (standard behavior)
+      TwoBaseState.leftPaneNote = noteId;
+      renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+      // Right pane remains as is
+      if (TwoBaseState.rightPaneNote) {
+        renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+      }
     } else {
-        renderNoteEditor(noteId);
+      renderNoteEditor(noteId);
     }
 
     // Save session state
@@ -1760,17 +1746,17 @@
     // This prevents "ghost tabs" that keep the layer open but are invisible
     const originalCount = TwoBaseState.openNotes.length;
     TwoBaseState.openNotes = TwoBaseState.openNotes.filter(id => state.notes.some(n => n.id === id));
-    
+
     if (TwoBaseState.openNotes.length !== originalCount) {
-        console.warn(`[CLEANUP] Removed ${originalCount - TwoBaseState.openNotes.length} invalid notes from openNotes`);
-        saveTwoBaseSession();
-        
-        // If we cleaned up EVERYTHING, we should close the layer!
-        if (TwoBaseState.openNotes.length === 0) {
-            console.log("[CLEANUP] No valid notes left, switching to main base");
-            switchToMainBase();
-            return;
-        }
+      console.warn(`[CLEANUP] Removed ${originalCount - TwoBaseState.openNotes.length} invalid notes from openNotes`);
+      saveTwoBaseSession();
+
+      // If we cleaned up EVERYTHING, we should close the layer!
+      if (TwoBaseState.openNotes.length === 0) {
+        console.log("[CLEANUP] No valid notes left, switching to main base");
+        switchToMainBase();
+        return;
+      }
     }
 
     // Sort notes: pinned first (in their pinnedNotes order), then regular (in their openNotes order)
@@ -1779,16 +1765,16 @@
     const sortedNotes = [...TwoBaseState.openNotes].sort((a, b) => {
       const aIsPinned = TwoBaseState.pinnedNotes.includes(a);
       const bIsPinned = TwoBaseState.pinnedNotes.includes(b);
-      
+
       // Both pinned: sort by their position in pinnedNotes array
       if (aIsPinned && bIsPinned) {
         return TwoBaseState.pinnedNotes.indexOf(a) - TwoBaseState.pinnedNotes.indexOf(b);
       }
-      
+
       // One pinned, one not: pinned comes first
       if (aIsPinned && !bIsPinned) return -1;
       if (!aIsPinned && bIsPinned) return 1;
-      
+
       // Both unpinned: maintain their order in openNotes (which is already their order)
       return 0;
     });
@@ -1805,7 +1791,7 @@
 
       const isPinned = TwoBaseState.pinnedNotes.includes(noteId);
       const tab = document.createElement("div");
-      
+
       // Add compact class to pinned tabs only if we decided to compact
       let className = "note-tab" + (noteId === TwoBaseState.activeNote ? " active" : "");
       if (isPinned) {
@@ -1814,7 +1800,7 @@
           className += " compact";
         }
       }
-      
+
       tab.className = className;
       tab.dataset.noteId = noteId;
       tab.dataset.index = index;
@@ -1830,8 +1816,8 @@
             </svg>
           </span>
           <span class="note-tab-title">${escapeHtml(
-            note.title || "Untitled"
-          )}</span>
+          note.title || "Untitled"
+        )}</span>
           <span class="note-tab-unpin" title="Unpin tab">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 17v5"></path>
@@ -1842,17 +1828,17 @@
             </svg>
           </span>
         `;
-        
+
         // Menu button handler
         const menuBtn = tab.querySelector('.note-tab-menu-btn');
         if (menuBtn) {
           menuBtn.addEventListener('mousedown', (e) => e.stopPropagation());
           menuBtn.addEventListener('click', (e) => {
-             e.stopPropagation();
-             showTabContextMenu(e, noteId, true);
+            e.stopPropagation();
+            showTabContextMenu(e, noteId, true);
           });
         }
-        
+
         // Make the unpin button not interfere with dragging
         const unpinBtn = tab.querySelector('.note-tab-unpin');
         if (unpinBtn) {
@@ -1879,21 +1865,21 @@
             </svg>
           </span>
           <span class="note-tab-title">${escapeHtml(
-            note.title || "Untitled"
-          )}</span>
+          note.title || "Untitled"
+        )}</span>
           <span class="note-tab-close">×</span>
         `;
-        
+
         // Menu button handler
         const menuBtn = tab.querySelector('.note-tab-menu-btn');
         if (menuBtn) {
           menuBtn.addEventListener('mousedown', (e) => e.stopPropagation());
           menuBtn.addEventListener('click', (e) => {
-             e.stopPropagation();
-             showTabContextMenu(e, noteId, true);
+            e.stopPropagation();
+            showTabContextMenu(e, noteId, true);
           });
         }
-        
+
         // Close button handler
         const closeBtn = tab.querySelector('.note-tab-close');
         if (closeBtn) {
@@ -1929,13 +1915,13 @@
           console.log("[DRAG] Set unpinned tab data:", noteId);
         }
         tab.classList.add("dragging");
-        
+
         // Setup drop zone on editor container
         const container = document.querySelector(".note-content-container");
         if (container) {
           container.classList.add("drop-target-active");
         }
-        
+
         // Add slight delay for visual effect
         setTimeout(() => (tab.style.opacity = "0.4"), 0);
       });
@@ -1957,7 +1943,7 @@
           // Only show indicators if dragging compatible types
           const draggingIsPinned = draggingTab.classList.contains("pinned");
           const targetIsPinned = tab.classList.contains("pinned");
-          
+
           // Only show indicators if both tabs are of the same type (both pinned or both unpinned)
           if (draggingIsPinned === targetIsPinned) {
             // Determine which side of the tab we're on
@@ -1987,7 +1973,7 @@
         // Check for pinned tab drop
         const draggedPinnedId = e.dataTransfer.getData("text/pinned-tab-id");
         const draggedNoteId = e.dataTransfer.getData("text/note-tab-id");
-        
+
         console.log("[DROP] Drop event on tab:", noteId, "isPinned:", isPinned);
         console.log("[DROP] draggedPinnedId:", draggedPinnedId, "draggedNoteId:", draggedNoteId);
 
@@ -2023,18 +2009,18 @@
       el.noteTabs.appendChild(tab);
     });
 
-    
+
     // Update split button state based on open notes
     updateSplitButtonState();
   }
 
   function updateSplitButtonState() {
     if (!el.splitNoteBtn) return;
-    
+
     // Disable if only 1 or 0 notes open
     // Also check if we have enough notes to actually split (need at least 2)
     const canSplit = TwoBaseState.openNotes.length >= 2;
-    
+
     if (canSplit) {
       el.splitNoteBtn.classList.remove("disabled");
       el.splitNoteBtn.title = "Split view";
@@ -2045,7 +2031,7 @@
       el.splitNoteBtn.title = "Open at least 2 notes to split view";
       el.splitNoteBtn.style.opacity = "0.5";
       el.splitNoteBtn.style.pointerEvents = "none";
-      
+
       // key functionality: if we drop below 2 notes and split view is active, close it
       if (TwoBaseState.splitView) {
         toggleSplitView();
@@ -2110,9 +2096,9 @@
     // Remove any existing context menu
     const existingMenu = document.querySelector(".tab-context-menu");
     const sameMenu = existingMenu && existingMenu.dataset.noteId === noteId;
-    
+
     if (existingMenu) existingMenu.remove();
-    
+
     // If we're toggling and we just closed the menu for this tab, stop here
     if (isToggle && sameMenu) return;
 
@@ -2129,12 +2115,10 @@
     const isPinned = TwoBaseState.pinnedNotes.includes(noteId);
 
     menu.innerHTML = `
-      <div class="context-menu-item" data-action="${
-        isPinned ? "unpin" : "pin"
+      <div class="context-menu-item" data-action="${isPinned ? "unpin" : "pin"
       }">
-        ${
-          isPinned
-            ? `
+        ${isPinned
+        ? `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="2" y1="2" x2="22" y2="22"></line>
             <path d="M12 17v5"></path>
@@ -2143,7 +2127,7 @@
             <path d="M9 14h6"></path>
           </svg>
         `
-            : `
+        : `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 17v5"></path>
             <path d="M9 10V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5"></path>
@@ -2151,12 +2135,11 @@
             <path d="M9 10h6a1 1 0 0 1 1 1v3H8v-3a1 1 0 0 1 1-1z"></path>
           </svg>
         `
-        }
+      }
         <span>${isPinned ? "Unpin Tab" : "Pin Tab"}</span>
       </div>
-      ${
-        !isPinned
-          ? `
+      ${!isPinned
+        ? `
         <div class="context-menu-divider"></div>
         <div class="context-menu-item" data-action="close">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2166,7 +2149,7 @@
           <span>Close Tab</span>
         </div>
       `
-          : ""
+        : ""
       }
       <div class="context-menu-item" data-action="close-others">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2278,7 +2261,7 @@
       currentFolder: TwoBaseState.currentFolder,
       toolbarPosition: TwoBaseState.toolbarPosition,
       toolbarAlignment: TwoBaseState.toolbarAlignment,
-      
+
       // Split View State
       splitView: TwoBaseState.splitView,
       leftPaneNote: TwoBaseState.leftPaneNote,
@@ -2294,21 +2277,21 @@
       typeof window.Storage.saveSettings === "function"
     ) {
       if (!state.settings) state.settings = {};
-      
+
       // Update global state settings first
       state.settings.twoBaseSession = sessionState;
-      
+
       // Force save
       window.Storage.saveSettings({
         ...state.settings,
         twoBaseSession: sessionState,
       }).then(() => {
-          console.log("✅ Session saved successfully");
+        console.log("✅ Session saved successfully");
       }).catch(err => {
-          console.error("❌ Failed to save session:", err);
+        console.error("❌ Failed to save session:", err);
       });
     } else {
-        console.error("❌ window.Storage.saveSettings is not available!");
+      console.error("❌ window.Storage.saveSettings is not available!");
     }
   }
 
@@ -2360,63 +2343,63 @@
       // Show note editor
       switchToNoteBase();
       renderNoteTabs();
-      
+
       // Restore Split View State
       if (savedSession.splitView && savedSession.leftPaneNote && savedSession.rightPaneNote) {
-          
-          // Safety: Check if notes actually exist in state.notes
-          const leftExists = state.notes.some(n => n.id === savedSession.leftPaneNote);
-          const rightExists = state.notes.some(n => n.id === savedSession.rightPaneNote);
 
-          if (!leftExists || !rightExists) {
-             console.warn("[TWO-BASE] Cannot restore split view: One or more notes not found in state.");
-             // If notes aren't loaded yet, we should wait.
-             // But if this is called after load, then they truly don't exist.
-             // We'll fall back to single view for the one that exists, or home.
-             if (leftExists) {
-                 renderNoteEditor(savedSession.leftPaneNote);
-             } else if (rightExists) {
-                 renderNoteEditor(savedSession.rightPaneNote);
-             }
-             return; 
-          }
+        // Safety: Check if notes actually exist in state.notes
+        const leftExists = state.notes.some(n => n.id === savedSession.leftPaneNote);
+        const rightExists = state.notes.some(n => n.id === savedSession.rightPaneNote);
 
-          console.log("[TWO-BASE] Restoring split view");
-          TwoBaseState.splitView = true;
-          TwoBaseState.leftPaneNote = savedSession.leftPaneNote;
-          TwoBaseState.rightPaneNote = savedSession.rightPaneNote;
-          
-          // Update UI for split view
-          if (el.notePaneRight) {
-              el.notePaneRight.classList.remove("hidden");
-              el.notePaneRight.style.display = "flex";
+        if (!leftExists || !rightExists) {
+          console.warn("[TWO-BASE] Cannot restore split view: One or more notes not found in state.");
+          // If notes aren't loaded yet, we should wait.
+          // But if this is called after load, then they truly don't exist.
+          // We'll fall back to single view for the one that exists, or home.
+          if (leftExists) {
+            renderNoteEditor(savedSession.leftPaneNote);
+          } else if (rightExists) {
+            renderNoteEditor(savedSession.rightPaneNote);
           }
-          if (el.noteResizer) {
-              el.noteResizer.classList.remove("hidden");
-              el.noteResizer.style.display = "block";
-          }
-          if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
-          
-          // Apply split percentage
-          if (savedSession.splitPercentage && el.notePaneLeft) {
-               let pct = savedSession.splitPercentage;
-               if (pct.includes("0 0 ")) pct = pct.replace("0 0 ", "");
-               el.notePaneLeft.style.flex = `0 0 ${pct}`;
-          }
-          
-          // Render both panes
-          renderNoteEditor(TwoBaseState.leftPaneNote, "left");
-          renderNoteEditor(TwoBaseState.rightPaneNote, "right");
-          
-          // Ensure resizer is active
-          setupResizer();
-          
+          return;
+        }
+
+        console.log("[TWO-BASE] Restoring split view");
+        TwoBaseState.splitView = true;
+        TwoBaseState.leftPaneNote = savedSession.leftPaneNote;
+        TwoBaseState.rightPaneNote = savedSession.rightPaneNote;
+
+        // Update UI for split view
+        if (el.notePaneRight) {
+          el.notePaneRight.classList.remove("hidden");
+          el.notePaneRight.style.display = "flex";
+        }
+        if (el.noteResizer) {
+          el.noteResizer.classList.remove("hidden");
+          el.noteResizer.style.display = "block";
+        }
+        if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
+
+        // Apply split percentage
+        if (savedSession.splitPercentage && el.notePaneLeft) {
+          let pct = savedSession.splitPercentage;
+          if (pct.includes("0 0 ")) pct = pct.replace("0 0 ", "");
+          el.notePaneLeft.style.flex = `0 0 ${pct}`;
+        }
+
+        // Render both panes
+        renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+        renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+
+        // Ensure resizer is active
+        setupResizer();
+
       } else {
-          // Single View
-          TwoBaseState.splitView = false;
-          if (TwoBaseState.activeNote) {
-             renderNoteEditor(TwoBaseState.activeNote);
-          }
+        // Single View
+        TwoBaseState.splitView = false;
+        if (TwoBaseState.activeNote) {
+          renderNoteEditor(TwoBaseState.activeNote);
+        }
       }
     } else {
       // Show workspace
@@ -2468,8 +2451,8 @@
           <polyline points="14 2 14 8 20 8"></polyline>
         </svg>
         <span class="pinned-note-title">${escapeHtml(
-          note.title || "Untitled"
-        )}</span>
+        note.title || "Untitled"
+      )}</span>
       `;
 
       // Click to open note or multi-select
@@ -2756,56 +2739,56 @@
     // buildEditor returns a DOM node with the editor, so we need to append it
     if (typeof window.buildEditor === "function") {
       const editorNode = window.buildEditor(note);
-      
+
       // Inject Split Controls into Editor Header if in Split View
       if (TwoBaseState.splitView) {
-          const header = editorNode.querySelector(".editor-header");
-          const actionsDiv = editorNode.querySelector(".editor-header .actions");
-          const titleContainer = editorNode.querySelector(".title-with-tags");
-          
-          if (header) {
-              // Make header generally rigid but allow width to adapt to pane
-              header.style.flexShrink = "0"; 
-              
-              // header.style.background = "var(--bg)"; // Removed background per user request (User wants transparency/default)
+        const header = editorNode.querySelector(".editor-header");
+        const actionsDiv = editorNode.querySelector(".editor-header .actions");
+        const titleContainer = editorNode.querySelector(".title-with-tags");
 
-              
-              header.style.display = "flex"; // Ensure flex layout for our resizing logic
-              header.style.justifyContent = "space-between"; // Separate title and actions
-          }
+        if (header) {
+          // Make header generally rigid but allow width to adapt to pane
+          header.style.flexShrink = "0";
 
-          if (titleContainer) {
-              // Allow title to shrink but take available space
-              // Using flex-basis: 0 and min-width: 0 is standard for shrinking flex items
-              titleContainer.style.flex = "1 1 0"; 
-              titleContainer.style.minWidth = "0"; 
-              titleContainer.style.maxWidth = "100%"; // Prevent growth beyond container
-              titleContainer.style.marginRight = "8px"; 
-          }
-          
-          const titleInput = editorNode.querySelector("input.title");
-          if (titleInput) {
-               // Inputs are stubborn. Force them to comply.
-               titleInput.style.minWidth = "0";
-               titleInput.style.flex = "1";
-               titleInput.style.width = "100%";
-          }
-          
-          if (actionsDiv) {
-              // Enforce generic flex spacing on the container for uniformity
-              actionsDiv.style.display = "flex";
-              actionsDiv.style.alignItems = "center";
-              actionsDiv.style.gap = "4px"; 
-              // CRITICAL: Prevent actions from shrinking/hiding
-              actionsDiv.style.flexShrink = "0";
-              actionsDiv.style.minWidth = "fit-content";
-              
-              // Swap Button
-              const swapBtn = document.createElement("button");
-              swapBtn.className = "icon-btn";
-              swapBtn.title = "Swap Panes";
-              swapBtn.style.padding = "4px";
-              swapBtn.innerHTML = `
+          // header.style.background = "var(--bg)"; // Removed background per user request (User wants transparency/default)
+
+
+          header.style.display = "flex"; // Ensure flex layout for our resizing logic
+          header.style.justifyContent = "space-between"; // Separate title and actions
+        }
+
+        if (titleContainer) {
+          // Allow title to shrink but take available space
+          // Using flex-basis: 0 and min-width: 0 is standard for shrinking flex items
+          titleContainer.style.flex = "1 1 0";
+          titleContainer.style.minWidth = "0";
+          titleContainer.style.maxWidth = "100%"; // Prevent growth beyond container
+          titleContainer.style.marginRight = "8px";
+        }
+
+        const titleInput = editorNode.querySelector("input.title");
+        if (titleInput) {
+          // Inputs are stubborn. Force them to comply.
+          titleInput.style.minWidth = "0";
+          titleInput.style.flex = "1";
+          titleInput.style.width = "100%";
+        }
+
+        if (actionsDiv) {
+          // Enforce generic flex spacing on the container for uniformity
+          actionsDiv.style.display = "flex";
+          actionsDiv.style.alignItems = "center";
+          actionsDiv.style.gap = "4px";
+          // CRITICAL: Prevent actions from shrinking/hiding
+          actionsDiv.style.flexShrink = "0";
+          actionsDiv.style.minWidth = "fit-content";
+
+          // Swap Button
+          const swapBtn = document.createElement("button");
+          swapBtn.className = "icon-btn";
+          swapBtn.title = "Swap Panes";
+          swapBtn.style.padding = "4px";
+          swapBtn.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M8 3 4 7l4 4"/>
                   <path d="M4 7h16"/>
@@ -2813,65 +2796,65 @@
                   <path d="M20 17H4"/>
                 </svg>
               `;
-              swapBtn.onclick = (e) => {
-                  e.stopPropagation();
-                  // Swap panes
-                const temp = TwoBaseState.leftPaneNote;
-                TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
-                TwoBaseState.rightPaneNote = temp;
-                
-                // If active note was one of them, update it to follow the swap if desired, 
-                // OR just ensure activeNote points to the one in the "left" (main) position?
-                // Actually, users usually expect the "active" note to be the one they clicked last.
-                // But for persistence simplicity, let's just save.
-                
-                // Re-render
-                if (el.notePaneLeft) renderNoteEditor(TwoBaseState.leftPaneNote, "left");
-                if (el.notePaneRight) renderNoteEditor(TwoBaseState.rightPaneNote, "right");
-                
-                // Save state immediately
-                saveTwoBaseSession();
-            };
-              
-              // Close Button
-              const closeBtn = document.createElement("button");
-              closeBtn.className = "icon-btn pane-close-btn";
-              closeBtn.style.padding = "4px";
-              closeBtn.innerHTML = `
+          swapBtn.onclick = (e) => {
+            e.stopPropagation();
+            // Swap panes
+            const temp = TwoBaseState.leftPaneNote;
+            TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
+            TwoBaseState.rightPaneNote = temp;
+
+            // If active note was one of them, update it to follow the swap if desired, 
+            // OR just ensure activeNote points to the one in the "left" (main) position?
+            // Actually, users usually expect the "active" note to be the one they clicked last.
+            // But for persistence simplicity, let's just save.
+
+            // Re-render
+            if (el.notePaneLeft) renderNoteEditor(TwoBaseState.leftPaneNote, "left");
+            if (el.notePaneRight) renderNoteEditor(TwoBaseState.rightPaneNote, "right");
+
+            // Save state immediately
+            saveTwoBaseSession();
+          };
+
+          // Close Button
+          const closeBtn = document.createElement("button");
+          closeBtn.className = "icon-btn pane-close-btn";
+          closeBtn.style.padding = "4px";
+          closeBtn.innerHTML = `
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               `;
-              closeBtn.onclick = (e) => {
-                  e.stopPropagation();
-                  if (pane === "left") {
-                       if (TwoBaseState.rightPaneNote) {
-                           TwoBaseState.activeNote = TwoBaseState.rightPaneNote;
-                           TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
-                       }
-                  } else {
-                      if (TwoBaseState.leftPaneNote) {
-                          TwoBaseState.activeNote = TwoBaseState.leftPaneNote;
-                      }
-                  }
-                  toggleSplitView();
-              };
-              
-              // Insert before existing content (Menu)
-              // Since there are multiple existing items potentially (Menu, Settings Dropdown), we prepend.
-              // Prepend in reverse order to keep Swap -> Close -> Menu ? 
-              // User likely wants [Swap] [Close] [Menu]. 
-              // Wait, previous code put [Swap] [Close] before [Menu].
-              
-              if (actionsDiv.firstChild) {
-                  actionsDiv.insertBefore(closeBtn, actionsDiv.firstChild);
-                  actionsDiv.insertBefore(swapBtn, actionsDiv.firstChild);
-              } else {
-                  actionsDiv.appendChild(swapBtn);
-                  actionsDiv.appendChild(closeBtn);
+          closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (pane === "left") {
+              if (TwoBaseState.rightPaneNote) {
+                TwoBaseState.activeNote = TwoBaseState.rightPaneNote;
+                TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
               }
+            } else {
+              if (TwoBaseState.leftPaneNote) {
+                TwoBaseState.activeNote = TwoBaseState.leftPaneNote;
+              }
+            }
+            toggleSplitView();
+          };
+
+          // Insert before existing content (Menu)
+          // Since there are multiple existing items potentially (Menu, Settings Dropdown), we prepend.
+          // Prepend in reverse order to keep Swap -> Close -> Menu ? 
+          // User likely wants [Swap] [Close] [Menu]. 
+          // Wait, previous code put [Swap] [Close] before [Menu].
+
+          if (actionsDiv.firstChild) {
+            actionsDiv.insertBefore(closeBtn, actionsDiv.firstChild);
+            actionsDiv.insertBefore(swapBtn, actionsDiv.firstChild);
+          } else {
+            actionsDiv.appendChild(swapBtn);
+            actionsDiv.appendChild(closeBtn);
           }
+        }
       }
 
       paneContent.appendChild(editorNode);
@@ -2884,56 +2867,56 @@
         // Store the editor instance globally for toolbar access
         // For split view, we track both. 'currentEditor' usually points to the recently focused one.
         // We'll update currentEditor based on interaction.
-        
+
         if (pane === "left") {
           TwoBaseState.leftEditor = blockEditor;
           // If not split or explicitly focusing left, set as current
           if (!TwoBaseState.splitView || TwoBaseState.activeNote === noteId) {
-             TwoBaseState.currentEditor = blockEditor;
-             TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
-             TwoBaseState.currentSaveFunction = saveFunction;
+            TwoBaseState.currentEditor = blockEditor;
+            TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
+            TwoBaseState.currentSaveFunction = saveFunction;
           }
         } else {
           TwoBaseState.rightEditor = blockEditor;
-           if (TwoBaseState.activeNote === noteId) {
-             TwoBaseState.currentEditor = blockEditor;
-             TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
-             TwoBaseState.currentSaveFunction = saveFunction;
+          if (TwoBaseState.activeNote === noteId) {
+            TwoBaseState.currentEditor = blockEditor;
+            TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
+            TwoBaseState.currentSaveFunction = saveFunction;
           }
         }
 
-      // Make sure the editor is visible and functional
+        // Make sure the editor is visible and functional
         setTimeout(() => {
           // Verify if we should focus this editor
           if (TwoBaseState.activeNote === noteId) {
-             blockEditor.focus();
+            blockEditor.focus();
           }
         }, 100);
 
         // SPLIT VIEW: Activate pane on interaction
         editorNode.addEventListener("click", () => {
-             if (TwoBaseState.splitView && TwoBaseState.activeNote !== noteId) {
-                 console.log("👆 Split Pane Activated (Click):", noteId);
-                 TwoBaseState.activeNote = noteId;
-                 TwoBaseState.currentEditor = blockEditor;
-                 TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
-                 TwoBaseState.currentSaveFunction = saveFunction;
-                 renderNoteTabs();
-             }
+          if (TwoBaseState.splitView && TwoBaseState.activeNote !== noteId) {
+            console.log("👆 Split Pane Activated (Click):", noteId);
+            TwoBaseState.activeNote = noteId;
+            TwoBaseState.currentEditor = blockEditor;
+            TwoBaseState.currentEditorElement = editorNode.querySelector(".content.editable");
+            TwoBaseState.currentSaveFunction = saveFunction;
+            renderNoteTabs();
+          }
         });
 
         const contentEditable = editorNode.querySelector(".content.editable");
         if (contentEditable) {
-            contentEditable.addEventListener("focus", () => {
-                 if (TwoBaseState.splitView && TwoBaseState.activeNote !== noteId) {
-                     console.log("👆 Split Pane Activated (Focus):", noteId);
-                     TwoBaseState.activeNote = noteId;
-                     TwoBaseState.currentEditor = blockEditor;
-                     TwoBaseState.currentEditorElement = contentEditable;
-                     TwoBaseState.currentSaveFunction = saveFunction;
-                     renderNoteTabs();
-                 }
-            });
+          contentEditable.addEventListener("focus", () => {
+            if (TwoBaseState.splitView && TwoBaseState.activeNote !== noteId) {
+              console.log("👆 Split Pane Activated (Focus):", noteId);
+              TwoBaseState.activeNote = noteId;
+              TwoBaseState.currentEditor = blockEditor;
+              TwoBaseState.currentEditorElement = contentEditable;
+              TwoBaseState.currentSaveFunction = saveFunction;
+              renderNoteTabs();
+            }
+          });
         }
       }
     }
@@ -3040,31 +3023,31 @@
 
     // Highlight menu toggle
     const highlightBtn = document.getElementById("highlightBtn");
-    
+
     // Remove old listeners by cloning or just assuming this is fresh render
     if (highlightBtn) {
-       console.log("[HIGHLIGHT] Highlight button found, attaching listener");
-       // Use onclick to cleanly replace any previous listeners
-       highlightBtn.onclick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          
-          console.log("[HIGHLIGHT] Button clicked");
-          
-          // Toggle logic
-          const existing = document.querySelector(".highlight-menu");
-          if (existing) {
-              console.log("[HIGHLIGHT] Closing existing menu");
-              existing.remove();
-              return;
-          }
-          
-          console.log("[HIGHLIGHT] Opening menu");
-          showHighlightMenu(e);
-       };
+      console.log("[HIGHLIGHT] Highlight button found, attaching listener");
+      // Use onclick to cleanly replace any previous listeners
+      highlightBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        console.log("[HIGHLIGHT] Button clicked");
+
+        // Toggle logic
+        const existing = document.querySelector(".highlight-menu");
+        if (existing) {
+          console.log("[HIGHLIGHT] Closing existing menu");
+          existing.remove();
+          return;
+        }
+
+        console.log("[HIGHLIGHT] Opening menu");
+        showHighlightMenu(e);
+      };
     } else {
-        console.warn("[HIGHLIGHT] Highlight button NOT found");
+      console.warn("[HIGHLIGHT] Highlight button NOT found");
     }
 
     // Add click handlers for toolbar buttons
@@ -3136,29 +3119,29 @@
 
   function switchActiveNote(noteId) {
     TwoBaseState.activeNote = noteId;
-    
+
     // If in split view, decide which pane to update
     if (TwoBaseState.splitView) {
-        // If the note is already in one of the panes, just focus it
-        if (TwoBaseState.leftPaneNote === noteId) {
-             // Already in left, just focus
-             // No render needed? Maybe just highlights
-        } else if (TwoBaseState.rightPaneNote === noteId) {
-             // Already in right
-        } else {
-             // Not in any pane, replace the "active" pane content logic?
-             // Since we don't track "active pane" explicitly, let's assume replacing LEFT for now, 
-             // OR replacing the one that isn't the other one.
-             // Simpler: Replace LEFT pane, move old left to right? or just replace left.
-             // A common behavior: click tab -> affects 'focused' pane. 
-             // We'll simplify: switch Left pane.
-             TwoBaseState.leftPaneNote = noteId;
-             renderNoteEditor(noteId, "left");
-        }
-    } else {
-        // Single view
-        TwoBaseState.leftPaneNote = noteId; // Standard pane
+      // If the note is already in one of the panes, just focus it
+      if (TwoBaseState.leftPaneNote === noteId) {
+        // Already in left, just focus
+        // No render needed? Maybe just highlights
+      } else if (TwoBaseState.rightPaneNote === noteId) {
+        // Already in right
+      } else {
+        // Not in any pane, replace the "active" pane content logic?
+        // Since we don't track "active pane" explicitly, let's assume replacing LEFT for now, 
+        // OR replacing the one that isn't the other one.
+        // Simpler: Replace LEFT pane, move old left to right? or just replace left.
+        // A common behavior: click tab -> affects 'focused' pane. 
+        // We'll simplify: switch Left pane.
+        TwoBaseState.leftPaneNote = noteId;
         renderNoteEditor(noteId, "left");
+      }
+    } else {
+      // Single view
+      TwoBaseState.leftPaneNote = noteId; // Standard pane
+      renderNoteEditor(noteId, "left");
     }
 
     renderNoteTabs();
@@ -3206,107 +3189,107 @@
   function toggleSplitView(targetNoteIdForRightPane = null) {
     console.log("[SPLIT] toggleSplitView called with target:", targetNoteIdForRightPane);
     console.log("[SPLIT] Current state:", {
-        splitView: TwoBaseState.splitView,
-        activeNote: TwoBaseState.activeNote,
-        openNotes: TwoBaseState.openNotes
+      splitView: TwoBaseState.splitView,
+      activeNote: TwoBaseState.activeNote,
+      openNotes: TwoBaseState.openNotes
     });
 
     // If turning ON
     if (!TwoBaseState.splitView) {
       // Check if we have enough notes
       if (TwoBaseState.openNotes.length < 2) {
-         console.warn("[SPLIT] Not enough notes to split");
-         return;
+        console.warn("[SPLIT] Not enough notes to split");
+        return;
       }
-      
+
       TwoBaseState.splitView = true;
-      
+
       // Force display update
       if (el.notePaneRight) {
-          el.notePaneRight.classList.remove("hidden");
-          el.notePaneRight.style.display = "flex"; // Ensure flex display
+        el.notePaneRight.classList.remove("hidden");
+        el.notePaneRight.style.display = "flex"; // Ensure flex display
       }
       if (el.noteResizer) {
-          el.noteResizer.classList.remove("hidden");
-          el.noteResizer.style.display = "block";
+        el.noteResizer.classList.remove("hidden");
+        el.noteResizer.style.display = "block";
       }
       if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
       if (el.splitNoteBtn) el.splitNoteBtn.classList.add("active");
-      
+
       // Setup Panes
       // Left Pane: Current Active Note
       TwoBaseState.leftPaneNote = TwoBaseState.activeNote;
-      
+
       // Right Pane: Targeted note OR Next available note
       if (targetNoteIdForRightPane && targetNoteIdForRightPane !== TwoBaseState.activeNote) {
-         TwoBaseState.rightPaneNote = targetNoteIdForRightPane;
+        TwoBaseState.rightPaneNote = targetNoteIdForRightPane;
       } else {
-         // Find a note that is NOT the active one
-         const other = TwoBaseState.openNotes.find(id => id !== TwoBaseState.activeNote);
-         TwoBaseState.rightPaneNote = other || null;
-         
-         if (!TwoBaseState.rightPaneNote) {
-             // Should not happen if check passed, but safety
-             console.warn("[SPLIT] Could not find secondary note for split view");
-             TwoBaseState.splitView = false;
-             return;
-         }
+        // Find a note that is NOT the active one
+        const other = TwoBaseState.openNotes.find(id => id !== TwoBaseState.activeNote);
+        TwoBaseState.rightPaneNote = other || null;
+
+        if (!TwoBaseState.rightPaneNote) {
+          // Should not happen if check passed, but safety
+          console.warn("[SPLIT] Could not find secondary note for split view");
+          TwoBaseState.splitView = false;
+          return;
+        }
       }
-      
+
       console.log("[SPLIT] Rendering panes:", {
-          left: TwoBaseState.leftPaneNote,
-          right: TwoBaseState.rightPaneNote
+        left: TwoBaseState.leftPaneNote,
+        right: TwoBaseState.rightPaneNote
       });
 
       // Render both
       renderNoteEditor(TwoBaseState.leftPaneNote, "left");
       renderNoteEditor(TwoBaseState.rightPaneNote, "right");
-      
+
       // Setup resizer just in case
       setupResizer();
-      
+
     } else {
       // Turning OFF
       console.log("[SPLIT] Turning off split view");
       TwoBaseState.splitView = false;
-      
+
       if (el.notePaneRight) {
-          el.notePaneRight.classList.add("hidden");
-          el.notePaneRight.style.display = "none";
+        el.notePaneRight.classList.add("hidden");
+        el.notePaneRight.style.display = "none";
       }
       if (el.noteResizer) {
-          el.noteResizer.classList.add("hidden");
-          el.noteResizer.style.display = "none";
+        el.noteResizer.classList.add("hidden");
+        el.noteResizer.style.display = "none";
       }
       if (el.splitNoteBtn) el.splitNoteBtn.classList.remove("active");
       if (el.splitNoteBtn) el.splitNoteBtn.classList.remove("active");
-      
+
       // Consolidate to left pane
       // If the right pane was the "active" one, move it to left?
       // Or just keep the last interaction. 
       // Let's keep whatever is currently "activeNote" as the main one
       if (TwoBaseState.rightPaneNote === TwoBaseState.activeNote) {
-          TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
+        TwoBaseState.leftPaneNote = TwoBaseState.rightPaneNote;
       }
-      
+
       TwoBaseState.rightPaneNote = null;
       TwoBaseState.rightEditor = null;
-      
+
       // Re-render single view
       renderNoteEditor(TwoBaseState.leftPaneNote, "left");
     }
-    
+
     // Save state
     saveTwoBaseSession();
   }
-  
+
   // ===================================
   // Drop Zone Overlay Helper
   // ===================================
   function updateDropOverlays(visible, activeSide = null) {
-    console.log("[OVERLAY] updateDropOverlays called", {visible, activeSide});
+    console.log("[OVERLAY] updateDropOverlays called", { visible, activeSide });
     const existing = document.querySelector('.split-drop-overlay');
-    
+
     if (!visible) {
       if (existing) {
         existing.remove();
@@ -3335,7 +3318,7 @@
         console.warn("[OVERLAY] Container not found");
         return;
       }
-      
+
       const rect = container.getBoundingClientRect();
       const margin = 12;
 
@@ -3359,7 +3342,7 @@
         opacity: 0;
         transition: opacity 0.2s;
       `;
-      
+
       overlay.innerHTML = `
         <div style="
           background: var(--accent);
@@ -3378,11 +3361,11 @@
           <span>Split View</span>
         </div>
       `;
-      
+
       document.body.appendChild(overlay);
       console.log("[OVERLAY] Split overlay appended to body");
       setTimeout(() => overlay.style.opacity = '1', 10);
-      
+
     } else if (activeSide === 'left' || activeSide === 'right') {
       console.log("[OVERLAY] Creating overlay for pane:", activeSide);
       // Split view - show overlay on specific pane
@@ -3391,7 +3374,7 @@
         console.warn("[OVERLAY] Pane not found:", activeSide);
         return;
       }
-      
+
       const contentEl = pane.querySelector('.note-pane-content');
       const rect = contentEl ? contentEl.getBoundingClientRect() : pane.getBoundingClientRect();
       const margin = 12;
@@ -3418,7 +3401,7 @@
         opacity: 0;
         transition: opacity 0.2s;
       `;
-      
+
       overlay.innerHTML = `
         <div style="
           background: var(--accent);
@@ -3436,7 +3419,7 @@
           <span>Swap</span>
         </div>
       `;
-      
+
       document.body.appendChild(overlay);
       console.log("[OVERLAY] Pane overlay appended to body, opacity:", overlay.style.opacity);
       setTimeout(() => {
@@ -3452,84 +3435,84 @@
   function setupDragAndDrop() {
     const container = document.querySelector(".note-content-container");
     if (!container) return;
-    
+
     container.addEventListener("dragover", (e) => {
       e.preventDefault();
       // Only allow if dragging a tab
       if (e.dataTransfer.types.includes("text/tab-id")) {
-         container.classList.add("drag-over");
-         
-         // Calculate active side for overlay
-         const x = e.clientX;
-         const y = e.clientY;
-         let side = null;
-         
-         if (TwoBaseState.splitView) {
-             // In split view, check which pane we're over
-             if (!el.notePaneLeft || !el.notePaneRight) {
-                 console.warn("[DRAG] Pane elements not found");
-                 return;
-             }
-             
-             const leftRect = el.notePaneLeft.getBoundingClientRect();
-             const rightRect = el.notePaneRight.getBoundingClientRect();
-             
-             console.log("[DRAG] Split view - checking panes", {
-                 mouseX: x,
-                 mouseY: y,
-                 leftRect: {left: leftRect.left, right: leftRect.right, top: leftRect.top, bottom: leftRect.bottom},
-                 rightRect: {left: rightRect.left, right: rightRect.right, top: rightRect.top, bottom: rightRect.bottom}
-             });
-             
-             // Check if mouse is within pane boundaries (including Y axis)
-             if (x >= leftRect.left && x <= leftRect.right && y >= leftRect.top && y <= leftRect.bottom) {
-                 side = 'left';
-             } else if (x >= rightRect.left && x <= rightRect.right && y >= rightRect.top && y <= rightRect.bottom) {
-                 side = 'right';
-             }
-             
-             console.log("[DRAG] Detected side:", side);
-         } else {
-             // In single view, anywhere in the container is a valid drop to split
-             const cRect = container.getBoundingClientRect();
-             if (x >= cRect.left && x <= cRect.right && y >= cRect.top && y <= cRect.bottom) {
-                side = 'split';
-             }
-         }
-         
-         // Update overlays if we have a valid side
-         if (side) {
-             console.log("[DRAG] Showing overlay for side:", side);
-             console.log("[DRAG] About to call updateDropOverlays, function exists?", typeof updateDropOverlays);
-             try {
-                 updateDropOverlays(true, side);
-             } catch (err) {
-                 console.error("[DRAG] Error calling updateDropOverlays:", err);
-             }
-         } else {
-             console.log("[DRAG] No valid side detected, hiding overlays");
-             try {
-                 updateDropOverlays(false);
-             } catch (err) {
-                 console.error("[DRAG] Error calling updateDropOverlays:", err);
-             }
-         }
+        container.classList.add("drag-over");
+
+        // Calculate active side for overlay
+        const x = e.clientX;
+        const y = e.clientY;
+        let side = null;
+
+        if (TwoBaseState.splitView) {
+          // In split view, check which pane we're over
+          if (!el.notePaneLeft || !el.notePaneRight) {
+            console.warn("[DRAG] Pane elements not found");
+            return;
+          }
+
+          const leftRect = el.notePaneLeft.getBoundingClientRect();
+          const rightRect = el.notePaneRight.getBoundingClientRect();
+
+          console.log("[DRAG] Split view - checking panes", {
+            mouseX: x,
+            mouseY: y,
+            leftRect: { left: leftRect.left, right: leftRect.right, top: leftRect.top, bottom: leftRect.bottom },
+            rightRect: { left: rightRect.left, right: rightRect.right, top: rightRect.top, bottom: rightRect.bottom }
+          });
+
+          // Check if mouse is within pane boundaries (including Y axis)
+          if (x >= leftRect.left && x <= leftRect.right && y >= leftRect.top && y <= leftRect.bottom) {
+            side = 'left';
+          } else if (x >= rightRect.left && x <= rightRect.right && y >= rightRect.top && y <= rightRect.bottom) {
+            side = 'right';
+          }
+
+          console.log("[DRAG] Detected side:", side);
+        } else {
+          // In single view, anywhere in the container is a valid drop to split
+          const cRect = container.getBoundingClientRect();
+          if (x >= cRect.left && x <= cRect.right && y >= cRect.top && y <= cRect.bottom) {
+            side = 'split';
+          }
+        }
+
+        // Update overlays if we have a valid side
+        if (side) {
+          console.log("[DRAG] Showing overlay for side:", side);
+          console.log("[DRAG] About to call updateDropOverlays, function exists?", typeof updateDropOverlays);
+          try {
+            updateDropOverlays(true, side);
+          } catch (err) {
+            console.error("[DRAG] Error calling updateDropOverlays:", err);
+          }
+        } else {
+          console.log("[DRAG] No valid side detected, hiding overlays");
+          try {
+            updateDropOverlays(false);
+          } catch (err) {
+            console.error("[DRAG] Error calling updateDropOverlays:", err);
+          }
+        }
       }
     });
-    
+
     container.addEventListener("dragleave", (e) => {
-        // Only remove if leaving the container entirely, not just entering a child
-        if (e.target === container) {
-            container.classList.remove("drag-over");
-            updateDropOverlays(false);
-        }
+      // Only remove if leaving the container entirely, not just entering a child
+      if (e.target === container) {
+        container.classList.remove("drag-over");
+        updateDropOverlays(false);
+      }
     });
 
     // Global listener to clear overlays if dragging outside container
     document.addEventListener("dragover", (e) => {
-        if (!container.contains(e.target) && e.target !== container) {
-            updateDropOverlays(false);
-        }
+      if (!container.contains(e.target) && e.target !== container) {
+        updateDropOverlays(false);
+      }
     });
 
     // Also need to handle drop and dragend to clear overlays
@@ -3542,52 +3525,52 @@
       updateDropOverlays(false); // Clear overlays
       const noteId = e.dataTransfer.getData("text/tab-id");
       if (!noteId) return;
-      
+
       // Check if we are already in split view?
       // The requirement says: "make it possible to drag the tab ... to the editor div so it can split"
       // This implies triggering split view.
-      
+
       if (!TwoBaseState.splitView) {
-          // Trigger split view with this note on the right
-          
-          if (TwoBaseState.activeNote === noteId) {
-             // Dragging current active note
-             return; // Do nothing if trying to split with same note
-          } else {
-             // Dragging a non-active note. 
-             toggleSplitView(noteId);
-          }
+        // Trigger split view with this note on the right
+
+        if (TwoBaseState.activeNote === noteId) {
+          // Dragging current active note
+          return; // Do nothing if trying to split with same note
+        } else {
+          // Dragging a non-active note. 
+          toggleSplitView(noteId);
+        }
       } else {
-         // Already in split view. Drop usually means "put in this pane".
-         // We need to know WHICH pane was dropped on.
-         // We can check mouse position relative to panes.
-         const x = e.clientX;
-         const leftRect = el.notePaneLeft.getBoundingClientRect();
-         const rightRect = el.notePaneRight.getBoundingClientRect();
-         
-         // Prevent dropping same note into pane where it already is
-         if (x >= leftRect.left && x <= leftRect.right) {
-             // Dropped on left
-             if (TwoBaseState.rightPaneNote === noteId && TwoBaseState.leftPaneNote !== noteId) {
-                // Determine logic: Swap? Copy? Ppl just want it to show.
-             }
-             if (TwoBaseState.leftPaneNote !== noteId) {
-                 TwoBaseState.leftPaneNote = noteId;
-                 renderNoteEditor(noteId, "left");
-                 TwoBaseState.activeNote = noteId;
-             }
-         } else if (x >= rightRect.left && x <= rightRect.right) {
-             // Dropped on right
-             if (TwoBaseState.leftPaneNote === noteId && TwoBaseState.rightPaneNote !== noteId) {
-                // ...
-             }
-             if (TwoBaseState.rightPaneNote !== noteId) {
-                 TwoBaseState.rightPaneNote = noteId;
-                 renderNoteEditor(noteId, "right");
-                 TwoBaseState.activeNote = noteId;
-             }
-         }
-         renderNoteTabs();
+        // Already in split view. Drop usually means "put in this pane".
+        // We need to know WHICH pane was dropped on.
+        // We can check mouse position relative to panes.
+        const x = e.clientX;
+        const leftRect = el.notePaneLeft.getBoundingClientRect();
+        const rightRect = el.notePaneRight.getBoundingClientRect();
+
+        // Prevent dropping same note into pane where it already is
+        if (x >= leftRect.left && x <= leftRect.right) {
+          // Dropped on left
+          if (TwoBaseState.rightPaneNote === noteId && TwoBaseState.leftPaneNote !== noteId) {
+            // Determine logic: Swap? Copy? Ppl just want it to show.
+          }
+          if (TwoBaseState.leftPaneNote !== noteId) {
+            TwoBaseState.leftPaneNote = noteId;
+            renderNoteEditor(noteId, "left");
+            TwoBaseState.activeNote = noteId;
+          }
+        } else if (x >= rightRect.left && x <= rightRect.right) {
+          // Dropped on right
+          if (TwoBaseState.leftPaneNote === noteId && TwoBaseState.rightPaneNote !== noteId) {
+            // ...
+          }
+          if (TwoBaseState.rightPaneNote !== noteId) {
+            TwoBaseState.rightPaneNote = noteId;
+            renderNoteEditor(noteId, "right");
+            TwoBaseState.activeNote = noteId;
+          }
+        }
+        renderNoteTabs();
       }
     });
   }
@@ -3613,25 +3596,25 @@
 
       const containerRect = el.noteBase.querySelector(".note-content-container").getBoundingClientRect();
       const x = e.clientX - containerRect.left;
-      
+
       // Calculate active width in pixels
       const containerWidth = containerRect.width;
       const minWidthPx = 300;
 
       // Check if container is wide enough to support split view with min width
       if (containerWidth < minWidthPx * 2) {
-          // If container is too small, just clamp to 50% or don't allow resize?
-          // Let's allow default logic but maybe clamped near center.
-          // Or just enforce minWidth as much as possible (active pane wins?)
-          // For now, let's just apply the logic:
+        // If container is too small, just clamp to 50% or don't allow resize?
+        // Let's allow default logic but maybe clamped near center.
+        // Or just enforce minWidth as much as possible (active pane wins?)
+        // For now, let's just apply the logic:
       }
 
       // Constrain width
       let newLeftWidth = Math.max(minWidthPx, Math.min(containerWidth - minWidthPx, x));
-      
+
       // Convert to percentage for responsiveness
       let percentage = (newLeftWidth / containerWidth) * 100;
-      
+
       el.notePaneLeft.style.flex = `0 0 ${percentage}%`;
     });
 
@@ -3640,53 +3623,53 @@
         isResizing = false;
         document.body.style.cursor = "";
         el.noteResizer.classList.remove("resizing");
-        
+
         // Save the new split state
-      saveTwoBaseSession();
-    }
-  });
+        saveTwoBaseSession();
+      }
+    });
   }
 
   function setupSplitButton() {
-     if (!el.splitNoteBtn) return;
-     
-     el.splitNoteBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        
-        if (el.splitNoteBtn.classList.contains("disabled")) return;
-        
-        console.log("[SPLIT] Button clicked. active:", TwoBaseState.splitView);
-        
-        // If split view is active, toggle it off
-        if (TwoBaseState.splitView) {
-           toggleSplitView(); 
-           return;
-        }
+    if (!el.splitNoteBtn) return;
 
-        // If menu is already open, close it (toggle behavior)
-        const existingMenu = document.querySelector(".split-menu");
-        if (existingMenu) {
-            existingMenu.remove();
-            return;
-        }
+    el.splitNoteBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
 
-        // Otherwise open menu
-        showSplitMenu(e);
-     };
+      if (el.splitNoteBtn.classList.contains("disabled")) return;
 
-     // Note: Close button setup moved to renderNoteEditor per pane
+      console.log("[SPLIT] Button clicked. active:", TwoBaseState.splitView);
+
+      // If split view is active, toggle it off
+      if (TwoBaseState.splitView) {
+        toggleSplitView();
+        return;
+      }
+
+      // If menu is already open, close it (toggle behavior)
+      const existingMenu = document.querySelector(".split-menu");
+      if (existingMenu) {
+        existingMenu.remove();
+        return;
+      }
+
+      // Otherwise open menu
+      showSplitMenu(e);
+    };
+
+    // Note: Close button setup moved to renderNoteEditor per pane
   }
 
   function showSplitMenu(e) {
     // Close existing menu
     const existing = document.querySelector(".split-menu");
     if (existing) existing.remove();
-    
+
     const menu = document.createElement("div");
     menu.className = "split-menu";
-    
+
     // Header
     const header = document.createElement("div");
     header.className = "split-menu-header";
@@ -3695,39 +3678,39 @@
 
     // Filter available notes (open notes excluding current)
     const available = TwoBaseState.openNotes.filter(id => id !== TwoBaseState.activeNote);
-    
+
     if (available.length === 0) {
-       const empty = document.createElement("div");
-       empty.className = "split-menu-empty";
-       empty.textContent = "No other notes open";
-       menu.appendChild(empty);
+      const empty = document.createElement("div");
+      empty.className = "split-menu-empty";
+      empty.textContent = "No other notes open";
+      menu.appendChild(empty);
     } else {
-       available.forEach(noteId => {
-          const note = state.notes.find(n => n.id === noteId);
-          if (!note) return;
-          
-          const item = document.createElement("div");
-          item.className = "split-menu-item";
-          
-          item.innerHTML = `
+      available.forEach(noteId => {
+        const note = state.notes.find(n => n.id === noteId);
+        if (!note) return;
+
+        const item = document.createElement("div");
+        item.className = "split-menu-item";
+
+        item.innerHTML = `
             <div class="icon">${getIcon(note.icon || 'default')}</div>
             <span>${escapeHtml(note.title || 'Untitled')}</span>
           `;
-          
-          item.addEventListener("click", (evt) => {
-             evt.stopPropagation();
-             toggleSplitView(noteId);
-             menu.remove();
-          });
-          
-          menu.appendChild(item);
-       });
+
+        item.addEventListener("click", (evt) => {
+          evt.stopPropagation();
+          toggleSplitView(noteId);
+          menu.remove();
+        });
+
+        menu.appendChild(item);
+      });
     }
 
     // Close highlight menu if open
     const highlightMenu = document.querySelector(".highlight-menu");
     if (highlightMenu) highlightMenu.remove();
-    
+
     menu.style.position = "fixed";
 
     // Auto-detect position based on button rect
@@ -3735,62 +3718,62 @@
     const isBottom = btnRect.bottom > window.innerHeight * 0.8;
     const isRight = btnRect.left > window.innerWidth * 0.8;
     const isLeft = btnRect.left < window.innerWidth * 0.2;
-    
+
     // Default styles (reset)
     menu.style.top = "";
     menu.style.bottom = "";
     menu.style.left = "";
     menu.style.right = "";
     menu.style.transform = "";
-    
+
     if (isBottom) {
-        // Show above button
-        menu.style.bottom = (window.innerHeight - btnRect.top + 8) + "px";
-        if (isRight) {
-             menu.style.right = (window.innerWidth - btnRect.right) + "px";
-             menu.style.left = "auto";
-        } else if (isLeft) {
-             menu.style.left = btnRect.left + "px";
-        } else {
-             menu.style.left = btnRect.left + "px";
-        }
+      // Show above button
+      menu.style.bottom = (window.innerHeight - btnRect.top + 8) + "px";
+      if (isRight) {
+        menu.style.right = (window.innerWidth - btnRect.right) + "px";
+        menu.style.left = "auto";
+      } else if (isLeft) {
+        menu.style.left = btnRect.left + "px";
+      } else {
+        menu.style.left = btnRect.left + "px";
+      }
     } else {
-        // Top or Side-Top
-        if (isRight && !isBottom && btnRect.top > 100) {
-            // Probably toolbar on Right
-            menu.style.top = btnRect.top + "px";
-            menu.style.right = (window.innerWidth - btnRect.left + 8) + "px";
-        } else if (isLeft && !isBottom && btnRect.top > 100) {
-            // Probably toolbar on Left
-             menu.style.top = btnRect.top + "px";
-             menu.style.left = (btnRect.right + 8) + "px";
+      // Top or Side-Top
+      if (isRight && !isBottom && btnRect.top > 100) {
+        // Probably toolbar on Right
+        menu.style.top = btnRect.top + "px";
+        menu.style.right = (window.innerWidth - btnRect.left + 8) + "px";
+      } else if (isLeft && !isBottom && btnRect.top > 100) {
+        // Probably toolbar on Left
+        menu.style.top = btnRect.top + "px";
+        menu.style.left = (btnRect.right + 8) + "px";
+      } else {
+        // Default Top Bar behavior
+        menu.style.top = (btnRect.bottom + 8) + "px";
+        if (isRight) {
+          menu.style.right = (window.innerWidth - btnRect.right) + "px";
+          menu.style.left = "auto";
         } else {
-            // Default Top Bar behavior
-            menu.style.top = (btnRect.bottom + 8) + "px";
-            if (isRight) {
-                menu.style.right = (window.innerWidth - btnRect.right) + "px";
-                menu.style.left = "auto";
-            } else {
-                menu.style.left = btnRect.left + "px";
-            }
+          menu.style.left = btnRect.left + "px";
         }
+      }
     }
-    
+
     // Ensure menu doesn't go off screen horizontally
     menu.style.transform = "none";
-    
+
     document.body.appendChild(menu);
-    
+
     // Close on click outside
     setTimeout(() => {
-        document.addEventListener("click", closeMenu);
+      document.addEventListener("click", closeMenu);
     }, 0);
-    
+
     function closeMenu(evt) {
-        if (!menu.contains(evt.target) && evt.target !== el.splitNoteBtn) {
-            menu.remove();
-            document.removeEventListener("click", closeMenu);
-        }
+      if (!menu.contains(evt.target) && evt.target !== el.splitNoteBtn) {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      }
     }
   }
   // ===================================
@@ -3799,18 +3782,18 @@
   function showHighlightMenu() {
     const btn = document.getElementById("highlightBtn");
     if (!btn) return;
-    
+
     // Close existing menus
     const existing = document.querySelector(".highlight-menu");
     if (existing) existing.remove();
-    
+
     // Close split menu logic is reciprocal
     const splitMenu = document.querySelector(".split-menu");
     if (splitMenu) splitMenu.remove();
-    
+
     const menu = document.createElement("div");
     menu.className = "highlight-menu";
-    
+
     // Position
     menu.style.position = "fixed";
 
@@ -3819,63 +3802,63 @@
     const isBottom = btnRect.bottom > window.innerHeight * 0.8;
     const isRight = btnRect.left > window.innerWidth * 0.8;
     const isLeft = btnRect.left < window.innerWidth * 0.2;
-    
+
     // Default styles (reset)
     menu.style.top = "";
     menu.style.bottom = "";
     menu.style.left = "";
     menu.style.right = "";
-    
+
     if (isBottom) {
-        menu.style.bottom = (window.innerHeight - btnRect.top + 8) + "px";
-        if (isRight) {
-             menu.style.right = (window.innerWidth - btnRect.right) + "px";
-             menu.style.left = "auto";
-        } else {
-             menu.style.left = btnRect.left + "px";
-        }
+      menu.style.bottom = (window.innerHeight - btnRect.top + 8) + "px";
+      if (isRight) {
+        menu.style.right = (window.innerWidth - btnRect.right) + "px";
+        menu.style.left = "auto";
+      } else {
+        menu.style.left = btnRect.left + "px";
+      }
     } else {
-        // Top / Side
-         if (isRight && !isBottom && btnRect.top > 100) {
-            // Right Side
-            menu.style.top = btnRect.top + "px";
-            menu.style.right = (window.innerWidth - btnRect.left + 8) + "px";
-        } else if (isLeft && !isBottom && btnRect.top > 100) {
-            // Left Side
-             menu.style.top = btnRect.top + "px";
-             menu.style.left = (btnRect.right + 8) + "px";
+      // Top / Side
+      if (isRight && !isBottom && btnRect.top > 100) {
+        // Right Side
+        menu.style.top = btnRect.top + "px";
+        menu.style.right = (window.innerWidth - btnRect.left + 8) + "px";
+      } else if (isLeft && !isBottom && btnRect.top > 100) {
+        // Left Side
+        menu.style.top = btnRect.top + "px";
+        menu.style.left = (btnRect.right + 8) + "px";
+      } else {
+        // Top Bar
+        menu.style.top = (btnRect.bottom + 8) + "px";
+        if (isRight) {
+          menu.style.right = (window.innerWidth - btnRect.right) + "px";
+          menu.style.left = "auto";
         } else {
-            // Top Bar
-            menu.style.top = (btnRect.bottom + 8) + "px";
-            if (isRight) {
-                 menu.style.right = (window.innerWidth - btnRect.right) + "px";
-                 menu.style.left = "auto";
-            } else {
-                 menu.style.left = btnRect.left + "px";
-            }
+          menu.style.left = btnRect.left + "px";
         }
+      }
     }
-    
+
     // Content
     // 1. Auto Highlight Toggle
     const autoRow = document.createElement("div");
     autoRow.className = "highlight-menu-row";
-    
+
     // Icon + Label container
     const labelContainer = document.createElement("div");
     labelContainer.style.display = "flex";
     labelContainer.style.alignItems = "center";
     labelContainer.style.gap = "8px";
-    
+
     const icon = document.createElement("span");
     icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 1 1 3.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
-    
+
     const label = document.createElement("span");
     label.textContent = "Auto Highlight";
-    
+
     labelContainer.appendChild(icon);
     labelContainer.appendChild(label);
-    
+
     const toggle = document.createElement("input");
     toggle.type = "checkbox";
     // Safety check for state
@@ -3883,79 +3866,79 @@
     toggle.checked = currentAutoState;
     toggle.style.accentColor = "var(--primary)";
     toggle.style.cursor = "pointer";
-    
+
     toggle.onchange = (e) => {
-        e.stopPropagation();
-        if (window.state) {
-            window.state.autoHighlight = toggle.checked;
-            console.log("✨ Auto-highlight toggled:", window.state.autoHighlight ? "ON" : "OFF");
-        } else {
-            console.warn("⚠️ window.state is undefined, cannot save auto-highlight");
-        }
+      e.stopPropagation();
+      if (window.state) {
+        window.state.autoHighlight = toggle.checked;
+        console.log("✨ Auto-highlight toggled:", window.state.autoHighlight ? "ON" : "OFF");
+      } else {
+        console.warn("⚠️ window.state is undefined, cannot save auto-highlight");
+      }
     };
-    
+
     autoRow.appendChild(labelContainer);
     autoRow.appendChild(toggle);
     menu.appendChild(autoRow);
-    
+
     // Divider
     const hr = document.createElement("div");
     hr.style.height = "1px";
     hr.style.background = "var(--border)";
     hr.style.margin = "4px 0";
     menu.appendChild(hr);
-    
+
     // 2. Colors
     const colors = [
-        { c: "#ffff00", n: "Yellow" },
-        { c: "#00ff00", n: "Green" },
-        { c: "#00ffff", n: "Blue" },
-        { c: "#ff00ff", n: "Pink" },
-        { c: "#ff0000", n: "Red" },
-        { c: "#ff8000", n: "Orange" },
-        { c: "#8000ff", n: "Purple" },
-        { c: "#cccccc", n: "Gray" },
+      { c: "#ffff00", n: "Yellow" },
+      { c: "#00ff00", n: "Green" },
+      { c: "#00ffff", n: "Blue" },
+      { c: "#ff00ff", n: "Pink" },
+      { c: "#ff0000", n: "Red" },
+      { c: "#ff8000", n: "Orange" },
+      { c: "#8000ff", n: "Purple" },
+      { c: "#cccccc", n: "Gray" },
     ];
-    
+
     const grid = document.createElement("div");
     grid.className = "highlight-colors-grid";
-    
+
     colors.forEach(col => {
-       const btn = document.createElement("button");
-       btn.className = "color-swatch";
-       btn.style.background = col.c;
-       btn.style.width = "24px"; // Slightly larger
-       btn.style.height = "24px";
-       btn.style.borderRadius = "4px";
-       btn.style.border = "1px solid var(--border)";
-       btn.style.cursor = "pointer";
-       btn.title = col.n;
-       
-       // Mark active color
-       if (window.state && window.state.currentHighlightColor === col.c) {
-           btn.style.borderColor = "var(--text)";
-           btn.style.transform = "scale(1.1)";
-           btn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-       }
-       
-       btn.onclick = (e) => {
-           e.stopPropagation();
-           
-           // Save current color
-           if (window.state) {
-               window.state.currentHighlightColor = col.c;
-           }
-           
-           document.execCommand("hiliteColor", false, col.c);
-           menu.remove();
-           if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === "function") {
-               TwoBaseState.currentEditor.triggerChange();
-           }
-       };
-       
-       grid.appendChild(btn);
+      const btn = document.createElement("button");
+      btn.className = "color-swatch";
+      btn.style.background = col.c;
+      btn.style.width = "24px"; // Slightly larger
+      btn.style.height = "24px";
+      btn.style.borderRadius = "4px";
+      btn.style.border = "1px solid var(--border)";
+      btn.style.cursor = "pointer";
+      btn.title = col.n;
+
+      // Mark active color
+      if (window.state && window.state.currentHighlightColor === col.c) {
+        btn.style.borderColor = "var(--text)";
+        btn.style.transform = "scale(1.1)";
+        btn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+      }
+
+      btn.onclick = (e) => {
+        e.stopPropagation();
+
+        // Save current color
+        if (window.state) {
+          window.state.currentHighlightColor = col.c;
+        }
+
+        document.execCommand("hiliteColor", false, col.c);
+        menu.remove();
+        if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === "function") {
+          TwoBaseState.currentEditor.triggerChange();
+        }
+      };
+
+      grid.appendChild(btn);
     });
-    
+
     // None button
     const noneBtn = document.createElement("button");
     noneBtn.innerHTML = `
@@ -3978,30 +3961,30 @@
     noneBtn.style.justifyContent = "center";
     noneBtn.style.marginTop = "4px";
     noneBtn.style.color = "var(--text-muted)";
-    
+
     noneBtn.onclick = (e) => {
-        e.stopPropagation();
-        document.execCommand("hiliteColor", false, "transparent");
-        menu.remove();
-        if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === "function") {
-            TwoBaseState.currentEditor.triggerChange();
-        }
+      e.stopPropagation();
+      document.execCommand("hiliteColor", false, "transparent");
+      menu.remove();
+      if (TwoBaseState.currentEditor && typeof TwoBaseState.currentEditor.triggerChange === "function") {
+        TwoBaseState.currentEditor.triggerChange();
+      }
     };
     grid.appendChild(noneBtn);
-    
+
     menu.appendChild(grid);
     document.body.appendChild(menu);
-    
+
     // Close on click outside
     setTimeout(() => {
-        document.addEventListener("click", closeMenu);
+      document.addEventListener("click", closeMenu);
     }, 0);
-    
+
     function closeMenu(evt) {
-        if (!menu.contains(evt.target) && evt.target !== btn) {
-            menu.remove();
-            document.removeEventListener("click", closeMenu);
-        }
+      if (!menu.contains(evt.target) && evt.target !== btn) {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      }
     }
   }
 
@@ -4009,33 +3992,33 @@
   // Attach this globally or per-editor. Since we have multiple editors potentialy, 
   // global mouseup is safest to catch selection end anywhere.
   document.addEventListener("mouseup", (e) => {
-      // Only if feature is ON
-      if (!window.state || !window.state.autoHighlight) return;
-      
-      // Check if we are inside an editor
-      const editorContent = e.target.closest(".editor .content");
-      if (!editorContent) return;
-      
-      const selection = window.getSelection();
-      // If there is text selected
-      if (selection && selection.toString().length > 0 && !selection.isCollapsed) {
-          // Check if the selection is within our editor (sanity check)
-          if (editorContent.contains(selection.anchorNode)) {
-             const color = window.state.currentHighlightColor || "#ffff00"; // Default yellow
-             console.log("✨ Auto-highlighting selection with:", color);
-             document.execCommand("hiliteColor", false, color);
-             
-             // Trigger change for persistence
-             // Find which editor instance this belongs to
-             // We can access TwoBaseState.currentEditor if it was focused.
-             // Or find the pane.
-             const pane = editorContent.closest(".pane");
-             if (pane && pane.dataset.pane) {
-                 // Trigger change on appropriate editor if possible, 
-                 // or just rely on the next event loop save if user types.
-             }
-          }
+    // Only if feature is ON
+    if (!window.state || !window.state.autoHighlight) return;
+
+    // Check if we are inside an editor
+    const editorContent = e.target.closest(".editor .content");
+    if (!editorContent) return;
+
+    const selection = window.getSelection();
+    // If there is text selected
+    if (selection && selection.toString().length > 0 && !selection.isCollapsed) {
+      // Check if the selection is within our editor (sanity check)
+      if (editorContent.contains(selection.anchorNode)) {
+        const color = window.state.currentHighlightColor || "#ffff00"; // Default yellow
+        console.log("✨ Auto-highlighting selection with:", color);
+        document.execCommand("hiliteColor", false, color);
+
+        // Trigger change for persistence
+        // Find which editor instance this belongs to
+        // We can access TwoBaseState.currentEditor if it was focused.
+        // Or find the pane.
+        const pane = editorContent.closest(".pane");
+        if (pane && pane.dataset.pane) {
+          // Trigger change on appropriate editor if possible, 
+          // or just rely on the next event loop save if user types.
+        }
       }
+    }
   });
 
   // View Options & Context Menu
@@ -4321,13 +4304,13 @@
     };
 
     state.notes.push(newNote);
-    
+
     // Clear selection
     TwoBaseState.selectedItems = [];
     if (window.state && window.state.selectedItems) {
       window.state.selectedItems.clear();
     }
-    
+
     // Save changes
     if (typeof window.saveNotes === "function") {
       window.saveNotes();
@@ -4337,7 +4320,7 @@
     if (TwoBaseState.currentBase === "main") {
       renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
-    
+
     return newNote;
   }
   window.duplicateNote = duplicateNote;
@@ -4348,7 +4331,7 @@
 
     const newFolderId =
       typeof window.uid === "function" ? window.uid() : Date.now().toString();
-    
+
     // Create new folder
     const newFolder = {
       ...folder,
@@ -4384,7 +4367,7 @@
     if (typeof window.saveFolders === "function") {
       window.saveFolders();
     }
-    
+
     // Refresh view if at root or parent
     if (TwoBaseState.currentBase === "main") {
       renderWorkspaceSplit(TwoBaseState.currentFolder);
@@ -4580,9 +4563,9 @@
         // Sync to workspace items - try multiple selectors
         const workspaceItem = document.querySelector(
           `.workspace-item[data-id="${noteId}"], ` +
-            `.workspace-item[data-note-id="${noteId}"], ` +
-            `[data-id="${noteId}"].note-card, ` +
-            `[data-id="${noteId}"].folder-card`
+          `.workspace-item[data-note-id="${noteId}"], ` +
+          `[data-id="${noteId}"].note-card, ` +
+          `[data-id="${noteId}"].folder-card`
         );
         if (workspaceItem) {
           if (isSelected) {
@@ -4796,17 +4779,17 @@
         const handlers = {
           onOpenNote: () => {
             console.log("[PINNED] onOpenNote handler called for:", note.id);
-            
+
             // Clear selection
             TwoBaseState.selectedItems = [];
-             if (window.state && window.state.selectedItems) {
+            if (window.state && window.state.selectedItems) {
               window.state.selectedItems.clear();
             }
             // Remove visual highlight
             document.querySelectorAll(".workspace-item.selected, .workspace-item.context-active, .sidebar-item.context-active").forEach(el => {
               el.classList.remove("selected", "context-active");
             });
-            
+
             openNoteInNoteBase(note.id);
           },
           onDuplicate: () => {
@@ -5051,7 +5034,7 @@
                     window.Storage.useFileSystem
                   ) {
                     try {
-                        await window.Storage.deleteNoteFromFileSystem(noteId);
+                      await window.Storage.deleteNoteFromFileSystem(noteId);
                     } catch (error) {
                       console.error(
                         "Error deleting note from backend:",
@@ -5108,10 +5091,9 @@
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
         <polyline points="14 2 14 8 20 8"></polyline>
       </svg>
-      <span>${
-        window.escapeHtml
-          ? window.escapeHtml(note.title || "Untitled")
-          : note.title || "Untitled"
+      <span>${window.escapeHtml
+        ? window.escapeHtml(note.title || "Untitled")
+        : note.title || "Untitled"
       }</span>
     `;
 
@@ -5226,7 +5208,7 @@
                     window.Storage.useFileSystem
                   ) {
                     try {
-                        await window.Storage.deleteNoteFromFileSystem(noteId);
+                      await window.Storage.deleteNoteFromFileSystem(noteId);
                     } catch (error) {
                       console.error(
                         "Error deleting note from backend:",
@@ -5754,7 +5736,7 @@
                     window.Storage.useFileSystem
                   ) {
                     try {
-                        await window.Storage.deleteNoteFromFileSystem(noteId);
+                      await window.Storage.deleteNoteFromFileSystem(noteId);
                     } catch (error) {
                       console.error(
                         "Error deleting note from backend:",
@@ -6253,7 +6235,7 @@
   function openNotesDrawer() {
     console.log("🚀 openNotesDrawer called");
     console.log("Current openNotes:", [...TwoBaseState.openNotes]);
-    
+
     // Switch to note base FIRST to ensure we are in the right context
     // This helps setup the DOM before rendering
     switchToNoteBase();
@@ -6266,18 +6248,18 @@
       if (TwoBaseState.activeNote) {
         // Small delay to ensure DOM is ready if it was hidden
         requestAnimationFrame(() => {
-            renderNoteEditor(TwoBaseState.activeNote);
+          renderNoteEditor(TwoBaseState.activeNote);
         });
       }
     } else {
       // If no notes are open, automatically create a default "Date Note"
       const dateStr = new Date().toLocaleDateString('en-US', {
-        month: 'short', 
-        day: 'numeric', 
+        month: 'short',
+        day: 'numeric',
         year: 'numeric'
       });
       const title = `${dateStr} Note`;
-      
+
       // Generate ID
       let newId;
       if (typeof window.uid === "function") {
@@ -6285,7 +6267,7 @@
       } else {
         newId = Date.now().toString(36) + Math.random().toString(36).substr(2);
       }
-      
+
       const now = new Date().toISOString();
       const newNote = {
         id: newId,
@@ -6296,36 +6278,36 @@
         createdAt: now,
         updatedAt: now,
       };
-      
+
       // Use global state
       if (window.state && window.state.notes) {
         console.log("📝 Creating new default note:", newId);
-        
+
         // Add to state
         window.state.notes.unshift(newNote);
-        
+
         // Add to open notes
         TwoBaseState.openNotes.push(newNote.id);
         TwoBaseState.activeNote = newNote.id;
-        
+
         // Save to backend explicit call
         if (typeof window.saveNotes === "function") {
           window.saveNotes();
         }
-        
+
         // Force session save immediately
         saveTwoBaseSession();
-        
+
         // Render
         renderNoteTabs();
-        
+
         // Render editor with a slight delay to ensuring container is visible
         setTimeout(() => {
-            // Force switch again just in case animation failed or was cancelled
-            switchToNoteBase();
-            renderNoteEditor(newNote.id);
+          // Force switch again just in case animation failed or was cancelled
+          switchToNoteBase();
+          renderNoteEditor(newNote.id);
         }, 50);
-        
+
         // Update sidebar
         if (typeof window.renderSidebar === "function") {
           window.renderSidebar();
@@ -6454,7 +6436,7 @@
       const scrollSpeed = Math.max(
         1,
         SIDEBAR_SCROLL_SPEED *
-          (1 - distanceFromBottom / SIDEBAR_SCROLL_EDGE_SIZE)
+        (1 - distanceFromBottom / SIDEBAR_SCROLL_EDGE_SIZE)
       );
       sidebarAutoScrollInterval = setInterval(() => {
         sidebarContent.scrollTop += scrollSpeed;
@@ -6527,8 +6509,8 @@
           sidebarInitialSelection =
             window.state && window.state.selectedItems
               ? [...window.state.selectedItems].map((id) =>
-                  id.replace(/^(note-|folder-)/, "")
-                )
+                id.replace(/^(note-|folder-)/, "")
+              )
               : [];
         } else {
           // Clear previous sidebar selection if not holding Ctrl
@@ -6880,63 +6862,63 @@
     // We must aggressively remove the .hidden class and prevent it from being re-added during initialization
     // Run this for 1 second to catch any delayed initialization logic that might re-hide the view
     const visibilityInterval = setInterval(() => {
-        const wsSplit = document.getElementById("workspaceSplit");
-        const nBase = document.getElementById("noteBase");
-        const emptyState = document.getElementById("empty-state");
-        
-        if (TwoBaseState.currentBase === 'note') {
-            // Note base should be visible
-            if (nBase) {
-                nBase.classList.remove('hidden', 'view-animate', 'view-enter', 'view-exit');
-                nBase.style.display = 'flex';
-                nBase.style.opacity = '1';
-                nBase.style.transform = '';
-            }
-            if (wsSplit) {
-                wsSplit.classList.add('hidden');
-                wsSplit.style.display = 'none';
-            }
-            if (emptyState) {
-                emptyState.classList.add('hidden');
-            }
-        } else if (TwoBaseState.currentBase === 'home') {
-            // Home/welcome view should be visible
-            if (emptyState) {
-                emptyState.classList.remove('hidden');
-            }
-            if (nBase) {
-                nBase.classList.add('hidden');
-                nBase.style.display = 'none';
-            }
-            if (wsSplit) {
-                wsSplit.classList.add('hidden');
-                wsSplit.style.display = 'none';
-            }
-        } else {
-            // Main base (workspace) should be visible
-            if (wsSplit) {
-                wsSplit.classList.remove('hidden', 'view-animate', 'view-enter', 'view-exit');
-                wsSplit.style.display = 'flex';
-                wsSplit.style.opacity = '1';
-                wsSplit.style.transform = '';
-                if (wsSplit.parentElement) {
-                    wsSplit.parentElement.classList.remove('view-transition-container');
-                }
-            }
-            if (nBase) {
-                nBase.classList.add('hidden');
-                nBase.style.display = 'none';
-            }
-            if (emptyState) {
-                emptyState.classList.add('hidden');
-            }
+      const wsSplit = document.getElementById("workspaceSplit");
+      const nBase = document.getElementById("noteBase");
+      const emptyState = document.getElementById("empty-state");
+
+      if (TwoBaseState.currentBase === 'note') {
+        // Note base should be visible
+        if (nBase) {
+          nBase.classList.remove('hidden', 'view-animate', 'view-enter', 'view-exit');
+          nBase.style.display = 'flex';
+          nBase.style.opacity = '1';
+          nBase.style.transform = '';
         }
+        if (wsSplit) {
+          wsSplit.classList.add('hidden');
+          wsSplit.style.display = 'none';
+        }
+        if (emptyState) {
+          emptyState.classList.add('hidden');
+        }
+      } else if (TwoBaseState.currentBase === 'home') {
+        // Home/welcome view should be visible
+        if (emptyState) {
+          emptyState.classList.remove('hidden');
+        }
+        if (nBase) {
+          nBase.classList.add('hidden');
+          nBase.style.display = 'none';
+        }
+        if (wsSplit) {
+          wsSplit.classList.add('hidden');
+          wsSplit.style.display = 'none';
+        }
+      } else {
+        // Main base (workspace) should be visible
+        if (wsSplit) {
+          wsSplit.classList.remove('hidden', 'view-animate', 'view-enter', 'view-exit');
+          wsSplit.style.display = 'flex';
+          wsSplit.style.opacity = '1';
+          wsSplit.style.transform = '';
+          if (wsSplit.parentElement) {
+            wsSplit.parentElement.classList.remove('view-transition-container');
+          }
+        }
+        if (nBase) {
+          nBase.classList.add('hidden');
+          nBase.style.display = 'none';
+        }
+        if (emptyState) {
+          emptyState.classList.add('hidden');
+        }
+      }
     }, 50); // Run every 50ms
-    
+
     // Stop after 1 second (20 iterations)
     setTimeout(() => {
-        clearInterval(visibilityInterval);
-        console.log("[Two-Base] Visibility enforcement completed");
+      clearInterval(visibilityInterval);
+      console.log("[Two-Base] Visibility enforcement completed");
     }, 1000);
 
     console.log("Two-Base: Initialized successfully");
@@ -6988,9 +6970,8 @@
     const message = document.createElement("p");
     message.style.cssText =
       "margin: 0 0 20px 0; color: var(--muted); font-size: 14px;";
-    message.textContent = `Delete ${count} selected note${
-      count > 1 ? "s" : ""
-    }?`;
+    message.textContent = `Delete ${count} selected note${count > 1 ? "s" : ""
+      }?`;
 
     // Buttons container
     const buttons = document.createElement("div");
@@ -7480,8 +7461,7 @@
               }
 
               alert(
-                `✓ Imported ${data.notes.length} note${
-                  data.notes.length !== 1 ? "s" : ""
+                `✓ Imported ${data.notes.length} note${data.notes.length !== 1 ? "s" : ""
                 } to current folder`
               );
             } else {
@@ -7534,7 +7514,7 @@
       if (window.state && window.state.selectedItems) {
         window.state.selectedItems.clear();
       }
-      
+
       // 2. Clear DOM classes - query ALL likely candidates
       const selectedEls = document.querySelectorAll(".selected, .context-active, .workspace-item.selected");
       selectedEls.forEach((el) => {
@@ -7544,11 +7524,11 @@
 
       // 3. Force sidebar sync if available
       if (typeof window.syncWorkspaceSelection === "function") {
-         // Force clear by passing dummy or just rely on the fact that we cleared state
-         // Better to re-render sidebar to be 100% sure if sync is tricky
-         if (typeof window.TwoBase.refreshSidebar === 'function') {
-             window.TwoBase.refreshSidebar();
-         }
+        // Force clear by passing dummy or just rely on the fact that we cleared state
+        // Better to re-render sidebar to be 100% sure if sync is tricky
+        if (typeof window.TwoBase.refreshSidebar === 'function') {
+          window.TwoBase.refreshSidebar();
+        }
       }
 
       e.preventDefault();
@@ -7682,7 +7662,7 @@
         // Delete all selected items (notes and folders)
         const notesToDelete = [];
         const foldersToDelete = [];
-        
+
         const collectDescendants = (fid) => {
           state.folders.filter(f => f.parentId === fid).forEach(sf => {
             foldersToDelete.push(sf);
@@ -7711,10 +7691,10 @@
         // Backend deletion loops
         if (window.Storage?.useFileSystem) {
           for (const n of notesToDelete) {
-            try { await window.Storage.deleteNoteFromFileSystem(n.id); } catch(e) {}
+            try { await window.Storage.deleteNoteFromFileSystem(n.id); } catch (e) { }
           }
           for (const f of foldersToDelete) {
-            try { await window.Storage.deleteFolderFromFileSystem(f.id); } catch(e) {}
+            try { await window.Storage.deleteFolderFromFileSystem(f.id); } catch (e) { }
           }
         }
 
@@ -7730,12 +7710,12 @@
             }
           }
         }
-        
+
         for (const folder of foldersToDelete) {
           const idx = state.folders.findIndex(f => f.id === folder.id);
           if (idx >= 0) {
-             const [deleted] = state.folders.splice(idx, 1);
-             state.trash.push({ ...deleted, type: "folder", deletedAt: new Date().toISOString() });
+            const [deleted] = state.folders.splice(idx, 1);
+            state.trash.push({ ...deleted, type: "folder", deletedAt: new Date().toISOString() });
           }
         }
 
