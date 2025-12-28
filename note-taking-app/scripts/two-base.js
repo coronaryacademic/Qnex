@@ -26,6 +26,12 @@
     toolbarAlignment: "center", // Toolbar alignment: 'left', 'center', 'right'
     leftEditor: null, // Left pane BlockEditor instance
     rightEditor: null, // Right pane BlockEditor instance
+    searchState: {
+      active: false,
+      query: "",
+      matches: [],
+      currentIndex: -1
+    }
   };
 
   // DOM Elements
@@ -49,6 +55,13 @@
     toolbarOptionsBtn: null,
     toolbarOptionsMenu: null,
     noteToolbarSection: null,
+    // Note Search Elements
+    noteSearchContainer: null,
+    noteSearchInput: null,
+    noteSearchStats: null,
+    noteSearchPrev: null,
+    noteSearchNext: null,
+    noteSearchClose: null,
   };
 
   // Initialize DOM elements
@@ -70,6 +83,17 @@
     el.toolbarOptionsBtn = document.getElementById("toolbarOptionsBtn");
     el.toolbarOptionsMenu = document.getElementById("toolbarOptionsMenu");
     el.noteToolbarSection = document.querySelector(".note-toolbar-section");
+
+    // Initialize Note Search Elements
+    el.noteSearchContainer = document.getElementById("noteSearchContainer");
+    el.noteSearchInput = document.getElementById("noteSearchInput");
+    el.noteSearchStats = document.getElementById("noteSearchStats");
+    el.noteSearchPrev = document.getElementById("noteSearchPrev");
+    el.noteSearchNext = document.getElementById("noteSearchNext");
+    el.noteSearchClose = document.getElementById("noteSearchClose");
+
+    // Initialize Note Search logic
+    initNoteSearch();
 
     // Initialize Drag & Drop for split view
     setupDragAndDrop();
@@ -1080,6 +1104,32 @@
               renderWorkspaceSplit(TwoBaseState.currentFolder);
             }
           },
+          onShowInExplorer: async () => {
+            if (!note) return;
+
+            try {
+              console.log("[EXPLORER] Attempting to show note in explorer:", itemId);
+
+              // Direct check and call
+              if (typeof window?.electronAPI?.showInExplorer === 'function') {
+                const result = await window.electronAPI.showInExplorer(itemId);
+                console.log("[EXPLORER] Success:", result);
+              } else {
+                console.error("[EXPLORER] electronAPI.showInExplorer not available");
+                console.log("[EXPLORER] window.electronAPI:", window.electronAPI);
+
+                // Try alternate access pattern
+                if (window.electronAPI) {
+                  console.log("[EXPLORER] Available methods:", Object.keys(window.electronAPI));
+                }
+
+                alert("Show in Explorer is not available. Please check the console for details.");
+              }
+            } catch (error) {
+              console.error("[EXPLORER] Error:", error);
+              alert(`Error: ${error.message}`);
+            }
+          },
           onDeleteNote: async () => {
             console.log(
               "[BASE LAYER] Single note delete triggered for:",
@@ -1132,6 +1182,19 @@
                 renderWorkspaceSplit(TwoBaseState.currentFolder);
               }
             }); // Close showDeleteConfirmation callback
+          },
+          onShowInExplorer: async () => {
+            // Use Electron API to show file in explorer
+            if (window.electronAPI && window.electronAPI.showInExplorer) {
+              try {
+                await window.electronAPI.showInExplorer(itemId);
+              } catch (error) {
+                console.error("Error showing in explorer:", error);
+                alert("Could not open file location. Make sure you're using the Electron app.");
+              }
+            } else {
+              alert("This feature is only available in the desktop app.");
+            }
           },
           // Hide "Move to Uncategorized" if note is already in uncategorized
           hideMoveToUncategorized: !note.folderId,
@@ -1490,6 +1553,20 @@
           renderWorkspaceSplit(TwoBaseState.currentFolder);
         };
       }
+
+      handlers.onShowInExplorer = async () => {
+        // Use Electron API to show folder in explorer
+        if (window.electronAPI && window.electronAPI.showFolderInExplorer) {
+          try {
+            await window.electronAPI.showFolderInExplorer(itemId);
+          } catch (error) {
+            console.error("Error showing folder in explorer:", error);
+            alert("Could not open folder location. Make sure you're using the Electron app.");
+          }
+        } else {
+          alert("This feature is only available in the desktop app.");
+        }
+      };
 
       handlers.onDeleteFolder = async () => {
         if (typeof window.modalConfirm !== "function") return;
@@ -4321,6 +4398,11 @@
       renderWorkspaceSplit(TwoBaseState.currentFolder);
     }
 
+    // Refresh sidebar to show the duplicated note
+    if (typeof window.renderSidebar === "function") {
+      window.renderSidebar();
+    }
+
     return newNote;
   }
   window.duplicateNote = duplicateNote;
@@ -4371,6 +4453,11 @@
     // Refresh view if at root or parent
     if (TwoBaseState.currentBase === "main") {
       renderWorkspaceSplit(TwoBaseState.currentFolder);
+    }
+
+    // Refresh sidebar to show the duplicated folder
+    if (typeof window.renderSidebar === "function") {
+      window.renderSidebar();
     }
 
     return newFolder;
@@ -4630,9 +4717,24 @@
     // Keyboard shortcuts
     // Keyboard shortcuts
     document.addEventListener("keydown", async (e) => {
-      // Escape to go back to main base
+      // Ctrl+F to toggle note search
+      if ((e.ctrlKey || e.metaKey) && e.key === "f" && TwoBaseState.currentBase === "note") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        // Toggle: close if active, open if not
+        toggleNoteSearch(!TwoBaseState.searchState.active);
+        return;
+      }
+
+      // Escape to go back to main base (or close search if active)
       if (e.key === "Escape" && TwoBaseState.currentBase === "note") {
-        switchToMainBase();
+        if (TwoBaseState.searchState.active) {
+          toggleNoteSearch(false);
+        } else {
+          switchToMainBase();
+        }
       }
 
       // Delete selected items - DISABLED: Now handled by unified Delete handler below (line 3029)
@@ -6218,6 +6320,189 @@
       console.log("✅ openNotesDrawerBtn found in initElements");
     } else {
       console.warn("⚠️ openNotesDrawerBtn NOT found in initElements");
+    }
+  }
+
+  // ===================================
+  // NOTE SEARCH: Find in Note Functionality
+  // ===================================
+
+  function initNoteSearch() {
+    if (!el.noteSearchInput) return;
+
+    // Search input handler
+    el.noteSearchInput.addEventListener("input", (e) => {
+      performNoteSearch(e.target.value);
+    });
+
+    // Previous match button
+    if (el.noteSearchPrev) {
+      el.noteSearchPrev.addEventListener("click", () => {
+        navigateNoteSearch(-1);
+      });
+    }
+
+    // Next match button
+    if (el.noteSearchNext) {
+      el.noteSearchNext.addEventListener("click", () => {
+        navigateNoteSearch(1);
+      });
+    }
+
+    // Close button
+    if (el.noteSearchClose) {
+      el.noteSearchClose.addEventListener("click", () => {
+        toggleNoteSearch(false);
+      });
+    }
+
+    // Keyboard shortcuts in search input
+    el.noteSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          navigateNoteSearch(-1); // Previous
+        } else {
+          navigateNoteSearch(1); // Next
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        toggleNoteSearch(false);
+      }
+    });
+  }
+
+  function toggleNoteSearch(show = true) {
+    if (TwoBaseState.currentBase !== 'note' && show) return;
+
+    TwoBaseState.searchState.active = show;
+    if (el.noteSearchContainer) {
+      if (show) {
+        el.noteSearchContainer.classList.remove("hidden");
+        el.noteSearchInput.focus();
+        el.noteSearchInput.select();
+        if (el.noteSearchInput.value) {
+          performNoteSearch(el.noteSearchInput.value);
+        }
+      } else {
+        el.noteSearchContainer.classList.add("hidden");
+        clearNoteSearchHighlights();
+        el.noteSearchInput.value = "";
+        // Return focus to editor
+        if (TwoBaseState.currentEditorElement) {
+          TwoBaseState.currentEditorElement.focus();
+        }
+      }
+    }
+  }
+
+  function performNoteSearch(query) {
+    if (!TwoBaseState.searchState.active) return;
+
+    TwoBaseState.searchState.query = query;
+    clearNoteSearchHighlights();
+
+    if (!query || query.length < 1) {
+      updateSearchStats(0, 0);
+      return;
+    }
+
+    const editorEl = TwoBaseState.currentEditorElement;
+    if (!editorEl) {
+      updateSearchStats(0, 0);
+      return;
+    }
+
+    // Find all matches across all text nodes
+    const matches = [];
+    const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    const lowerQuery = query.toLowerCase();
+
+    while (node = walker.nextNode()) {
+      const text = node.textContent.toLowerCase();
+      let index = text.indexOf(lowerQuery);
+
+      while (index !== -1) {
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + query.length);
+        matches.push(range);
+        index = text.indexOf(lowerQuery, index + 1);
+      }
+    }
+
+    TwoBaseState.searchState.matches = matches;
+
+    if (matches.length > 0) {
+      TwoBaseState.searchState.currentIndex = 0;
+      applySearchHighlights(matches, 0);
+      updateSearchStats(1, matches.length);
+      scrollToMatch(matches[0]);
+    } else {
+      TwoBaseState.searchState.currentIndex = -1;
+      updateSearchStats(0, 0);
+    }
+  }
+
+  function navigateNoteSearch(direction) {
+    const { matches, currentIndex } = TwoBaseState.searchState;
+    if (matches.length === 0) return;
+
+    let newIndex = currentIndex + direction;
+    if (newIndex >= matches.length) newIndex = 0;
+    if (newIndex < 0) newIndex = matches.length - 1;
+
+    TwoBaseState.searchState.currentIndex = newIndex;
+    updateSearchStats(newIndex + 1, matches.length);
+    applySearchHighlights(matches, newIndex);
+    scrollToMatch(matches[newIndex]);
+  }
+
+  function applySearchHighlights(matches, activeIndex = 0) {
+    if (typeof Highlight === 'undefined' || !CSS.highlights) {
+      console.warn("CSS Custom Highlight API not supported");
+      return;
+    }
+
+    // Clear previous highlights
+    CSS.highlights.delete("search-results");
+    CSS.highlights.delete("search-results-current");
+
+    // Highlight all matches
+    const allResults = new Highlight(...matches);
+    CSS.highlights.set("search-results", allResults);
+
+    // Highlight the current match differently
+    if (matches[activeIndex]) {
+      const currentResult = new Highlight(matches[activeIndex]);
+      CSS.highlights.set("search-results-current", currentResult);
+    }
+  }
+
+  function clearNoteSearchHighlights() {
+    if (typeof CSS !== 'undefined' && CSS.highlights) {
+      CSS.highlights.delete("search-results");
+      CSS.highlights.delete("search-results-current");
+    }
+    TwoBaseState.searchState.matches = [];
+    TwoBaseState.searchState.currentIndex = -1;
+    updateSearchStats(0, 0);
+  }
+
+  function updateSearchStats(current, total) {
+    if (el.noteSearchStats) {
+      el.noteSearchStats.textContent = total > 0 ? `${current} of ${total}` : "0 of 0";
+    }
+  }
+
+  function scrollToMatch(range) {
+    if (!range) return;
+    const node = range.startContainer;
+    const parent = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+
+    if (parent) {
+      parent.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 

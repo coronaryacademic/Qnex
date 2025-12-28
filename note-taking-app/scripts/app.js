@@ -230,11 +230,11 @@ const Storage = {
       if (typeof window.electronAPI.deleteFolder === "function") {
         try {
           const result = await window.electronAPI.deleteFolder(folderId);
-           console.log(`[STORAGE] Electron deleteFolder result for ${folderId}:`, result);
-           return result;
+          console.log(`[STORAGE] Electron deleteFolder result for ${folderId}:`, result);
+          return result;
         } catch (err) {
-           console.error(`[STORAGE] Electron deleteFolder failed for ${folderId}:`, err);
-           // Don't throw here yet as it might not be implemented in all versions of main.js
+          console.error(`[STORAGE] Electron deleteFolder failed for ${folderId}:`, err);
+          // Don't throw here yet as it might not be implemented in all versions of main.js
         }
       }
     }
@@ -306,7 +306,7 @@ window.startExportProcess = async function () {
     modalAlert("JSZip library not loaded. Please check your internet connection.");
     return;
   }
-  
+
   const notesCount = (state && state.notes) ? state.notes.length : 0;
   console.log("[V1.12-DEBUG] Exporting", notesCount, "notes");
 
@@ -343,7 +343,7 @@ window.startExportProcess = async function () {
     // Convert HTML to MD
     const mdContent = window.Markdown.escapeHtmlForMarkdown(note.contentHtml || "");
     const fileContent = frontmatter + mdContent;
-    
+
     // Clean filename
     const safeTitle = (note.title || "Untitled").replace(/[/\\?%*:|"<>]/g, "-");
     notesFolder.file(`${safeTitle}_${note.id.substring(0, 5)}.md`, fileContent);
@@ -368,13 +368,13 @@ window.startExportProcess = async function () {
   a.href = URL.createObjectURL(content);
   a.download = `${zipFolderName}.zip`;
   a.click();
-  
+
   setTimeout(() => {
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
     if (typeof AudioFX !== "undefined" && AudioFX.playComplete) AudioFX.playComplete();
   }, 100);
-  
+
   modalAlert("Portable ZIP backup created successfully!");
 };
 
@@ -388,7 +388,7 @@ window.startImportProcess = function () {
     input.id = "hiddenImportInput";
     input.type = "file";
     input.accept = ".json,.md,.zip";
-    input.multiple = true; 
+    input.multiple = true;
     input.style.position = "fixed";
     input.style.top = "-1000px";
     input.style.left = "-1000px";
@@ -409,7 +409,7 @@ window.startImportProcess = function () {
     for (const file of files) {
       const fileName = file.name.toLowerCase();
       console.log("[IMPORT] Processing:", fileName);
-      
+
       try {
         if (fileName.endsWith(".zip")) {
           // Handle ZIP Import
@@ -419,7 +419,7 @@ window.startImportProcess = function () {
           }
           const zipContent = await JSZip.loadAsync(file);
           const zipFiles = Object.keys(zipContent.files);
-          
+
           // Look for metadata.json
           let folders = [];
           if (zipContent.files["metadata.json"]) {
@@ -431,16 +431,16 @@ window.startImportProcess = function () {
           // Generate ID mapping for folders
           const folderIdMap = new Map();
           const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
-          
+
           folders.forEach(f => {
-             const newId = uid();
-             folderIdMap.set(f.id, newId);
-             state.folders.push({
-               ...f,
-               id: newId,
-               parentId: f.parentId ? folderIdMap.get(f.parentId) || null : null
-             });
-             folderImportedCount++;
+            const newId = uid();
+            folderIdMap.set(f.id, newId);
+            state.folders.push({
+              ...f,
+              id: newId,
+              parentId: f.parentId ? folderIdMap.get(f.parentId) || null : null
+            });
+            folderImportedCount++;
           });
 
           // Process all .md files in the zip
@@ -448,7 +448,7 @@ window.startImportProcess = function () {
             if (path.endsWith(".md")) {
               const text = await zipContent.files[path].async("string");
               const { data, content } = window.Markdown.parseFrontmatter(text);
-              
+
               const newNote = {
                 id: uid(),
                 title: data.title || path.split("/").pop().replace(".md", ""),
@@ -503,7 +503,7 @@ window.startImportProcess = function () {
         } else if (fileName.endsWith(".md")) {
           const text = await file.text();
           const { data, content } = window.Markdown.parseFrontmatter(text);
-          
+
           const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
           const newNote = {
             id: uid(),
@@ -532,10 +532,10 @@ window.startImportProcess = function () {
     } else {
       modalAlert("No valid data found to import.");
     }
-    
-    input.value = ""; 
+
+    input.value = "";
   };
-  
+
   input.click();
 };
 
@@ -645,11 +645,9 @@ window.startImportProcess = function () {
     buttons.forEach((btn) => {
       const button = document.createElement("button");
       button.textContent = btn.text;
-      button.style.cssText = `padding: 8px 16px; border: none; border-radius: 6px; background: ${
-        btn.bg
-      }; color: ${btn.color}; cursor: pointer; font-size: 14px; font-weight: ${
-        btn.weight || "normal"
-      };`;
+      button.style.cssText = `padding: 8px 16px; border: none; border-radius: 6px; background: ${btn.bg
+        }; color: ${btn.color}; cursor: pointer; font-size: 14px; font-weight: ${btn.weight || "normal"
+        };`;
       button.addEventListener("click", () => {
         overlay.remove();
         btn.callback();
@@ -1023,9 +1021,9 @@ window.startImportProcess = function () {
     // Align folder with target
     const tgt =
       state.notes[
-        insertAt > targetIdx
-          ? targetIdx
-          : targetIdx > 0
+      insertAt > targetIdx
+        ? targetIdx
+        : targetIdx > 0
           ? targetIdx - 1
           : targetIdx
       ] || state.notes[targetIdx];
@@ -1434,6 +1432,20 @@ window.startImportProcess = function () {
               refreshWindowTitle(id);
             }
           },
+          onShowInExplorer: async () => {
+            if (!note) return;
+            // Use Electron API to show file in explorer
+            if (window.electronAPI && window.electronAPI.showInExplorer) {
+              try {
+                await window.electronAPI.showInExplorer(id);
+              } catch (error) {
+                console.error("Error showing in explorer:", error);
+                alert("Could not open file location. Make sure you're using the Electron app.");
+              }
+            } else {
+              alert("This feature is only available in the desktop app.");
+            }
+          },
         };
 
         // Hide "Move to Uncategorized" if note is already in uncategorized
@@ -1459,6 +1471,11 @@ window.startImportProcess = function () {
       const isUncat = fid === "";
       const handlers = {};
       if (!isUncat) {
+        handlers.onDuplicate = () => {
+          if (typeof window.duplicateFolder === "function") {
+            window.duplicateFolder(fid);
+          }
+        };
         handlers.onNewSubfolder = async () => {
           const name = await modalPrompt("New Subfolder", "Folder name");
           if (!name) return;
@@ -1755,8 +1772,7 @@ window.startImportProcess = function () {
                 renderSidebar();
 
                 alert(
-                  `âœ“ Imported ${data.notes.length} note${
-                    data.notes.length !== 1 ? "s" : ""
+                  `âœ“ Imported ${data.notes.length} note${data.notes.length !== 1 ? "s" : ""
                   } into "${folder.name}" folder`
                 );
               } else {
@@ -1785,6 +1801,22 @@ window.startImportProcess = function () {
             renderSidebar();
           };
         }
+
+        handlers.onShowInExplorer = async () => {
+          const folder = state.folders.find((f) => f.id === fid);
+          if (!folder) return;
+          // Use Electron API to show folder in explorer
+          if (window.electronAPI && window.electronAPI.showFolderInExplorer) {
+            try {
+              await window.electronAPI.showFolderInExplorer(fid);
+            } catch (error) {
+              console.error("Error showing folder in explorer:", error);
+              alert("Could not open folder location. Make sure you're using the Electron app.");
+            }
+          } else {
+            alert("This feature is only available in the desktop app.");
+          }
+        };
 
         handlers.onDeleteFolder = async () => {
           const folder = state.folders.find((f) => f.id === fid);
@@ -1815,18 +1847,14 @@ window.startImportProcess = function () {
           const subfolderCount = subfolders.length;
 
           const ok = await modalConfirm(
-            `Delete folder "${folder.name}"?${
-              totalNotes > 0
-                ? `\n\n${totalNotes} note${
-                    totalNotes !== 1 ? "s" : ""
-                  } (including notes in subfolders) will be moved to trash.`
-                : ""
-            }${
-              subfolderCount > 0
-                ? `\n${subfolderCount} subfolder${
-                    subfolderCount !== 1 ? "s" : ""
-                  } will also be deleted.`
-                : ""
+            `Delete folder "${folder.name}"?${totalNotes > 0
+              ? `\n\n${totalNotes} note${totalNotes !== 1 ? "s" : ""
+              } (including notes in subfolders) will be moved to trash.`
+              : ""
+            }${subfolderCount > 0
+              ? `\n${subfolderCount} subfolder${subfolderCount !== 1 ? "s" : ""
+              } will also be deleted.`
+              : ""
             }\n\nYou can restore from trash later.`
           );
           if (!ok) return;
@@ -2178,7 +2206,7 @@ window.startImportProcess = function () {
       console.error("Critical: Failed to save notes to storage", err);
     }
     if (state.backupHandle) {
-      writeBackup().catch(() => {});
+      writeBackup().catch(() => { });
     }
     // DISABLED: refreshSidebar can cause navigation issues in TwoBase
     // if (
@@ -2498,11 +2526,9 @@ window.startImportProcess = function () {
       "Nov",
       "Dec",
     ];
-    return `${days[d.getDay()]}, ${
-      months[d.getMonth()]
-    } ${d.getDate()}, ${d.getFullYear()} ${
-      ((d.getHours() + 11) % 12) + 1
-    }:${pad(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
+    return `${days[d.getDay()]}, ${months[d.getMonth()]
+      } ${d.getDate()}, ${d.getFullYear()} ${((d.getHours() + 11) % 12) + 1
+      }:${pad(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
   }
   const uid = () => Math.random().toString(36).slice(2, 9);
   window.uid = uid; // Expose globally
@@ -2538,15 +2564,15 @@ window.startImportProcess = function () {
     // 1. Identify matches
     const matchingNotes = query
       ? state.notes.filter((n) => {
-          const titleMatch = (n.title || "").toLowerCase().includes(query);
-          const tagsMatch =
-            Array.isArray(n.tags) &&
-            n.tags.some((t) => t.toLowerCase().includes(query));
-          const contentMatch = (n.contentHtml || "")
-            .toLowerCase()
-            .includes(query);
-          return titleMatch || tagsMatch || contentMatch;
-        })
+        const titleMatch = (n.title || "").toLowerCase().includes(query);
+        const tagsMatch =
+          Array.isArray(n.tags) &&
+          n.tags.some((t) => t.toLowerCase().includes(query));
+        const contentMatch = (n.contentHtml || "")
+          .toLowerCase()
+          .includes(query);
+        return titleMatch || tagsMatch || contentMatch;
+      })
       : state.notes;
 
     const matchingFolders = query
@@ -2624,8 +2650,8 @@ window.startImportProcess = function () {
       const tags =
         Array.isArray(n.tags) && n.tags.length > 0
           ? n.tags
-              .map((t) => `<span class="sidebar-tag">${escapeHtml(t)}</span>`)
-              .join("")
+            .map((t) => `<span class="sidebar-tag">${escapeHtml(t)}</span>`)
+            .join("")
           : "";
       // Notes use the generic default note emoji when no custom icon is set
       const iconKey = n.icon || "default";
@@ -3294,8 +3320,8 @@ window.startImportProcess = function () {
         titleStatus.textContent = note.updatedAt
           ? `${fmt(note.updatedAt)}`
           : note.createdAt
-          ? `${fmt(note.createdAt)}`
-          : "";
+            ? `${fmt(note.createdAt)}`
+            : "";
       }
     }
 
@@ -3562,7 +3588,7 @@ window.startImportProcess = function () {
       bar.classList.add("dragging");
       try {
         bar.setPointerCapture(e.pointerId);
-      } catch {}
+      } catch { }
       e.preventDefault();
     };
     const onPointerMove = (ev) => {
@@ -3578,7 +3604,7 @@ window.startImportProcess = function () {
       try {
         if (lastPointerId != null && bar.releasePointerCapture)
           bar.releasePointerCapture(lastPointerId);
-      } catch {}
+      } catch { }
     };
     bar.addEventListener("pointerdown", onPointerDown);
     bar.addEventListener("pointermove", onPointerMove);
@@ -3992,8 +4018,7 @@ window.startImportProcess = function () {
           renderSidebar();
 
           alert(
-            `âœ“ Imported ${data.notes.length} note${
-              data.notes.length !== 1 ? "s" : ""
+            `âœ“ Imported ${data.notes.length} note${data.notes.length !== 1 ? "s" : ""
             } into "${folderName}" folder`
           );
         } else {
@@ -4247,9 +4272,8 @@ window.startImportProcess = function () {
       .querySelector(".search-results-modal");
 
     const queryEl = modal.querySelector(".search-results-query");
-    queryEl.innerHTML = `Found <strong>${results.length}</strong> result${
-      results.length !== 1 ? "s" : ""
-    } for "<strong>${escapeHtml(query)}</strong>"`;
+    queryEl.innerHTML = `Found <strong>${results.length}</strong> result${results.length !== 1 ? "s" : ""
+      } for "<strong>${escapeHtml(query)}</strong>"`;
 
     const contentEl = modal.querySelector(".search-results-content");
 
@@ -4282,9 +4306,9 @@ window.startImportProcess = function () {
               </svg>
             </span>
             <span class="search-result-title">${highlightText(
-              note.title || "Untitled",
-              query
-            )}</span>
+            note.title || "Untitled",
+            query
+          )}</span>
             <span class="search-result-match-type">${matchType}</span>
           `;
           item.appendChild(header);
@@ -4419,7 +4443,12 @@ window.startImportProcess = function () {
         <h2>Trash (${state.trash.length} items)</h2>
         <div class="trash-actions">
           <button class="empty-all-btn">Empty All</button>
-          <button class="close-modal-btn">Ã—</button>
+          <button class="close-modal-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
       </div>
       <div class="search-results-list" id="trashList" style="max-height: 300px; overflow-y: auto;"></div>
@@ -4485,13 +4514,11 @@ window.startImportProcess = function () {
               noteCount > 0
                 ? '<span class="folder-expand-icon" style="display: inline-block; margin-right: 4px; transition: transform 0.2s;">â–¶</span>'
                 : "";
-            title.innerHTML = `${expandIcon}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; margin-right: 6px; vertical-align: middle;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${
-              item.name || "Untitled Folder"
-            }${
-              noteCount > 0
+            title.innerHTML = `${expandIcon}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; margin-right: 6px; vertical-align: middle;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>${item.name || "Untitled Folder"
+              }${noteCount > 0
                 ? ` (${noteCount} note${noteCount !== 1 ? "s" : ""})`
                 : ""
-            }`;
+              }`;
           } else {
             title.textContent = item.title || "Untitled";
           }
@@ -4499,22 +4526,18 @@ window.startImportProcess = function () {
 
           const meta = document.createElement("div");
           meta.className = "search-result-meta";
-          meta.textContent = `${
-            item.type === "folder" ? "Folder" : "Note"
-          } â€¢ Deleted: ${fmt(item.deletedAt)}`;
+          meta.textContent = `${item.type === "folder" ? "Folder" : "Note"
+            } â€¢ Deleted: ${fmt(item.deletedAt)}`;
           trashItem.appendChild(meta);
 
           const actions = document.createElement("div");
           actions.className = "trash-item-actions-inline";
           actions.innerHTML = `
-          <button class="restore-btn-inline" data-id="${item.id}" data-type="${
-            item.type || "note"
-          }">Restore${
-            item.type === "folder" && item.notes?.length > 0 ? " All" : ""
-          }</button>
-          <button class="delete-forever-btn-inline" data-id="${
-            item.id
-          }">Delete Forever</button>
+          <button class="restore-btn-inline" data-id="${item.id}" data-type="${item.type || "note"
+            }">Restore${item.type === "folder" && item.notes?.length > 0 ? " All" : ""
+            }</button>
+          <button class="delete-forever-btn-inline" data-id="${item.id
+            }">Delete Forever</button>
         `;
           trashItem.appendChild(actions);
 
@@ -4537,13 +4560,11 @@ window.startImportProcess = function () {
               noteItem.style.borderRadius = "6px";
 
               noteItem.innerHTML = `
-                <div style="font-weight: 500; margin-bottom: 4px;">${
-                  note.title || "Untitled"
+                <div style="font-weight: 500; margin-bottom: 4px;">${note.title || "Untitled"
                 }</div>
                 <div style="display: flex; gap: 8px; margin-top: 6px;">
-                  <button class="restore-note-btn" data-folder-id="${
-                    item.id
-                  }" data-note-index="${noteIndex}" style="padding: 4px 12px; font-size: 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Restore</button>
+                  <button class="restore-note-btn" data-folder-id="${item.id
+                }" data-note-index="${noteIndex}" style="padding: 4px 12px; font-size: 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Restore</button>
                 </div>
               `;
 
@@ -5203,7 +5224,7 @@ window.startImportProcess = function () {
       openDebugLogBtn.addEventListener("click", () => {
         const logContent = window.appLogs.join("\n");
         createModernModal("Application Logs", "", [
-          { text: "Close", bg: "#3b82f6", color: "white", callback: () => {} },
+          { text: "Close", bg: "#3b82f6", color: "white", callback: () => { } },
           {
             text: "Copy",
             bg: "#10b981",
@@ -5480,9 +5501,8 @@ window.startImportProcess = function () {
       if (!n) return modalAlert("No active note");
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(
         n.title || "Note"
-      )}</title></head><body><h1>${escapeHtml(n.title || "")}</h1>${
-        n.contentHtml || ""
-      }</body></html>`;
+      )}</title></head><body><h1>${escapeHtml(n.title || "")}</h1>${n.contentHtml || ""
+        }</body></html>`;
       const blob = new Blob([html], { type: "text/html" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -6093,6 +6113,13 @@ window.startImportProcess = function () {
         hideContextMenu();
         await handlers.onImportToFolder?.();
       });
+    const bSIE = ctxEl.querySelector('[data-cmd="show-in-explorer"]');
+    if (bSIE)
+      bSIE.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        hideContextMenu();
+        await handlers.onShowInExplorer?.();
+      });
     const bCT = ctxEl.querySelector('[data-cmd="close-tab"]');
     if (bCT)
       bCT.addEventListener("click", async (e) => {
@@ -6234,8 +6261,8 @@ window.startImportProcess = function () {
     const editableContent =
       range.commonAncestorContainer.nodeType === 3
         ? range.commonAncestorContainer.parentElement.closest(
-            ".content.editable"
-          )
+          ".content.editable"
+        )
         : range.commonAncestorContainer.closest(".content.editable");
     if (
       editableContent &&
@@ -6307,9 +6334,9 @@ window.startImportProcess = function () {
     const currentW = img.style.width
       ? parseInt(img.style.width)
       : Math.min(
-          100,
-          Math.round((rect.width / Math.max(1, img.naturalWidth)) * 100)
-        );
+        100,
+        Math.round((rect.width / Math.max(1, img.naturalWidth)) * 100)
+      );
     imgTools.range.value = isFinite(currentW) ? currentW : 100;
     imgTools.range.oninput = () => {
       img.style.width = imgTools.range.value + "%";
@@ -7674,17 +7701,17 @@ window.startImportProcess = function () {
     if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
       e.preventDefault();
       console.log("[Shortcut] Global Ctrl+S triggered");
-      
+
       // If there's an active editor's save function in TwoBase architecture, use it
       if (window.TwoBaseState && typeof window.TwoBaseState.currentSaveFunction === "function") {
-          console.log("[Shortcut] Using active editor's save function");
-          window.TwoBaseState.currentSaveFunction();
+        console.log("[Shortcut] Using active editor's save function");
+        window.TwoBaseState.currentSaveFunction();
       } else {
-          saveNotes();
-          // Visual feedback
-          if (typeof AudioFX !== "undefined" && AudioFX.playComplete) {
-            AudioFX.playComplete();
-          }
+        saveNotes();
+        // Visual feedback
+        if (typeof AudioFX !== "undefined" && AudioFX.playComplete) {
+          AudioFX.playComplete();
+        }
       }
     }
 
@@ -8059,9 +8086,8 @@ window.startImportProcess = function () {
 
       // Update text
       progressText.textContent = `${percentage}% Complete`;
-      progressStats.textContent = `${completed} of ${total} task${
-        total !== 1 ? "s" : ""
-      }`;
+      progressStats.textContent = `${completed} of ${total} task${total !== 1 ? "s" : ""
+        }`;
 
       // Change color based on progress
       if (percentage === 100) {
@@ -8091,17 +8117,28 @@ window.startImportProcess = function () {
         item.draggable = true;
         item.dataset.index = index;
         item.innerHTML = `
-          <div class="todo-drag-handle">â‹®â‹®</div>
-          <div class="todo-checkbox ${
-            todo.completed ? "checked" : ""
-          }" data-index="${index}"></div>
+          <div class="todo-drag-handle">⋮⋮</div>
+          <div class="todo-checkbox ${todo.completed ? "checked" : ""
+          }" data-index="${index}">
+            ${todo.completed
+            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                     <polyline points="20 6 9 17 4 12"></polyline>
+                   </svg>`
+            : ""
+          }
+          </div>
           <div class="todo-text">${escapeHtml(todo.text)}</div>
           <button class="todo-edit" data-index="${index}" title="Edit task">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
             </svg>
           </button>
-          <button class="todo-delete" data-index="${index}">Ã—</button>
+          <button class="todo-delete" data-index="${index}" title="Delete task">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         `;
 
         // Add drag event listeners
@@ -8278,19 +8315,24 @@ window.startImportProcess = function () {
 
       // Create save button
       const saveBtn = document.createElement("button");
-      saveBtn.textContent = "âœ“";
+      saveBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>`;
       saveBtn.className = "todo-save";
       saveBtn.title = "Save";
       saveBtn.style.cssText =
-        "padding: 4px 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;";
+        "padding: 6px 10px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px; display: flex; align-items: center; justify-content: center;";
 
       // Create cancel button
       const cancelBtn = document.createElement("button");
-      cancelBtn.textContent = "âœ•";
+      cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>`;
       cancelBtn.className = "todo-cancel";
       cancelBtn.title = "Cancel";
       cancelBtn.style.cssText =
-        "padding: 4px 8px; background: var(--panel-2); color: var(--text); border: none; border-radius: 4px; cursor: pointer; margin-left: 4px;";
+        "padding: 6px 10px; background: var(--panel-2); color: var(--text); border: none; border-radius: 4px; cursor: pointer; margin-left: 4px; display: flex; align-items: center; justify-content: center;";
 
       // Save function
       const saveEdit = async () => {
@@ -8548,6 +8590,12 @@ window.startImportProcess = function () {
 
     Storage.saveSettings(state.settings);
   });
+
+  // Export key functions for use in two-base.js
+  window.saveNotes = saveNotes;
+  window.saveFolders = saveFolders;
+  window.uid = uid;
+  window.renderSidebar = renderSidebar;
 
   // Final Initialization Step: Restore Split View Session
   // We do this here because we are sure notes are loaded.
