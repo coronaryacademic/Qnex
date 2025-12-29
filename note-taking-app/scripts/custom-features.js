@@ -9,7 +9,7 @@ window.addEventListener("load", async () => {
   const loader = document.getElementById("appLoader");
   const retryBtn = document.getElementById("loaderRetryBtn");
   const progressBar = document.getElementById("loaderProgress");
-  
+
   if (loader && window.electronAPI && window.electronAPI.isElectron) {
     let progress = 0;
     const updateProgress = (val) => {
@@ -25,30 +25,30 @@ window.addEventListener("load", async () => {
     // Server check loop
     let attempts = 0;
     const maxAttempts = 30; // 15 seconds
-    
+
     updateProgress(30);
-    
+
     const checkServer = async () => {
       try {
         // Only advance progress here if we are below 90%
         if (progress < 90) updateProgress(progress + 2);
-        
+
         const response = await fetch('http://localhost:3002/api/health');
         if (response.ok) {
           // Server is ready! 
           // But wait for logs to finish typing
           if (window.typingActive || (window.logQueueLength && window.logQueueLength > 0)) {
             // Logs still active, hold at 95%
-             if (progressBar) progressBar.style.width = '95%';
-             return false; // Keep the loop running
+            if (progressBar) progressBar.style.width = '95%';
+            return false; // Keep the loop running
           }
-          
+
           // Success & Logs Done!
           if (progressBar) {
             progressBar.style.width = '100%';
             progressBar.style.boxShadow = '0 0 20px #10b981';
           }
-          
+
           setTimeout(() => {
             loader.classList.add("hidden");
             console.log("✓ System boot complete");
@@ -64,7 +64,7 @@ window.addEventListener("load", async () => {
     const interval = setInterval(async () => {
       attempts++;
       const success = await checkServer();
-      
+
       if (success) {
         clearInterval(interval);
       } else if (attempts >= maxAttempts) {
@@ -77,8 +77,8 @@ window.addEventListener("load", async () => {
           loaderTerminal.appendChild(errLine);
         }
         if (progressBar) {
-            progressBar.classList.add('error');
-            progressBar.style.width = '100%';
+          progressBar.classList.add('error');
+          progressBar.style.width = '100%';
         }
         if (retryBtn) retryBtn.style.display = 'block';
       }
@@ -419,8 +419,8 @@ function setupEditorFeatures(container) {
     container.classList && container.classList.contains("editor")
       ? [container]
       : container.querySelectorAll
-      ? container.querySelectorAll(".editor")
-      : [];
+        ? container.querySelectorAll(".editor")
+        : [];
 
   editors.forEach((editor) => {
     // Set up editor tools menu
@@ -569,14 +569,12 @@ function setupEditorFeatures(container) {
               editorMenuList.style.left = "auto";
               editorMenuList.style.zIndex = "1500";
             } else {
-              // In main panes - use fixed positioning
-              const btnRect = editorMenuBtn.getBoundingClientRect();
-              editorMenuList.style.position = "fixed";
-              editorMenuList.style.top = btnRect.bottom + 4 + "px";
-              editorMenuList.style.right =
-                window.innerWidth - btnRect.right + "px";
-              editorMenuList.style.left = "auto";
-              editorMenuList.style.zIndex = "1500";
+              // In main panes - use CSS positioning (absolute relative to parent)
+              editorMenuList.style.position = "";
+              editorMenuList.style.top = "";
+              editorMenuList.style.right = "";
+              editorMenuList.style.left = "";
+              editorMenuList.style.zIndex = "";
             }
           }
         }
@@ -736,7 +734,7 @@ function setupEditorFeatures(container) {
               : "Centered Layout";
           }
           updateLayoutIcon();
-          
+
           // Save layout preference to note
           const noteId = editor.dataset.noteId;
           if (noteId && window.state && window.state.notes) {
@@ -765,7 +763,7 @@ function setupEditorFeatures(container) {
           console.log("✓ Duplicate button clicked from editor menu");
         });
       }
-      
+
       // Highlight palette and auto-highlight toggle moved to global toolbar
       // See initGlobalToolbarFeatures()
 
@@ -844,28 +842,28 @@ function setupEditorFeatures(container) {
           editorMenu.classList.remove("open");
         });
       }
-      
+
       // Folder & Tags button handling
       const folderTagsBtn = editorMenu.querySelector('[data-action="folder-tags"]');
       const settingsDropdown = editor.querySelector(".settings-dropdown");
-      
+
       if (folderTagsBtn && settingsDropdown) {
         // Remove existing listener if any (by replacing the node or just adding new one)
         // Since we check data-custom-handled in some places, we can just add it here
         if (!folderTagsBtn.hasAttribute("data-handled")) {
           folderTagsBtn.setAttribute("data-handled", "true");
-          
+
           folderTagsBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             console.log("📁 Folder & Tags button clicked from custom features");
-            
+
             // Close the editor menu
             editorMenu.classList.remove("open");
-            
+
             // Toggle dropdown
             const isHidden = settingsDropdown.style.display === "none";
             settingsDropdown.style.display = isHidden ? "block" : "none";
-            
+
             if (isHidden) {
               // If showing, ensure we create a close listener
               const closeDropdown = (ev) => {
@@ -878,7 +876,7 @@ function setupEditorFeatures(container) {
               setTimeout(() => {
                 document.addEventListener("click", closeDropdown);
               }, 0);
-              
+
               // Prevent clicks inside dropdown from closing it
               settingsDropdown.onclick = (ev) => ev.stopPropagation();
             }
@@ -934,7 +932,7 @@ function setupEditorFeatures(container) {
                 fontSizeLabel.textContent = newSize + "px";
               }
             }
-            
+
             // Save to note object
             const noteId = editor.dataset.noteId;
             if (noteId && window.state && window.state.notes) {
@@ -1568,14 +1566,14 @@ async function initializeThemeCarousel() {
         return foundIndex;
       }
     }
-    
+
     // Fallback: detect from body class
     if (document.body.classList.contains("theme-classic")) {
       return themes.findIndex((t) => t.class === "theme-classic");
     } else if (document.body.classList.contains("theme-light")) {
       return themes.findIndex((t) => t.class === "theme-light");
     }
-    
+
     // Default to dark (index 0)
     return 0;
   }
@@ -1789,22 +1787,22 @@ function initGlobalToolbarFeatures() {
   const container = document.querySelector(".toolbar-highlight-section");
   const dropdownBtn = document.getElementById("highlightDropdownBtn");
   const dropdownMenu = document.querySelector(".toolbar-highlight-section .dropdown-menu");
-  
+
   if (container && dropdownBtn) {
     // Toggle dropdown
     dropdownBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const isOpen = container.classList.contains("open");
-      
+
       // Close all other open menus
       document.querySelectorAll(".open").forEach(el => {
         if (el !== container) el.classList.remove("open");
       });
-      
+
       container.classList.toggle("open", !isOpen);
       dropdownBtn.classList.toggle("active", !isOpen);
     });
-    
+
     // Close when clicking outside
     document.addEventListener("click", (e) => {
       if (!container.contains(e.target)) {
@@ -1818,18 +1816,18 @@ function initGlobalToolbarFeatures() {
   const toolbarPalette = document.querySelector(".toolbar-highlight-section .palette");
   if (toolbarPalette) {
     const buttons = toolbarPalette.querySelectorAll("button[data-color]");
-    
+
     // Set up click handlers
     buttons.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         if (window.state) {
           window.state.currentHighlightColor = btn.dataset.color;
-          
+
           // Update active UI
           buttons.forEach((b) => b.classList.remove("active"));
           btn.classList.add("active");
-          
+
           console.log("🎨 Highlight color set to:", btn.dataset.color);
         }
       });
@@ -1854,7 +1852,7 @@ function initGlobalToolbarFeatures() {
         }
       }
     };
-    
+
     updatePaletteState();
     setTimeout(updatePaletteState, 500);
   }
@@ -1884,7 +1882,7 @@ function initGlobalToolbarFeatures() {
         console.log("✨ Auto-highlight toggled:", window.state.autoHighlight ? "ON" : "OFF");
       }
     });
-    
+
     updateToggleUI();
     setTimeout(updateToggleUI, 500);
   }
@@ -1902,7 +1900,7 @@ function initDebugLog() {
   const debugLogOutput = document.getElementById('debugLogOutput');
   const openDebugBtn = document.getElementById('openDebugLogBtn');
   const closeDebugBtn = document.getElementById('closeDebugLogBtn');
-  
+
   // Typewriter State
   const logQueue = [];
   let isTyping = false;
@@ -1916,7 +1914,7 @@ function initDebugLog() {
       debugLogOutput.appendChild(line);
       // Auto-scroll logic
       setTimeout(() => {
-          debugLogOutput.scrollTop = debugLogOutput.scrollHeight;
+        debugLogOutput.scrollTop = debugLogOutput.scrollHeight;
       }, 10);
     }
 
@@ -1933,27 +1931,27 @@ function initDebugLog() {
   // Typewriter queue processor
   function processLogQueue() {
     if (isTyping || logQueue.length === 0) return;
-    
+
     isTyping = true;
     const { msg, terminal } = logQueue.shift();
-    
+
     const line = document.createElement('div');
     let className = 'terminal-line';
     const text = msg.replace(/^\[.*?\] /, ''); // Remove timestamp
-    
+
     if (text.includes('Error') || text.includes('Failed') || text.includes('CRITICAL')) className += ' error';
     else if (text.includes('Success') || text.includes('Running') || text.includes('OK') || text.includes('Embedded server')) className += ' success';
     else className += ' info';
-    
+
     line.className = className;
-    
+
     // Add cursor
     const cursor = document.createElement('span');
     cursor.className = 'cursor';
     line.appendChild(cursor);
-    
+
     terminal.appendChild(line);
-    
+
 
     terminal.scrollTop = terminal.scrollHeight;
 
@@ -1963,23 +1961,23 @@ function initDebugLog() {
         line.insertBefore(document.createTextNode(text.charAt(i)), cursor);
         i++;
         // Typewriter speed: Fast (2-8ms)
-        setTimeout(type, Math.random() * 6 + 2); 
+        setTimeout(type, Math.random() * 6 + 2);
       } else {
         line.removeChild(cursor);
         isTyping = false;
-        
+
         // Update global flags for loader sync
         window.typingActive = false;
         window.logQueueLength = logQueue.length;
-        
+
         setTimeout(processLogQueue, 50);
       }
     }
-    
+
     // Update global flags
     window.typingActive = true;
     window.logQueueLength = logQueue.length;
-    
+
     type();
   }
 
@@ -1991,10 +1989,10 @@ function initDebugLog() {
         logs.forEach(msg => addLog(msg));
       }
     });
-    
+
     // Live logs listener
     window.electronAPI.onStartupLog((msg) => addLog(msg));
-  } 
+  }
 
   if (openDebugBtn) {
     openDebugBtn.addEventListener('click', () => {

@@ -2026,6 +2026,9 @@ body.fullscreen .sidebar-resizer {
 .editor-menu {
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .editor-menu-btn {
@@ -2049,8 +2052,9 @@ body.fullscreen .sidebar-resizer {
   display: none;
   position: absolute;
   right: 0;
+  width: max-content;
   top: 100%;
-  margin-top: 6px;
+  margin-top: 4px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -2645,6 +2649,8 @@ body.fullscreen .sidebar-resizer {
   position: sticky;
   top: 0;
   z-index: 100;
+  transform: translateZ(0);
+  /* Fix for some sticky rendering artifacts */
   background: transparent;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
