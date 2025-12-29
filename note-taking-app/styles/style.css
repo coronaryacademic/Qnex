@@ -2049,7 +2049,8 @@ body.fullscreen .sidebar-resizer {
   display: none;
   position: absolute;
   right: 0;
-  top: calc(100% + 6px);
+  top: 100%;
+  margin-top: 6px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -2641,6 +2642,12 @@ body.fullscreen .sidebar-resizer {
   flex-wrap: nowrap;
   overflow: visible;
   min-height: 40px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: transparent;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .title-with-tags {
