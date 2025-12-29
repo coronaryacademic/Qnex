@@ -658,6 +658,7 @@ function createWindow() {
     height: 900,
     show: true, // Show immediately to see startup logs
     backgroundColor: '#121212', // Dark background to avoid white flash
+    autoHideMenuBar: true, // Hide the menu bar (press Alt to show it temporarily)
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -669,6 +670,10 @@ function createWindow() {
     },
     icon: path.join(__dirname, 'icon.png') // Add an icon if you have one
   });
+  
+  // Remove the application menu entirely (optional - uncomment if you want NO menu at all)
+  // const { Menu } = require('electron');
+  // Menu.setApplicationMenu(null);
 
   // Load the app
   mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
@@ -707,8 +712,55 @@ app.on('before-quit', () => {
 });
 
 // IPC handlers
-ipcMain.handle('shell:openPath', async (event, path) => {
-  return await shell.openPath(path);
+ipcMain.handle('shell:openPath', async (event, pathArg) => {
+  return await shell.openPath(pathArg);
+});
+
+// Show note file in file explorer
+ipcMain.handle('show-in-explorer', async (event, id) => {
+  try {
+    const notesDir = path.join(NOTES_BASE_DIR, 'notes');
+    let filePath = path.join(notesDir, `${id}.md`);
+    
+    // Check if file exists
+    if (!await fs.pathExists(filePath)) {
+      // Search for file by ID in frontmatter
+      const files = await fs.readdir(notesDir);
+      for (const file of files) {
+        if (file.endsWith('.md')) {
+          const content = await fs.readFile(path.join(notesDir, file), 'utf8');
+          if (content.includes(`id: ${id}`)) {
+            filePath = path.join(notesDir, file);
+            break;
+          }
+        }
+      }
+    }
+    
+    shell.showItemInFolder(filePath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error showing in explorer:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Show folder metadata in file explorer
+ipcMain.handle('show-folder-in-explorer', async (event, id) => {
+  try {
+    const foldersDir = path.join(NOTES_BASE_DIR, 'folders');
+    const filePath = path.join(foldersDir, `${id}.json`);
+    
+    if (await fs.pathExists(filePath)) {
+      shell.showItemInFolder(filePath);
+    } else {
+      await shell.openPath(foldersDir);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error showing folder in explorer:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('app:getVersion', () => {

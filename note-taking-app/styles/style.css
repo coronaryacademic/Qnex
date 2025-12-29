@@ -54,7 +54,7 @@ body {
   --panel: #1a1a1a;
   --panel-2: #2a2a2a;
   --text: #e5e7eb;
-  --muted: #9ca3af;
+  --muted: #dddddd;
   --accent: #3851a3;
   --accent-2: #2d4080;
   --border: #333333;
@@ -62,6 +62,7 @@ body {
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   --panel-hover: rgba(255, 255, 255, 0.05);
   --borderX: #333333;
+  --boot: white;
 }
 
 /* Light Theme - Clean white/light gray */
@@ -70,7 +71,7 @@ body.theme-light {
   --panel: #ffffff;
   --panel-2: #fafafa;
   --text: #1f2937;
-  --muted: #6b7280;
+  --muted: #2b2b2b;
   --accent: #3851a3;
   --accent-2: #2d4080;
   --border: #e0e0e0;
@@ -78,6 +79,7 @@ body.theme-light {
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   --panel-hover: rgba(0, 0, 0, 0.05);
   --borderX: #c4c4c4;
+  --boot: black;
 }
 
 /* Classic Theme - Light professional theme with dark panels */
@@ -86,13 +88,14 @@ body.theme-classic {
   --panel: #393a3a;
   --panel-2: #444647;
   --text: #e8e8e8;
-  --muted: #858282;
+  --muted: #dddddd;
   --accent: #4a9eff;
   --accent-2: #6bb0ff;
   --border: rgba(106, 106, 106, 0.449);
   --chip: #4a4d51;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   --panel-hover: rgb(39 39 39);
+  --boot: black;
 }
 
 /* Classic Theme - Specific overrides */
@@ -2745,7 +2748,7 @@ body.fullscreen .sidebar-resizer {
   cursor: pointer;
   background-color: transparent !important;
   /* Force transparent default */
-  color: var(--muted) !important;
+  color: black !important;
   /* Maintain icon color */
   border: none;
 }
@@ -2755,8 +2758,6 @@ body.fullscreen .sidebar-resizer {
 .editor-header .actions .editor-menu-btn:hover {
   background-color: rgba(128, 128, 128, 0.15) !important;
   /* Slight grayish */
-  color: var(--muted) !important;
-  /* Don't change icon color */
 }
 
 .editor-header .actions .settings-dropdown {
@@ -5897,7 +5898,7 @@ ol.editor-block {
 
 .loader-title span {
   font-size: 11px;
-  color: var(--muted);
+  color: var(--boot);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 500;
@@ -6037,19 +6038,20 @@ ol.editor-block {
 
 /* Note Search Component */
 .note-search-container {
-  padding: 4px 16px;
-  background: var(--panel-2);
-  border-bottom: 1px solid var(--border);
+  padding: 4px 8px;
+  background: transparent;
+  border-bottom: none;
   display: flex;
   align-items: center;
   transition: all 0.3s ease;
   z-index: 100;
-  min-height: 40px;
-  max-height: 40px;
+  min-height: 36px;
+  max-height: 36px;
+  pointer-events: auto;
 }
 
 .note-search-container.hidden {
-  display: none;
+  display: none !important;
 }
 
 .note-search-box {
@@ -6082,6 +6084,8 @@ ol.editor-block {
   padding: 4px 0;
   width: 100%;
   outline: none;
+  pointer-events: auto;
+  cursor: text;
 }
 
 .note-search-stats {

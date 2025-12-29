@@ -512,48 +512,53 @@
                   </button>
                 </div>
               </div>
-            </div>
 
-            <!-- Note Search Container -->
-            <div class="note-search-container hidden" id="noteSearchContainer">
-              <div class="note-search-box">
-                <div class="note-search-input-wrapper">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                  <input type="text" id="noteSearchInput" placeholder="Find in note..." autocomplete="off">
-                </div>
-                <div class="note-search-stats" id="noteSearchStats">0 of 0</div>
-                <div class="note-search-divider"></div>
-                <div class="note-search-buttons">
-                  <button id="noteSearchPrev" class="note-search-btn" title="Previous (Shift+Enter)">
+              <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
+
+              <!-- Split View Button -->
+              <button id="splitNoteBtn" class="icon-btn" title="Split view">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="12" y1="3" x2="12" y2="21"></line>
+                </svg>
+              </button>
+
+              <!-- Spacer to push search to right -->
+              <div style="flex: 1;"></div>
+
+              <!-- Note Search Container - inside toolbar, pushed to right -->
+              <div class="note-search-container hidden" id="noteSearchContainer">
+                <div class="note-search-box">
+                  <div class="note-search-input-wrapper">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="18 15 12 9 6 15"></polyline>
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                  </button>
-                  <button id="noteSearchNext" class="note-search-btn" title="Next (Enter)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </button>
-                  <button id="noteSearchClose" class="note-search-btn" title="Close (Esc)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
+                    <input type="text" id="noteSearchInput" placeholder="Find in note..." autocomplete="off">
+                  </div>
+                  <div class="note-search-stats" id="noteSearchStats">0 of 0</div>
+                  <div class="note-search-divider"></div>
+                  <div class="note-search-buttons">
+                    <button id="noteSearchPrev" class="note-search-btn" title="Previous (Shift+Enter)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                      </svg>
+                    </button>
+                    <button id="noteSearchNext" class="note-search-btn" title="Next (Enter)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                    <button id="noteSearchClose" class="note-search-btn" title="Close (Esc)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <!-- Split View Button -->
-            <button id="splitNoteBtn" class="icon-btn" title="Split view">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="12" y1="3" x2="12" y2="21"></line>
-              </svg>
-            </button>
           </div>
 
           <!-- Note Editors Container (supports split view) -->
@@ -1126,7 +1131,7 @@
           <div class="header-tags"></div>
         </div>
         <span class="title-status"
-          style="margin-left: auto; margin-right: 12px; font-size: 11px; color: var(--muted); white-space: nowrap;"></span>
+          style="margin-left: auto; margin-right: 12px; font-size: 11px; color: black; white-space: nowrap;"></span>
         <div class="actions">
           <div class="editor-menu">
             <button class="editor-menu-btn" title="More options">

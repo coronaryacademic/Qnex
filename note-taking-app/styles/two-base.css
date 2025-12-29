@@ -569,11 +569,13 @@
 .note-toolbar-section {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
+  justify-content: flex-start;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--panel-2);
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
 }
 
 .note-toolbar {
@@ -581,6 +583,28 @@
   gap: 0.25rem;
   align-items: center;
   flex-wrap: nowrap;
+  flex: 1;
+  width: 100%;
+}
+
+/* Search container inside toolbar - already pushed right by flex spacer */
+.note-toolbar .note-search-container {
+  padding: 0;
+  background: transparent;
+  border: none;
+  min-height: unset;
+  max-height: unset;
+  flex-shrink: 0;
+  display: flex;
+}
+
+.note-toolbar .note-search-container.hidden {
+  display: none !important;
+}
+
+/* Split button visibility */
+.note-toolbar #splitNoteBtn {
+  flex-shrink: 0;
 }
 
 .note-toolbar .icon-btn {

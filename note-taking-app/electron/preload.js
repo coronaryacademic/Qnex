@@ -7,5 +7,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   getStartupLogs: () => ipcRenderer.invoke('app:getStartupLogs'),
   onStartupLog: (callback) => ipcRenderer.on('startup-log', (_event, value) => callback(value)),
+  
+  // Show in Explorer functionality
+  showInExplorer: (id) => ipcRenderer.invoke('show-in-explorer', id),
+  showFolderInExplorer: (id) => ipcRenderer.invoke('show-folder-in-explorer', id),
+  
   isElectron: true
 });

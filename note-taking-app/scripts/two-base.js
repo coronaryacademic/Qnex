@@ -1183,19 +1183,6 @@
               }
             }); // Close showDeleteConfirmation callback
           },
-          onShowInExplorer: async () => {
-            // Use Electron API to show file in explorer
-            if (window.electronAPI && window.electronAPI.showInExplorer) {
-              try {
-                await window.electronAPI.showInExplorer(itemId);
-              } catch (error) {
-                console.error("Error showing in explorer:", error);
-                alert("Could not open file location. Make sure you're using the Electron app.");
-              }
-            } else {
-              alert("This feature is only available in the desktop app.");
-            }
-          },
           // Hide "Move to Uncategorized" if note is already in uncategorized
           hideMoveToUncategorized: !note.folderId,
         },
@@ -1555,16 +1542,23 @@
       }
 
       handlers.onShowInExplorer = async () => {
-        // Use Electron API to show folder in explorer
-        if (window.electronAPI && window.electronAPI.showFolderInExplorer) {
-          try {
-            await window.electronAPI.showFolderInExplorer(itemId);
-          } catch (error) {
-            console.error("Error showing folder in explorer:", error);
-            alert("Could not open folder location. Make sure you're using the Electron app.");
+        try {
+          console.log("[EXPLORER] Attempting to show folder in explorer:", itemId);
+          
+          // Use typeof check for more robust detection
+          if (typeof window?.electronAPI?.showFolderInExplorer === 'function') {
+            const result = await window.electronAPI.showFolderInExplorer(itemId);
+            console.log("[EXPLORER] Folder success:", result);
+          } else {
+            console.error("[EXPLORER] electronAPI.showFolderInExplorer not available");
+            if (window.electronAPI) {
+              console.log("[EXPLORER] Available methods:", Object.keys(window.electronAPI));
+            }
+            alert("Show in Explorer is not available. Make sure you're running the Electron app and restart it.");
           }
-        } else {
-          alert("This feature is only available in the desktop app.");
+        } catch (error) {
+          console.error("[EXPLORER] Error:", error);
+          alert(`Error: ${error.message}`);
         }
       };
 

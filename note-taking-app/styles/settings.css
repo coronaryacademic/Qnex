@@ -137,13 +137,13 @@
 .settings-section h2 {
   font-size: 1.8rem;
   margin-bottom: 2rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--muted);
   padding-bottom: 1rem;
 }
 
 .setting-group {
   background-color: var(--bg-secondary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--muted);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -160,7 +160,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--muted);
 }
 
 .setting-row:last-child {
@@ -180,7 +180,7 @@
 .setting-info p {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--text-primary);
 }
 
 /* Toggle Switch */
@@ -238,7 +238,7 @@ input:checked + .slider:before {
 
 .theme-card {
   background-color: var(--bg-primary);
-  border: 2px solid var(--border);
+  border: 2px solid var(--muted);
   border-radius: 8px;
   padding: 1rem;
   cursor: pointer;
@@ -261,7 +261,7 @@ input:checked + .slider:before {
   margin-bottom: 0.5rem;
   display: flex;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--muted);
 }
 
 .theme-preview .sidebar-prev { width: 30%; height: 100%; }
@@ -271,7 +271,7 @@ input:checked + .slider:before {
 .settings-btn {
   padding: 8px 16px;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--muted);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   cursor: pointer;
@@ -288,8 +288,8 @@ input:checked + .slider:before {
 }
 
 .settings-btn.danger {
-  color: #ef4444;
-  border-color: #fecaca;
+  color: var(--text-primary);
+  border-color: var(--muted);
   background-color: #fef2f2;
 }
 
@@ -316,7 +316,7 @@ body.theme-classic .settings-view {
 /* Sidebar in Classic is Dark Panel */
 body.theme-classic .settings-sidebar {
   background-color: var(--panel); /* Dark */
-  border-right-color: var(--border);
+  border-right-color: var(--muted);
 }
 
 body.theme-classic .settings-nav-btn {
@@ -335,7 +335,7 @@ body.theme-classic .settings-nav-btn.active {
 
 body.theme-classic .settings-btn:hover {
   background-color: #3851a3 !important; /* Ensure dark background for contrast */
-  border-color: var(--accent);
+  border-color: var(--muted);
   color: #ffffff !important;
 }
 

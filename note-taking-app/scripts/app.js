@@ -1805,16 +1805,24 @@ window.startImportProcess = function () {
         handlers.onShowInExplorer = async () => {
           const folder = state.folders.find((f) => f.id === fid);
           if (!folder) return;
-          // Use Electron API to show folder in explorer
-          if (window.electronAPI && window.electronAPI.showFolderInExplorer) {
-            try {
-              await window.electronAPI.showFolderInExplorer(fid);
-            } catch (error) {
-              console.error("Error showing folder in explorer:", error);
-              alert("Could not open folder location. Make sure you're using the Electron app.");
+          
+          try {
+            console.log("[EXPLORER] Attempting to show folder in explorer:", fid);
+            
+            // Use typeof check for robust detection
+            if (typeof window?.electronAPI?.showFolderInExplorer === 'function') {
+              const result = await window.electronAPI.showFolderInExplorer(fid);
+              console.log("[EXPLORER] Folder success:", result);
+            } else {
+              console.error("[EXPLORER] electronAPI.showFolderInExplorer not available");
+              if (window.electronAPI) {
+                console.log("[EXPLORER] Available methods:", Object.keys(window.electronAPI));
+              }
+              alert("Show in Explorer is not available. Make sure you restart the Electron app.");
             }
-          } else {
-            alert("This feature is only available in the desktop app.");
+          } catch (error) {
+            console.error("[EXPLORER] Error:", error);
+            alert(`Error: ${error.message}`);
           }
         };
 
@@ -5103,7 +5111,7 @@ window.startImportProcess = function () {
                   </div>
                 </div>
 
-                <div class="setting-group" style="border-color: #fecaca; background-color: #fff1f2;">
+                <div class="setting-group" style="border-color: #fecaca; background-color: #ffacb2db;">
                   <h3 style="color: #dc2626;">Danger Zone</h3>
                   <div class="setting-row" style="border-bottom: none;">
                     <div class="setting-info">
@@ -5744,7 +5752,7 @@ window.startImportProcess = function () {
   let ctxActiveElement = null;
   window.showContextMenu = showContextMenu; // Make globally available
   function showContextMenu(x, y, handlers, scope) {
-    hideContextMenu();
+    hideContextMenu(false); // Don't clear active state when switching menus
     if (!el.ctxTemplate) return;
     ctxEl = el.ctxTemplate.content.firstElementChild.cloneNode(true);
     const rect = document.body.getBoundingClientRect();
@@ -6200,10 +6208,21 @@ window.startImportProcess = function () {
       );
     });
   }
-  function hideContextMenu() {
+  function hideContextMenu(clearActiveState = true) {
     if (ctxEl) {
       ctxEl.remove();
       ctxEl = null;
+    }
+    // Only clear context-active highlight if explicitly requested
+    // (not when just switching menus)
+    if (clearActiveState) {
+      document.querySelectorAll('.context-active').forEach(el => {
+        el.classList.remove('context-active');
+      });
+      if (window.ctxActiveElement) {
+        window.ctxActiveElement.classList.remove("context-active");
+        window.ctxActiveElement = null;
+      }
     }
     // Also close pinned note context menu if it exists
     if (typeof window.closePinnedNoteContextMenu === "function") {
@@ -7897,104 +7916,28 @@ window.startImportProcess = function () {
     }
   });
 
-  // Sound Effects using Web Audio API - Professional, subtle sounds
+  // Sound Effects - DISABLED (all sounds removed per user request)
   const AudioFX = {
     context: null,
 
     init() {
-      this.context = new (window.AudioContext || window.webkitAudioContext)();
+      // Disabled - no sound effects
+      return;
     },
 
     playClick() {
-      if (!this.context) this.init();
-      // Soft, professional click - like a pen click
-      const osc = this.context.createOscillator();
-      const gain = this.context.createGain();
-      const filter = this.context.createBiquadFilter();
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.context.destination);
-
-      osc.frequency.value = 1200;
-      osc.type = "sine";
-      filter.type = "lowpass";
-      filter.frequency.value = 2000;
-
-      gain.gain.setValueAtTime(0.05, this.context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        this.context.currentTime + 0.05
-      );
-
-      osc.start(this.context.currentTime);
-      osc.stop(this.context.currentTime + 0.05);
+      // Disabled - no sound effects
+      return;
     },
 
     playComplete() {
-      if (!this.context) this.init();
-      // Professional success sound - like a soft notification
-      const osc1 = this.context.createOscillator();
-      const osc2 = this.context.createOscillator();
-      const gain = this.context.createGain();
-      const filter = this.context.createBiquadFilter();
-
-      osc1.connect(filter);
-      osc2.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.context.destination);
-
-      filter.type = "lowpass";
-      filter.frequency.value = 3000;
-
-      osc1.type = "sine";
-      osc2.type = "sine";
-
-      // Pleasant two-tone chime
-      osc1.frequency.setValueAtTime(659, this.context.currentTime); // E
-      osc2.frequency.setValueAtTime(523, this.context.currentTime); // C
-
-      gain.gain.setValueAtTime(0.08, this.context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        this.context.currentTime + 0.3
-      );
-
-      osc1.start(this.context.currentTime);
-      osc1.stop(this.context.currentTime + 0.3);
-      osc2.start(this.context.currentTime);
-      osc2.stop(this.context.currentTime + 0.3);
+      // Disabled - no sound effects
+      return;
     },
 
     playDelete() {
-      if (!this.context) this.init();
-      // Subtle descending tone - professional and gentle
-      const osc = this.context.createOscillator();
-      const gain = this.context.createGain();
-      const filter = this.context.createBiquadFilter();
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.context.destination);
-
-      osc.type = "sine";
-      filter.type = "lowpass";
-      filter.frequency.value = 1500;
-
-      osc.frequency.setValueAtTime(400, this.context.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(
-        200,
-        this.context.currentTime + 0.15
-      );
-
-      gain.gain.setValueAtTime(0.04, this.context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        this.context.currentTime + 0.15
-      );
-
-      osc.start(this.context.currentTime);
-      osc.stop(this.context.currentTime + 0.15);
+      // Disabled - no sound effects
+      return;
     },
 
     playStartup() {
