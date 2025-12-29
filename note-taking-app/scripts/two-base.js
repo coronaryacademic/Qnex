@@ -1544,7 +1544,7 @@
       handlers.onShowInExplorer = async () => {
         try {
           console.log("[EXPLORER] Attempting to show folder in explorer:", itemId);
-          
+
           // Use typeof check for more robust detection
           if (typeof window?.electronAPI?.showFolderInExplorer === 'function') {
             const result = await window.electronAPI.showFolderInExplorer(itemId);
@@ -2367,7 +2367,11 @@
   }
 
   function restoreTwoBaseSession() {
-    if (!state || !state.settings || !state.settings.twoBaseSession) return;
+    if (!state || !state.settings || !state.settings.twoBaseSession) {
+      setupSidebarSections();
+      renderPinnedNotesSection();
+      return;
+    }
 
     const savedSession = state.settings.twoBaseSession;
 
@@ -2480,6 +2484,7 @@
     // Refresh sidebar sections to show pinned notes
     console.log("[TWO-BASE] Restoring pinned notes:", TwoBaseState.pinnedNotes);
     setupSidebarSections();
+    renderPinnedNotesSection();
   }
 
   // Render pinned notes section in sidebar
@@ -2489,15 +2494,36 @@
 
     if (!section || !content) return;
 
-    // Hide section if no pinned notes
+    // Get the empty state message
+    let emptyState = content.querySelector(".sidebar-empty-state");
+
+    // If empty state doesn't exist (e.g. wiped by innerHTML previously), create it
+    if (!emptyState) {
+      emptyState = document.createElement("div");
+      emptyState.className = "sidebar-empty-state";
+      emptyState.style.display = "none";
+      emptyState.textContent = "No pinned notes";
+      content.appendChild(emptyState);
+    }
+
+    // Clear all items but keep empty state
+    Array.from(content.children).forEach(child => {
+      if (!child.classList.contains("sidebar-empty-state")) {
+        child.remove();
+      }
+    });
+
+    // Always show section
+    section.style.display = "";
+
+    // Show empty state if no pinned notes
     if (TwoBaseState.pinnedNotes.length === 0) {
-      section.style.display = "none";
+      if (emptyState) emptyState.style.display = "block";
       return;
     }
 
-    // Show section
-    section.style.display = "";
-    content.innerHTML = "";
+    // Hide empty state if we have notes
+    if (emptyState) emptyState.style.display = "none";
 
     // Render each pinned note
     TwoBaseState.pinnedNotes.forEach((noteId, index) => {
@@ -2564,6 +2590,7 @@
       // Right-click context menu
       item.addEventListener("contextmenu", (e) => {
         e.preventDefault();
+        e.stopPropagation();
 
         // Clear old active element first
         if (window.ctxActiveElement && window.ctxActiveElement !== item) {
@@ -2573,7 +2600,83 @@
         window.ctxActiveElement = item;
         item.classList.add("context-active");
 
-        showPinnedNoteContextMenu(e, noteId);
+        // Show context menu with pinned-note scope
+        if (typeof window.showContextMenu === "function") {
+          const handlers = {
+            onOpenNote: () => {
+              // Clear selection
+              TwoBaseState.selectedItems = [];
+              if (window.state && window.state.selectedItems) {
+                window.state.selectedItems.clear();
+              }
+              // Remove visual highlight
+              document.querySelectorAll(".workspace-item.selected, .workspace-item.context-active, .sidebar-item.context-active").forEach(el => {
+                el.classList.remove("selected", "context-active");
+              });
+
+              openNoteInNoteBase(noteId);
+            },
+            onDuplicate: () => {
+              // Assuming duplicateNote is available globally or needs to be found
+              if (typeof window.duplicateNote === "function") {
+                window.duplicateNote(noteId);
+              } else if (typeof duplicateNote === "function") {
+                duplicateNote(noteId);
+              }
+            },
+            onUnpinNote: () => {
+              window.togglePinNote(noteId);
+            },
+            onUnpinOthers: () => {
+              TwoBaseState.pinnedNotes = [noteId];
+              renderPinnedNotesSection();
+              renderNoteTabs();
+              saveTwoBaseSession();
+            },
+            onUnpinAll: () => {
+              TwoBaseState.pinnedNotes = [];
+              renderPinnedNotesSection();
+              renderNoteTabs();
+              saveTwoBaseSession();
+            },
+            onDeletePinnedNote: () => {
+              showDeleteConfirmation(1, async () => {
+                // Delete the note
+                const noteIndex = state.notes.findIndex((n) => n.id === noteId);
+                if (noteIndex > -1) {
+                  state.notes.splice(noteIndex, 1);
+                  if (typeof window.Storage !== "undefined") {
+                    await window.Storage.deleteNoteFromFileSystem(noteId);
+                  }
+
+                  // Also remove from pinned if it was pinned
+                  const pinnedIndex = TwoBaseState.pinnedNotes.indexOf(noteId);
+                  if (pinnedIndex > -1) {
+                    TwoBaseState.pinnedNotes.splice(pinnedIndex, 1);
+                  }
+
+                  // Save and refresh
+                  if (typeof window.Storage !== "undefined") {
+                    await window.Storage.saveNotes(state.notes);
+                  }
+                  saveTwoBaseSession();
+                  // No need to call renderPinnedNotesSection() here as listeners/refreshSidebar will handle it
+                  // or we can call it explicitly to be safe
+                  refreshSidebar();
+
+                  if (typeof window.renderWorkspaceSplit === "function") {
+                    window.renderWorkspaceSplit(TwoBaseState.currentFolder);
+                  }
+                }
+              });
+            },
+          };
+
+          window.showContextMenu(e.clientX, e.clientY, handlers, "pinned-note");
+        } else {
+          // Fallback to custom menu if global one not available
+          showPinnedNoteContextMenu(e, noteId);
+        }
       });
 
       // Drag and drop for reordering
@@ -4762,7 +4865,7 @@
   function setupSidebarSections() {
     console.log("[SIDEBAR] setupSidebarSections called");
     // Populate pinned notes, notebooks and folders sections
-    populatePinnedNotesSection();
+    renderPinnedNotesSection();
     populateNotebooksSection();
     populateFoldersSection();
 
@@ -4770,195 +4873,13 @@
     setupSectionToggle();
   }
 
-  function populatePinnedNotesSection() {
-    const pinnedContent = document.getElementById("pinnedNotesContent");
-    console.log("[PINNED] populatePinnedNotesSection called");
-    console.log("[PINNED] pinnedContent element:", pinnedContent);
-    console.log("[PINNED] window.state:", window.state);
-    console.log("[PINNED] state (module):", state);
-    console.log("[PINNED] TwoBaseState.pinnedNotes:", TwoBaseState.pinnedNotes);
 
-    if (!pinnedContent) {
-      console.log("[PINNED] Early return - missing pinnedContent");
-      return;
-    }
 
-    // Use window.state if available, fallback to module state
-    const appState = window.state || state;
-    if (!appState) {
-      console.log("[PINNED] Early return - state not available");
-      return;
-    }
 
-    // Clear all pinned note items
-    const items = pinnedContent.querySelectorAll(".pinned-note-item");
-    items.forEach((item) => item.remove());
 
-    // Get pinned notes
-    const pinnedNotes = appState.notes.filter((note) =>
-      TwoBaseState.pinnedNotes.includes(note.id)
-    );
 
-    console.log("[PINNED] Found pinned notes:", pinnedNotes);
 
-    // Show/hide section based on pinned notes count
-    const pinnedSection = pinnedContent.closest(".sidebar-section");
-    if (pinnedNotes.length === 0) {
-      console.log("[PINNED] No pinned notes, hiding section");
-      if (pinnedSection) pinnedSection.style.display = "none";
-      return;
-    } else {
-      console.log("[PINNED] Showing pinned notes section");
-      if (pinnedSection) pinnedSection.style.display = "block";
-    }
 
-    // Add each pinned note
-    pinnedNotes.forEach((note) => {
-      console.log("[PINNED] Adding pinned note:", note.title);
-      const item = createPinnedNoteItem(note);
-      pinnedContent.appendChild(item);
-    });
-  }
-
-  function createPinnedNoteItem(note) {
-    const item = document.createElement("div");
-    item.className = "pinned-note-item";
-    item.dataset.noteId = note.id;
-    item.dataset.index = "0";
-    item.dataset.itemType = "note";
-    item.draggable = true;
-
-    console.log("[PINNED] Creating pinned note item:", note.id, note.title);
-
-    // Note icon
-    const iconDiv = document.createElement("div");
-    iconDiv.className = "pinned-note-icon";
-    iconDiv.innerHTML =
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
-
-    // Note title
-    const title = document.createElement("span");
-    title.className = "pinned-note-title";
-    title.textContent = note.title || "Untitled";
-
-    item.appendChild(iconDiv);
-    item.appendChild(title);
-
-    // Click to open note
-    item.addEventListener("click", (e) => {
-      console.log("[PINNED] Click on pinned note:", note.id);
-      openNoteFromSidebar(note.id);
-    });
-
-    // Right-click context menu
-    item.addEventListener("contextmenu", (e) => {
-      console.log("[PINNED] RIGHT-CLICK EVENT FIRED on:", note.id);
-      e.preventDefault();
-      e.stopPropagation();
-
-      console.log(
-        "[PINNED] Right-click on pinned note:",
-        note.id,
-        "scope: pinned-note"
-      );
-
-      // Add active state highlighting
-      if (window.ctxActiveElement && window.ctxActiveElement !== item) {
-        window.ctxActiveElement.classList.remove("context-active");
-      }
-      window.ctxActiveElement = item;
-      item.classList.add("context-active");
-
-      // Show context menu with pinned-note scope
-      if (typeof window.showContextMenu === "function") {
-        console.log("[PINNED] Calling showContextMenu with scope: pinned-note");
-        const handlers = {
-          onOpenNote: () => {
-            console.log("[PINNED] onOpenNote handler called for:", note.id);
-
-            // Clear selection
-            TwoBaseState.selectedItems = [];
-            if (window.state && window.state.selectedItems) {
-              window.state.selectedItems.clear();
-            }
-            // Remove visual highlight
-            document.querySelectorAll(".workspace-item.selected, .workspace-item.context-active, .sidebar-item.context-active").forEach(el => {
-              el.classList.remove("selected", "context-active");
-            });
-
-            openNoteInNoteBase(note.id);
-          },
-          onDuplicate: () => {
-            console.log("[PINNED] onDuplicate handler called for:", note.id);
-            duplicateNote(note.id);
-          },
-          onUnpinNote: () => {
-            console.log("[PINNED] Unpin note clicked:", note.id);
-            window.togglePinNote(note.id);
-          },
-          onUnpinOthers: () => {
-            console.log("[PINNED] Unpin others clicked");
-            // Keep only this note pinned, unpin all others
-            TwoBaseState.pinnedNotes = [note.id];
-            saveTwoBaseSession();
-            setupSidebarSections();
-          },
-          onUnpinAll: () => {
-            console.log("[PINNED] Unpin all clicked");
-            // Clear all pinned notes
-            TwoBaseState.pinnedNotes = [];
-            saveTwoBaseSession();
-            setupSidebarSections();
-          },
-          onDeletePinnedNote: () => {
-            console.log("[PINNED] Delete pinned note clicked:", note.id);
-            // Use the existing delete confirmation dialog
-            showDeleteConfirmation(1, async () => {
-              console.log("[PINNED] User confirmed delete for note:", note.id);
-
-              // Delete the note
-              const noteIndex = state.notes.findIndex((n) => n.id === note.id);
-              if (noteIndex > -1) {
-                state.notes.splice(noteIndex, 1);
-                if (typeof window.Storage !== "undefined") {
-                  await window.Storage.deleteNoteFromFileSystem(note.id);
-                }
-                console.log("[PINNED] Note removed from state and backend");
-
-                // Also remove from pinned if it was pinned
-                const pinnedIndex = TwoBaseState.pinnedNotes.indexOf(note.id);
-                if (pinnedIndex > -1) {
-                  TwoBaseState.pinnedNotes.splice(pinnedIndex, 1);
-                  console.log("[PINNED] Note removed from pinned");
-                }
-
-                // Save and refresh
-                if (typeof window.Storage !== "undefined") {
-                  await window.Storage.saveNotes(state.notes);
-                  console.log("[PINNED] Note saved to storage");
-                }
-                saveTwoBaseSession();
-                setupSidebarSections();
-
-                // Refresh workspace if needed
-                if (typeof window.renderWorkspaceSplit === "function") {
-                  window.renderWorkspaceSplit(TwoBaseState.currentFolder);
-                }
-
-                console.log("[PINNED] Note deleted successfully");
-              }
-            });
-          },
-        };
-
-        window.showContextMenu(e.clientX, e.clientY, handlers, "pinned-note");
-      } else {
-        console.log("[PINNED] showContextMenu NOT available!");
-      }
-    });
-
-    return item;
-  }
 
   function setupSectionToggle() {
     console.log("[SIDEBAR] setupSectionToggle called");
@@ -7214,6 +7135,7 @@
   function refreshSidebar() {
     populateNotebooksSection();
     populateFoldersSection();
+    renderPinnedNotesSection();
   }
 
   // Custom delete confirmation dialog
@@ -7326,22 +7248,22 @@
       const selectedFolderNotes = document.querySelectorAll(
         ".folder-note-item.selected"
       );
-
+  
       const allSelected = [...selectedNotebooks, ...selectedFolderNotes];
-
+  
       if (allSelected.length > 0) {
         e.preventDefault();
         e.stopPropagation(); // Prevent other Delete handlers from firing
-
+  
         // Get unique note IDs (deduplicate in case same note selected in both sections)
         const noteIds = [
           ...new Set(
             allSelected.map((el) => el.dataset.noteId).filter((id) => id)
           ),
         ];
-
+  
         if (noteIds.length === 0) return;
-
+  
         showDeleteConfirmation(noteIds.length, () => {
           // Delete all selected notes
           noteIds.forEach((noteId) => {
@@ -7350,7 +7272,7 @@
             );
             if (noteIndex !== -1) {
               const deletedNote = window.state.notes.splice(noteIndex, 1)[0];
-
+  
               // Move to trash
               if (window.state.trash) {
                 window.state.trash.push({
@@ -7358,7 +7280,7 @@
                   deletedAt: new Date().toISOString(),
                 });
               }
-
+  
               // Delete from backend
               if (
                 typeof window.Storage !== "undefined" &&
@@ -7376,7 +7298,7 @@
               }
             }
           });
-
+  
           // Save to backend
           if (typeof window.saveNotes === "function") {
             window.saveNotes();
@@ -7387,7 +7309,7 @@
           ) {
             window.Storage.saveTrash(window.state.trash);
           }
-
+  
           // Refresh UI
           refreshSidebar();
           if (typeof renderWorkspaceSplit === "function") {

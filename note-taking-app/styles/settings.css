@@ -11,14 +11,20 @@
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .settings-header {
   padding: 1rem 2rem;
   border-bottom: 1px solid var(--border);
-  display: none; /* Hidden in workspace view as breadcrumb acts as header */
+  display: none;
+  /* Hidden in workspace view as breadcrumb acts as header */
 }
 
 .settings-header h1 {
@@ -61,11 +67,13 @@
   border-radius: 16px;
   margin: 1rem;
   height: calc(100% - 2rem);
-  
+
   /* Scrollable but hidden scrollbar */
   overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
 }
 
 /* Hide scrollbar for Chrome/Safari/Opera */
@@ -111,8 +119,10 @@
   overflow-y: auto;
   max-width: 900px;
   /* Hide Scrollbar */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
 }
 
 /* Hide scrollbar for Chrome/Safari/Opera */
@@ -130,20 +140,27 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .settings-section h2 {
   font-size: 1.8rem;
   margin-bottom: 2rem;
-  border-bottom: 1px solid var(--muted);
+  border-bottom: 1px solid var(--settingsborder);
   padding-bottom: 1rem;
 }
 
 .setting-group {
   background-color: var(--bg-secondary);
-  border: 1px solid var(--muted);
+  border: 1px solid var(--settingsborder);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -160,7 +177,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 0;
-  border-bottom: 1px solid var(--muted);
+  border-bottom: 1px solid var(--settingsborder);
 }
 
 .setting-row:last-child {
@@ -221,11 +238,11 @@
   border-radius: 50%;
 }
 
-input:checked + .slider {
+input:checked+.slider {
   background-color: var(--accent);
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
   transform: translateX(24px);
 }
 
@@ -238,7 +255,7 @@ input:checked + .slider:before {
 
 .theme-card {
   background-color: var(--bg-primary);
-  border: 2px solid var(--muted);
+  border: 2px solid var(--settingsborder);
   border-radius: 8px;
   padding: 1rem;
   cursor: pointer;
@@ -261,17 +278,24 @@ input:checked + .slider:before {
   margin-bottom: 0.5rem;
   display: flex;
   overflow: hidden;
-  border: 1px solid var(--muted);
+  border: 1px solid var(--settingsborder);
 }
 
-.theme-preview .sidebar-prev { width: 30%; height: 100%; }
-.theme-preview .main-prev { width: 70%; height: 100%; }
+.theme-preview .sidebar-prev {
+  width: 30%;
+  height: 100%;
+}
+
+.theme-preview .main-prev {
+  width: 70%;
+  height: 100%;
+}
 
 /* Buttons in Settings */
 .settings-btn {
   padding: 8px 16px;
   border-radius: 6px;
-  border: 1px solid var(--muted);
+  border: 1px solid var(--settingsborder);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   cursor: pointer;
@@ -289,7 +313,7 @@ input:checked + .slider:before {
 
 .settings-btn.danger {
   color: var(--text-primary);
-  border-color: var(--muted);
+  border-color: var(--settingsborder);
   background-color: #fef2f2;
 }
 
@@ -307,24 +331,30 @@ input:checked + .slider:before {
 .settings-btn.primary:hover {
   opacity: 0.9;
 }
+
 /* Classic Theme Overrides */
 body.theme-classic .settings-view {
-  background-color: var(--bg); /* Light grey */
-  color: #333333; /* Dark text for contrast against light bg */
+  background-color: var(--bg);
+  /* Light grey */
+  color: #333333;
+  /* Dark text for contrast against light bg */
 }
 
 /* Sidebar in Classic is Dark Panel */
 body.theme-classic .settings-sidebar {
-  background-color: var(--panel); /* Dark */
-  border-right-color: var(--muted);
+  background-color: var(--panel);
+  /* Dark */
+  border-right-color: var(--settingsborder);
 }
 
 body.theme-classic .settings-nav-btn {
-  color: #e0e0e0; /* Light text for dark sidebar */
+  color: #e0e0e0;
+  /* Light text for dark sidebar */
 }
 
 body.theme-classic .settings-nav-btn:hover {
-  background-color: #3851a3 !important; /* Use specific color or variable if safe, ensuring dark bg */
+  background-color: #3851a3 !important;
+  /* Use specific color or variable if safe, ensuring dark bg */
   color: #ffffff !important;
 }
 
@@ -334,8 +364,9 @@ body.theme-classic .settings-nav-btn.active {
 }
 
 body.theme-classic .settings-btn:hover {
-  background-color: #3851a3 !important; /* Ensure dark background for contrast */
-  border-color: var(--muted);
+  background-color: #3851a3 !important;
+  /* Ensure dark background for contrast */
+  border-color: var(--settingsborder);
   color: #ffffff !important;
 }
 
@@ -383,10 +414,11 @@ body.theme-classic .theme-card:hover {
 }
 
 body.theme-classic .theme-card.active {
-  background-color: #f0f7ff; /* Very light accent */
+  background-color: #f0f7ff;
+  /* Very light accent */
   border-color: var(--accent);
 }
 
 body.theme-classic .settings-close-btn {
-    color: #333;
+  color: #333;
 }

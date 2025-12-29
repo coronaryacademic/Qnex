@@ -63,6 +63,7 @@ body {
   --panel-hover: rgba(255, 255, 255, 0.05);
   --borderX: #333333;
   --boot: white;
+  --settingsborder: #838383;
 }
 
 /* Light Theme - Clean white/light gray */
@@ -80,6 +81,7 @@ body.theme-light {
   --panel-hover: rgba(0, 0, 0, 0.05);
   --borderX: #c4c4c4;
   --boot: black;
+  --settingsborder: #b5b4b4;
 }
 
 /* Classic Theme - Light professional theme with dark panels */
@@ -96,11 +98,18 @@ body.theme-classic {
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   --panel-hover: rgb(39 39 39);
   --boot: black;
+  --settingsborder: #dddddd;
 }
 
 /* Classic Theme - Specific overrides */
 body.theme-classic .breadcrumb-path {
   color: #2c3e50 !important;
+}
+
+
+/* Classic Theme - Specific overrides */
+body.theme-classic .workspace-empty-hint {
+  color: #878787 !important;
 }
 
 body.theme-classic .workspace-section-header {
