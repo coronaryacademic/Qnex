@@ -1805,10 +1805,10 @@ window.startImportProcess = function () {
         handlers.onShowInExplorer = async () => {
           const folder = state.folders.find((f) => f.id === fid);
           if (!folder) return;
-          
+
           try {
             console.log("[EXPLORER] Attempting to show folder in explorer:", fid);
-            
+
             // Use typeof check for robust detection
             if (typeof window?.electronAPI?.showFolderInExplorer === 'function') {
               const result = await window.electronAPI.showFolderInExplorer(fid);
@@ -4982,8 +4982,8 @@ window.startImportProcess = function () {
                 Data Management
               </button>
               <button class="settings-nav-btn" data-section="about">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                About
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                About the app
               </button>
               <div style="flex:1"></div>
               <button class="settings-nav-btn" style="color: #ef4444;" id="closeAppBtn">
@@ -5118,7 +5118,7 @@ window.startImportProcess = function () {
                       <h4 style="color: #dc2626;">Delete All Notes</h4>
                       <p>Permanently remove all notes and folders. This cannot be undone.</p>
                     </div>
-                    <button id="clearAllBtn" class="settings-btn danger">Delete Everything</button>
+                    <button id="clearAllBtn" class="settings-btn danger" >Delete Everything</button>
                   </div>
                 </div>
               </div>
@@ -5133,9 +5133,9 @@ window.startImportProcess = function () {
                     <path d="M2 12l10 5 10-5"></path>
                   </svg>
                   <h3>My Notes</h3>
-                  <p style="color: var(--muted); margin-bottom: 2rem;">Version 1.12BL</p>
+                  <p style="color: var(--boot); margin-bottom: 2rem;">Version Beta</p>
                   <p>Created by Momen</p>
-                  <p style="font-size: 0.9rem; color: var(--muted); font-style: italic; max-width: 400px; margin: 1rem auto;">
+                  <p style="font-size: 0.9rem; color: var(--boot); font-style: italic; max-width: 400px; margin: 1rem auto;">
                     Built to show that anyone can create their own tools. Freedom is always an option to go for.
                   </p>
                 </div>
@@ -5654,11 +5654,11 @@ window.startImportProcess = function () {
                 </svg>
               </div>
               <h2 style="margin: 0 0 12px 0; color: var(--text);">My Notes</h2>
-              <p style="margin: 0 0 12px 0; color: var(--muted); font-size: 13px;">
+              <p style="margin: 0 0 12px 0; color: var(--text); font-size: 13px;">
                 <strong>Version:</strong> 1.12BL <br>
                 <strong>Created by:</strong> Momen
               </p>
-              <p style="margin: 0; color: var(--muted); font-size: 13px; font-style: italic;">
+              <p style="margin: 0; color: var(--text); font-size: 13px; font-style: italic;">
                 Built to show that anyone can create their own tools. Freedom is always an option to go for.
               </p>
             </div>
@@ -8098,14 +8098,14 @@ window.startImportProcess = function () {
       // Add event listeners
       todoList.querySelectorAll(".todo-checkbox").forEach((cb) => {
         cb.addEventListener("click", (e) => {
-          const index = parseInt(e.target.dataset.index);
+          const index = parseInt(e.currentTarget.dataset.index);
           toggleTodo(index);
         });
       });
 
       todoList.querySelectorAll(".todo-delete").forEach((btn) => {
         btn.addEventListener("click", (e) => {
-          const index = parseInt(e.target.dataset.index);
+          const index = parseInt(e.currentTarget.dataset.index);
           deleteTodo(index);
         });
       });
@@ -8129,14 +8129,14 @@ window.startImportProcess = function () {
     let dropIndicator = null;
 
     function handleDragStart(e) {
-      draggedIndex = parseInt(e.target.dataset.index);
-      e.target.classList.add("dragging");
+      draggedIndex = parseInt(e.currentTarget.dataset.index);
+      e.currentTarget.classList.add("dragging");
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/html", e.target.outerHTML);
+      e.dataTransfer.setData("text/html", e.currentTarget.outerHTML);
     }
 
     function handleDragEnd(e) {
-      e.target.classList.remove("dragging");
+      e.currentTarget.classList.remove("dragging");
       draggedIndex = null;
       // Remove all drop indicators
       document
@@ -8154,11 +8154,12 @@ window.startImportProcess = function () {
 
     function handleDragEnter(e) {
       e.preventDefault();
-      if (e.target.classList.contains("todo-item") && draggedIndex !== null) {
-        const targetIndex = parseInt(e.target.dataset.index);
+      const targetItem = e.target.closest(".todo-item");
+      if (targetItem && draggedIndex !== null) {
+        const targetIndex = parseInt(targetItem.dataset.index);
         if (targetIndex !== draggedIndex) {
           // Show drop indicator
-          showDropIndicator(e.target, e.clientY);
+          showDropIndicator(targetItem, e.clientY);
         }
       }
     }
