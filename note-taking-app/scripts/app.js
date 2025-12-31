@@ -5070,6 +5070,13 @@ window.startImportProcess = function () {
                       </div>
                       <span class="theme-label">Medical</span>
                     </div>
+                    <div class="theme-card" data-theme="navy">
+                      <div class="theme-preview">
+                        <div class="sidebar-prev" style="background:#1a2332; border-right:1px solid #253044;"></div>
+                        <div class="main-prev" style="background:#0f1729;"></div>
+                      </div>
+                      <span class="theme-label">Navy</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5570,7 +5577,8 @@ window.startImportProcess = function () {
       "theme-purple",
       "theme-nord",
       "theme-classic",
-      "theme-medical-winter"
+      "theme-medical-winter",
+      "theme-navy"
     );
 
     // Apply new theme (dark is default, no class needed)

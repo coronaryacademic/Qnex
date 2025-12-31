@@ -124,6 +124,32 @@ body.theme-medical-winter {
   --hover: rgba(8, 145, 178, 0.12);
 }
 
+/* Navy Theme - Deep navy blue with gold accents */
+body.theme-navy {
+  --bg: #0f1729;
+  --panel: #1a2332;
+  --panel-2: #253044;
+  --text: #e8eaed;
+  --muted: #9ca3af;
+  --accent: #f59e0b;
+  --accent-2: #fbbf24;
+  --border: #253044;
+  --chip: #1a2332;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --panel-hover: rgba(245, 158, 11, 0.1);
+  --borderX: #253044;
+  --boot: #f59e0b;
+  --settingsborder: #253044;
+  --bg-primary: #0f1729;
+  --bg-secondary: #1a2332;
+  --text-primary: #e8eaed;
+  --accent-bg: rgba(245, 158, 11, 0.15);
+  --hover: rgba(245, 158, 11, 0.12);
+}
+
+
+
+
 
 /* Classic Theme - Specific overrides */
 body.theme-classic .breadcrumb-path {
@@ -416,7 +442,7 @@ body.theme-medical-winter .workspace-item {
 
 body.theme-medical-winter .note-tab.active {
   background-color: #ffffff !important;
-  border-bottom: 2px solid #0891b2;
+  border-bottom: none !important;
 }
 
 body.theme-medical-winter .toolbar-align-btn,

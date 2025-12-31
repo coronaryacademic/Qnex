@@ -100,6 +100,7 @@ const themes = [
   { name: "Light", class: "theme-light" },
   { name: "Classic", class: "theme-classic" },
   { name: "Medical Winter Chill", class: "theme-medical-winter" },
+  { name: "Navy", class: "theme-navy" },
 ];
 let currentThemeIndex = 0;
 
@@ -1621,7 +1622,8 @@ async function initializeThemeCarousel() {
     const themeClass = theme.class;
 
     // Remove all theme classes
-    document.body.classList.remove("theme-light", "theme-classic", "theme-medical-winter");
+    // Remove all theme classes
+    document.body.classList.remove("theme-light", "theme-classic", "theme-medical-winter", "theme-navy");
 
     // Apply new theme (dark is default, no class needed)
     if (themeClass) {
