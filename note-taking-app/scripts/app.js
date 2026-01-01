@@ -1570,6 +1570,23 @@ window.startImportProcess = function () {
           a.click();
           URL.revokeObjectURL(url);
         };
+        handlers.onShowInExplorer = async () => {
+          console.log(`[DEBUG] onShowInExplorer triggered for folder folderId=${fid}`);
+          if (window.electronAPI && window.electronAPI.showFolderInExplorer) {
+            try {
+              console.log("[DEBUG] Calling window.electronAPI.showFolderInExplorer...");
+              const result = await window.electronAPI.showFolderInExplorer(fid);
+              console.log("[DEBUG] showFolderInExplorer result:", result);
+            } catch (error) {
+              console.error("[DEBUG] Error showing folder in explorer:", error);
+              alert("Could not open folder location.");
+            }
+          } else {
+            console.error("[DEBUG] electronAPI is missing or showFolderInExplorer is not a function", window.electronAPI);
+            alert("This feature is only available in the desktop app.");
+          }
+        };
+
         handlers.onImportToFolder = async () => {
           const folder = state.folders.find((f) => f.id === fid);
           if (!folder) return;
@@ -6137,7 +6154,9 @@ window.startImportProcess = function () {
         hideContextMenu();
         await handlers.onImportToFolder?.();
       });
-    const bSIE = ctxEl.querySelector('[data-cmd="show-in-explorer"]');
+    const bSIE = visibleSection
+      ? visibleSection.querySelector('[data-cmd="show-in-explorer"]')
+      : ctxEl.querySelector('[data-cmd="show-in-explorer"]');
     if (bSIE)
       bSIE.addEventListener("click", async (e) => {
         e.stopPropagation();

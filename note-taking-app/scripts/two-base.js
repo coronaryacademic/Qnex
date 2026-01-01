@@ -1105,29 +1105,24 @@
             }
           },
           onShowInExplorer: async () => {
-            if (!note) return;
-
-            try {
-              console.log("[EXPLORER] Attempting to show note in explorer:", itemId);
-
-              // Direct check and call
-              if (typeof window?.electronAPI?.showInExplorer === 'function') {
+            console.log(`[DEBUG] BaseLayer NOTE onShowInExplorer triggered for itemId=${itemId}`);
+            if (!note) {
+                console.warn("[DEBUG] Note object is missing!");
+                return;
+            }
+            // Use Electron API to show file in explorer
+            if (window.electronAPI && window.electronAPI.showInExplorer) {
+              try {
+                console.log("[DEBUG] Calling window.electronAPI.showInExplorer...");
                 const result = await window.electronAPI.showInExplorer(itemId);
-                console.log("[EXPLORER] Success:", result);
-              } else {
-                console.error("[EXPLORER] electronAPI.showInExplorer not available");
-                console.log("[EXPLORER] window.electronAPI:", window.electronAPI);
-
-                // Try alternate access pattern
-                if (window.electronAPI) {
-                  console.log("[EXPLORER] Available methods:", Object.keys(window.electronAPI));
-                }
-
-                alert("Show in Explorer is not available. Please check the console for details.");
+                console.log("[DEBUG] showInExplorer result:", result);
+              } catch (error) {
+                console.error("[DEBUG] Error showing in explorer:", error);
+                alert("Could not open file location. Make sure you're using the Electron app.");
               }
-            } catch (error) {
-              console.error("[EXPLORER] Error:", error);
-              alert(`Error: ${error.message}`);
+            } else {
+              console.error("[DEBUG] electronAPI is missing or showInExplorer is not a function", window.electronAPI);
+              alert("This feature is only available in the desktop app.");
             }
           },
           onDeleteNote: async () => {
@@ -1308,6 +1303,23 @@
         a.download = `${folder.name}-folder-${itemId}.json`;
         a.click();
         URL.revokeObjectURL(url);
+      };
+
+      handlers.onShowInExplorer = async () => {
+        console.log(`[DEBUG] BaseLayer FOLDER onShowInExplorer triggered for itemId=${itemId}`);
+        if (window.electronAPI && window.electronAPI.showFolderInExplorer) {
+          try {
+            console.log("[DEBUG] Calling window.electronAPI.showFolderInExplorer...");
+            const result = await window.electronAPI.showFolderInExplorer(itemId);
+            console.log("[DEBUG] showFolderInExplorer result:", result);
+          } catch (error) {
+            console.error("[DEBUG] Error showing folder in explorer:", error);
+            alert("Could not open folder location.");
+          }
+        } else {
+          console.error("[DEBUG] electronAPI is missing or showFolderInExplorer is not a function", window.electronAPI);
+          alert("This feature is only available in the desktop app.");
+        }
       };
 
       handlers.onImportToFolder = async () => {
