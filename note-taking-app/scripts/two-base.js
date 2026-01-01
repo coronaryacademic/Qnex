@@ -2529,7 +2529,11 @@
     section.style.display = "";
 
     // Show empty state if no pinned notes
-    if (TwoBaseState.pinnedNotes.length === 0) {
+    // Filter for valid notes that exist in state
+    const validPinnedNotes = TwoBaseState.pinnedNotes.filter(id => state.notes.some(n => n.id === id));
+
+    // Show empty state if no VALID pinned notes
+    if (validPinnedNotes.length === 0) {
       if (emptyState) emptyState.style.display = "block";
       return;
     }
@@ -2538,7 +2542,7 @@
     if (emptyState) emptyState.style.display = "none";
 
     // Render each pinned note
-    TwoBaseState.pinnedNotes.forEach((noteId, index) => {
+    validPinnedNotes.forEach((noteId, index) => {
       const note = state.notes.find((n) => n.id === noteId);
       if (!note) return;
 

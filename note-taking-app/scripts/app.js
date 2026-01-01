@@ -1399,12 +1399,14 @@ window.startImportProcess = function () {
                   state.trash.push(deletedNote);
 
                   // Sync with File System: Delete from notes collection, add to trash
+                  /* DISABLED BACKEND DELETION PER USER REQUEST
                   try {
                     await Storage.deleteNoteFromFileSystem(id);
                     await Storage.saveTrash(state.trash);
                   } catch (error) {
                     console.error("File system sync error:", error);
                   }
+                  */
                 }
                 // Close tabs and windows for this note (do this first)
                 try {
@@ -1915,62 +1917,8 @@ window.startImportProcess = function () {
             state.trash.push(trashItem);
 
             // Sync with File System: Delete folder, subfolders, and all notes from collections
-            try {
-              // Delete the main folder
-              await Storage.deleteFolderFromFileSystem(fid);
-
-              // Delete all notes inside folder/subfolders from file system
-              for (const n of allNotes) {
-                try {
-                  await Storage.deleteNoteFromFileSystem(n.id);
-                } catch (e) {
-                  // Ignore if already deleted
-                }
-              }
-
-              // Delete all subfolders
-              for (const subfolder of subfolders) {
-                try {
-                  await Storage.deleteFolderFromFileSystem(subfolder.id);
-                } catch (subfolderError) {
-                  // Ignore 404 errors (subfolder doesn't exist in backend)
-                  if (
-                    !subfolderError.message?.includes("404") &&
-                    !subfolderError.message?.includes("Not Found")
-                  ) {
-                    console.warn(
-                      `Error deleting subfolder ${subfolder.id}:`,
-                      subfolderError
-                    );
-                  }
-                }
-              }
-
-              // Delete all notes (in folder and subfolders) from File System
-              for (const note of allNotes) {
-                try {
-                  await Storage.deleteNoteFromFileSystem(note.id);
-                } catch (noteError) {
-                  // Ignore 404 errors (note doesn't exist in backend)
-                  if (
-                    !noteError.message?.includes("404") &&
-                    !noteError.message?.includes("Not Found")
-                  ) {
-                    console.warn(`Error deleting note ${note.id}:`, noteError);
-                  }
-                }
-              }
-
-              await Storage.saveTrash(state.trash);
-            } catch (error) {
-              // Ignore 404 errors (folder doesn't exist in backend)
-              if (
-                !error.message?.includes("404") &&
-                !error.message?.includes("Not Found")
-              ) {
-                console.error("File system sync error:", error);
-              }
-            }
+            // DISABLED BACKEND DELETION PER USER REQUEST: Changes are session-only.
+            // Original code to delete items from backend has been removed.
           }
 
           // Remove all subfolders from state
@@ -5292,22 +5240,31 @@ window.startImportProcess = function () {
 
     const openFileLocationBtn = document.getElementById("openFileLocationBtn");
     if (openFileLocationBtn) {
-      openFileLocationBtn.addEventListener("click", () => {
+      openFileLocationBtn.addEventListener("click", async () => {
         console.log("[Settings] openFileLocationBtn clicked");
-        if (
-          Storage.isElectron &&
-          window.electronAPI &&
-          window.electronAPI.openDataDirectory
-        ) {
-          window.electronAPI.openDataDirectory();
+        // PRIORITIZE: Electron API direct call
+        if (window.electronAPI && window.electronAPI.openPath) {
+          try {
+            console.log("Attempting to open path via electronAPI.openPath...");
+            const result = await window.electronAPI.openPath("D:\\MyNotes");
+            console.log("electronAPI.openPath result:", result);
+            if (result !== "") { // shell.openPath returns error string if failed, empty string if success
+               console.error("Open path failed with:", result);
+               modalAlert("Failed to open folder: " + result);
+            }
+          } catch (e) {
+            console.error("Error calling openPath:", e);
+            modalAlert("Error opening folder: " + e.message);
+          }
         } else {
-          // For browser mode, show the current data directory path
-          const dataPath = "D:\\MyNotes"; // Default path from the UI
+          // Fallback only if API is completely missing
+          console.warn("electronAPI.openPath is missing!");
+          const dataPath = "D:\\MyNotes";
           navigator.clipboard
             .writeText(dataPath)
             .then(() => {
               modalAlert(
-                `Data directory path copied to clipboard:\n${dataPath}`
+                `Could not open folder automatically.\nPath copied to clipboard:\n${dataPath}`
               );
             })
             .catch(() => {
@@ -6937,13 +6894,16 @@ window.startImportProcess = function () {
         );
 
         // Store for File System deletion (including subfolders)
+        /* DISABLED PER USER REQUEST - DELETIONS NOT SAVED TO BACKEND
         foldersToDelete.push({
           folderId: folderId,
           notesInFolder: allNotes,
           subfolders: subfolders,
         });
+        */
 
         // Add folder to trash with nested notes and subfolders
+        /* DISABLED TRASH PERSISTENCE FOR FOLDERS
         state.trash.push({
           ...folder,
           type: "folder",
@@ -6951,6 +6911,7 @@ window.startImportProcess = function () {
           subfolders: subfolders,
           deletedAt: new Date().toISOString(),
         });
+        */
 
         // Remove the folder
         state.folders = state.folders.filter((f) => f.id !== folderId);
@@ -6963,58 +6924,12 @@ window.startImportProcess = function () {
     });
 
     // Sync with File System: Delete from collections, add to trash
-    try {
-      // Delete notes from File System
-      for (const noteId of selectedNotes) {
-        await Storage.deleteNoteFromFileSystem(noteId);
-      }
-
-      // Delete folders, subfolders, and their notes from File System
-      for (const folderData of foldersToDelete) {
-        // Delete the main folder
-        await Storage.deleteFolderFromFileSystem(folderData.folderId);
-
-        // Delete all subfolders
-        if (folderData.subfolders) {
-          for (const subfolder of folderData.subfolders) {
-            try {
-              await Storage.deleteFolderFromFileSystem(subfolder.id);
-            } catch (subfolderError) {
-              // Ignore 404 errors (subfolder doesn't exist in backend)
-              if (
-                !subfolderError.message?.includes("404") &&
-                !subfolderError.message?.includes("Not Found")
-              ) {
-                console.warn(
-                  `Error deleting subfolder ${subfolder.id}:`,
-                  subfolderError
-                );
-              }
-            }
-          }
-        }
-
-        // Delete all notes in the folder and subfolders
-        for (const note of folderData.notesInFolder) {
-          try {
-            await Storage.deleteNoteFromFileSystem(note.id);
-          } catch (noteError) {
-            // Ignore 404 errors (note doesn't exist in backend)
-            if (
-              !noteError.message?.includes("404") &&
-              !noteError.message?.includes("Not Found")
-            ) {
-              console.warn(`Error deleting note ${note.id}:`, noteError);
-            }
-          }
-        }
-      }
-
-      // Save trash to File System
-      await Storage.saveTrash(state.trash);
-    } catch (error) {
-      console.error("File system sync error:", error);
-    }
+    // Sync with File System: Delete from collections, add to trash
+    // DISABLED BACKEND DELETION CALLS PER USER REQUEST: Changes are session-only.
+    /* 
+       Code for backend deletion has been removed to prevent persistence.
+       Reloading the app will restore deleted items.
+    */
 
     // Clear selection
     state.selectedItems.clear();
