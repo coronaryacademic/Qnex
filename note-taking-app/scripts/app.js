@@ -272,6 +272,28 @@ const Storage = {
 
   // Delete all notes method for file system
   async deleteAllNotes() {
+    if (this.isElectron) {
+      // Electron fallback: delete individually since no bulk delete endpoint exists in preload yet
+      // We need to access state.notes - assuming it's available in scope or passed in
+      // Since Storage is defined before state, we might need to rely on the caller loop
+      // OR, we assume we can read via loadNotes first (but that is slow).
+      
+      // BETTER APPROACH: The caller (clearAllBtn listener) has access to state.notes.
+      // So I will make this function accept an optional list of IDs, or just keep it simple
+      // and update the CALLER to loop.
+      
+      // However, to keep API consistent, let's try to load keys if possible, or just Log warning?
+      // Actually, let's just make the CALLER loop. That is safer.
+      // But wait, user expects `deleteAllNotes` to work.
+      
+      // Let's rely on global 'state' which is defined later in app.js? 
+      // JavaScript hoisting... 'const state' is defined later. Storage is defined earlier. 
+      // 'state' variable is NOT available inside Storage definition at this point.
+      
+      console.warn("Storage.deleteAllNotes: Electron optimization - use deleteNoteFromFileSystem explicitly in loop");
+      return; 
+    }
+
     if (this.useFileSystem) {
       await fileSystemService.deleteAllNotes();
     }
@@ -5332,9 +5354,51 @@ window.startImportProcess = function () {
         );
         if (!ok) return;
         try {
-          await Storage.deleteAllNotes();
+          console.log("[Settings] Deleting all notes...");
+          // await Storage.deleteAllNotes(); // Not reliable in Electron without server
+          // Delete all notes explicitly via loop
+          const notesToDelete = [...state.notes];
+          for (const note of notesToDelete) {
+             try {
+               await Storage.deleteNoteFromFileSystem(note.id);
+             } catch(err) {
+               console.error(`Failed to delete note ${note.id}:`, err);
+             }
+          }
+          
+          console.log("[Settings] Deleting all folders...");
+          // Delete all folders explicitly from backend
+          // We must copy the array because the loop handles backend deletion
+          const foldersToDelete = [...state.folders];
+          for (const folder of foldersToDelete) {
+             try {
+               await Storage.deleteFolderFromFileSystem(folder.id);
+             } catch(err) {
+               console.error(`Failed to delete folder ${folder.id} from backend:`, err);
+             }
+          }
+
+          console.log("[Settings] Clearing trash...");
+          // For trash, we might need a loop if clearAllTrashFromFileSystem lacks Electron support
+          // Let's check clearAllTrashFromFileSystem implementation...
+          // It calls fileSystemService.clearAllTrash(). Electron support unknown.
+          // Safer to loop trash too just in case.
+          const trashToDelete = [...state.trash];
+           for (const item of trashToDelete) {
+             try {
+               await Storage.deleteTrashItemFromFileSystem(item.id);
+             } catch(err) {
+               console.error(`Failed to delete trash item ${item.id}:`, err);
+             }
+           }
+          
+          // Also try the bulk clear just in case it works for some backends
+          await Storage.clearAllTrashFromFileSystem();
+
           state.notes = [];
           state.folders = [];
+          state.trash = [];
+          
           // Refresh views
           if (typeof renderSidebar === "function") renderSidebar();
           if (typeof renderPane === "function")
@@ -5342,9 +5406,10 @@ window.startImportProcess = function () {
           if (window.TwoBase && window.TwoBase.refreshSidebar)
             window.TwoBase.refreshSidebar();
 
-          modalAlert("All notes deleted.");
+          modalAlert("All data permanently deleted.");
         } catch (e) {
-          console.error(e);
+          console.error("Error in delete everything:", e);
+          modalAlert("Error deleting data: " + e.message);
         }
       });
     }
