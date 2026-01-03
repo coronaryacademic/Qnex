@@ -171,6 +171,11 @@ export class BlockEditor {
 
   handleKeyDown(e) {
     const currentBlockEl = this.getBlockElementAtSelection();
+    // Pass through Ctrl+F (let it bubble to document)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        return;
+    }
+
     if (!currentBlockEl) return;
 
     const blockId = currentBlockEl.dataset.blockId;

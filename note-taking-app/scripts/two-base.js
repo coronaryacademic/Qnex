@@ -95,6 +95,9 @@
     // Initialize Note Search logic
     initNoteSearch();
 
+    // Initialize Toolbar Delegation
+    initToolbarDelegation();
+
     // Initialize Drag & Drop for split view
     setupDragAndDrop();
 
@@ -4828,16 +4831,86 @@
     }
 
     // Keyboard shortcuts
-    // Keyboard shortcuts
+    // Global keyboard handler for Ctrl+F with dynamic injection support
     document.addEventListener("keydown", async (e) => {
       // Ctrl+F to toggle note search
-      if ((e.ctrlKey || e.metaKey) && e.key === "f" && TwoBaseState.currentBase === "note") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && TwoBaseState.currentBase === "note") {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
 
-        // Toggle: close if active, open if not
-        toggleNoteSearch(!TwoBaseState.searchState.active);
+        let container = document.getElementById("noteSearchContainer");
+
+        // Dynamic Injection: If container is missing (wiped by other scripts), inject it.
+        if (!container) {
+            console.warn("Container missing - Injecting dynamic search container...");
+            const toolbar = document.getElementById("noteToolbar");
+            if (toolbar) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = `
+                 <div id="searchSeparator" style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem; display: none;"></div>
+                 <div class="note-search-container hidden" id="noteSearchContainer">
+                   <div class="note-search-box">
+                     <div class="note-search-input-wrapper">
+                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                         <circle cx="11" cy="11" r="8"></circle>
+                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                       </svg>
+                       <input type="text" id="noteSearchInput" placeholder="Find in note..." autocomplete="off">
+                     </div>
+                     <div class="note-search-stats" id="noteSearchStats">0 of 0</div>
+                     <div class="note-search-divider"></div>
+                     <div class="note-search-buttons">
+                       <button id="noteSearchPrev" class="note-search-btn" title="Previous (Shift+Enter)">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <polyline points="18 15 12 9 6 15"></polyline>
+                         </svg>
+                       </button>
+                       <button id="noteSearchNext" class="note-search-btn" title="Next (Enter)">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <polyline points="6 9 12 15 18 9"></polyline>
+                         </svg>
+                       </button>
+                       <button id="noteSearchClose" class="note-search-btn" title="Close (Esc)">
+                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <line x1="18" y1="6" x2="6" y2="18"></line>
+                           <line x1="6" y1="6" x2="18" y2="18"></line>
+                         </svg>
+                       </button>
+                     </div>
+                   </div>
+                 </div>`;
+                
+                // Append the container first
+                while (tempDiv.firstChild) {
+                    toolbar.appendChild(tempDiv.firstChild);
+                }
+                container = document.getElementById("noteSearchContainer");
+                
+                // Re-initialize search listeners for the new elements
+                if (typeof initNoteSearch === 'function') {
+                    // Update global 'el' cache if it exists
+                    if (el && typeof el === 'object') {
+                       el.noteSearchContainer = container;
+                       el.noteSearchInput = document.getElementById("noteSearchInput");
+                       el.noteSearchStats = document.getElementById("noteSearchStats");
+                       el.noteSearchPrev = document.getElementById("noteSearchPrev");
+                       el.noteSearchNext = document.getElementById("noteSearchNext");
+                       el.noteSearchClose = document.getElementById("noteSearchClose");
+                    }
+                    initNoteSearch();
+                }
+            }
+        }
+        
+        // Toggle logic with updated container
+        if (container) {
+            // Toggle based on current state (open? close. closed? open.)
+            // But if we just injected it, it's hidden by default, so we want to show it.
+            // If it existed, we check the state.
+            const isActive = TwoBaseState.searchState && TwoBaseState.searchState.active;
+            toggleNoteSearch(!isActive);
+        }
         return;
       }
 
@@ -4872,6 +4945,41 @@
 
     // Setup sidebar sections (pinned notes, notebooks, folders)
     setupSidebarSections();
+
+    // Verify setup ran
+    console.log("[DEBUG] setupSidebarSections finished");
+
+    // Global shortcut Ctrl+F (Find in Note)
+    // We append this to the document to ensure it catches everything
+    document.addEventListener("keydown", (e) => {
+      // DEBUG: Log key presses that might be relevant
+      if (e.key.toLowerCase() === 'f' && (e.ctrlKey || e.metaKey)) {
+          console.log(`[DEBUG] Keydown detected: ${e.key}, Ctrl: ${e.ctrlKey}, Meta: ${e.metaKey}`);
+          console.log(`[DEBUG] Current Base: ${TwoBaseState.currentBase}`);
+          console.log(`[DEBUG] noteSearchContainer exists? ${!!el.noteSearchContainer}`);
+          
+          if (TwoBaseState.currentBase === 'note') {
+             console.log("[DEBUG] Executing Ctrl+F override...");
+             e.preventDefault();
+             e.stopPropagation();
+             
+             // Ensure search container elements exist (lazy re-query if needed)
+             if (!el.noteSearchContainer) {
+                console.warn("[DEBUG] noteSearchContainer missing in el cache, requerying...");
+                el.noteSearchContainer = document.getElementById("noteSearchContainer");
+                el.noteSearchInput = document.getElementById("noteSearchInput");
+             }
+             
+             if (el.noteSearchContainer) {
+                 toggleNoteSearch(true);
+             } else {
+                 console.error("[CRITICAL] Search container not found in DOM!");
+             }
+          }
+      }
+    });
+    
+    console.log("[DEBUG] Ctrl+F listener attached");
   }
 
   // ===================================
@@ -6301,12 +6409,29 @@
         toggleNoteSearch(false);
       }
     });
+
   }
 
   function toggleNoteSearch(show = true) {
     if (TwoBaseState.currentBase !== 'note' && show) return;
 
     TwoBaseState.searchState.active = show;
+    
+    // Toggle the separator if it exists
+    const separator = document.getElementById("searchSeparator");
+    if (separator) {
+        if (show) {
+            separator.style.display = "block";
+            // Small timeout to allow display change to render before opacity transition if we added one (not needed for simple solid div but good practice)
+            separator.style.opacity = "1";
+        } else {
+             // Hide separator when search is hidden
+             separator.style.opacity = "0";
+             // Optional: delay display none if we wanted animation, but for a 1px line immediate is fine or matching the container
+             separator.style.display = "none";
+        }
+    }
+    
     if (el.noteSearchContainer) {
       if (show) {
         el.noteSearchContainer.classList.remove("hidden");
@@ -6318,7 +6443,9 @@
       } else {
         el.noteSearchContainer.classList.add("hidden");
         clearNoteSearchHighlights();
-        el.noteSearchInput.value = "";
+        // Don't clear value immediately so it doesn't jarringly disappear during animation
+        // el.noteSearchInput.value = ""; 
+        
         // Return focus to editor
         if (TwoBaseState.currentEditorElement) {
           TwoBaseState.currentEditorElement.focus();
@@ -7968,4 +8095,106 @@
       });
     }
   });
+  // Toolbar Delegation
+  function initToolbarDelegation() {
+      const toolbar = document.getElementById("noteToolbar");
+      if (!toolbar) return;
+    
+      // Formatting Buttons Delegate
+      toolbar.addEventListener("mousedown", (e) => {
+          const btn = e.target.closest("button[data-action]");
+          if (!btn) return;
+          
+          e.preventDefault(); // Prevent focus loss
+          const action = btn.dataset.action;
+          if (action) handleToolbarAction(action);
+      });
+  
+      // Toggle Search Button
+      const searchBtn = document.getElementById("toggleNoteSearchBtn");
+      if (searchBtn) {
+          searchBtn.addEventListener("click", (e) => {
+              e.preventDefault();
+              // Check visibility
+              if (el.noteSearchContainer) {
+                  const isHidden = el.noteSearchContainer.classList.contains("hidden");
+                  toggleNoteSearch(isHidden); // If hidden, show (true). If visible, hide (false).
+              }
+          });
+      }
+  }
+
+  function handleToolbarAction(action) {
+      if (!action) return;
+
+      // Find active editor
+      let editorEl = TwoBaseState.currentEditorElement;
+      
+      // Fallback if currentEditorElement not set (e.g. if focus was lost)
+      if (!editorEl && TwoBaseState.activeNote) {
+         // Try to find the editor in DOM
+         const activeId = TwoBaseState.activeNote;
+         // Note: in two-base, editor template usually has .note-editor class or implicit structure
+         // renderPane calls buildEditor which uses editor template.
+         // Let's assume editor content is inside a container we can find.
+         const activePane = ["left", "right"].find(side => state[side] && state[side].active === activeId);
+         if (activePane) {
+             const paneEl = activePane === "left" ? el.notePaneLeft : el.notePaneRight;
+             if (paneEl) {
+                 // The editor content div usually has .content class and .editor-block children
+                 editorEl = paneEl.querySelector(".content");
+             }
+         }
+      }
+
+      if (!editorEl) {
+          console.warn("No active editor found for action:", action);
+          return;
+      }
+      
+      // Ensure focus is restored to editor
+      editorEl.focus();
+
+      if (['bold', 'italic', 'underline', 'strike'].includes(action)) {
+          document.execCommand(action, false, null);
+      } else if (['h1', 'h2', 'h3', 'ul', 'ol'].includes(action)) {
+          // Block Operations
+          let blockEditor = null;
+          // Traverse up to find _blockEditor (attached to .note-editor wrapper usually)
+          // The wrapper is the direct child of paneEl usually.
+          // buildEditor returns 'node' which has _blockEditor.
+          // 'node' contains 'content' div.
+          // So closest parent of proper type should have it.
+          // The clone of template usually doesn't have a specific class "note-editor" unless added.
+          // But it has data-note-id.
+          let curr = editorEl.parentElement;
+          while (curr && !blockEditor) {
+                if (curr._blockEditor) {
+                    blockEditor = curr._blockEditor;
+                    break;
+                }
+                curr = curr.parentElement;
+          }
+
+          if (blockEditor) {
+            const currentBlockEl = blockEditor.getBlockElementAtSelection();
+            if (currentBlockEl) {
+                const blockId = currentBlockEl.dataset.blockId;
+                const block = blockEditor.blocks.find(b => b.id === blockId);
+                if (block) {
+                    let type = action;
+                    if (action === 'ol') type = 'ul'; // BlockEditor currently maps lists to UL
+                    
+                    // If toggling same type, switch back to 'p'
+                    // Special case: switch from h1 to h1 -> p
+                    if (block.type === type) {
+                        type = 'p';
+                    }
+                    blockEditor.convertBlockType(block, currentBlockEl, type, 0);
+                }
+            }
+          }
+      }
+  }
+
 })();

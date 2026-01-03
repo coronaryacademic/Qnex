@@ -1351,3 +1351,49 @@ body.theme-dark .close-split-pane-btn:hover {
 .note-pane-content {
   position: relative;
 }
+
+/* Toolbar Tools Container */
+.toolbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+/* Make text-based SVG icons readable */
+.icon-btn svg text {
+  fill: currentColor;
+  font-family: sans-serif;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* Ensure note-toolbar respects alignment from parent section */
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.note-toolbar-section.toolbar-align-center .note-toolbar {
+  justify-content: center;
+}
+
+.note-toolbar-section.toolbar-align-right .note-toolbar {
+  justify-content: flex-end;
+}
+
+/* Search container positioning adjustments */
+.note-toolbar-section.toolbar-align-center .note-search-container,
+.note-toolbar-section.toolbar-align-right .note-search-container {
+  /* When aligned center/right, search might need to be absolute or carefully placed */
+  /* For now, let it flow naturally, but verify visual impact. */
+}
+
