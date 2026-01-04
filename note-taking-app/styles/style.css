@@ -1,3 +1,30 @@
+/* Hide global scrollbar */
+body::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+
+
+/* Adjust app layout */
+#app {
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar {
+  height: 100vh;
+}
+
+
+
 .split-off .editor [data-action="open-right"] {
   display: none;
 }
@@ -100,56 +127,6 @@ body.theme-classic {
   --boot: black;
   --settingsborder: #dddddd;
 }
-
-/* Medical Winter Chill Theme - Cool, crisp medical aesthetic with icy blues and whites */
-body.theme-medical-winter {
-  --bg: #e8f4f8;
-  --panel: #ffffff;
-  --panel-2: #f0f9fc;
-  --text: #1a4d5e;
-  --muted: #5a8a9a;
-  --accent: #0891b2;
-  --accent-2: #06b6d4;
-  --border: #b8dce6;
-  --chip: #d4eef5;
-  --shadow: 0 2px 12px rgba(8, 145, 178, 0.15);
-  --panel-hover: rgba(8, 145, 178, 0.08);
-  --borderX: #9dd4e0;
-  --boot: #0e7490;
-  --settingsborder: #7dd3f0;
-  --bg-primary: #e8f4f8;
-  --bg-secondary: #ffffff;
-  --text-primary: #1a4d5e;
-  --accent-bg: rgba(8, 145, 178, 0.1);
-  --hover: rgba(8, 145, 178, 0.12);
-}
-
-/* Navy Theme - Deep navy blue with gold accents */
-body.theme-navy {
-  --bg: #0f1729;
-  --panel: #1a2332;
-  --panel-2: #253044;
-  --text: #e8eaed;
-  --muted: #9ca3af;
-  --accent: #f59e0b;
-  --accent-2: #fbbf24;
-  --border: #253044;
-  --chip: #1a2332;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --panel-hover: rgba(245, 158, 11, 0.1);
-  --borderX: #253044;
-  --boot: #f59e0b;
-  --settingsborder: #253044;
-  --bg-primary: #0f1729;
-  --bg-secondary: #1a2332;
-  --text-primary: #e8eaed;
-  --accent-bg: rgba(245, 158, 11, 0.15);
-  --hover: rgba(245, 158, 11, 0.12);
-}
-
-
-
-
 
 /* Classic Theme - Specific overrides */
 body.theme-classic .breadcrumb-path {
@@ -396,249 +373,6 @@ body.theme-classic h2[style*="color: var(--text)"] {
   color: #ffffff !important;
 }
 
-/* Medical Winter Chill Theme - Specific overrides */
-body.theme-medical-winter .breadcrumb-path {
-  color: #0e7490 !important;
-}
-
-body.theme-medical-winter .workspace-empty-hint {
-  color: #5a8a9a !important;
-}
-
-body.theme-medical-winter .workspace-section-header {
-  color: #0e7490 !important;
-  border-bottom-color: #b8dce6 !important;
-}
-
-body.theme-medical-winter .workspace-item:hover {
-  background: rgba(8, 145, 178, 0.15) !important;
-}
-
-/* Welcome pane and content text colors */
-body.theme-medical-winter .welcome-title,
-body.theme-medical-winter .welcome-subtitle,
-body.theme-medical-winter .section-title,
-body.theme-medical-winter h1,
-body.theme-medical-winter h2,
-body.theme-medical-winter h3,
-body.theme-medical-winter h4,
-body.theme-medical-winter .workspace-empty-text,
-body.theme-medical-winter .empty-state-text,
-body.theme-medical-winter .note-overview,
-body.theme-medical-winter .today-tasks,
-body.theme-medical-winter .task-item,
-body.theme-medical-winter .marquee-label,
-body.theme-medical-winter .progress-text,
-body.theme-medical-winter .progress-stats,
-body.theme-medical-winter .todo-text,
-body.theme-medical-winter .todo-drag-handle {
-  color: #0e7490 !important;
-}
-
-body.theme-medical-winter .workspace-item {
-  background: #ffffff !important;
-  border: 1px solid #d4eef5;
-}
-
-body.theme-medical-winter .note-tab.active {
-  background-color: #ffffff !important;
-  border-bottom: none !important;
-}
-
-body.theme-medical-winter .toolbar-align-btn,
-body.theme-medical-winter .toolbar-position-btn {
-  background: #f0f9fc !important;
-}
-
-/* Workspace item title */
-body.theme-medical-winter .workspace-item-title {
-  color: #0e7490 !important;
-}
-
-/* Muted text */
-body.theme-medical-winter .workspace-item-meta,
-body.theme-medical-winter .task-subtitle {
-  color: #5a8a9a !important;
-}
-
-/* Buttons */
-body.theme-medical-winter .todo-delete {
-  color: #0e7490 !important;
-}
-
-/* SVG icons inside todo items */
-body.theme-medical-winter .todo-item svg {
-  stroke: #0e7490;
-}
-
-/* Welcome shortcuts styling */
-body.theme-medical-winter .welcome-shortcuts {
-  background: #ffffff !important;
-  border: 1px solid #d4eef5;
-}
-
-body.theme-medical-winter .welcome-shortcuts h4,
-body.theme-medical-winter .welcome-shortcuts-grid,
-body.theme-medical-winter .welcome-shortcuts-grid div,
-body.theme-medical-winter .welcome-shortcuts kbd {
-  color: #0e7490 !important;
-}
-
-/* Marquee wrapper styling */
-body.theme-medical-winter .marquee-wrapper {
-  background: linear-gradient(135deg, #d4eef5 0%, #f0f9fc 100%) !important;
-}
-
-body.theme-medical-winter .marquee-content,
-body.theme-medical-winter #marquee-content {
-  color: #0e7490 !important;
-}
-
-/* Breadcrumb navigation SVG icons */
-body.theme-medical-winter .breadcrumb-nav svg,
-body.theme-medical-winter .breadcrumb-back svg,
-body.theme-medical-winter .breadcrumb-actions svg,
-body.theme-medical-winter #searchBtn svg,
-body.theme-medical-winter #multiSelectBtn svg,
-body.theme-medical-winter #sortBtn svg,
-body.theme-medical-winter #viewToggleBtn svg {
-  stroke: #0e7490 !important;
-}
-
-/* Breadcrumb navigation buttons hover */
-body.theme-medical-winter .breadcrumb-back:hover,
-body.theme-medical-winter .breadcrumb-actions .icon-btn:hover,
-body.theme-medical-winter #searchBtn:hover,
-body.theme-medical-winter #multiSelectBtn:hover,
-body.theme-medical-winter #sortBtn:hover,
-body.theme-medical-winter #viewToggleBtn:hover {
-  background: rgba(8, 145, 178, 0.15) !important;
-}
-
-/* Progress bar wrapper styling */
-body.theme-medical-winter .progress-bar-wrapper {
-  background: #ffffff !important;
-  border: 1px solid #d4eef5;
-}
-
-/* Todo input styling */
-body.theme-medical-winter .todo-input {
-  background: #ffffff !important;
-  color: #0e7490 !important;
-  border: 1px solid #d4eef5;
-}
-
-body.theme-medical-winter .todo-input::placeholder {
-  color: #5a8a9a !important;
-}
-
-/* Todo input text and cancel button */
-body.theme-medical-winter .todo-input input,
-body.theme-medical-winter .todo-input textarea {
-  color: #0e7490 !important;
-}
-
-body.theme-medical-winter .todo-cancel,
-body.theme-medical-winter button#cancelTodoBtn.btn,
-body.theme-medical-winter .btn#cancelTodoBtn {
-  color: #0e7490 !important;
-}
-
-/* Search bar styling */
-body.theme-medical-winter .sidebar-search input,
-body.theme-medical-winter #searchInput {
-  background: #f0f9fc !important;
-  border: 1px solid #d4eef5;
-  color: #0e7490;
-}
-
-/* Search results modal styling */
-body.theme-medical-winter .search-results-modal h3,
-body.theme-medical-winter .search-results-header h3 {
-  color: #0e7490 !important;
-}
-
-body.theme-medical-winter .search-results-query {
-  background: #d4eef5 !important;
-  color: #0e7490 !important;
-}
-
-body.theme-medical-winter .search-results-query strong {
-  color: #0e7490 !important;
-}
-
-/* Search results content */
-body.theme-medical-winter .search-results-content {
-  background: var(--panel) !important;
-}
-
-/* Search result items */
-body.theme-medical-winter .search-result-item {
-  background: var(--panel) !important;
-  color: #1a4d5e !important;
-  border: 1px solid #d4eef5;
-}
-
-body.theme-medical-winter .search-result-item:hover {
-  background: var(--panel-hover) !important;
-}
-
-/* Search result titles */
-body.theme-medical-winter .search-result-title {
-  color: #0e7490 !important;
-}
-
-/* Other search result elements */
-body.theme-medical-winter .search-result-header,
-body.theme-medical-winter .search-result-match-type,
-body.theme-medical-winter .search-result-folder,
-body.theme-medical-winter .search-result-preview {
-  color: #1a4d5e !important;
-}
-
-/* Todo items */
-body.theme-medical-winter .todo-item {
-  background: transparent !important;
-}
-
-/* Todo edit button hover */
-body.theme-medical-winter .todo-edit:hover {
-  background: rgba(8, 145, 178, 0.15) !important;
-}
-
-/* Todo cancel button */
-body.theme-medical-winter .todo-cancel {
-  background: #d4eef5 !important;
-}
-
-/* Modal and dialog titles */
-body.theme-medical-winter .modal-overlay h3[style],
-body.theme-medical-winter .modal h3[style],
-body.theme-medical-winter .dialog h3[style],
-body.theme-medical-winter [class*="modal"] h3[style],
-body.theme-medical-winter [class*="dialog"] h3[style],
-body.theme-medical-winter .modal-overlay h3,
-body.theme-medical-winter .modal h3,
-body.theme-medical-winter .dialog h3,
-body.theme-medical-winter [class*="modal"] h3,
-body.theme-medical-winter [class*="dialog"] h3,
-body.theme-medical-winter div[style*="background: var(--panel)"] h3,
-body.theme-medical-winter h3[style*="color: var(--text)"],
-body.theme-medical-winter .modal-overlay h2[style],
-body.theme-medical-winter .modal h2[style],
-body.theme-medical-winter .dialog h2[style],
-body.theme-medical-winter [class*="modal"] h2[style],
-body.theme-medical-winter [class*="dialog"] h2[style],
-body.theme-medical-winter .modal-overlay h2,
-body.theme-medical-winter .modal h2,
-body.theme-medical-winter .dialog h2,
-body.theme-medical-winter [class*="modal"] h2,
-body.theme-medical-winter [class*="dialog"] h2,
-body.theme-medical-winter .search-results-header h2,
-body.theme-medical-winter h2[style*="color: var(--text)"] {
-  color: #0e7490 !important;
-}
-
 /* Empty state SVG icons - Classic and Light themes */
 body.theme-classic svg[width="64"][height="64"] {
   color: black !important;
@@ -656,19 +390,8 @@ body.theme-light svg[width="64"][height="64"] {
   stroke: black !important;
 }
 
-/* Medical Winter Chill Theme SVG icons */
-body.theme-medical-winter svg[width="64"][height="64"] {
-  color: #0e7490 !important;
-  stroke: #0e7490 !important;
-}
-
-body.theme-medical-winter #about-modal-icon {
-  color: #0e7490 !important;
-  stroke: #0e7490 !important;
-}
-
 /* Empty state SVG icons - Dark theme */
-body:not(.theme-classic):not(.theme-light):not(.theme-medical-winter) svg[width="64"][height="64"] {
+body:not(.theme-classic):not(.theme-light) svg[width="64"][height="64"] {
   color: #ffffff !important;
   stroke: #ffffff !important;
 }
@@ -6367,7 +6090,8 @@ ol.editor-block {
   padding: 4px 8px;
   background: transparent;
   border-bottom: none;
-  display: flex !important; /* Force flex to ensure animation works */
+  display: flex !important;
+  /* Force flex to ensure animation works */
   align-items: center;
   transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
@@ -6375,14 +6099,17 @@ ol.editor-block {
   max-height: 36px;
   pointer-events: auto;
   opacity: 1;
-  max-width: 400px; /* Adjust based on desired width */
+  max-width: 400px;
+  /* Adjust based on desired width */
   overflow: hidden;
   transform-origin: right center;
-  white-space: nowrap; /* Prevent content wrapping during animation */
+  white-space: nowrap;
+  /* Prevent content wrapping during animation */
 }
 
 .note-search-container.hidden {
-  display: flex !important; /* Keep display flex to allow transition */
+  display: flex !important;
+  /* Keep display flex to allow transition */
   opacity: 0;
   max-width: 0;
   padding: 0;

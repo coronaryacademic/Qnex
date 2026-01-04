@@ -277,21 +277,21 @@ const Storage = {
       // We need to access state.notes - assuming it's available in scope or passed in
       // Since Storage is defined before state, we might need to rely on the caller loop
       // OR, we assume we can read via loadNotes first (but that is slow).
-      
+
       // BETTER APPROACH: The caller (clearAllBtn listener) has access to state.notes.
       // So I will make this function accept an optional list of IDs, or just keep it simple
       // and update the CALLER to loop.
-      
+
       // However, to keep API consistent, let's try to load keys if possible, or just Log warning?
       // Actually, let's just make the CALLER loop. That is safer.
       // But wait, user expects `deleteAllNotes` to work.
-      
+
       // Let's rely on global 'state' which is defined later in app.js? 
       // JavaScript hoisting... 'const state' is defined later. Storage is defined earlier. 
       // 'state' variable is NOT available inside Storage definition at this point.
-      
+
       console.warn("Storage.deleteAllNotes: Electron optimization - use deleteNoteFromFileSystem explicitly in loop");
-      return; 
+      return;
     }
 
     if (this.useFileSystem) {
@@ -5050,20 +5050,6 @@ window.startImportProcess = function () {
                       </div>
                       <span class="theme-label">Classic</span>
                     </div>
-                    <div class="theme-card" data-theme="medical-winter">
-                      <div class="theme-preview">
-                        <div class="sidebar-prev" style="background:#ffffff; border-right:1px solid #b8dce6;"></div>
-                        <div class="main-prev" style="background:#e8f4f8;"></div>
-                      </div>
-                      <span class="theme-label">Medical</span>
-                    </div>
-                    <div class="theme-card" data-theme="navy">
-                      <div class="theme-preview">
-                        <div class="sidebar-prev" style="background:#1a2332; border-right:1px solid #253044;"></div>
-                        <div class="main-prev" style="background:#0f1729;"></div>
-                      </div>
-                      <span class="theme-label">Navy</span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -5271,8 +5257,8 @@ window.startImportProcess = function () {
             const result = await window.electronAPI.openPath("D:\\MyNotes");
             console.log("electronAPI.openPath result:", result);
             if (result !== "") { // shell.openPath returns error string if failed, empty string if success
-               console.error("Open path failed with:", result);
-               modalAlert("Failed to open folder: " + result);
+              console.error("Open path failed with:", result);
+              modalAlert("Failed to open folder: " + result);
             }
           } catch (e) {
             console.error("Error calling openPath:", e);
@@ -5359,23 +5345,23 @@ window.startImportProcess = function () {
           // Delete all notes explicitly via loop
           const notesToDelete = [...state.notes];
           for (const note of notesToDelete) {
-             try {
-               await Storage.deleteNoteFromFileSystem(note.id);
-             } catch(err) {
-               console.error(`Failed to delete note ${note.id}:`, err);
-             }
+            try {
+              await Storage.deleteNoteFromFileSystem(note.id);
+            } catch (err) {
+              console.error(`Failed to delete note ${note.id}:`, err);
+            }
           }
-          
+
           console.log("[Settings] Deleting all folders...");
           // Delete all folders explicitly from backend
           // We must copy the array because the loop handles backend deletion
           const foldersToDelete = [...state.folders];
           for (const folder of foldersToDelete) {
-             try {
-               await Storage.deleteFolderFromFileSystem(folder.id);
-             } catch(err) {
-               console.error(`Failed to delete folder ${folder.id} from backend:`, err);
-             }
+            try {
+              await Storage.deleteFolderFromFileSystem(folder.id);
+            } catch (err) {
+              console.error(`Failed to delete folder ${folder.id} from backend:`, err);
+            }
           }
 
           console.log("[Settings] Clearing trash...");
@@ -5384,21 +5370,21 @@ window.startImportProcess = function () {
           // It calls fileSystemService.clearAllTrash(). Electron support unknown.
           // Safer to loop trash too just in case.
           const trashToDelete = [...state.trash];
-           for (const item of trashToDelete) {
-             try {
-               await Storage.deleteTrashItemFromFileSystem(item.id);
-             } catch(err) {
-               console.error(`Failed to delete trash item ${item.id}:`, err);
-             }
-           }
-          
+          for (const item of trashToDelete) {
+            try {
+              await Storage.deleteTrashItemFromFileSystem(item.id);
+            } catch (err) {
+              console.error(`Failed to delete trash item ${item.id}:`, err);
+            }
+          }
+
           // Also try the bulk clear just in case it works for some backends
           await Storage.clearAllTrashFromFileSystem();
 
           state.notes = [];
           state.folders = [];
           state.trash = [];
-          
+
           // Refresh views
           if (typeof renderSidebar === "function") renderSidebar();
           if (typeof renderPane === "function")
@@ -5610,14 +5596,7 @@ window.startImportProcess = function () {
     // Remove all theme classes
     document.body.classList.remove(
       "theme-light",
-      "theme-ocean",
-      "theme-forest",
-      "theme-sunset",
-      "theme-purple",
-      "theme-nord",
-      "theme-classic",
-      "theme-medical-winter",
-      "theme-navy"
+      "theme-classic"
     );
 
     // Apply new theme (dark is default, no class needed)
@@ -8562,4 +8541,6 @@ window.startImportProcess = function () {
     console.log("[APP] Notes loaded. Restoring TwoBase Session...");
     setTimeout(() => window.restoreTwoBaseSession(), 100);
   }
+
+
 })();

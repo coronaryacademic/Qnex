@@ -87,8 +87,8 @@ async function readMdNote(filePath) {
     const parsed = matter(fileContent);
     return {
       ...parsed.data,
-      contentHtml: parsed.content, 
-      id: parsed.data.id || path.basename(filePath, '.md') 
+      contentHtml: parsed.content,
+      id: parsed.data.id || path.basename(filePath, '.md')
     };
   } catch (error) {
     console.error(`Error parsing MD file ${filePath}:`, error);
@@ -100,23 +100,23 @@ async function readMdNote(filePath) {
 async function scanFileSystem() {
   const result = { notes: [], folders: [], folderIdMap: new Map(), noteIdMap: new Map() };
   const uncategorizedDir = path.join(NOTES_BASE_DIR, UNCATEGORIZED_DIR_NAME);
-  
+
   // Ensure Uncategorized exists
   await fs.ensureDir(uncategorizedDir);
 
   async function crawl(dirPath, parentId = null) {
     const items = await fs.readdir(dirPath, { withFileTypes: true });
-    
+
     for (const item of items) {
       const fullPath = path.join(dirPath, item.name);
-      
+
       if (item.isDirectory()) {
         if (SYSTEM_DIRS.includes(item.name)) continue;
         // Skip hidden folders (except Uncategorized if it's there? No, Uncategorized is visible)
         // Skip Uncategorized directory recursion only IF we are at root AND we want to treat it specially?
         // Actually, we WANT to recurse into Uncategorized to find notes.
         // We just might treat it as "Root" (parentId null) for logic.
-        
+
         const isUncategorizedRoot = (dirPath === NOTES_BASE_DIR && item.name === UNCATEGORIZED_DIR_NAME);
 
         let folderId = null;
@@ -125,34 +125,34 @@ async function scanFileSystem() {
         // Read metadata
         const metaPath = path.join(fullPath, META_FILE);
         if (await fs.pathExists(metaPath)) {
-            try {
-              metadata = await fs.readJson(metaPath);
-              folderId = metadata.id;
-            } catch (e) {}
+          try {
+            metadata = await fs.readJson(metaPath);
+            folderId = metadata.id;
+          } catch (e) { }
         }
 
         // If no ID (and not Uncategorized), generate one
         if (!folderId && !isUncategorizedRoot) {
-           folderId = uuidv4();
-           await fs.writeJson(metaPath, { id: folderId, createdAt: new Date().toISOString() }, { spaces: 2 });
+          folderId = uuidv4();
+          await fs.writeJson(metaPath, { id: folderId, createdAt: new Date().toISOString() }, { spaces: 2 });
         }
 
         if (folderId) result.folderIdMap.set(folderId, fullPath);
 
         if (!isUncategorizedRoot) {
-           result.folders.push({
-             id: folderId,
-             parentId: parentId,
-             name: item.name,
-             icon: metadata.icon || 'folder',
-             color: metadata.color || null,
-             createdAt: metadata.createdAt
-           });
-           await crawl(fullPath, folderId);
+          result.folders.push({
+            id: folderId,
+            parentId: parentId,
+            name: item.name,
+            icon: metadata.icon || 'folder',
+            color: metadata.color || null,
+            createdAt: metadata.createdAt
+          });
+          await crawl(fullPath, folderId);
         } else {
-           // For Uncategorized folder, notes inside have parentId = null
-           // And we don't add it to "folders" list passed to frontend
-           await crawl(fullPath, null);
+          // For Uncategorized folder, notes inside have parentId = null
+          // And we don't add it to "folders" list passed to frontend
+          await crawl(fullPath, null);
         }
 
       } else if (item.isFile() && item.name.endsWith('.md')) {
@@ -173,12 +173,12 @@ async function scanFileSystem() {
 // Create Express server
 function createServer() {
   const expressApp = express();
-  
+
   expressApp.use(cors({
     origin: ['http://localhost:3000', 'http://localhost:8080', 'http://127.0.0.1:5500', 'http://localhost:5500'],
     credentials: true
   }));
-  
+
   expressApp.use(express.json({ limit: '50mb' }));
   expressApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -199,7 +199,7 @@ function createServer() {
     await fs.ensureDir(uncategorizedDir);
 
     // 2. Load old folders to build tree
-    let foldersMap = new Map(); 
+    let foldersMap = new Map();
     if (hasOldFolders) {
       const files = await fs.readdir(oldFoldersDir);
       for (const file of files) {
@@ -207,7 +207,7 @@ function createServer() {
           try {
             const data = await fs.readJson(path.join(oldFoldersDir, file));
             foldersMap.set(data.id, data);
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     }
@@ -245,7 +245,7 @@ function createServer() {
           const content = await fs.readFile(oldPath, 'utf8');
           const parsed = matter(content);
           const folderId = parsed.data.folderId;
-          
+
           let targetDir = uncategorizedDir;
           if (folderId && foldersMap.has(folderId)) {
             targetDir = getFolderPath(folderId);
@@ -253,7 +253,7 @@ function createServer() {
           await fs.copy(oldPath, path.join(targetDir, file));
         } catch (e) {
           console.error(`[MIGRATION] Failed note: ${file}`, e);
-          await fs.copy(oldPath, path.join(uncategorizedDir, file)).catch(()=>{});
+          await fs.copy(oldPath, path.join(uncategorizedDir, file)).catch(() => { });
         }
       }
     }
@@ -261,7 +261,7 @@ function createServer() {
     // 5. Cleanup
     if (hasOldNotes) await fs.rename(oldNotesDir, path.join(NOTES_BASE_DIR, 'notes_old_backup'));
     if (hasOldFolders) await fs.rename(oldFoldersDir, path.join(NOTES_BASE_DIR, 'folders_old_backup'));
-    
+
     log('[MIGRATION] Complete. Backups created.');
   }
 
@@ -291,12 +291,12 @@ function createServer() {
     try {
       const { noteId } = req.params;
       const { content, contentHtml, folderId, ...metadata } = req.body;
-      
+
       if (!metadata.id) metadata.id = noteId;
       metadata.folderId = folderId;
 
       const { folderIdMap, noteIdMap } = await scanFileSystem();
-      
+
       let targetDir = path.join(NOTES_BASE_DIR, UNCATEGORIZED_DIR_NAME);
       if (folderId && folderIdMap.has(folderId)) {
         targetDir = folderIdMap.get(folderId);
@@ -313,8 +313,8 @@ function createServer() {
       if (noteIdMap.has(noteId)) {
         const oldPath = noteIdMap.get(noteId);
         if (oldPath !== filePath) {
-            await fs.remove(oldPath);
-            console.log(`[MOVE] Moved note from ${oldPath} to ${filePath}`);
+          await fs.remove(oldPath);
+          console.log(`[MOVE] Moved note from ${oldPath} to ${filePath}`);
         }
       }
 
@@ -330,10 +330,10 @@ function createServer() {
       const { noteId } = req.params;
       const { noteIdMap } = await scanFileSystem();
       if (noteIdMap.has(noteId)) {
-         await fs.remove(noteIdMap.get(noteId));
-         res.json({ success: true });
+        await fs.remove(noteIdMap.get(noteId));
+        res.json({ success: true });
       } else {
-         res.json({ success: true, message: 'Not found' });
+        res.json({ success: true, message: 'Not found' });
       }
     } catch (e) {
       res.status(500).json({ error: e.message });
@@ -346,43 +346,43 @@ function createServer() {
       const { folderIdMap } = await scanFileSystem();
 
       for (const f of foldersList) {
-         let parentPath = NOTES_BASE_DIR;
-         if (f.parentId && folderIdMap.has(f.parentId)) {
-             parentPath = folderIdMap.get(f.parentId);
-         }
-         
-         const safeName = sanitizeFilename(f.name);
-         const desiredPath = path.join(parentPath, safeName);
-         
-         // If folder exists (by ID context), move/rename if needed
-         if (folderIdMap.has(f.id)) {
-             const currentPath = folderIdMap.get(f.id);
-             if (currentPath !== desiredPath) {
-                 if (await fs.pathExists(currentPath)) {
-                     // Check if target exists (merge case?)
-                     if (await fs.pathExists(desiredPath)) {
-                         // Merge content
-                         await fs.copy(currentPath, desiredPath);
-                         await fs.remove(currentPath);
-                     } else {
-                         await fs.move(currentPath, desiredPath);
-                     }
-                     // Update map for next iterations in this loop?
-                     folderIdMap.set(f.id, desiredPath); 
-                 }
-             }
-             // Update meta
-             await fs.writeJson(path.join(desiredPath, META_FILE), {
-                 id: f.id, icon: f.icon, color: f.color, createdAt: f.createdAt
-             }, { spaces: 2 });
-         } else {
-             // Create
-             await fs.ensureDir(desiredPath);
-             await fs.writeJson(path.join(desiredPath, META_FILE), {
-                 id: f.id, icon: f.icon, color: f.color, createdAt: new Date().toISOString()
-             }, { spaces: 2 });
-             folderIdMap.set(f.id, desiredPath);
-         }
+        let parentPath = NOTES_BASE_DIR;
+        if (f.parentId && folderIdMap.has(f.parentId)) {
+          parentPath = folderIdMap.get(f.parentId);
+        }
+
+        const safeName = sanitizeFilename(f.name);
+        const desiredPath = path.join(parentPath, safeName);
+
+        // If folder exists (by ID context), move/rename if needed
+        if (folderIdMap.has(f.id)) {
+          const currentPath = folderIdMap.get(f.id);
+          if (currentPath !== desiredPath) {
+            if (await fs.pathExists(currentPath)) {
+              // Check if target exists (merge case?)
+              if (await fs.pathExists(desiredPath)) {
+                // Merge content
+                await fs.copy(currentPath, desiredPath);
+                await fs.remove(currentPath);
+              } else {
+                await fs.move(currentPath, desiredPath);
+              }
+              // Update map for next iterations in this loop?
+              folderIdMap.set(f.id, desiredPath);
+            }
+          }
+          // Update meta
+          await fs.writeJson(path.join(desiredPath, META_FILE), {
+            id: f.id, icon: f.icon, color: f.color, createdAt: f.createdAt
+          }, { spaces: 2 });
+        } else {
+          // Create
+          await fs.ensureDir(desiredPath);
+          await fs.writeJson(path.join(desiredPath, META_FILE), {
+            id: f.id, icon: f.icon, color: f.color, createdAt: new Date().toISOString()
+          }, { spaces: 2 });
+          folderIdMap.set(f.id, desiredPath);
+        }
       }
       res.json({ success: true });
     } catch (e) {
@@ -390,20 +390,20 @@ function createServer() {
       res.status(500).json({ error: e.message });
     }
   });
-  
+
   expressApp.delete('/api/folders/:folderId', async (req, res) => {
-      try {
-          const { folderId } = req.params;
-          const { folderIdMap } = await scanFileSystem();
-          if (folderIdMap.has(folderId)) {
-              await fs.remove(folderIdMap.get(folderId));
-              res.json({ success: true });
-          } else {
-              res.json({ success: false, message: 'Not found' });
-          }
-      } catch (e) {
-          res.status(500).json({ error: e.message });
+    try {
+      const { folderId } = req.params;
+      const { folderIdMap } = await scanFileSystem();
+      if (folderIdMap.has(folderId)) {
+        await fs.remove(folderIdMap.get(folderId));
+        res.json({ success: true });
+      } else {
+        res.json({ success: false, message: 'Not found' });
       }
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Other endpoints
@@ -412,36 +412,36 @@ function createServer() {
     res.json(await fs.pathExists(f) ? await fs.readJson(f) : []);
   });
   expressApp.post('/api/trash', async (req, res) => {
-      await fs.ensureDir(path.join(NOTES_BASE_DIR, 'trash'));
-      await fs.writeJson(path.join(NOTES_BASE_DIR, 'trash', 'trash.json'), req.body, { spaces: 2 });
-      res.json({ success: true });
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'trash'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'trash', 'trash.json'), req.body, { spaces: 2 });
+    res.json({ success: true });
   });
   expressApp.delete('/api/trash', async (req, res) => {
-      await fs.ensureDir(path.join(NOTES_BASE_DIR, 'trash'));
-      await fs.writeJson(path.join(NOTES_BASE_DIR, 'trash', 'trash.json'), [], { spaces: 2 });
-      res.json({ success: true });
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'trash'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'trash', 'trash.json'), [], { spaces: 2 });
+    res.json({ success: true });
   });
 
   expressApp.get('/api/settings', async (req, res) => {
-      const f = path.join(NOTES_BASE_DIR, 'settings', 'settings.json');
-      res.json(await fs.pathExists(f) ? await fs.readJson(f) : { theme: 'light' });
+    const f = path.join(NOTES_BASE_DIR, 'settings', 'settings.json');
+    res.json(await fs.pathExists(f) ? await fs.readJson(f) : { theme: 'light' });
   });
   expressApp.post('/api/settings', async (req, res) => {
-      await fs.ensureDir(path.join(NOTES_BASE_DIR, 'settings'));
-      await fs.writeJson(path.join(NOTES_BASE_DIR, 'settings', 'settings.json'), req.body, { spaces: 2 });
-      res.json({ success: true });
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'settings'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'settings', 'settings.json'), req.body, { spaces: 2 });
+    res.json({ success: true });
   });
 
   expressApp.get('/api/tasks', async (req, res) => {
-      const f = path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json');
-      res.json(await fs.pathExists(f) ? await fs.readJson(f) : []);
+    const f = path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json');
+    res.json(await fs.pathExists(f) ? await fs.readJson(f) : []);
   });
   expressApp.post('/api/tasks', async (req, res) => {
-      await fs.ensureDir(path.join(NOTES_BASE_DIR, 'tasks'));
-      await fs.writeJson(path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json'), req.body, { spaces: 2 });
-      res.json({ success: true });
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'tasks'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json'), req.body, { spaces: 2 });
+    res.json({ success: true });
   });
-  
+
   expressApp.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'Physical FS Server v2' }));
 
   return expressApp;
@@ -451,7 +451,7 @@ function createServer() {
 function startServer() {
   log('Initializing embedded server...');
   const expressApp = createServer();
-  
+
   try {
     server = expressApp.listen(SERVER_PORT, () => {
       log(`Embedded server running on http://localhost:${SERVER_PORT}`);
@@ -492,6 +492,7 @@ function createWindow() {
     show: true,
     backgroundColor: '#121212',
     autoHideMenuBar: true,
+    frame: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -503,7 +504,7 @@ function createWindow() {
     },
     icon: path.join(__dirname, 'icon.png')
   });
-  
+
   mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
 
   mainWindow.once('ready-to-show', () => {
@@ -545,8 +546,8 @@ ipcMain.handle('show-in-explorer', async (event, id) => {
   try {
     const { noteIdMap } = await scanFileSystem();
     if (noteIdMap.has(id)) {
-        shell.showItemInFolder(noteIdMap.get(id));
-        return { success: true };
+      shell.showItemInFolder(noteIdMap.get(id));
+      return { success: true };
     }
     return { success: false, error: 'Note not found' };
   } catch (error) {
@@ -560,8 +561,8 @@ ipcMain.handle('show-folder-in-explorer', async (event, id) => {
   try {
     const { folderIdMap } = await scanFileSystem();
     if (folderIdMap.has(id)) {
-        await shell.openPath(folderIdMap.get(id));
-        return { success: true };
+      await shell.openPath(folderIdMap.get(id));
+      return { success: true };
     }
     return { success: false, error: 'Folder not found' };
   } catch (error) {
@@ -577,3 +578,27 @@ ipcMain.handle('app:getVersion', () => {
 ipcMain.handle('app:getStartupLogs', () => {
   return startupLogs;
 });
+
+// Window controls for frameless window
+ipcMain.handle('window:minimize', () => {
+  if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.handle('window:maximize', () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.handle('window:close', () => {
+  if (mainWindow) mainWindow.close();
+});
+
+ipcMain.handle('window:isMaximized', () => {
+  return mainWindow ? mainWindow.isMaximized() : false;
+});
+
