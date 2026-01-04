@@ -107,12 +107,27 @@
     // Initialize Split Button
     setupSplitButton();
 
+    // Initialize Tab Scrolling
+    setupTabScrolling();
+
     // Restore Session State
     restoreTwoBaseSession();
   }
 
   // Module-level state reference
   let state = null;
+
+  function setupTabScrolling() {
+    if (!el.noteTabs) return;
+
+    el.noteTabs.addEventListener("wheel", (e) => {
+      // If the scroll is vertical, convert it to horizontal
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.noteTabs.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
   let getIcon = null;
   let escapeHtml = null;
 
@@ -1110,8 +1125,8 @@
           onShowInExplorer: async () => {
             console.log(`[DEBUG] BaseLayer NOTE onShowInExplorer triggered for itemId=${itemId}`);
             if (!note) {
-                console.warn("[DEBUG] Note object is missing!");
-                return;
+              console.warn("[DEBUG] Note object is missing!");
+              return;
             }
             // Use Electron API to show file in explorer
             if (window.electronAPI && window.electronAPI.showInExplorer) {
@@ -3110,6 +3125,55 @@
               renderNoteTabs();
             }
           });
+
+          // Right-click Context Menu for Editor
+          contentEditable.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const hasSelection = window.getSelection().toString().trim().length > 0;
+            const scope = hasSelection ? "editor-tools" : "editor-actions";
+
+            const handlers = {
+              onUndo: () => blockEditor.applyInlineAction("undo"),
+              onRedo: () => blockEditor.applyInlineAction("redo"),
+              onCut: () => {
+                const selection = window.getSelection().toString();
+                if (selection) {
+                  navigator.clipboard.writeText(selection);
+                  document.execCommand("delete");
+                }
+              },
+              onCopy: () => {
+                const selection = window.getSelection().toString();
+                if (selection) navigator.clipboard.writeText(selection);
+              },
+              onPaste: async () => {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                  // If we have a selection, replace it. 
+                  // BlockEditor.applyInlineAction("insertText") should handle this via document.execCommand
+                  blockEditor.applyInlineAction("insertText", text);
+                }
+              },
+              onSketch: () => blockEditor.insertSketch(),
+              onBold: () => blockEditor.applyInlineAction("bold"),
+              onItalic: () => blockEditor.applyInlineAction("italic"),
+              onH1: () => blockEditor.applyBlockAction("h1"),
+              onH2: () => blockEditor.applyBlockAction("h2"),
+              onH3: () => blockEditor.applyBlockAction("h3"),
+              onHighlight: () => blockEditor.applyInlineAction("backColor", "yellow"),
+              onRefreshNote: () => {
+                if (TwoBaseState.activeNote) {
+                  renderNoteEditor(TwoBaseState.activeNote); // Full reload from state
+                }
+              }
+            };
+
+            if (typeof showContextMenu === "function") {
+              showContextMenu(e.clientX, e.clientY, handlers, scope);
+            }
+          });
         }
       }
     }
@@ -3133,181 +3197,195 @@
     if (!toolbar) return;
 
     toolbar.innerHTML = `
-      <button class="icon-btn" data-action="bold" title="Bold (Ctrl+B)" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
-          <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
-        </svg>
-      </button>
-      <button class="icon-btn" data-action="italic" title="Italic (Ctrl+I)" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="19" y1="4" x2="10" y2="4"></line>
-          <line x1="14" y1="20" x2="5" y2="20"></line>
-          <line x1="15" y1="4" x2="9" y2="20"></line>
-        </svg>
-      </button>
-      <button class="icon-btn" data-action="underline" title="Underline (Ctrl+U)" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
-          <line x1="4" y1="21" x2="20" y2="21"></line>
-        </svg>
-      </button>
-      <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-      
-      <!-- Highlight Color Picker -->
-      <div class="color-picker-container" style="position: relative; display: inline-block;">
-        <button class="icon-btn" id="highlightBtn" title="Highlight Color" onmousedown="event.preventDefault()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 1 1 3.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-            <line x1="3" y1="22" x2="21" y2="22"></line>
-          </svg>
+      <div class="toolbar-group">
+        <button class="icon-btn" data-action="undo" title="Undo (Ctrl+Z)" onmousedown="event.preventDefault()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        </button>
+        <button class="icon-btn" data-action="redo" title="Redo (Ctrl+Y)" onmousedown="event.preventDefault()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
         </button>
       </div>
 
-      <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-      <button class="icon-btn" data-action="h1" title="Heading 1" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 12h8"></path>
-          <path d="M4 18V6"></path>
-          <path d="M12 18V6"></path>
-          <path d="M17 12h4"></path>
-          <path d="M19 6v12"></path>
-        </svg>
-      </button>
-      <button class="icon-btn" data-action="h2" title="Heading 2" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 12h8"></path>
-          <path d="M4 18V6"></path>
-          <path d="M12 18V6"></path>
-          <path d="M20 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1"></path>
-        </svg>
-      </button>
-      <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-      <button class="icon-btn" data-action="ul" title="Bullet List" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="8" y1="6" x2="21" y2="6"></line>
-          <line x1="8" y1="12" x2="21" y2="12"></line>
-          <line x1="8" y1="18" x2="21" y2="18"></line>
-          <line x1="3" y1="6" x2="3.01" y2="6"></line>
-          <line x1="3" y1="12" x2="3.01" y2="12"></line>
-          <line x1="3" y1="18" x2="3.01" y2="18"></line>
-        </svg>
-      </button>
-      <button class="icon-btn" data-action="ol" title="Numbered List" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="10" y1="6" x2="21" y2="6"></line>
-          <line x1="10" y1="12" x2="21" y2="12"></line>
-          <line x1="10" y1="18" x2="21" y2="18"></line>
-          <path d="M4 6h1v4"></path>
-          <path d="M4 10h2"></path>
-          <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
-        </svg>
-      </button>
-      <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
-      <button class="icon-btn" data-action="table" title="Insert Table" onmousedown="event.preventDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="3" y1="9" x2="21" y2="9"></line>
-          <line x1="3" y1="15" x2="21" y2="15"></line>
-          <line x1="12" y1="3" x2="12" y2="21"></line>
-        </svg>
-      </button>
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <button class="icon-btn" data-action="bold" title="Bold (Ctrl+B)" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+        </button>
+        <button class="icon-btn" data-action="italic" title="Italic (Ctrl+I)" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>
+        </button>
+        <button class="icon-btn" data-action="underline" title="Underline (Ctrl+U)" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path><line x1="4" y1="21" x2="20" y2="21"></line></svg>
+        </button>
+        <button class="icon-btn" data-action="strikethrough" title="Strikethrough" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="20" y2="12"></line></svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <button class="icon-btn" data-action="h1" title="Heading 1" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12h8m-8 6V6m8 12V6m5 6h4m-2-6v12"></path></svg>
+        </button>
+        <button class="icon-btn" data-action="h2" title="Heading 2" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12h8m-8 6V6m8 12V6m9 12h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1"></path></svg>
+        </button>
+        <button class="icon-btn" data-action="h3" title="Heading 3" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12h8m-8 6V6m8 12V6m5.5 4.5c.7-1.3 2.5-1.3 3.3 0 .3.6.1 1.2-.5 1.5l-1.3.3.3 1.3 1.3-.3c.6-.3.8-.9.5-1.5-.7-1.3-2.5-1.3-3.3 0"></path><path d="M17.5 15.5c.7-1.3 2.5-1.3 3.3 0 .3.6.1 1.2-.5 1.5l-1.3.3.3 1.3 1.3-.3c.6-.3.8-.9.5-1.5-.7-1.3-2.5-1.3-3.3 0"></path></svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <button class="icon-btn" data-action="justifyLeft" title="Align Left" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+        </button>
+        <button class="icon-btn" data-action="justifyCenter" title="Align Center" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="18" y1="18" x2="6" y2="18"></line></svg>
+        </button>
+        <button class="icon-btn" data-action="justifyRight" title="Align Right" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <button class="icon-btn" data-action="ul" title="Bullet List" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+        <button class="icon-btn" data-action="ol" title="Numbered List" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <button class="icon-btn" data-action="sketch" title="Insert Drawing" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+        <button class="icon-btn" data-action="table" title="Insert Table" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+        </button>
+        <button class="icon-btn" data-action="removeFormat" title="Clear Formatting" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.29 21.07L10.5 14.28l-6.92 6.92c-.39.39-1.02.39-1.41 0a.9959.9959 0 0 1 0-1.41l6.92-6.92-6.69-6.69c-.39-.39-.39-1.02 0-1.41l1.41-1.41c.39-.39 1.02-.39 1.41 0l6.69 6.69 6.69-6.69c.39-.39 1.02-.39 1.41 0l1.41 1.41c.39.39.39 1.02 0 1.41l-6.69 6.69 6.92 6.92c.39.39.39 1.02 0 1.41l-1.41 1.41c-.39.39-1.02.39-1.41 0z"></path></svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <button id="splitNoteBtn_internal" class="icon-btn" title="Split view" onmousedown="event.preventDefault()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="12" y1="3" x2="12" y2="21"></line>
+          </svg>
+        </button>
+        <button id="toggleNoteSearchBtn_internal" class="icon-btn" title="Find in note (Ctrl+F)" onmousedown="event.preventDefault()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+      </div>
     `;
+
+    // Re-bind sidebar-style buttons if they exist
+    const intSplit = document.getElementById("splitNoteBtn_internal");
+    const intSearch = document.getElementById("toggleNoteSearchBtn_internal");
+
+    if (intSplit) {
+      intSplit.onclick = (e) => {
+        const extBtn = document.getElementById("splitNoteBtn");
+        if (extBtn) extBtn.click();
+      };
+    }
+    if (intSearch) {
+      intSearch.onclick = (e) => {
+        const extBtn = document.getElementById("toggleNoteSearchBtn");
+        if (extBtn) extBtn.click();
+      };
+    }
 
     // Highlight menu toggle
     const highlightBtn = document.getElementById("highlightBtn");
 
-    // Remove old listeners by cloning or just assuming this is fresh render
     if (highlightBtn) {
-      console.log("[HIGHLIGHT] Highlight button found, attaching listener");
-      // Use onclick to cleanly replace any previous listeners
       highlightBtn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        e.stopImmediatePropagation();
-
-        console.log("[HIGHLIGHT] Button clicked");
-
-        // Toggle logic
         const existing = document.querySelector(".highlight-menu");
         if (existing) {
-          console.log("[HIGHLIGHT] Closing existing menu");
           existing.remove();
           return;
         }
-
-        console.log("[HIGHLIGHT] Opening menu");
-        showHighlightMenu(e);
+        showHighlightMenu();
       };
-    } else {
-      console.warn("[HIGHLIGHT] Highlight button NOT found");
     }
 
     // Add click handlers for toolbar buttons
-    toolbar.addEventListener("click", (e) => {
+    toolbar.onclick = (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
 
       const action = btn.dataset.action;
-      const contentElement = TwoBaseState.currentEditorElement;
+      const blockEditor = TwoBaseState.currentEditor;
 
-      if (!contentElement) {
-        console.warn("No active editor element found");
+      if (!blockEditor) {
+        // Fallback for non-block editor if needed, but primary path should use blockEditor
+        const contentElement = TwoBaseState.currentEditorElement;
+        if (!contentElement) return;
+        contentElement.focus();
+        document.execCommand(action);
         return;
       }
 
-      // Ensure focus is on the editor before executing command
-      // This is crucial for the commands to work on the selection
-      if (document.activeElement !== contentElement) {
-        // If we lost focus, we might have lost selection.
-        // Ideally, we should have saved selection on blur, but for now let's try to focus.
-        // contentElement.focus();
-        // Note: focusing might clear selection if not handled carefully.
-        // Since we used onmousedown=preventDefault, focus should still be in editor.
-      }
-
-      // Execute formatting commands
-      if (action === "bold") {
-        document.execCommand("bold");
+      if (action === "undo") {
+        blockEditor.applyInlineAction("undo");
+      } else if (action === "redo") {
+        blockEditor.applyInlineAction("redo");
+      } else if (action === "bold") {
+        blockEditor.applyInlineAction("bold");
       } else if (action === "italic") {
-        document.execCommand("italic");
+        blockEditor.applyInlineAction("italic");
       } else if (action === "underline") {
-        document.execCommand("underline");
+        blockEditor.applyInlineAction("underline");
+      } else if (action === "strikethrough") {
+        blockEditor.applyInlineAction("strikeThrough");
       } else if (action === "h1") {
-        document.execCommand("formatBlock", false, "h1");
+        blockEditor.applyBlockAction("h1");
       } else if (action === "h2") {
-        document.execCommand("formatBlock", false, "h2");
+        blockEditor.applyBlockAction("h2");
+      } else if (action === "h3") {
+        blockEditor.applyBlockAction("h3");
+      } else if (action === "justifyLeft") {
+        blockEditor.applyInlineAction("justifyLeft");
+      } else if (action === "justifyCenter") {
+        blockEditor.applyInlineAction("justifyCenter");
+      } else if (action === "justifyRight") {
+        blockEditor.applyInlineAction("justifyRight");
       } else if (action === "ul") {
-        document.execCommand("insertUnorderedList");
+        blockEditor.applyBlockAction("ul");
       } else if (action === "ol") {
-        document.execCommand("insertOrderedList");
+        // ol might need special handling in editor-core, for now toggle ul as list
+        blockEditor.applyBlockAction("ul");
+      } else if (action === "removeFormat") {
+        blockEditor.applyInlineAction("removeFormat");
       } else if (action === "table") {
-        // Insert a simple table structure
-        const tableHTML = `
-          <table style="border-collapse: collapse; width: 100%; margin: 1rem 0;">
-            <tr>
-              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 1</td>
-              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 2</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 3</td>
-              <td style="border: 1px solid var(--border); padding: 0.5rem;">Cell 4</td>
-            </tr>
-          </table>
-        `;
-        document.execCommand("insertHTML", false, tableHTML);
+        if (typeof window.insertTablePlaceholder === "function") {
+          window.insertTablePlaceholder();
+        } else {
+          const tableHTML = `<table style="border-collapse: collapse; width: 100%; margin: 1rem 0;"><tr><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td></tr></table>`;
+          blockEditor.applyInlineAction("insertHTML", tableHTML);
+        }
+      } else if (action === "sketch") {
+        blockEditor.insertSketch();
       }
-
-      // Trigger change event if BlockEditor is available
-      if (
-        TwoBaseState.currentEditor &&
-        typeof TwoBaseState.currentEditor.triggerChange === "function"
-      ) {
-        setTimeout(() => {
-          TwoBaseState.currentEditor.triggerChange();
-        }, 10);
-      }
-    });
+    };
   }
 
   function switchActiveNote(noteId) {
@@ -4843,11 +4921,11 @@
 
         // Dynamic Injection: If container is missing (wiped by other scripts), inject it.
         if (!container) {
-            console.warn("Container missing - Injecting dynamic search container...");
-            const toolbar = document.getElementById("noteToolbar");
-            if (toolbar) {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = `
+          console.warn("Container missing - Injecting dynamic search container...");
+          const toolbar = document.getElementById("noteToolbar");
+          if (toolbar) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = `
                  <div id="searchSeparator" style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem; display: none;"></div>
                  <div class="note-search-container hidden" id="noteSearchContainer">
                    <div class="note-search-box">
@@ -4880,36 +4958,36 @@
                      </div>
                    </div>
                  </div>`;
-                
-                // Append the container first
-                while (tempDiv.firstChild) {
-                    toolbar.appendChild(tempDiv.firstChild);
-                }
-                container = document.getElementById("noteSearchContainer");
-                
-                // Re-initialize search listeners for the new elements
-                if (typeof initNoteSearch === 'function') {
-                    // Update global 'el' cache if it exists
-                    if (el && typeof el === 'object') {
-                       el.noteSearchContainer = container;
-                       el.noteSearchInput = document.getElementById("noteSearchInput");
-                       el.noteSearchStats = document.getElementById("noteSearchStats");
-                       el.noteSearchPrev = document.getElementById("noteSearchPrev");
-                       el.noteSearchNext = document.getElementById("noteSearchNext");
-                       el.noteSearchClose = document.getElementById("noteSearchClose");
-                    }
-                    initNoteSearch();
-                }
+
+            // Append the container first
+            while (tempDiv.firstChild) {
+              toolbar.appendChild(tempDiv.firstChild);
             }
+            container = document.getElementById("noteSearchContainer");
+
+            // Re-initialize search listeners for the new elements
+            if (typeof initNoteSearch === 'function') {
+              // Update global 'el' cache if it exists
+              if (el && typeof el === 'object') {
+                el.noteSearchContainer = container;
+                el.noteSearchInput = document.getElementById("noteSearchInput");
+                el.noteSearchStats = document.getElementById("noteSearchStats");
+                el.noteSearchPrev = document.getElementById("noteSearchPrev");
+                el.noteSearchNext = document.getElementById("noteSearchNext");
+                el.noteSearchClose = document.getElementById("noteSearchClose");
+              }
+              initNoteSearch();
+            }
+          }
         }
-        
+
         // Toggle logic with updated container
         if (container) {
-            // Toggle based on current state (open? close. closed? open.)
-            // But if we just injected it, it's hidden by default, so we want to show it.
-            // If it existed, we check the state.
-            const isActive = TwoBaseState.searchState && TwoBaseState.searchState.active;
-            toggleNoteSearch(!isActive);
+          // Toggle based on current state (open? close. closed? open.)
+          // But if we just injected it, it's hidden by default, so we want to show it.
+          // If it existed, we check the state.
+          const isActive = TwoBaseState.searchState && TwoBaseState.searchState.active;
+          toggleNoteSearch(!isActive);
         }
         return;
       }
@@ -4954,31 +5032,31 @@
     document.addEventListener("keydown", (e) => {
       // DEBUG: Log key presses that might be relevant
       if (e.key.toLowerCase() === 'f' && (e.ctrlKey || e.metaKey)) {
-          console.log(`[DEBUG] Keydown detected: ${e.key}, Ctrl: ${e.ctrlKey}, Meta: ${e.metaKey}`);
-          console.log(`[DEBUG] Current Base: ${TwoBaseState.currentBase}`);
-          console.log(`[DEBUG] noteSearchContainer exists? ${!!el.noteSearchContainer}`);
-          
-          if (TwoBaseState.currentBase === 'note') {
-             console.log("[DEBUG] Executing Ctrl+F override...");
-             e.preventDefault();
-             e.stopPropagation();
-             
-             // Ensure search container elements exist (lazy re-query if needed)
-             if (!el.noteSearchContainer) {
-                console.warn("[DEBUG] noteSearchContainer missing in el cache, requerying...");
-                el.noteSearchContainer = document.getElementById("noteSearchContainer");
-                el.noteSearchInput = document.getElementById("noteSearchInput");
-             }
-             
-             if (el.noteSearchContainer) {
-                 toggleNoteSearch(true);
-             } else {
-                 console.error("[CRITICAL] Search container not found in DOM!");
-             }
+        console.log(`[DEBUG] Keydown detected: ${e.key}, Ctrl: ${e.ctrlKey}, Meta: ${e.metaKey}`);
+        console.log(`[DEBUG] Current Base: ${TwoBaseState.currentBase}`);
+        console.log(`[DEBUG] noteSearchContainer exists? ${!!el.noteSearchContainer}`);
+
+        if (TwoBaseState.currentBase === 'note') {
+          console.log("[DEBUG] Executing Ctrl+F override...");
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Ensure search container elements exist (lazy re-query if needed)
+          if (!el.noteSearchContainer) {
+            console.warn("[DEBUG] noteSearchContainer missing in el cache, requerying...");
+            el.noteSearchContainer = document.getElementById("noteSearchContainer");
+            el.noteSearchInput = document.getElementById("noteSearchInput");
           }
+
+          if (el.noteSearchContainer) {
+            toggleNoteSearch(true);
+          } else {
+            console.error("[CRITICAL] Search container not found in DOM!");
+          }
+        }
       }
     });
-    
+
     console.log("[DEBUG] Ctrl+F listener attached");
   }
 
@@ -6416,22 +6494,22 @@
     if (TwoBaseState.currentBase !== 'note' && show) return;
 
     TwoBaseState.searchState.active = show;
-    
+
     // Toggle the separator if it exists
     const separator = document.getElementById("searchSeparator");
     if (separator) {
-        if (show) {
-            separator.style.display = "block";
-            // Small timeout to allow display change to render before opacity transition if we added one (not needed for simple solid div but good practice)
-            separator.style.opacity = "1";
-        } else {
-             // Hide separator when search is hidden
-             separator.style.opacity = "0";
-             // Optional: delay display none if we wanted animation, but for a 1px line immediate is fine or matching the container
-             separator.style.display = "none";
-        }
+      if (show) {
+        separator.style.display = "block";
+        // Small timeout to allow display change to render before opacity transition if we added one (not needed for simple solid div but good practice)
+        separator.style.opacity = "1";
+      } else {
+        // Hide separator when search is hidden
+        separator.style.opacity = "0";
+        // Optional: delay display none if we wanted animation, but for a 1px line immediate is fine or matching the container
+        separator.style.display = "none";
+      }
     }
-    
+
     if (el.noteSearchContainer) {
       if (show) {
         el.noteSearchContainer.classList.remove("hidden");
@@ -6445,7 +6523,7 @@
         clearNoteSearchHighlights();
         // Don't clear value immediately so it doesn't jarringly disappear during animation
         // el.noteSearchInput.value = ""; 
-        
+
         // Return focus to editor
         if (TwoBaseState.currentEditorElement) {
           TwoBaseState.currentEditorElement.focus();
@@ -8097,104 +8175,104 @@
   });
   // Toolbar Delegation
   function initToolbarDelegation() {
-      const toolbar = document.getElementById("noteToolbar");
-      if (!toolbar) return;
-    
-      // Formatting Buttons Delegate
-      toolbar.addEventListener("mousedown", (e) => {
-          const btn = e.target.closest("button[data-action]");
-          if (!btn) return;
-          
-          e.preventDefault(); // Prevent focus loss
-          const action = btn.dataset.action;
-          if (action) handleToolbarAction(action);
+    const toolbar = document.getElementById("noteToolbar");
+    if (!toolbar) return;
+
+    // Formatting Buttons Delegate
+    toolbar.addEventListener("mousedown", (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+
+      e.preventDefault(); // Prevent focus loss
+      const action = btn.dataset.action;
+      if (action) handleToolbarAction(action);
+    });
+
+    // Toggle Search Button
+    const searchBtn = document.getElementById("toggleNoteSearchBtn");
+    if (searchBtn) {
+      searchBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        // Check visibility
+        if (el.noteSearchContainer) {
+          const isHidden = el.noteSearchContainer.classList.contains("hidden");
+          toggleNoteSearch(isHidden); // If hidden, show (true). If visible, hide (false).
+        }
       });
-  
-      // Toggle Search Button
-      const searchBtn = document.getElementById("toggleNoteSearchBtn");
-      if (searchBtn) {
-          searchBtn.addEventListener("click", (e) => {
-              e.preventDefault();
-              // Check visibility
-              if (el.noteSearchContainer) {
-                  const isHidden = el.noteSearchContainer.classList.contains("hidden");
-                  toggleNoteSearch(isHidden); // If hidden, show (true). If visible, hide (false).
-              }
-          });
-      }
+    }
   }
 
   function handleToolbarAction(action) {
-      if (!action) return;
+    if (!action) return;
 
-      // Find active editor
-      let editorEl = TwoBaseState.currentEditorElement;
-      
-      // Fallback if currentEditorElement not set (e.g. if focus was lost)
-      if (!editorEl && TwoBaseState.activeNote) {
-         // Try to find the editor in DOM
-         const activeId = TwoBaseState.activeNote;
-         // Note: in two-base, editor template usually has .note-editor class or implicit structure
-         // renderPane calls buildEditor which uses editor template.
-         // Let's assume editor content is inside a container we can find.
-         const activePane = ["left", "right"].find(side => state[side] && state[side].active === activeId);
-         if (activePane) {
-             const paneEl = activePane === "left" ? el.notePaneLeft : el.notePaneRight;
-             if (paneEl) {
-                 // The editor content div usually has .content class and .editor-block children
-                 editorEl = paneEl.querySelector(".content");
-             }
-         }
+    // Find active editor
+    let editorEl = TwoBaseState.currentEditorElement;
+
+    // Fallback if currentEditorElement not set (e.g. if focus was lost)
+    if (!editorEl && TwoBaseState.activeNote) {
+      // Try to find the editor in DOM
+      const activeId = TwoBaseState.activeNote;
+      // Note: in two-base, editor template usually has .note-editor class or implicit structure
+      // renderPane calls buildEditor which uses editor template.
+      // Let's assume editor content is inside a container we can find.
+      const activePane = ["left", "right"].find(side => state[side] && state[side].active === activeId);
+      if (activePane) {
+        const paneEl = activePane === "left" ? el.notePaneLeft : el.notePaneRight;
+        if (paneEl) {
+          // The editor content div usually has .content class and .editor-block children
+          editorEl = paneEl.querySelector(".content");
+        }
+      }
+    }
+
+    if (!editorEl) {
+      console.warn("No active editor found for action:", action);
+      return;
+    }
+
+    // Ensure focus is restored to editor
+    editorEl.focus();
+
+    if (['bold', 'italic', 'underline', 'strike'].includes(action)) {
+      document.execCommand(action, false, null);
+    } else if (['h1', 'h2', 'h3', 'ul', 'ol'].includes(action)) {
+      // Block Operations
+      let blockEditor = null;
+      // Traverse up to find _blockEditor (attached to .note-editor wrapper usually)
+      // The wrapper is the direct child of paneEl usually.
+      // buildEditor returns 'node' which has _blockEditor.
+      // 'node' contains 'content' div.
+      // So closest parent of proper type should have it.
+      // The clone of template usually doesn't have a specific class "note-editor" unless added.
+      // But it has data-note-id.
+      let curr = editorEl.parentElement;
+      while (curr && !blockEditor) {
+        if (curr._blockEditor) {
+          blockEditor = curr._blockEditor;
+          break;
+        }
+        curr = curr.parentElement;
       }
 
-      if (!editorEl) {
-          console.warn("No active editor found for action:", action);
-          return;
-      }
-      
-      // Ensure focus is restored to editor
-      editorEl.focus();
+      if (blockEditor) {
+        const currentBlockEl = blockEditor.getBlockElementAtSelection();
+        if (currentBlockEl) {
+          const blockId = currentBlockEl.dataset.blockId;
+          const block = blockEditor.blocks.find(b => b.id === blockId);
+          if (block) {
+            let type = action;
+            if (action === 'ol') type = 'ul'; // BlockEditor currently maps lists to UL
 
-      if (['bold', 'italic', 'underline', 'strike'].includes(action)) {
-          document.execCommand(action, false, null);
-      } else if (['h1', 'h2', 'h3', 'ul', 'ol'].includes(action)) {
-          // Block Operations
-          let blockEditor = null;
-          // Traverse up to find _blockEditor (attached to .note-editor wrapper usually)
-          // The wrapper is the direct child of paneEl usually.
-          // buildEditor returns 'node' which has _blockEditor.
-          // 'node' contains 'content' div.
-          // So closest parent of proper type should have it.
-          // The clone of template usually doesn't have a specific class "note-editor" unless added.
-          // But it has data-note-id.
-          let curr = editorEl.parentElement;
-          while (curr && !blockEditor) {
-                if (curr._blockEditor) {
-                    blockEditor = curr._blockEditor;
-                    break;
-                }
-                curr = curr.parentElement;
-          }
-
-          if (blockEditor) {
-            const currentBlockEl = blockEditor.getBlockElementAtSelection();
-            if (currentBlockEl) {
-                const blockId = currentBlockEl.dataset.blockId;
-                const block = blockEditor.blocks.find(b => b.id === blockId);
-                if (block) {
-                    let type = action;
-                    if (action === 'ol') type = 'ul'; // BlockEditor currently maps lists to UL
-                    
-                    // If toggling same type, switch back to 'p'
-                    // Special case: switch from h1 to h1 -> p
-                    if (block.type === type) {
-                        type = 'p';
-                    }
-                    blockEditor.convertBlockType(block, currentBlockEl, type, 0);
-                }
+            // If toggling same type, switch back to 'p'
+            // Special case: switch from h1 to h1 -> p
+            if (block.type === type) {
+              type = 'p';
             }
+            blockEditor.convertBlockType(block, currentBlockEl, type, 0);
           }
+        }
       }
+    }
   }
 
 })();

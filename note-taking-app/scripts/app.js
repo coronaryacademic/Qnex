@@ -6050,6 +6050,22 @@ window.startImportProcess = function () {
         await handlers.onNewNoteToFolder?.();
       });
 
+    // GENERIC HANDLER: Support for arbitrary commands (like editor actions)
+    ctxEl.querySelectorAll('button[data-cmd], button[data-action]').forEach(btn => {
+      const cmd = btn.dataset.cmd || btn.dataset.action;
+      const handlerName = 'on' + cmd.charAt(0).toUpperCase() + cmd.slice(1);
+
+      // Only attach if not already handled by specific logic above (avoid double firing)
+      // We check if there's a click listener already, but simpler is just to check if it's in handlers
+      if (handlers[handlerName] && !btn.onclick) {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          hideContextMenu();
+          handlers[handlerName]();
+        });
+      }
+    });
+
     const bRF = ctxEl.querySelector('[data-cmd="rename-folder"]');
     if (bRF)
       bRF.addEventListener("click", async (e) => {
@@ -6716,7 +6732,7 @@ window.startImportProcess = function () {
     };
   });
 
-  function insertTablePlaceholder() {
+  window.insertTablePlaceholder = function () {
     const side = state.right.active ? "right" : "left";
     const paneEl = side === "left" ? el.paneLeft : el.paneRight;
     const content = paneEl.querySelector(".content.editable");

@@ -807,6 +807,78 @@ textarea {
   /* For absolute positioning of chevron */
 }
 
+/* Sketch Block Styles */
+.sketch-container {
+  position: relative;
+  margin: 1.5rem 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: border-color 0.2s;
+}
+
+.sketch-container:hover {
+  border-color: var(--accent);
+}
+
+.sketch-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sketch-toolbar button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #444;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sketch-toolbar button:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--accent);
+}
+
+.sketch-toolbar button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.sketch-toolbar .divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  align-self: center;
+  margin: 0 4px;
+}
+
+.block-sketch canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+  background: transparent;
+  touch-action: none;
+}
+
 .folder-header:hover {
   background: var(--panel-hover);
 }
@@ -3683,6 +3755,30 @@ body.debug-borders div {
   background: var(--panel-2);
 }
 
+.ctx-horiz-row {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  background: rgba(var(--text-rgb, 255, 255, 255), 0.05);
+  border-radius: 8px;
+  margin-bottom: 2px;
+  justify-content: space-between;
+}
+
+.ctx-horiz-row button {
+  padding: 6px !important;
+  width: 34px !important;
+  height: 34px !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+}
+
+.ctx-horiz-row button svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;
@@ -6080,9 +6176,12 @@ ol.editor-block {
 /* Note Toolbar Section - Fixed Height */
 .note-toolbar-section {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   background: var(--panel-2);
   border-bottom: 1px solid var(--border);
+  min-height: 48px;
+  height: 48px;
 }
 
 /* Note Search Component */
