@@ -24,6 +24,8 @@ const QuestionBase = {
     openBtn: null, // The button in main sidebar
     floatBtn: null,
     resizer: null,
+    searchInput: null,
+    clearSearchBtn: null,
   },
 
   init() {
@@ -32,6 +34,7 @@ const QuestionBase = {
     this.bindEvents();
     this.initResizer();
     this.loadQuestions();
+    this.loadSidebarWidth();
     this.renderSidebar();
   },
 
@@ -55,6 +58,8 @@ const QuestionBase = {
     this.el.openBtn = document.getElementById("openQuestionsBtn");
     this.el.floatBtn = document.getElementById("openQuestionsFloatBtn");
     this.el.resizer = document.getElementById("questionSidebarResizer");
+    this.el.searchInput = document.getElementById("questionSearchInput");
+    this.el.clearSearchBtn = document.getElementById("clearQuestionSearch");
   },
 
   bindEvents() {
@@ -81,6 +86,17 @@ const QuestionBase = {
     if (this.el.addOptionBtn) {
       this.el.addOptionBtn.addEventListener("click", () => this.addOptionUI());
     }
+
+    // Search
+    if (this.el.searchInput) {
+      this.el.searchInput.addEventListener("input", () => this.renderSidebar());
+    }
+    if (this.el.clearSearchBtn) {
+      this.el.clearSearchBtn.addEventListener("click", () => {
+        this.el.searchInput.value = "";
+        this.renderSidebar();
+      });
+    }
   },
 
   initResizer() {
@@ -103,19 +119,40 @@ const QuestionBase = {
     document.addEventListener("mousemove", (e) => {
       if (!isResizing) return;
       const newWidth = startWidth + (e.clientX - startX);
-      if (newWidth > 150 && newWidth < 600) {
+      
+      // Update width
+      if (newWidth > 230 && newWidth < 600) {
         this.el.sidebar.style.width = `${newWidth}px`;
       }
     });
 
-    document.addEventListener("mouseup", () => {
-      if (isResizing) {
-        isResizing = false;
-        this.el.sidebar.classList.remove("resizing");
-        document.body.style.cursor = "default";
+      document.addEventListener("mouseup", () => {
+        if (isResizing) {
+          isResizing = false;
+          this.el.sidebar.classList.remove("resizing");
+          document.body.style.cursor = "default";
+          this.saveSidebarWidth();
+        }
+      });
+    },
+
+    loadSidebarWidth() {
+      const width = localStorage.getItem("app-question-sidebar-width");
+      if (width) {
+        this.el.sidebar.style.width = width;
+        if (parseInt(width) < 180) {
+          this.el.sidebar.classList.add("narrow");
+        } else {
+          this.el.sidebar.classList.remove("narrow");
+        }
       }
-    });
-  },
+    },
+
+    saveSidebarWidth() {
+      if (this.el.sidebar) {
+        localStorage.setItem("app-question-sidebar-width", this.el.sidebar.style.width);
+      }
+    },
 
   loadQuestions() {
     const stored = localStorage.getItem("app-questions");
@@ -257,12 +294,24 @@ const QuestionBase = {
   renderSidebar() {
     this.el.list.innerHTML = "";
     
-    if (this.state.questions.length === 0) {
-      this.el.list.innerHTML = '<div class="sidebar-empty-state">No questions yet</div>';
+    // Filter questions based on search
+    const query = this.el.searchInput ? this.el.searchInput.value.toLowerCase().trim() : "";
+    const filtered = this.state.questions.filter(q => {
+       if (!query) return true;
+       return (q.title && q.title.toLowerCase().includes(query)) || 
+              (q.text && q.text.toLowerCase().includes(query));
+    });
+
+    if (filtered.length === 0) {
+      if (query) {
+         this.el.list.innerHTML = '<div class="sidebar-empty-state">No matching questions</div>';
+      } else {
+         this.el.list.innerHTML = '<div class="sidebar-empty-state">No questions yet</div>';
+      }
       return;
     }
 
-    this.state.questions.forEach(q => {
+    filtered.forEach(q => {
       const el = document.createElement("div");
       el.className = `question-item ${q.id === this.activeQuestionId ? "active" : ""}`;
       el.dataset.id = q.id;

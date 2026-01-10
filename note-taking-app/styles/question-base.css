@@ -10,6 +10,7 @@
   z-index: 1000;
   display: flex;
   transition: opacity 0.3s ease;
+  pointer-events: auto; /* Ensure interactivity */
 }
 
 .question-base.hidden {
@@ -22,10 +23,31 @@
   /* Inherits .sidebar styles */
   background: var(--panel);
   border-right: 1px solid var(--border);
+  z-index: 1001;
+  pointer-events: auto;
+  min-width: 230px;
 }
 
+.question-sidebar .sidebar-header,
+.question-sidebar .sidebar-content,
 .question-sidebar .sidebar-search {
-  padding: 10px;
+  position: relative;
+  z-index: 1002;
+  pointer-events: auto;
+}
+
+.question-sidebar .sidebar-header {
+  padding: 9.5px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex !important;
+  justify-content: flex-start !important; /* Override main sidebar's flex-end */
+}
+
+/* Inherit padding from .sidebar-search in style.css */
+.question-sidebar .sidebar-search {
+  /* position: relative; - Already in style.css */
+  z-index: 1002;
+  pointer-events: auto;
 }
 
 /* Question Main Content */
@@ -238,24 +260,27 @@ textarea:focus {
 }
 
 /* Sidebar Resizer */
-.sidebar-resizer {
+/* Sidebar Resizer */
+#questionSidebarResizer {
   position: absolute;
   top: 0;
   right: -3px;
   width: 6px;
   height: 100vh;
   cursor: col-resize;
-  z-index: 100;
+  z-index: 2000;
   background: transparent;
   transition: background 0.2s;
+  pointer-events: auto;
 }
 
-.sidebar-resizer:hover,
-.sidebar.resizing .sidebar-resizer {
+#questionSidebarResizer:hover,
+.question-sidebar.resizing #questionSidebarResizer {
   background: var(--accent);
   opacity: 0.5;
 }
 
 .question-sidebar {
   position: relative; /* Ensure resizing works relative to this */
+  pointer-events: auto;
 }
