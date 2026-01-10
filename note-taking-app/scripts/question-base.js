@@ -22,12 +22,15 @@ const QuestionBase = {
     newBtn: null,
     backBtn: null,
     openBtn: null, // The button in main sidebar
+    floatBtn: null,
+    resizer: null,
   },
 
   init() {
     console.log("Initializing Question Base...");
     this.cacheElements();
     this.bindEvents();
+    this.initResizer();
     this.loadQuestions();
     this.renderSidebar();
   },
@@ -51,6 +54,7 @@ const QuestionBase = {
     this.el.backBtn = document.getElementById("backToMainFromQuestions");
     this.el.openBtn = document.getElementById("openQuestionsBtn");
     this.el.floatBtn = document.getElementById("openQuestionsFloatBtn");
+    this.el.resizer = document.getElementById("questionSidebarResizer");
   },
 
   bindEvents() {
@@ -62,7 +66,9 @@ const QuestionBase = {
       this.el.floatBtn.addEventListener("click", () => this.open());
     }
     if (this.el.backBtn) {
-      this.el.backBtn.addEventListener("click", () => this.close());
+      this.el.backBtn.addEventListener("click", () => {
+         this.close();
+      });
     }
 
     // Question Actions
@@ -75,6 +81,40 @@ const QuestionBase = {
     if (this.el.addOptionBtn) {
       this.el.addOptionBtn.addEventListener("click", () => this.addOptionUI());
     }
+  },
+
+  initResizer() {
+    if (!this.el.resizer || !this.el.sidebar) return;
+
+    let isResizing = false;
+    let startX, startWidth;
+
+    this.el.resizer.addEventListener("mousedown", (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = parseInt(
+        document.defaultView.getComputedStyle(this.el.sidebar).width,
+        10
+      );
+      this.el.sidebar.classList.add("resizing");
+      document.body.style.cursor = "col-resize";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!isResizing) return;
+      const newWidth = startWidth + (e.clientX - startX);
+      if (newWidth > 150 && newWidth < 600) {
+        this.el.sidebar.style.width = `${newWidth}px`;
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (isResizing) {
+        isResizing = false;
+        this.el.sidebar.classList.remove("resizing");
+        document.body.style.cursor = "default";
+      }
+    });
   },
 
   loadQuestions() {
@@ -97,6 +137,9 @@ const QuestionBase = {
   open() {
     this.el.base.classList.remove("hidden");
     // Ensure 2-base layers might be covered, but this is fixed overlay Z=1000
+    if (this.state.questions.length === 0) {
+        this.createNewQuestion(); // Auto-create first question if empty
+    }
   },
 
   close() {
@@ -235,7 +278,7 @@ const QuestionBase = {
       `;
       this.el.list.appendChild(el);
     });
-  }
+  },
 };
 
 // Auto-initialize on DOM ready
