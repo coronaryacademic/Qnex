@@ -545,16 +545,36 @@ textarea {
 }
 
 .action-plus-icon {
-  transition: transform 0.3s ease;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   width: 16px;
   height: 16px;
   stroke: var(--muted);
   stroke-width: 2.5;
   display: block;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes plusToXAndBack {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(45deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.sidebar-action-btn:hover:not(.open):not(.closing) .action-plus-icon {
+  animation: plusToXAndBack 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .sidebar-action-btn.open .action-plus-icon {
   transform: rotate(45deg);
+  animation: none;
 }
 
 /* Dropdown Menu */

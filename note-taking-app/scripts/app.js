@@ -4047,7 +4047,17 @@ window.startImportProcess = function () {
     sidebarActionBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       hideContextMenu(); // Close any open right-click menus
-      sidebarActionBtn.classList.toggle("open");
+      
+      const isOpen = sidebarActionBtn.classList.contains("open");
+      if (isOpen) {
+        sidebarActionBtn.classList.remove("open");
+        // Add closing class to suppress hover animation during close transition
+        sidebarActionBtn.classList.add("closing");
+        setTimeout(() => sidebarActionBtn.classList.remove("closing"), 800);
+      } else {
+        sidebarActionBtn.classList.add("open");
+      }
+      
       sidebarActionMenu.classList.toggle("open");
     });
 
