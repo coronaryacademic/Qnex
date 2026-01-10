@@ -585,6 +585,8 @@ window.startImportProcess = function () {
     exportBtn: document.getElementById("exportBtn"),
     importBtn: document.getElementById("importBtn"),
     settingsBtn: document.getElementById("settingsBtn"),
+    workspaceSplit: document.getElementById("workspaceSplit"),
+    noteBase: document.getElementById("noteBase"),
     // New Settings Page Elements
     settingsOverlay: document.getElementById("settingsOverlay"),
     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
