@@ -5106,7 +5106,7 @@ window.startImportProcess = function () {
                   </div>
                 </div>
 
-                <div class="setting-group" style="border-color: #fecaca; background-color: #ffacb2db;">
+                <div class="setting-group" style="border-color: var(--settingsborder); background-color: #ffacb2db;">
                   <h3 style="color: #dc2626;">Danger Zone</h3>
                   <div class="setting-row" style="border-bottom: none;">
                     <div class="setting-info">

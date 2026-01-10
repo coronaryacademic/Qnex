@@ -90,7 +90,7 @@ body {
   --panel-hover: rgba(255, 255, 255, 0.05);
   --borderX: #333333;
   --boot: white;
-  --settingsborder: #838383;
+  --settingsborder: #333333;
 }
 
 /* Light Theme - Clean white/light gray */
@@ -108,7 +108,7 @@ body.theme-light {
   --panel-hover: rgba(0, 0, 0, 0.05);
   --borderX: #c4c4c4;
   --boot: black;
-  --settingsborder: #b5b4b4;
+  --settingsborder: #c2c1c1;
 }
 
 /* Classic Theme - Light professional theme with dark panels */
@@ -125,7 +125,7 @@ body.theme-classic {
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   --panel-hover: rgb(39 39 39);
   --boot: black;
-  --settingsborder: #dddddd;
+  --settingsborder: #ccc;
 }
 
 /* Classic Theme - Specific overrides */
@@ -445,9 +445,29 @@ textarea {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 13.5px 16px;
+  padding: 12.5px 16px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+/* Settings button rotation animation */
+#settingsBtn {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+}
+
+#settingsBtn:hover {
+  transform: rotate(90deg);
+}
+
+#settingsBtn svg {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+  display: block;
+}
+
+#settingsBtn:active svg {
+  transform: rotate(180deg);
 }
 
 .sidebar .muted {
