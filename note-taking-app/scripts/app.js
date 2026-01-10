@@ -2421,7 +2421,15 @@ window.startImportProcess = function () {
     if (state.settings.autoSave === undefined) state.settings.autoSave = false;
 
     // Restore sidebar width
+    // MIGRATION: Update legacy default 280px to new 230px
+    if (state.settings.sidebarWidth == 280) { // Use loose equality to catch "280"
+      console.log("Migrating sidebar width from 280 to 230");
+      state.settings.sidebarWidth = 230;
+      Storage.saveSettings(state.settings); // Persist migration immediately
+    }
+
     if (state.settings.sidebarWidth && !state.settings.sidebarCollapsed) {
+// continue...
       el.sidebar.style.width = state.settings.sidebarWidth + "px";
 
       // Apply narrow class if width is small
@@ -8376,11 +8384,11 @@ window.startImportProcess = function () {
     loadTodos();
   }
 
-  // Sidebar resizer - drag to resize between 280px (min) and 900px (max)
+  // Sidebar resizer - drag to resize between 230px (min) and 900px (max)
   {
     const sidebarResizer = document.getElementById("sidebarResizer");
     const sidebar = document.getElementById("sidebar");
-    const MIN_WIDTH = 280;
+    const MIN_WIDTH = 230;
     const MAX_WIDTH = 900;
     let isResizing = false;
     let startX = 0;
@@ -8429,6 +8437,7 @@ window.startImportProcess = function () {
 
       // Save sidebar width
       const width = parseInt(sidebar.style.width) || MIN_WIDTH;
+      console.log(`Saving sidebar width: ${width}`);
       state.settings.sidebarWidth = width;
       Storage.saveSettings(state.settings);
     };

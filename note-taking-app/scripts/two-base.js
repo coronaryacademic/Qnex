@@ -4735,7 +4735,7 @@
         if (isCollapsed) {
           // Expand sidebar
           const sidebarWidth =
-            (state.settings && state.settings.sidebarWidth) || 280;
+            (state.settings && state.settings.sidebarWidth) || 230;
           sidebar.style.width = sidebarWidth + "px";
           sidebar.classList.remove("collapsed");
           sidebar.classList.remove("narrow");

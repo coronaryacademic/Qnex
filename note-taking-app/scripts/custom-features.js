@@ -213,9 +213,9 @@ function toggleFullscreen() {
   const sidebar = document.getElementById("sidebar");
   if (isFullscreen) {
     document.body.classList.add("fullscreen");
-    // Reset sidebar to 280px when entering fullscreen
+    // Reset sidebar to 230px when entering fullscreen
     if (sidebar) {
-      sidebar.style.width = "280px";
+      sidebar.style.width = "230px";
     }
     createHoverZones();
   } else {

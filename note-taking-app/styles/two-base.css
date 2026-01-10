@@ -292,7 +292,7 @@
 .note-tab {
   padding: 0.5rem 1.8rem;
   border-radius: 3px 3px 0 0;
-  cursor: default;
+  cursor: pointer;
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -355,7 +355,8 @@
   right: 0.3rem;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 1;
+  opacity: 0;
+  pointer-events: none;
   padding: 0.25rem;
   border-radius: 4px;
   transition: all 0.2s;
@@ -381,7 +382,8 @@
   flex-shrink: 0;
   cursor: pointer;
   color: var(--muted);
-  opacity: 1;
+  opacity: 0;
+  pointer-events: none;
   z-index: 2;
 }
 
@@ -394,6 +396,14 @@
 .note-tab-close:hover {
   background: var(--panel-hover);
   color: var(--danger);
+}
+
+.note-tab.active .note-tab-close,
+.note-tab.active .note-tab-menu-btn,
+.note-tab-close:focus,
+.note-tab-menu-btn:focus {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Unpin button for pinned tabs */
