@@ -50,12 +50,16 @@ const QuestionBase = {
     this.el.newBtn = document.getElementById("questionActionBtn");
     this.el.backBtn = document.getElementById("backToMainFromQuestions");
     this.el.openBtn = document.getElementById("openQuestionsBtn");
+    this.el.floatBtn = document.getElementById("openQuestionsFloatBtn");
   },
 
   bindEvents() {
     // Navigation
     if (this.el.openBtn) {
       this.el.openBtn.addEventListener("click", () => this.open());
+    }
+    if (this.el.floatBtn) {
+      this.el.floatBtn.addEventListener("click", () => this.open());
     }
     if (this.el.backBtn) {
       this.el.backBtn.addEventListener("click", () => this.close());

@@ -9,6 +9,7 @@
   flex-direction: column;
   background: var(--bg);
   overflow: hidden;
+  position: relative;
 }
 
 /* Breadcrumb Navigation */
