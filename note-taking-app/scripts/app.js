@@ -5051,22 +5051,22 @@ window.startImportProcess = function () {
                   <div class="theme-grid">
                     <div class="theme-card" data-theme="dark">
                       <div class="theme-preview">
-                        <div class="sidebar-prev" style="background:#111; border-right:1px solid #333;"></div>
-                        <div class="main-prev" style="background:#1a1a1a;"></div>
+                        <div class="sidebar-prev" style="background:#1a1a1a; border-right:1px solid #333;"></div>
+                        <div class="main-prev" style="background:#111;"></div>
                       </div>
                       <span class="theme-label">Dark</span>
                     </div>
                     <div class="theme-card" data-theme="light">
                       <div class="theme-preview">
-                        <div class="sidebar-prev" style="background:#f3f4f6; border-right:1px solid #e5e7eb;"></div>
-                        <div class="main-prev" style="background:#fff;"></div>
+                        <div class="sidebar-prev" style="background:#ffffff; border-right:1px solid #e5e7eb;"></div>
+                        <div class="main-prev" style="background:#e9e9e9;"></div>
                       </div>
                       <span class="theme-label">Light</span>
                     </div>
                     <div class="theme-card" data-theme="classic">
                        <div class="theme-preview">
-                        <div class="sidebar-prev" style="background:#e0e0e0; border-right:1px solid #999;"></div>
-                        <div class="main-prev" style="background:#c0c0c0;"></div>
+                        <div class="sidebar-prev" style="background:#555; border-right:1px solid #999;"></div>
+                        <div class="main-prev" style="background:#e9e9e9;"></div>
                       </div>
                       <span class="theme-label">Classic</span>
                     </div>
