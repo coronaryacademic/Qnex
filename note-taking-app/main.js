@@ -28,6 +28,7 @@ const FILES = {
   folders: path.join(dataDir, "folders.json"),
   settings: path.join(dataDir, "settings.json"),
   trash: path.join(dataDir, "trash.json"),
+  questions: path.join(dataDir, "questions.json"),
 };
 
 // Read file with fallback
@@ -435,6 +436,14 @@ ipcMain.handle("read-trash", async () => {
 
 ipcMain.handle("write-trash", async (event, data) => {
   return await writeFile(FILES.trash, data);
+});
+
+ipcMain.handle("read-questions", async () => {
+  return await readFile(FILES.questions, []);
+});
+
+ipcMain.handle("write-questions", async (event, data) => {
+  return await writeFile(FILES.questions, data);
 });
 
 ipcMain.handle("get-data-dir", async () => {

@@ -23,6 +23,10 @@ try {
     readTrash: () => ipcRenderer.invoke('read-trash'),
     writeTrash: (data) => ipcRenderer.invoke('write-trash', data),
 
+    // Questions
+    readQuestions: () => ipcRenderer.invoke('read-questions'),
+    writeQuestions: (data) => ipcRenderer.invoke('write-questions', data),
+
     // Utility
     getDataDir: () => ipcRenderer.invoke('get-data-dir'),
     openDataDirectory: () => ipcRenderer.invoke('open-data-directory'),

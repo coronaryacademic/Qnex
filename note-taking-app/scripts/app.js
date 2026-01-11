@@ -178,6 +178,28 @@ const Storage = {
     }
   },
 
+  async loadQuestions() {
+    if (this.isElectron) {
+      if (typeof window.electronAPI.readQuestions === "function") {
+         return await window.electronAPI.readQuestions();
+      }
+    }
+    // Fallback/Browser
+    const stored = localStorage.getItem("app-questions");
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  async saveQuestions(data) {
+    if (this.isElectron) {
+      if (typeof window.electronAPI.writeQuestions === "function") {
+         await window.electronAPI.writeQuestions(data);
+         return;
+      }
+    }
+    // Fallback/Browser
+    localStorage.setItem("app-questions", JSON.stringify(data));
+  },
+
   async loadTrash() {
     if (this.useFileSystem) {
       return await fileSystemService.loadTrash();

@@ -37,7 +37,7 @@
 }
 
 .question-sidebar .sidebar-header {
-  padding: 9.5px 16px;
+  padding: 12.5px 16px;
   border-bottom: 1px solid var(--border);
   display: flex !important;
   justify-content: flex-start !important; /* Override main sidebar's flex-end */
@@ -76,9 +76,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 2rem;
+  padding: 8px 1rem;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--panel);
 }
 
 .question-title-input {
@@ -283,4 +283,132 @@ textarea:focus {
 .question-sidebar {
   position: relative; /* Ensure resizing works relative to this */
   pointer-events: auto;
+}
+
+/* Sidebar Sections */
+.q-section {
+  margin-bottom: 0.5rem;
+}
+
+.q-section-header {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+.q-sidebar-header {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-top: 10px;
+}
+
+/* Folders */
+.q-folder {
+  display: flex;
+  flex-direction: column;
+}
+
+.q-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.q-folder-header:hover {
+  background: var(--panel-hover);
+}
+
+.folder-chevron {
+  transition: transform 0.2s;
+  color: var(--muted);
+}
+
+.folder-chevron.open {
+  transform: rotate(90deg);
+}
+
+.folder-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 2px 6px;
+  background: var(--bg);
+  border-radius: 99px;
+}
+
+.q-folder-content {
+  padding-left: 0rem;
+}
+
+.q-folder-content .question-item {
+  padding-left: 1.8rem; /* Indent questions in folder */
+}
+
+/* Context Menu */
+.q-ctx-menu {
+  position: fixed;
+  width: 180px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  padding: 4px;
+  animation: fadeIn 0.1s ease;
+}
+
+.q-ctx-menu.hidden {
+  display: none;
+}
+
+.q-ctx-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  border-radius: 4px;
+  transition: all 0.1s;
+}
+
+.q-ctx-item:hover {
+  background: var(--hover);
+}
+
+.q-ctx-item.delete {
+  color: var(--danger, #ef4444);
+}
+
+.q-ctx-item.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.q-ctx-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
