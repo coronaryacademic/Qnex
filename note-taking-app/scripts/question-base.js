@@ -62,6 +62,10 @@ const QuestionBase = {
     this.el.optionsContainer = document.getElementById("optionsContainer");
     
     this.el.addOptionBtn = document.getElementById("addOptionBtn");
+    
+    // Toggle Btn
+    this.el.toggleSidebarBtn = document.getElementById("toggleQuestionSidebarBtn");
+
     this.el.saveBtn = document.getElementById("saveQuestionBtn");
     this.el.newBtn = document.getElementById("questionActionBtn");
     this.el.backBtn = document.getElementById("backToMainFromQuestions");
@@ -100,7 +104,12 @@ const QuestionBase = {
   },
 
   bindEvents() {
-    // Navigation
+    // Sidebar Toggle
+    if (this.el.toggleSidebarBtn) {
+        this.el.toggleSidebarBtn.addEventListener("click", () => this.toggleSidebar());
+    }
+
+    // Question Navigation
     if (this.el.openBtn) this.el.openBtn.addEventListener("click", () => this.open());
     if (this.el.floatBtn) this.el.floatBtn.addEventListener("click", () => this.open());
     if (this.el.backBtn) this.el.backBtn.addEventListener("click", () => this.close());
@@ -267,25 +276,57 @@ const QuestionBase = {
   },
   
   createNewQuestion(folderId = null) {
-    const newQ = {
-      id: "q-" + Date.now(),
-      title: "New Question",
-      text: "",
-      options: [
-        { id: 1, text: "Option A", isCorrect: false },
-        { id: 2, text: "Option B", isCorrect: false }
-      ],
-      explanation: "",
-      folderId: folderId,
-      starred: false,
-      updatedAt: new Date().toISOString()
-    };
-    
-    this.state.questions.unshift(newQ);
-    this.activeQuestionId = newQ.id;
-    this.saveData();
-    this.loadQuestionIntoEditor(newQ);
+      const newQ = {
+          id: Date.now().toString(),
+          title: "",
+          text: "",
+          options: [],
+          folderId: folderId,
+          createdAt: new Date().toISOString(),
+          starred: false
+      };
+      this.state.questions.push(newQ);
+      this.activeQuestionId = newQ.id;
+      this.saveData(); // Save initially to persist ID
+      this.renderSidebar();
+      this.loadQuestionIntoEditor(newQ);
   },
+
+  loadQuestionIntoEditor(q) {
+      this.activeQuestionId = q.id;
+      this.el.titleInput.value = q.title || "";
+      this.el.titleInput.disabled = false;
+      this.el.titleInput.placeholder = "Question Title (optional)";
+      
+      this.el.textInput.innerHTML = q.text || "";
+      this.el.saveBtn.disabled = false;
+      
+      // Clear options
+      this.el.optionsContainer.innerHTML = '<label>Answer Options</label>';
+      (q.options || []).forEach(opt => this.addOptionUI(opt.text, opt.isCorrect, opt.id)); // Kept addOptionUI as it was in original
+      
+      document.getElementById("questionExplanation").value = q.explanation || ""; // Assuming this is this.el.explanationInput
+
+      this.el.editor.classList.remove("hidden");
+      this.el.emptyState.style.display = "none";
+      
+      // Update Selection in Sidebar
+      this.renderSidebar();
+  },
+  
+  closeQuestion() {
+      this.activeQuestionId = null;
+      this.el.editor.classList.add("hidden");
+      this.el.emptyState.style.display = "flex";
+      
+      // Reset Header
+      this.el.titleInput.value = "";
+      this.el.titleInput.disabled = true;
+      this.el.titleInput.placeholder = "Select a question or create new";
+      this.el.saveBtn.disabled = true;
+      
+      this.renderSidebar();
+  },  
 
   saveCurrentQuestion() {
     if (!this.activeQuestionId) return;
@@ -514,24 +555,120 @@ const QuestionBase = {
       container.appendChild(el);
   },
 
+  createContextMenu() {
+    // Remove existing if any
+    const existing = document.getElementById("questionCtxMenu");
+    if (existing) existing.remove();
+
+    const menu = document.createElement("div");
+    menu.id = "questionCtxMenu";
+    menu.className = "ctx-menu hidden"; // Use global class
+    menu.style.zIndex = "9999";
+    
+    // Structure matches main app context menu
+    menu.innerHTML = `
+      <div class="ctx-section">
+        <button class="ctx-btn" data-action="rename">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          Rename
+        </button>
+        <button class="ctx-btn" data-action="star">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+          <span class="star-text">Star</span>
+        </button>
+      </div>
+      <div class="ctx-section">
+        <button class="ctx-btn delete-btn" data-action="delete" style="color: var(--danger, #ef4444);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Delete
+        </button>
+      </div>
+    `;
+    
+    document.body.appendChild(menu);
+    this.el.ctxMenu = menu;
+    
+    // Bind clicks
+    menu.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const action = btn.dataset.action;
+        const targetId = this.el.ctxMenu.dataset.targetId;
+        const type = this.el.ctxMenu.dataset.targetType;
+        this.handleContextAction(action, targetId, type);
+        this.hideContextMenu(); // Close after action
+    });
+  },
+
   showContextMenu(x, y, id, type) {
-      this.el.ctxMenu.style.top = `${y}px`;
-      this.el.ctxMenu.style.left = `${x}px`;
-      this.el.ctxMenu.classList.remove("hidden");
-      this.el.ctxMenu.dataset.targetId = id;
-      this.el.ctxMenu.dataset.targetType = type;
-      
-      // Update menu items based on type
-      const starBtn = this.el.ctxMenu.querySelector('[data-action="star"]');
-      if (type === 'folder') {
-          starBtn.style.display = 'none';
-      } else {
-          starBtn.style.display = 'block';
-      }
+    // 1. Highlight Selection Logic
+    // Remove highlight from all others first
+    const allItems = this.el.list.querySelectorAll(".question-item, .q-folder-header");
+    allItems.forEach(el => el.classList.remove("context-active"));
+
+    // Find and highlight target
+    let targetEl;
+    if (type === 'folder') {
+        targetEl = this.el.list.querySelector(`.q-folder-header[data-id="${id}"]`);
+    } else {
+        targetEl = this.el.list.querySelector(`.question-item[data-id="${id}"]`);
+    }
+    if (targetEl) targetEl.classList.add("context-active");
+
+    // 2. Configure Menu
+    this.el.ctxMenu.dataset.targetId = id;
+    this.el.ctxMenu.dataset.targetType = type;
+    
+    // Star button logic
+    const starBtn = this.el.ctxMenu.querySelector('[data-action="star"]');
+    const starText = starBtn.querySelector(".star-text");
+    
+    if (type === 'folder') {
+        // Folders don't support star in this version logic
+        starBtn.style.display = 'none';
+        // Remove empty section if needed, but easier to just hide button
+        // Check if section is empty? The section has 'Rename' too, so it stays.
+    } else {
+        starBtn.style.display = 'flex';
+        const q = this.state.questions.find(q => q.id === id);
+        if (q) {
+            starText.textContent = q.starred ? "Unstar" : "Star";
+            // Optional: Fill icon if starred?
+             const svg = starBtn.querySelector("svg");
+            if (q.starred) {
+                 svg.setAttribute("fill", "currentColor");
+            } else {
+                 svg.setAttribute("fill", "none");
+            }
+        }
+    }
+
+    // 3. Position and Show
+    this.el.ctxMenu.style.top = `${y}px`;
+    this.el.ctxMenu.style.left = `${x}px`;
+    this.el.ctxMenu.classList.remove("hidden");
   },
 
   hideContextMenu() {
       if (this.el.ctxMenu) this.el.ctxMenu.classList.add("hidden");
+            // Clear Highlights
+      const allItems = this.el.list.querySelectorAll(".question-item, .q-folder-header");
+      allItems.forEach(el => el.classList.remove("context-active"));
+  },
+
+  async  toggleSidebar() {
+      this.el.sidebar.classList.toggle("collapsed");
+      // Optional: Save state to localStorage
+      // const isCollapsed = this.el.sidebar.classList.contains("collapsed");
+      // localStorage.setItem("q-sidebar-collapsed", isCollapsed);
   },
 
   async handleContextAction(action, id, type) {
