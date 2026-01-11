@@ -120,9 +120,15 @@ const QuestionBase = {
       if (!isResizing) return;
       const newWidth = startWidth + (e.clientX - startX);
       
-      // Update width
-      if (newWidth > 230 && newWidth < 600) {
+      // Update width (Limit 900 to match base sidebar)
+      if (newWidth > 230 && newWidth < 900) {
         this.el.sidebar.style.width = `${newWidth}px`;
+
+        // Sync with Base Sidebar
+        const baseSidebar = document.getElementById("sidebar");
+        if (baseSidebar) {
+           baseSidebar.style.width = `${newWidth}px`;
+        }
       }
     });
 
@@ -132,6 +138,12 @@ const QuestionBase = {
           this.el.sidebar.classList.remove("resizing");
           document.body.style.cursor = "default";
           this.saveSidebarWidth();
+          
+          // Sync persistence to base app
+          if (typeof window.updateSidebarWidth === "function") {
+             const width = parseInt(this.el.sidebar.style.width);
+             window.updateSidebarWidth(width);
+          }
         }
       });
     },

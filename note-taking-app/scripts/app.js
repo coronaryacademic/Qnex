@@ -8435,6 +8435,12 @@ window.startImportProcess = function () {
         Math.min(MAX_WIDTH, startWidth + deltaX)
       );
       sidebar.style.width = newWidth + "px";
+
+      // Sync with Question Bank Sidebar
+      const questionSidebar = document.getElementById("questionSidebar");
+      if (questionSidebar) {
+        questionSidebar.style.width = newWidth + "px";
+      }
     };
 
     const onMouseUp = () => {
@@ -8452,6 +8458,9 @@ window.startImportProcess = function () {
       console.log(`Saving sidebar width: ${width}`);
       state.settings.sidebarWidth = width;
       Storage.saveSettings(state.settings);
+      
+      // Also save for Question Bank to keep them in sync
+      localStorage.setItem("app-question-sidebar-width", width + "px");
     };
 
     sidebarResizer.addEventListener("mousedown", onMouseDown);
@@ -8571,6 +8580,21 @@ window.startImportProcess = function () {
   window.saveFolders = saveFolders;
   window.uid = uid;
   window.renderSidebar = renderSidebar;
+
+  // Helper to sync sidebar width from outside (e.g. Question Bank)
+  window.updateSidebarWidth = function(width) {
+     const sidebar = document.getElementById("sidebar");
+     if (sidebar) {
+        sidebar.style.width = width + "px";
+     }
+     // Use state if available (it is in this scope)
+     if (typeof state !== 'undefined' && state.settings) {
+        state.settings.sidebarWidth = parseInt(width);
+        Storage.saveSettings(state.settings);
+     }
+     // Also sync the local storage key for question bank
+     localStorage.setItem("app-question-sidebar-width", width + "px");
+  };
 
   // Final Initialization Step: Restore Split View Session
   // We do this here because we are sure notes are loaded.
