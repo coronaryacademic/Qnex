@@ -7,6 +7,8 @@ const QuestionBase = {
     folders: [],
     activeQuestionId: null,
     expandedFolders: new Set(), // Set of folder IDs
+    selectedItems: new Set(), // Set of selected question IDs for multi-select
+    collapsedSections: new Set(), // Set of collapsed section names
   },
 
   el: {
@@ -34,11 +36,13 @@ const QuestionBase = {
 
   init() {
     console.log("Initializing Question Base...");
+    this.createBase(); // Ensure DOM exists
     this.cacheElements();
     this.bindEvents();
     this.initResizer();
-    this.loadData();
     this.loadSidebarWidth();
+    this.loadCollapsedSections(); // Load BEFORE data so state is ready for renderSidebar
+    this.loadData();
     
     // Global click to close context menu
     document.addEventListener("click", (e) => {
@@ -74,34 +78,119 @@ const QuestionBase = {
     this.el.resizer = document.getElementById("questionSidebarResizer");
     this.el.searchInput = document.getElementById("questionSearchInput");
     this.el.clearSearchBtn = document.getElementById("clearQuestionSearch");
+    // If sidebar was just created, trashBtn needs to be found
+    if (!this.el.trashBtn && this.el.sidebar) {
+        this.el.trashBtn = this.el.sidebar.querySelector(".editor-trash-btn");
+    }
 
     // create context menu element
     this.createContextMenu();
   },
 
-  createContextMenu() {
-    const menu = document.createElement("div");
-    menu.className = "q-ctx-menu hidden";
-    menu.innerHTML = `
-      <div class="q-ctx-item" data-action="rename">Rename</div>
-      <div class="q-ctx-item" data-action="star">Star / Unstar</div>
-      <div class="q-ctx-divider"></div>
-      <div class="q-ctx-item delete" data-action="delete">Delete</div>
-    `;
-    document.body.appendChild(menu);
-    this.el.ctxMenu = menu;
+  createBase() {
+    if (document.getElementById("questionBase")) return; // Already exists
+
+    // Inject styles if needed (assuming link is present, otherwise simple styles here)
     
-    // Bind context menu clicks
-    menu.addEventListener("click", (e) => {
-        const item = e.target.closest(".q-ctx-item");
-        if (!item) return;
-        const action = item.dataset.action;
-        const targetId = this.el.ctxMenu.dataset.targetId;
-         const type = this.el.ctxMenu.dataset.targetType; // 'question' or 'folder'
-        this.handleContextAction(action, targetId, type);
-        this.hideContextMenu();
-    });
+    const base = document.createElement("div");
+    base.id = "questionBase";
+    base.className = "question-base hidden";
+
+    // Sidebar
+    const sidebar = document.createElement("div");
+    sidebar.id = "questionSidebar";
+    sidebar.className = "sidebar question-sidebar";
+    sidebar.style.display = "flex";
+    sidebar.style.flexDirection = "column";
+
+    // Search Bar
+    const searchDiv = document.createElement("div");
+    searchDiv.className = "sidebar-search";
+    searchDiv.innerHTML = `
+      <div class="search-container">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="questionSearchInput" placeholder="Search questions...">
+        <button class="editor-trash-btn" title="Trash">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+             <polyline points="3 6 5 6 21 6"></polyline>
+             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+    sidebar.appendChild(searchDiv);
+
+    // List
+    const list = document.createElement("div");
+    list.id = "questionList";
+    list.className = "sidebar-content";
+    sidebar.appendChild(list);
+
+    // Resizer
+    const resizer = document.createElement("div");
+    resizer.id = "questionSidebarResizer";
+    resizer.className = "sidebar-resizer";
+    sidebar.appendChild(resizer);
+
+    base.appendChild(sidebar);
+
+    // Content
+    const content = document.createElement("div");
+    content.id = "questionContent";
+    content.className = "question-content";
+    
+    // Editor + Empty State HTML structure
+    content.innerHTML = `
+        <div id="questionEmptyState" class="question-empty-state">
+           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+             <circle cx="12" cy="12" r="10"></circle>
+             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+             <line x1="12" y1="17" x2="12.01" y2="17"></line>
+           </svg>
+           <h3>Select a Question</h3>
+           <p>Choose a question from the sidebar or likely invalid create a new one to get started.</p>
+        </div>
+        <div id="questionEditor" class="question-editor hidden">
+           <div class="editor-header">
+              <input type="text" id="questionTitleInput" class="question-title-input" placeholder="Question Title (optional)" disabled>
+              <div class="editor-actions">
+                 <button id="saveQuestionBtn" class="primary-btn" disabled>Save</button>
+              </div>
+           </div>
+           <div class="editor-body">
+               <div id="questionTextInput" class="question-text-input" contenteditable="true"></div>
+               <div class="editor-section">
+                   <label>Explanation</label>
+                   <textarea id="questionExplanation" placeholder="Add explanation..."></textarea>
+               </div>
+               <div class="editor-section">
+                   <div id="optionsContainer"></div>
+                   <button id="addOptionBtn" class="secondary-btn">+ Add Option</button>
+               </div>
+           </div>
+        </div>
+        <div class="mobile-nav-btns" style="display:none;"> <!-- placeholders if needed -->
+             <button id="backToMainFromQuestions">Back</button>
+        </div>
+    `;
+    base.appendChild(content);
+    
+    // Action Button (Floating +)
+    const fab = document.createElement("button");
+    fab.id = "questionActionBtn";
+    fab.className = "floating-action-btn";
+    fab.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+    base.appendChild(fab);
+
+    document.body.appendChild(base);
+    
+    // Note: Toggle Button and other global buttons are assumed to be in the main app toolbar
   },
+
+
 
   bindEvents() {
     // Sidebar Toggle
@@ -134,7 +223,13 @@ const QuestionBase = {
     }
     
     if (this.el.saveBtn) this.el.saveBtn.addEventListener("click", () => this.saveCurrentQuestion());
+
     if (this.el.addOptionBtn) this.el.addOptionBtn.addEventListener("click", () => this.addOptionUI());
+    
+    // Trash
+    if (this.el.trashBtn) {
+        this.el.trashBtn.addEventListener("click", () => this.showTrashModal());
+    }
 
     // Search
     if (this.el.searchInput) this.el.searchInput.addEventListener("input", () => this.renderSidebar());
@@ -144,6 +239,37 @@ const QuestionBase = {
         this.renderSidebar();
       });
     }
+    
+    // Context Menu for Sidebar (Handles list items + empty space)
+    if (this.el.sidebar) {
+        this.el.sidebar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent main app context menu
+            
+            const item = e.target.closest(".question-item, .q-folder-header");
+            const targetId = item ? item.dataset.id : null;
+            
+            // Check if clicking specific item type
+            let type = 'empty';
+            if (item) {
+                if (item.classList.contains("q-folder-header")) type = 'folder';
+                else type = 'question';
+            }
+            
+            this.showContextMenu(e.clientX, e.clientY, targetId, type);
+        });
+    }
+
+    // Delete key handler for multi-selection
+    document.addEventListener("keydown", (e) => {
+        // Only handle if question base is visible
+        if (!this.el.base || this.el.base.classList.contains("hidden")) return;
+        
+        if (e.key === "Delete" && this.state.selectedItems.size > 0) {
+            e.preventDefault();
+            this.deleteSelectedItems();
+        }
+    });
   },
 
   initResizer() {
@@ -189,6 +315,23 @@ const QuestionBase = {
 
   saveSidebarWidth() {
     if (this.el.sidebar) localStorage.setItem("app-question-sidebar-width", this.el.sidebar.style.width);
+  },
+
+  loadCollapsedSections() {
+    const stored = localStorage.getItem("app-question-collapsed-sections");
+    if (stored) {
+      try {
+        const arr = JSON.parse(stored);
+        this.state.collapsedSections = new Set(arr);
+      } catch(e) {
+        this.state.collapsedSections = new Set();
+      }
+    }
+  },
+
+  saveCollapsedSections() {
+    const arr = [...this.state.collapsedSections];
+    localStorage.setItem("app-question-collapsed-sections", JSON.stringify(arr));
   },
 
   async loadData() {
@@ -254,17 +397,20 @@ const QuestionBase = {
 
   open() {
     this.el.base.classList.remove("hidden");
-    if (this.state.questions.length === 0 && this.state.folders.length === 0) {
-        this.createNewQuestion();
-    }
+    // Don't auto-create question - let user click the + button
   },
 
   close() {
     this.el.base.classList.add("hidden");
   },
 
-  createNewFolder() {
-      const name = prompt("Folder Name:");
+  async createNewFolder() {
+      let name;
+      if (typeof window.modalPrompt === 'function') {
+          name = await window.modalPrompt("New Folder", "Folder Name");
+      } else {
+          name = prompt("Folder Name:");
+      }
       if (!name) return;
       const newFolder = {
           id: "fq-" + Date.now(),
@@ -292,27 +438,7 @@ const QuestionBase = {
       this.loadQuestionIntoEditor(newQ);
   },
 
-  loadQuestionIntoEditor(q) {
-      this.activeQuestionId = q.id;
-      this.el.titleInput.value = q.title || "";
-      this.el.titleInput.disabled = false;
-      this.el.titleInput.placeholder = "Question Title (optional)";
-      
-      this.el.textInput.innerHTML = q.text || "";
-      this.el.saveBtn.disabled = false;
-      
-      // Clear options
-      this.el.optionsContainer.innerHTML = '<label>Answer Options</label>';
-      (q.options || []).forEach(opt => this.addOptionUI(opt.text, opt.isCorrect, opt.id)); // Kept addOptionUI as it was in original
-      
-      document.getElementById("questionExplanation").value = q.explanation || ""; // Assuming this is this.el.explanationInput
 
-      this.el.editor.classList.remove("hidden");
-      this.el.emptyState.style.display = "none";
-      
-      // Update Selection in Sidebar
-      this.renderSidebar();
-  },
   
   closeQuestion() {
       this.activeQuestionId = null;
@@ -429,67 +555,128 @@ const QuestionBase = {
         return titleMatch || textMatch || optionsMatch;
     };
 
-    // 1. Render Starred Section (if any starred and matching)
-    const starred = this.state.questions.filter(q => q.starred && matches(q));
-    if (starred.length > 0) {
-        this.renderSection("Starred", starred, "star");
-    }
-
-    // 2. Render Folders
-    if (!query) { // Only show folders if not searching (or show folders that match? Simplest is flatten on search)
-         this.state.folders.forEach(folder => {
-             const folderQs = this.state.questions.filter(q => q.folderId === folder.id);
-             this.renderFolder(folder, folderQs);
-         });
-    }
-
-    // 3. Render Uncategorized/All
-    let others = [];
     if (query) {
-        // Flattened view for search
-        others = this.state.questions.filter(q => matches(q));
-         // Logic: if search is active, show ALL matches in one list? 
-         // Or keep sections? Users usually prefer flattened list on search.
-         this.state.questions.forEach(q => {
-             if (matches(q)) {
-                 this.renderQuestionItem(q, this.el.list);
-             }
-         });
-         
-         if (this.el.list.children.length === 0) {
+         // Search View - Flat Results
+         const results = this.state.questions.filter(q => matches(q));
+         if (results.length > 0) {
+             this.renderSection("Search Results", results, "search");
+         } else {
              this.el.list.innerHTML = '<div class="sidebar-empty-state">No matching questions</div>';
          }
          return;
-    } else {
-        // Uncategorized
-        others = this.state.questions.filter(q => !q.folderId);
-        if (others.length > 0) {
-            // Label "All Questions" or just list them? 
-            // If we have folders, maybe separate "Uncategorized" header?
-            if (this.state.folders.length > 0) {
-                const header = document.createElement("div");
-                header.className = "q-sidebar-header";
-                header.textContent = "Uncategorized";
-                this.el.list.appendChild(header);
-            }
-            others.forEach(q => this.renderQuestionItem(q, this.el.list));
-        }
     }
 
-    if (this.state.questions.length === 0) {
-        this.el.list.innerHTML = '<div class="sidebar-empty-state">No questions yet</div>';
-    }
+    // Default View: 3 Persistent Sections
+
+    // 1. All Questions (Uncategorized)
+    const uncategorized = this.state.questions.filter(q => !q.folderId);
+    this.renderSection("All Questions", uncategorized, "list", "No questions");
+
+    // 2. Starred
+    const starred = this.state.questions.filter(q => q.starred);
+    this.renderSection("Starred", starred, "star", "No starred questions");
+
+    // 3. Folders
+    this.renderFoldersSection();
   },
 
-  renderSection(title, questions, iconType) {
+  renderFoldersSection() {
+     const section = document.createElement("div");
+     const isCollapsed = this.state.collapsedSections.has("Folders");
+     section.className = `sidebar-section ${isCollapsed ? "collapsed" : ""}`;
+     
+     const header = document.createElement("div");
+     header.className = "sidebar-section-header-text";
+     header.innerHTML = `
+        <svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Folders</span>
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+     `;
+     header.onclick = () => {
+         section.classList.toggle("collapsed");
+         if (section.classList.contains("collapsed")) {
+             this.state.collapsedSections.add("Folders");
+         } else {
+             this.state.collapsedSections.delete("Folders");
+         }
+         this.saveCollapsedSections();
+     };
+
+     const content = document.createElement("div");
+     content.className = "sidebar-section-content";
+
+     const folders = this.state.folders;
+     if (folders.length === 0) {
+         content.innerHTML = '<div class="section-empty-text">No folders</div>';
+     } else {
+         folders.forEach(folder => {
+             const folderQs = this.state.questions.filter(q => q.folderId === folder.id);
+             this.renderFolderItem(folder, folderQs, content);
+         });
+     }
+
+     section.appendChild(header);
+     section.appendChild(content);
+     this.el.list.appendChild(section);
+  },
+
+  renderSection(title, questions, iconType, emptyMsg = null) {
       const section = document.createElement("div");
-      section.className = "q-section";
-      section.innerHTML = `<div class="q-section-header">${title}</div>`;
-      questions.forEach(q => this.renderQuestionItem(q, section));
+      const isCollapsed = this.state.collapsedSections.has(title);
+      section.className = `sidebar-section ${isCollapsed ? "collapsed" : ""}`; 
+
+      const header = document.createElement("div");
+      header.className = "sidebar-section-header-text";
+      
+      let icon = "";
+      if (iconType === "star") {
+          icon = `<svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+      } else if (iconType === "list") {
+          // Use Notebook/Page with lines icon for "All Questions"
+          icon = `<svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><line x1="8" y1="7" x2="16" y2="7"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
+      } else if (iconType === "search") {
+           icon = `<svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+      } else {
+           icon = `<svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+      }
+
+      header.innerHTML = `
+          ${icon}
+          <span>${title}</span>
+          <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+      `;
+      header.onclick = () => {
+          section.classList.toggle("collapsed");
+          // Save collapsed state
+           if (section.classList.contains("collapsed")) {
+               this.state.collapsedSections.add("Folders");
+           } else {
+               this.state.collapsedSections.delete("Folders");
+           }
+          this.saveCollapsedSections();
+      };
+
+      const content = document.createElement("div");
+      content.className = "sidebar-section-content";
+      
+      if (questions.length === 0 && emptyMsg) {
+          content.innerHTML = `<div class="section-empty-text">${emptyMsg}</div>`;
+      } else {
+          questions.forEach(q => this.renderQuestionItem(q, content));
+      }
+
+      section.appendChild(header);
+      section.appendChild(content);
       this.el.list.appendChild(section);
   },
 
-  renderFolder(folder, questions) {
+  renderFolderItem(folder, questions, container) {
       const isExpanded = this.state.expandedFolders.has(folder.id);
       const folderEl = document.createElement("div");
       folderEl.className = "q-folder";
@@ -510,39 +697,86 @@ const QuestionBase = {
       const header = folderEl.querySelector(".q-folder-header");
       const content = folderEl.querySelector(".q-folder-content");
       
-      // Toggle
-      header.addEventListener("click", (e) => {
-          if (this.state.expandedFolders.has(folder.id)) {
+      header.onclick = (e) => {
+          e.stopPropagation();
+          if (isExpanded) {
               this.state.expandedFolders.delete(folder.id);
-              content.classList.add("hidden");
-              header.querySelector(".folder-chevron").classList.remove("open");
           } else {
               this.state.expandedFolders.add(folder.id);
-              content.classList.remove("hidden");
-              header.querySelector(".folder-chevron").classList.add("open");
           }
-      });
-      
-      // Context Menu for Folder
+          this.renderSidebar();
+      };
+
+      // Context Menu
       header.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           this.showContextMenu(e.clientX, e.clientY, folder.id, 'folder');
       });
 
-      questions.forEach(q => this.renderQuestionItem(q, content));
-      this.el.list.appendChild(folderEl);
+      if (isExpanded) {
+          questions.forEach(q => this.renderQuestionItem(q, content));
+      }
+      
+      container.appendChild(folderEl);
+
+      // Folder Drop Zone
+      folderEl.ondragover = (e) => {
+          e.preventDefault();
+          e.currentTarget.classList.add('drag-over');
+      };
+      folderEl.ondragleave = (e) => {
+          e.currentTarget.classList.remove('drag-over');
+      };
+      folderEl.ondrop = async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget.classList.remove('drag-over');
+          
+          try {
+              const data = JSON.parse(e.dataTransfer.getData("application/json"));
+              if (data.type === 'question' && data.id) {
+                   const q = this.state.questions.find(q => q.id === data.id);
+                   if (q && q.folderId !== folder.id) {
+                       q.folderId = folder.id;
+                       this.saveData();
+                       // Expand folder
+                       this.state.expandedFolders.add(folder.id);
+                       this.renderSidebar();
+                   }
+              }
+          } catch(err) { console.error("Drop failed", err); }
+      };
   },
 
   renderQuestionItem(q, container) {
       const el = document.createElement("div");
-      el.className = `question-item ${q.id === this.activeQuestionId ? "active" : ""}`;
+      const isSelected = this.state.selectedItems.has(q.id);
+      el.className = `question-item ${q.id === this.activeQuestionId ? "active" : ""} ${isSelected ? "selected" : ""}`;
       el.dataset.id = q.id;
+      
       // Context Menu
       el.addEventListener("contextmenu", (e) => {
           e.preventDefault();
           this.showContextMenu(e.clientX, e.clientY, q.id, 'question');
       });
-      el.onclick = () => this.loadQuestionIntoEditor(q);
+      
+      // Click handler with Ctrl/Cmd support for multi-select
+      el.onclick = (e) => {
+          if (e.ctrlKey || e.metaKey) {
+              // Multi-select toggle
+              e.preventDefault();
+              if (this.state.selectedItems.has(q.id)) {
+                  this.state.selectedItems.delete(q.id);
+              } else {
+                  this.state.selectedItems.add(q.id);
+              }
+              this.renderSidebar();
+          } else {
+              // Single click - clear selection and open
+              this.state.selectedItems.clear();
+              this.loadQuestionIntoEditor(q);
+          }
+      };
 
       el.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${q.starred ? "gold" : "none"}" stroke="${q.starred ? "gold" : "currentColor"}" stroke-width="2">
@@ -552,51 +786,32 @@ const QuestionBase = {
         </svg>
         <div class="question-item-title">${q.title || "Untitled"}</div>
       `;
+      
+      // Match Base Layer Note Styles (adding sidebar-item class and structure tweaks)
+      el.className = `question-item sidebar-item ${q.id === this.activeQuestionId ? "active" : ""} ${isSelected ? "selected" : ""}`;
+      el.draggable = true;
+      
+      // Drag & Drop
+      el.ondragstart = (e) => {
+          e.dataTransfer.setData("application/json", JSON.stringify({ id: q.id, type: 'question' }));
+          el.classList.add('dragging');
+      };
+      el.ondragend = () => el.classList.remove('dragging');
+
       container.appendChild(el);
   },
 
   createContextMenu() {
-    // Remove existing if any
     const existing = document.getElementById("questionCtxMenu");
     if (existing) existing.remove();
 
     const menu = document.createElement("div");
     menu.id = "questionCtxMenu";
-    menu.className = "ctx-menu hidden"; // Use global class
+    menu.className = "ctx-menu hidden";
     menu.style.zIndex = "9999";
-    
-    // Structure matches main app context menu
-    menu.innerHTML = `
-      <div class="ctx-section">
-        <button class="ctx-btn" data-action="rename">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-          Rename
-        </button>
-        <button class="ctx-btn" data-action="star">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-          </svg>
-          <span class="star-text">Star</span>
-        </button>
-      </div>
-      <div class="ctx-section">
-        <button class="ctx-btn delete-btn" data-action="delete" style="color: var(--danger, #ef4444);">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-          Delete
-        </button>
-      </div>
-    `;
-    
     document.body.appendChild(menu);
     this.el.ctxMenu = menu;
     
-    // Bind clicks
     menu.addEventListener("click", (e) => {
         const btn = e.target.closest("button");
         if (!btn) return;
@@ -604,54 +819,108 @@ const QuestionBase = {
         const targetId = this.el.ctxMenu.dataset.targetId;
         const type = this.el.ctxMenu.dataset.targetType;
         this.handleContextAction(action, targetId, type);
-        this.hideContextMenu(); // Close after action
+        this.hideContextMenu(); 
     });
   },
 
   showContextMenu(x, y, id, type) {
-    // 1. Highlight Selection Logic
-    // Remove highlight from all others first
+    const isMultiSelect = this.state.selectedItems.size > 1 && (type === 'question' && this.state.selectedItems.has(id));
+    const isFolder = type === 'folder';
+    const isEmptySpace = type === 'empty';
+
+    // Highlight
     const allItems = this.el.list.querySelectorAll(".question-item, .q-folder-header");
     allItems.forEach(el => el.classList.remove("context-active"));
-
-    // Find and highlight target
-    let targetEl;
-    if (type === 'folder') {
-        targetEl = this.el.list.querySelector(`.q-folder-header[data-id="${id}"]`);
-    } else {
-        targetEl = this.el.list.querySelector(`.question-item[data-id="${id}"]`);
+    
+    if (!isEmptySpace && !isMultiSelect) {
+        let targetEl;
+        if (isFolder) targetEl = this.el.list.querySelector(`.q-folder-header[data-id="${id}"]`);
+        else targetEl = this.el.list.querySelector(`.question-item[data-id="${id}"]`);
+        if (targetEl) targetEl.classList.add("context-active");
     }
-    if (targetEl) targetEl.classList.add("context-active");
 
-    // 2. Configure Menu
-    this.el.ctxMenu.dataset.targetId = id;
+    this.el.ctxMenu.dataset.targetId = id || '';
     this.el.ctxMenu.dataset.targetType = type;
     
-    // Star button logic
-    const starBtn = this.el.ctxMenu.querySelector('[data-action="star"]');
-    const starText = starBtn.querySelector(".star-text");
+    // Build Menu
+    let html = '';
     
-    if (type === 'folder') {
-        // Folders don't support star in this version logic
-        starBtn.style.display = 'none';
-        // Remove empty section if needed, but easier to just hide button
-        // Check if section is empty? The section has 'Rename' too, so it stays.
+    if (isEmptySpace) {
+          html = `
+            <div class="ctx-section">
+                <button class="ctx-btn" data-action="refresh">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    Refresh
+                </button>
+            </div>
+            <div class="ctx-section">
+                <button class="ctx-btn" data-action="new-question">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    New Question
+                </button>
+                <button class="ctx-btn" data-action="new-folder">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                    New Folder
+                </button>
+            </div>
+          `;
+    } else if (isFolder) {
+         html = `
+            <div class="ctx-section">
+                <button class="ctx-btn" data-action="new-sub-question">
+                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    New Question Here
+                </button>
+            </div>
+            <div class="ctx-section">
+                <button class="ctx-btn" data-action="rename">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Rename
+                </button>
+            </div>
+            <div class="ctx-section">
+                <button class="ctx-btn delete-btn" data-action="delete" style="color: var(--danger, #ef4444);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Delete
+                </button>
+            </div>
+         `;
+    } else if (isMultiSelect) {
+         html = `
+            <div class="ctx-section">
+                <button class="ctx-btn delete-btn" data-action="delete-selected" style="color: var(--danger, #ef4444);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Delete ${this.state.selectedItems.size} items
+                </button>
+            </div>
+         `;
     } else {
-        starBtn.style.display = 'flex';
-        const q = this.state.questions.find(q => q.id === id);
-        if (q) {
-            starText.textContent = q.starred ? "Unstar" : "Star";
-            // Optional: Fill icon if starred?
-             const svg = starBtn.querySelector("svg");
-            if (q.starred) {
-                 svg.setAttribute("fill", "currentColor");
-            } else {
-                 svg.setAttribute("fill", "none");
-            }
-        }
+        // Single Question
+         const q = this.state.questions.find(q => q.id === id);
+         const isStarred = q && q.starred;
+         html = `
+            <div class="ctx-section">
+                <button class="ctx-btn" data-action="rename">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Rename
+                </button>
+                <button class="ctx-btn" data-action="star">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="${isStarred ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    ${isStarred ? "Unstar" : "Star"}
+                </button>
+            </div>
+            <div class="ctx-section">
+                <button class="ctx-btn delete-btn" data-action="delete" style="color: var(--danger, #ef4444);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Delete
+                </button>
+            </div>
+         `;
     }
-
-    // 3. Position and Show
+    
+    this.el.ctxMenu.innerHTML = html;
     this.el.ctxMenu.style.top = `${y}px`;
     this.el.ctxMenu.style.left = `${x}px`;
     this.el.ctxMenu.classList.remove("hidden");
@@ -659,42 +928,99 @@ const QuestionBase = {
 
   hideContextMenu() {
       if (this.el.ctxMenu) this.el.ctxMenu.classList.add("hidden");
-            // Clear Highlights
       const allItems = this.el.list.querySelectorAll(".question-item, .q-folder-header");
       allItems.forEach(el => el.classList.remove("context-active"));
   },
-
-  async  toggleSidebar() {
+  
+  async toggleSidebar() {
       this.el.sidebar.classList.toggle("collapsed");
-      // Optional: Save state to localStorage
-      // const isCollapsed = this.el.sidebar.classList.contains("collapsed");
-      // localStorage.setItem("q-sidebar-collapsed", isCollapsed);
+  },
+
+  resetEditor() {
+       this.activeQuestionId = null;
+       this.el.editor.classList.add("hidden");
+       this.el.emptyState.style.display = "flex";
+       if (this.el.titleInput) {
+           this.el.titleInput.value = "";
+           this.el.titleInput.disabled = true;
+           this.el.titleInput.placeholder = "Select a question or create new";
+       }
+       if (this.el.saveBtn) this.el.saveBtn.disabled = true;
+  },
+  
+  async deleteSelectedItems() {
+      const selectedIds = [...this.state.selectedItems];
+       if (selectedIds.length === 0) return;
+       
+       const deleteItems = async () => {
+           try {
+               const trash = await window.Storage.loadTrash();
+               
+               selectedIds.forEach(id => {
+                   const qIndex = this.state.questions.findIndex(q => q.id === id);
+                   if (qIndex !== -1) {
+                       const q = this.state.questions[qIndex];
+                       trash.push({ ...q, type: 'question', deletedAt: new Date().toISOString() });
+                       this.state.questions.splice(qIndex, 1);
+                       if (this.activeQuestionId === id) this.resetEditor();
+                   }
+               });
+               
+               await window.Storage.saveTrash(trash);
+           } catch(e) {
+               console.warn("Failed to sync to trash", e);
+           }
+           
+           this.state.selectedItems.clear();
+           this.saveData();
+           if (typeof window.updateTrashButton === "function") window.updateTrashButton();
+       };
+       
+       if (typeof window.TwoBase?.showDeleteConfirmation === "function") {
+           window.TwoBase.showDeleteConfirmation(selectedIds.length, deleteItems);
+       } else {
+           if (confirm(`Delete ${selectedIds.length} selected question(s)?`)) await deleteItems();
+       }
   },
 
   async handleContextAction(action, id, type) {
+      if (action === 'delete-selected') {
+          return this.deleteSelectedItems();
+      }
+      if (action === 'new-question') {
+          return this.createNewQuestion();
+      }
+      if (action === 'new-folder') {
+          return this.createNewFolder();
+      }
+      if (action === 'refresh') {
+          return this.renderSidebar();
+      }
+      
       if (type === 'question') {
           const qIndex = this.state.questions.findIndex(q => q.id === id);
           if (qIndex === -1) return;
           const q = this.state.questions[qIndex];
 
           if (action === 'delete') {
-              if (confirm("Delete this question?")) {
-                  // Sync to trash logic
-                  const trashItem = { ...q, type: 'question', deletedAt: new Date().toISOString() };
-                  try {
-                    const trash = await window.Storage.loadTrash();
-                    trash.push(trashItem);
-                    await window.Storage.saveTrash(trash);
-                  } catch(e) { console.warn("Failed to sync to trash", e); } // proceed anyway
+               const deleteQuestion = async () => {
+                   try {
+                     const trash = await window.Storage.loadTrash();
+                     trash.push({ ...q, type: 'question', deletedAt: new Date().toISOString() });
+                     await window.Storage.saveTrash(trash);
+                   } catch(e) {}
 
-                  this.state.questions.splice(qIndex, 1);
-                  if (this.activeQuestionId === id) {
-                      this.activeQuestionId = null;
-                      this.el.editor.classList.add("hidden");
-                      this.el.emptyState.style.display = "flex";
-                  }
-                  this.saveData();
-              }
+                   this.state.questions.splice(qIndex, 1);
+                   if (this.activeQuestionId === id) this.resetEditor();
+                   this.saveData();
+                   if (typeof window.updateTrashButton === "function") window.updateTrashButton();
+               };
+               
+               if (typeof window.TwoBase?.showDeleteConfirmation === "function") {
+                   window.TwoBase.showDeleteConfirmation(1, deleteQuestion);
+               } else {
+                   if (confirm("Delete this question?")) await deleteQuestion();
+               }
           } else if (action === 'rename') {
               const newTitle = prompt("Rename question:", q.title);
               if (newTitle) {
@@ -711,25 +1037,29 @@ const QuestionBase = {
           const folder = this.state.folders[fIndex];
           
           if (action === 'delete') {
-               if (confirm(`Delete folder "${folder.title}" and its questions?`)) {
-                   // Delete folder and questions inside? Or move questions to root?
-                   // Standard behavior: delete contents or ask. Let's delete contents for now to be simple but synced.
-                   const questionsInFolder = this.state.questions.filter(q => q.folderId === id);
-                   
-                   // Move to trash
+               const questionsInFolder = this.state.questions.filter(q => q.folderId === id);
+               const count = questionsInFolder.length + 1;
+               
+               const deleteFolder = async () => {
                     try {
                         const trash = await window.Storage.loadTrash();
                         questionsInFolder.forEach(q => {
                             trash.push({ ...q, type: 'question', deletedAt: new Date().toISOString() });
                         });
-                        // Also optional: archive folder itself?
+                        trash.push({ ...folder, type: 'folder', deletedAt: new Date().toISOString() });
                         await window.Storage.saveTrash(trash);
                     } catch(e) {}
 
-                   // Remove from state
                    this.state.questions = this.state.questions.filter(q => q.folderId !== id);
                    this.state.folders.splice(fIndex, 1);
                    this.saveData();
+                   if (typeof window.updateTrashButton === "function") window.updateTrashButton();
+               };
+               
+               if (typeof window.TwoBase?.showDeleteConfirmation === "function") {
+                   window.TwoBase.showDeleteConfirmation(count, deleteFolder);
+               } else {
+                   if (confirm(`Delete folder "${folder.title}" and its questions?`)) await deleteFolder();
                }
           } else if (action === 'rename') {
               const newTitle = prompt("Rename folder:", folder.title);
@@ -737,8 +1067,166 @@ const QuestionBase = {
                   folder.title = newTitle;
                   this.saveData();
               }
+          } else if (action === 'new-sub-question') {
+              this.createNewQuestion(id);
           }
       }
+  },
+
+  async showTrashModal() {
+      // Create Modal DOM using user provided structure (matching search-results-modal)
+      const overlay = document.createElement("div");
+      overlay.className = "modal-overlay";
+      overlay.style.cssText = "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; opacity: 0; transition: opacity 0.2s;";
+      
+      const content = document.createElement("div");
+      content.className = "search-results-modal"; // Reusing search results modal class for consistency
+      // Add inline styles to ensure it looks right even if class is missing some props
+      content.style.cssText = "background: var(--panel, #ffffff); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); width: 600px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; transform: scale(0.95); transition: transform 0.2s;";
+
+      // Header
+      const header = document.createElement("div");
+      header.className = "search-results-header";
+      header.style.cssText = "padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border);";
+      
+      // We'll update the innerHTML later with count
+      
+      // Load Trash Data
+      let trashItems = [];
+      try {
+          const allTrash = await window.Storage.loadTrash();
+          // Filter for questions and question folders
+          trashItems = allTrash.filter(t => t.type === 'question' || (t.type === 'folder' && t.id && String(t.id).startsWith('fq-')));
+      } catch (e) {
+          console.error("Failed to load trash", e);
+      }
+
+      const renderList = () => {
+          // Update Header
+          header.innerHTML = `
+            <h2 style="font-size: 1.1rem; font-weight: 600; color: var(--text); margin: 0;">Trash (${trashItems.length} items)</h2>
+            <div class="trash-actions" style="display: flex; gap: 8px; align-items: center;">
+              <button class="empty-all-btn" style="padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">Empty All</button>
+              <button class="close-modal-btn" style="background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          `;
+
+          // Bind Header Events
+          header.querySelector('.close-modal-btn').onclick = close;
+          const emptyBtn = header.querySelector('.empty-all-btn');
+          if (trashItems.length === 0) emptyBtn.style.display = 'none';
+          else {
+              emptyBtn.style.display = 'block';
+              emptyBtn.onclick = async () => {
+                  if (confirm("Are you sure you want to permanently delete all items in trash?")) {
+                      const allTrash = await window.Storage.loadTrash();
+                      const keep = allTrash.filter(t => !(t.type === 'question' || (t.type === 'folder' && t.id && String(t.id).startsWith('fq-'))));
+                      await window.Storage.saveTrash(keep);
+                      trashItems = [];
+                      renderList();
+                      if (typeof window.updateTrashButton === "function") window.updateTrashButton();
+                  }
+              };
+          }
+
+          // List Body
+          const body = document.createElement("div");
+          body.className = "search-results-list";
+          body.id = "trashList";
+          body.style.cssText = "flex: 1; overflow-y: auto; padding: 0;";
+
+          if (trashItems.length === 0) {
+              body.innerHTML = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--muted); text-align: center;">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 16px; opacity: 0.5;">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  <div style="font-size: 15px; font-weight: 500;">Trash is empty</div>
+              </div>`;
+          } else {
+               trashItems.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+               
+               trashItems.forEach(item => {
+                   const row = document.createElement("div");
+                   row.className = "search-result-item trash-result-item";
+                   row.style.cssText = "padding: 12px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: background 0.2s;";
+                   row.onmouseenter = () => row.style.background = "var(--hover, rgba(0,0,0,0.02))";
+                   row.onmouseleave = () => row.style.background = "transparent";
+                   
+                   const title = item.title || "Untitled";
+                   const dateStr = item.deletedAt ? new Date(item.deletedAt).toLocaleString() : 'Unknown';
+                   const typeLabel = item.type === 'folder' ? 'Folder' : 'Question';
+                   
+                   row.innerHTML = `
+                     <div style="flex: 1; min-width: 0;">
+                        <div class="search-result-title" style="cursor: default; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${title}</div>
+                        <div class="search-result-meta" style="font-size: 12px; color: var(--muted); margin-top: 2px;">${typeLabel} • Deleted: ${dateStr}</div>
+                     </div>
+                     <div class="trash-item-actions-inline" style="display: flex; gap: 8px;">
+                        <button class="restore-btn-inline" style="padding: 4px 10px; border: 1px solid var(--border); background: var(--bg-primary, #ffffff); color: var(--text); border-radius: 4px; font-size: 12px; cursor: pointer;">Restore</button>
+                        <button class="delete-forever-btn-inline" style="padding: 4px 10px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete Forever</button>
+                     </div>
+                   `;
+                   
+                   // Bind Row Actions
+                   const restoreBtn = row.querySelector('.restore-btn-inline');
+                   restoreBtn.onclick = async () => {
+                       if (item.type === 'folder') {
+                           this.state.folders.push(item);
+                       } else {
+                           this.state.questions.push(item);
+                       }
+                       const allTrash = await window.Storage.loadTrash();
+                       const newTrash = allTrash.filter(t => t.id !== item.id);
+                       await window.Storage.saveTrash(newTrash);
+                       trashItems = newTrash.filter(t => t.type === 'question' || (t.type === 'folder' && t.id && String(t.id).startsWith('fq-')));
+                       this.saveData(); 
+                       renderList();
+                       if (typeof window.updateTrashButton === "function") window.updateTrashButton();
+                   };
+                   
+                   const delForeverBtn = row.querySelector('.delete-forever-btn-inline');
+                   delForeverBtn.onclick = async () => {
+                       const allTrash = await window.Storage.loadTrash();
+                       const newTrash = allTrash.filter(t => t.id !== item.id);
+                       await window.Storage.saveTrash(newTrash);
+                       trashItems = newTrash.filter(t => t.type === 'question' || (t.type === 'folder' && t.id && String(t.id).startsWith('fq-')));
+                       renderList();
+                       if (typeof window.updateTrashButton === "function") window.updateTrashButton();
+                   };
+
+                   body.appendChild(row);
+               });
+          }
+
+          content.innerHTML = '';
+          content.appendChild(header);
+          content.appendChild(body);
+      };
+
+      renderList();
+
+      overlay.appendChild(content);
+      document.body.appendChild(overlay);
+
+      requestAnimationFrame(() => {
+          overlay.style.opacity = "1";
+          content.style.transform = "scale(1)";
+      });
+
+      const close = () => {
+          overlay.style.opacity = "0";
+          content.style.transform = "scale(0.95)";
+          setTimeout(() => overlay.remove(), 200);
+      };
+
+      header.querySelector('.close-modal-btn').onclick = close;
+      overlay.onclick = (e) => { if (e.target === overlay) close(); };
   }
 };
 

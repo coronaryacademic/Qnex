@@ -736,6 +736,14 @@ textarea {
   transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
 }
 
+.section-empty-text {
+  padding: 20px 16px;
+  font-size: 15px;
+  color: var(--muted);
+  text-align: center;
+  user-select: none;
+}
+
 .sidebar-section.collapsed .sidebar-section-content {
   max-height: 0;
   opacity: 0;

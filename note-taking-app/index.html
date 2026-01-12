@@ -557,23 +557,8 @@
 
           <!-- Sidebar Content -->
           <div class="sidebar-content">
-            <div class="sidebar-section">
-              <div class="sidebar-section-header-text">
-                <svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <line x1="10" y1="9" x2="8" y2="9"></line>
-                </svg>
-                <span>All Questions</span>
-                <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </div>
-              <div class="sidebar-section-content" id="questionList">
-                <div class="sidebar-empty-state">No questions yet</div>
-              </div>
+            <div id="questionList">
+              <!-- Sections will be rendered by JavaScript -->
             </div>
           </div>
 
@@ -600,16 +585,28 @@
         <main class="question-content" id="questionContent">
           <!-- Persistent Header -->
           <div class="question-header">
-              <button id="toggleQuestionSidebarBtn" class="icon-btn" title="Toggle sidebar" style="margin-right: 10px;">
+              <button id="toggleQuestionSidebarBtn" class="icon-btn" title="Toggle sidebar">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                   <line x1="9" y="3" x2="9" y2="21"></line>
                 </svg>
               </button>
-              <input type="text" id="questionTitleInput" placeholder="Select a question or create new" class="question-title-input" disabled>
-              <div class="question-actions">
-                <button id="saveQuestionBtn" class="btn primary" disabled>Save</button>
-              </div>
+          </div>
+
+          <!-- Breadcrumb Nav -->
+          <div class="breadcrumb-nav" >
+            <div class="breadcrumb-left" style="flex: 1; padding-right: 10px;">
+               <input type="text" id="questionTitleInput" placeholder="Select a question or create new" class="question-title-input" disabled style="width: 100%; border: none; background: transparent; font-size: 1.1em; font-weight: 600; outline: none; color: var(--text);">
+            </div>
+            <div class="breadcrumb-actions">
+               <button id="saveQuestionBtn" class="icon-btn" title="Save Question" disabled>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+               </button>
+            </div>
           </div>
 
           <div class="question-editor-container hidden" id="questionEditor">

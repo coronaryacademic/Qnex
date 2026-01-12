@@ -129,7 +129,7 @@ body.theme-classic .question-empty-state p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 1rem;
+  padding:12.5px 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -424,5 +424,15 @@ textarea:focus {
   box-shadow: inset 0 0 0 1px var(--accent);
   position: relative;
   z-index: 10;
+}
+
+/* Multi-select styling */
+.question-item.selected {
+  background: var(--panel-hover);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.question-item.selected:hover {
+  background: var(--panel-hover);
 }
 
