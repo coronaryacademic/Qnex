@@ -6,6 +6,7 @@ const QuestionBase = {
     questions: [],
     folders: [],
     activeQuestionId: null,
+    activeContext: null, // Track where selection happened (e.g. 'All Questions', 'folder-123')
     expandedFolders: new Set(), // Set of folder IDs
     selectedItems: new Set(), // Set of selected question IDs for multi-select
     collapsedSections: new Set(), // Set of collapsed section names
@@ -42,6 +43,7 @@ const QuestionBase = {
     this.initResizer();
     this.loadSidebarWidth();
     this.loadCollapsedSections(); // Load BEFORE data so state is ready for renderSidebar
+    this.loadExpandedFolders();
     this.loadData();
     
     // Global click to close context menu
@@ -318,7 +320,7 @@ const QuestionBase = {
   },
 
   loadCollapsedSections() {
-    const stored = localStorage.getItem("app-question-collapsed-sections");
+    const stored = localStorage.getItem("app-question-collapsed-sections-v2");
     if (stored) {
       try {
         const arr = JSON.parse(stored);
@@ -331,7 +333,22 @@ const QuestionBase = {
 
   saveCollapsedSections() {
     const arr = [...this.state.collapsedSections];
-    localStorage.setItem("app-question-collapsed-sections", JSON.stringify(arr));
+    localStorage.setItem("app-question-collapsed-sections-v2", JSON.stringify(arr));
+  },
+
+  loadExpandedFolders() {
+    const stored = localStorage.getItem("app-question-expanded-folders-v2");
+    if (stored) {
+      try {
+        const arr = JSON.parse(stored);
+        this.state.expandedFolders = new Set(arr);
+      } catch(e) { }
+    }
+  },
+
+  saveExpandedFolders() {
+    const arr = [...this.state.expandedFolders];
+    localStorage.setItem("app-question-expanded-folders-v2", JSON.stringify(arr));
   },
 
   async loadData() {
@@ -404,10 +421,10 @@ const QuestionBase = {
     this.el.base.classList.add("hidden");
   },
 
-  async createNewFolder() {
+  async createNewFolder(parentId = null) {
       let name;
       if (typeof window.modalPrompt === 'function') {
-          name = await window.modalPrompt("New Folder", "Folder Name");
+          name = await window.modalPrompt(parentId ? "New Subfolder" : "New Folder", "Folder Name");
       } else {
           name = prompt("Folder Name:");
       }
@@ -415,7 +432,7 @@ const QuestionBase = {
       const newFolder = {
           id: "fq-" + Date.now(),
           title: name,
-          parentId: null // top level for now
+          parentId: parentId // support nesting
       };
       this.state.folders.push(newFolder);
       this.saveData();
@@ -569,7 +586,7 @@ const QuestionBase = {
     // Default View: 3 Persistent Sections
 
     // 1. All Questions (Uncategorized)
-    const uncategorized = this.state.questions.filter(q => !q.folderId);
+    const uncategorized = this.state.questions.filter(q => !q.folderId && !q.starred);
     this.renderSection("All Questions", uncategorized, "list", "No questions");
 
     // 2. Starred
@@ -592,7 +609,7 @@ const QuestionBase = {
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
         </svg>
         <span>Folders</span>
-        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
      `;
@@ -609,7 +626,7 @@ const QuestionBase = {
      const content = document.createElement("div");
      content.className = "sidebar-section-content";
 
-     const folders = this.state.folders;
+     const folders = this.state.folders.filter(f => !f.parentId);
      if (folders.length === 0) {
          content.innerHTML = '<div class="section-empty-text">No folders</div>';
      } else {
@@ -647,17 +664,18 @@ const QuestionBase = {
       header.innerHTML = `
           ${icon}
           <span>${title}</span>
-          <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
       `;
-      header.onclick = () => {
+      header.onclick = (e) => {
+          e.stopPropagation();
           section.classList.toggle("collapsed");
           // Save collapsed state
            if (section.classList.contains("collapsed")) {
-               this.state.collapsedSections.add("Folders");
+               this.state.collapsedSections.add(title);
            } else {
-               this.state.collapsedSections.delete("Folders");
+               this.state.collapsedSections.delete(title);
            }
           this.saveCollapsedSections();
       };
@@ -668,7 +686,7 @@ const QuestionBase = {
       if (questions.length === 0 && emptyMsg) {
           content.innerHTML = `<div class="section-empty-text">${emptyMsg}</div>`;
       } else {
-          questions.forEach(q => this.renderQuestionItem(q, content));
+          questions.forEach(q => this.renderQuestionItem(q, content, title));
       }
 
       section.appendChild(header);
@@ -682,9 +700,7 @@ const QuestionBase = {
       folderEl.className = "q-folder";
       folderEl.innerHTML = `
         <div class="q-folder-header" data-id="${folder.id}">
-            <svg class="folder-chevron ${isExpanded ? 'open' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
+             <!-- Chevron removed as requested -->
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
@@ -704,6 +720,7 @@ const QuestionBase = {
           } else {
               this.state.expandedFolders.add(folder.id);
           }
+          this.saveExpandedFolders();
           this.renderSidebar();
       };
 
@@ -714,7 +731,15 @@ const QuestionBase = {
       });
 
       if (isExpanded) {
-          questions.forEach(q => this.renderQuestionItem(q, content));
+          // Render Questions (First)
+          questions.forEach(q => this.renderQuestionItem(q, content, 'folder-' + folder.id));
+
+          // Render Subfolders (Second)
+          const subFolders = this.state.folders.filter(f => f.parentId === folder.id);
+          subFolders.forEach(sub => {
+              const subQs = this.state.questions.filter(q => q.folderId === sub.id);
+              this.renderFolderItem(sub, subQs, content);
+          });
       }
       
       container.appendChild(folderEl);
@@ -748,16 +773,18 @@ const QuestionBase = {
       };
   },
 
-  renderQuestionItem(q, container) {
+  renderQuestionItem(q, container, context = null) {
       const el = document.createElement("div");
       const isSelected = this.state.selectedItems.has(q.id);
-      el.className = `question-item ${q.id === this.activeQuestionId ? "active" : ""} ${isSelected ? "selected" : ""}`;
+      const isActive = q.id === this.activeQuestionId && (this.state.activeContext === context);
+      el.className = `question-item ${isActive ? "active" : ""} ${isSelected ? "selected" : ""}`;
       el.dataset.id = q.id;
+      if (context) el.setAttribute("data-context", context);
       
       // Context Menu
       el.addEventListener("contextmenu", (e) => {
           e.preventDefault();
-          this.showContextMenu(e.clientX, e.clientY, q.id, 'question');
+          this.showContextMenu(e.clientX, e.clientY, q.id, 'question', context);
       });
       
       // Click handler with Ctrl/Cmd support for multi-select
@@ -774,6 +801,7 @@ const QuestionBase = {
           } else {
               // Single click - clear selection and open
               this.state.selectedItems.clear();
+              this.state.activeContext = context;
               this.loadQuestionIntoEditor(q);
           }
       };
@@ -788,7 +816,7 @@ const QuestionBase = {
       `;
       
       // Match Base Layer Note Styles (adding sidebar-item class and structure tweaks)
-      el.className = `question-item sidebar-item ${q.id === this.activeQuestionId ? "active" : ""} ${isSelected ? "selected" : ""}`;
+      el.className = `question-item sidebar-item ${isActive ? "active" : ""} ${isSelected ? "selected" : ""}`;
       el.draggable = true;
       
       // Drag & Drop
@@ -823,7 +851,7 @@ const QuestionBase = {
     });
   },
 
-  showContextMenu(x, y, id, type) {
+  showContextMenu(x, y, id, type, context = null) {
     const isMultiSelect = this.state.selectedItems.size > 1 && (type === 'question' && this.state.selectedItems.has(id));
     const isFolder = type === 'folder';
     const isEmptySpace = type === 'empty';
@@ -834,8 +862,16 @@ const QuestionBase = {
     
     if (!isEmptySpace && !isMultiSelect) {
         let targetEl;
-        if (isFolder) targetEl = this.el.list.querySelector(`.q-folder-header[data-id="${id}"]`);
-        else targetEl = this.el.list.querySelector(`.question-item[data-id="${id}"]`);
+        if (isFolder) {
+            targetEl = this.el.list.querySelector(`.q-folder-header[data-id="${id}"]`);
+        } else {
+             const candidates = this.el.list.querySelectorAll(`.question-item[data-id="${id}"]`);
+             if (context) {
+                 targetEl = Array.from(candidates).find(el => el.getAttribute("data-context") === String(context));
+             } else {
+                 targetEl = candidates[0];
+             }
+        }
         if (targetEl) targetEl.classList.add("context-active");
     }
 
@@ -870,6 +906,10 @@ const QuestionBase = {
                 <button class="ctx-btn" data-action="new-sub-question">
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     New Question Here
+                </button>
+                <button class="ctx-btn" data-action="new-sub-folder">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+                    New Subfolder
                 </button>
             </div>
             <div class="ctx-section">
@@ -911,6 +951,24 @@ const QuestionBase = {
                     ${isStarred ? "Unstar" : "Star"}
                 </button>
             </div>
+          `;
+          
+          if (isStarred) {
+             html += `
+             <div class="ctx-section">
+                 <button class="ctx-btn" data-action="unstar-all">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                      Unstar All
+                 </button>
+                 <button class="ctx-btn" data-action="unstar-others">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                      Unstar Others
+                 </button>
+             </div>
+             `;
+          }
+
+          html += `
             <div class="ctx-section">
                 <button class="ctx-btn delete-btn" data-action="delete" style="color: var(--danger, #ef4444);">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -1030,6 +1088,14 @@ const QuestionBase = {
           } else if (action === 'star') {
               q.starred = !q.starred;
               this.saveData();
+          } else if (action === 'unstar-all') {
+              this.state.questions.forEach(item => item.starred = false);
+              this.saveData();
+          } else if (action === 'unstar-others') {
+              this.state.questions.forEach(item => {
+                  if (item.id !== id) item.starred = false;
+              });
+              this.saveData();
           }
       } else if (type === 'folder') {
           const fIndex = this.state.folders.findIndex(f => f.id === id);
@@ -1069,6 +1135,8 @@ const QuestionBase = {
               }
           } else if (action === 'new-sub-question') {
               this.createNewQuestion(id);
+          } else if (action === 'new-sub-folder') {
+              this.createNewFolder(id);
           }
       }
   },
@@ -1076,13 +1144,13 @@ const QuestionBase = {
   async showTrashModal() {
       // Create Modal DOM using user provided structure (matching search-results-modal)
       const overlay = document.createElement("div");
-      overlay.className = "modal-overlay";
-      overlay.style.cssText = "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; opacity: 0; transition: opacity 0.2s;";
+      overlay.className = "trash-modal-overlay";
+      overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 99999; opacity: 0; transition: opacity 0.2s;";
       
       const content = document.createElement("div");
-      content.className = "search-results-modal"; // Reusing search results modal class for consistency
+      content.className = "trash-modal-content"; // Custom class to avoid conflicts
       // Add inline styles to ensure it looks right even if class is missing some props
-      content.style.cssText = "background: var(--panel, #ffffff); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); width: 600px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; transform: scale(0.95); transition: transform 0.2s;";
+      content.style.cssText = "position: relative; margin: auto; background: var(--panel, #ffffff); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); width: 600px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; transform: scale(0.95); transition: transform 0.2s;";
 
       // Header
       const header = document.createElement("div");
@@ -1101,12 +1169,18 @@ const QuestionBase = {
           console.error("Failed to load trash", e);
       }
 
+      const close = () => {
+          overlay.style.opacity = "0";
+          content.style.transform = "scale(0.95)";
+          setTimeout(() => overlay.remove(), 200);
+      };
+
       const renderList = () => {
           // Update Header
           header.innerHTML = `
             <h2 style="font-size: 1.1rem; font-weight: 600; color: var(--text); margin: 0;">Trash (${trashItems.length} items)</h2>
             <div class="trash-actions" style="display: flex; gap: 8px; align-items: center;">
-              <button class="empty-all-btn" style="padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">Empty All</button>
+              <button class="empty-all-btn trash-btn danger">Empty All</button>
               <button class="close-modal-btn" style="background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1168,8 +1242,8 @@ const QuestionBase = {
                         <div class="search-result-meta" style="font-size: 12px; color: var(--muted); margin-top: 2px;">${typeLabel} • Deleted: ${dateStr}</div>
                      </div>
                      <div class="trash-item-actions-inline" style="display: flex; gap: 8px;">
-                        <button class="restore-btn-inline" style="padding: 4px 10px; border: 1px solid var(--border); background: var(--bg-primary, #ffffff); color: var(--text); border-radius: 4px; font-size: 12px; cursor: pointer;">Restore</button>
-                        <button class="delete-forever-btn-inline" style="padding: 4px 10px; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete Forever</button>
+                        <button class="restore-btn-inline trash-btn">Restore</button>
+                        <button class="delete-forever-btn-inline trash-btn danger">Delete Forever</button>
                      </div>
                    `;
                    
@@ -1218,12 +1292,6 @@ const QuestionBase = {
           overlay.style.opacity = "1";
           content.style.transform = "scale(1)";
       });
-
-      const close = () => {
-          overlay.style.opacity = "0";
-          content.style.transform = "scale(0.95)";
-          setTimeout(() => overlay.remove(), 200);
-      };
 
       header.querySelector('.close-modal-btn').onclick = close;
       overlay.onclick = (e) => { if (e.target === overlay) close(); };
