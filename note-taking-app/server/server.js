@@ -26,6 +26,7 @@ fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'notes'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'folders'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'trash'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'settings'));
+fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'questions'));
 
 // Helper function to get safe file path
 function getSafeFilePath(basePath, filename) {
@@ -682,6 +683,45 @@ app.post('/api/tasks', async (req, res) => {
   } catch (error) {
     console.error('Error saving tasks:', error);
     res.status(500).json({ error: 'Failed to save tasks' });
+  }
+});
+
+
+// QUESTIONS ENDPOINTS
+
+// Get questions
+app.get('/api/questions', async (req, res) => {
+  try {
+    const questionsFile = path.join(NOTES_BASE_DIR, 'questions', 'questions.json');
+    
+    if (await fs.pathExists(questionsFile)) {
+      const questions = await fs.readJson(questionsFile);
+      res.json(questions);
+    } else {
+      res.json({ questions: [], folders: [] });
+    }
+  } catch (error) {
+    console.error('Error loading questions:', error);
+    res.status(500).json({ error: 'Failed to load questions' });
+  }
+});
+
+// Save questions
+app.post('/api/questions', async (req, res) => {
+  try {
+    const data = req.body;
+    const questionsDir = path.join(NOTES_BASE_DIR, 'questions');
+    const questionsFile = path.join(questionsDir, 'questions.json');
+    
+    await fs.ensureDir(questionsDir);
+    await fs.writeJson(questionsFile, data, { spaces: 2 });
+    
+    console.log(`[SERVER] Saved questions: ${data.questions?.length || 0} questions, ${data.folders?.length || 0} folders`);
+    
+    res.json({ success: true, message: 'Questions saved successfully' });
+  } catch (error) {
+    console.error('Error saving questions:', error);
+    res.status(500).json({ error: 'Failed to save questions' });
   }
 });
 

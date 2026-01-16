@@ -200,6 +200,31 @@ const Storage = {
     localStorage.setItem("app-questions", JSON.stringify(data));
   },
 
+  async loadQuestions() {
+    if (this.useFileSystem) {
+      return await fileSystemService.loadQuestions();
+    } else {
+      const stored = localStorage.getItem("app-questions");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch(e) {
+          console.error("Failed to parse questions:", e);
+          return { questions: [], folders: [] };
+        }
+      }
+      return { questions: [], folders: [] };
+    }
+  },
+
+  async saveQuestions(data) {
+    if (this.useFileSystem) {
+      await fileSystemService.saveQuestions(data);
+    } else {
+      localStorage.setItem("app-questions", JSON.stringify(data));
+    }
+  },
+
   async loadTrash() {
     if (this.useFileSystem) {
       return await fileSystemService.loadTrash();

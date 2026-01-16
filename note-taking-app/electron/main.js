@@ -26,13 +26,14 @@ const SERVER_PORT = 3002; // Use different port to avoid conflicts
 const NOTES_BASE_DIR = 'D:\\MyNotes';
 const UNCATEGORIZED_DIR_NAME = 'Uncategorized';
 const META_FILE = '.folder-meta.json';
-const SYSTEM_DIRS = ['trash', 'settings', 'backups', '.git', 'node_modules', 'tasks'];
+const SYSTEM_DIRS = ['trash', 'settings', 'backups', '.git', 'node_modules', 'tasks', 'questions'];
 
 // Ensure base directory exists
 fs.ensureDirSync(NOTES_BASE_DIR);
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'trash'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'settings'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'tasks'));
+fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'questions'));
 
 // Helper to sanitize filename (directory names)
 function sanitizeFilename(name) {
@@ -439,6 +440,18 @@ function createServer() {
   expressApp.post('/api/tasks', async (req, res) => {
     await fs.ensureDir(path.join(NOTES_BASE_DIR, 'tasks'));
     await fs.writeJson(path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json'), req.body, { spaces: 2 });
+    res.json({ success: true });
+  });
+
+  // QUESTIONS ENDPOINTS
+  expressApp.get('/api/questions', async (req, res) => {
+    const f = path.join(NOTES_BASE_DIR, 'questions', 'questions.json');
+    res.json(await fs.pathExists(f) ? await fs.readJson(f) : { questions: [], folders: [] });
+  });
+  expressApp.post('/api/questions', async (req, res) => {
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'questions'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'questions', 'questions.json'), req.body, { spaces: 2 });
+    log(`[SERVER] Saved questions: ${req.body.questions?.length || 0} questions, ${req.body.folders?.length || 0} folders`);
     res.json({ success: true });
   });
 

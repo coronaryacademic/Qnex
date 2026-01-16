@@ -1,6 +1,7 @@
 
+
 // Question Layer Module
-// Question Layer Module
+console.log('[QuestionBase] Script loaded!');
 const QuestionBase = {
   state: {
     questions: [],
@@ -45,6 +46,21 @@ const QuestionBase = {
     this.loadCollapsedSections(); // Load BEFORE data so state is ready for renderSidebar
     this.loadExpandedFolders();
     this.loadData();
+    
+    // If Storage wasn't ready initially, reload once it becomes available
+    if (typeof window.Storage === 'undefined' || typeof window.Storage.loadQuestions !== 'function') {
+        console.log('[QuestionBase] Waiting for Storage to become available...');
+        const checkStorage = setInterval(() => {
+            if (typeof window.Storage !== 'undefined' && typeof window.Storage.loadQuestions === 'function') {
+                clearInterval(checkStorage);
+                console.log('[QuestionBase] Storage now available! Reloading from backend...');
+                this.loadData();
+            }
+        }, 100);
+        
+        // Stop checking after 10 seconds
+        setTimeout(() => clearInterval(checkStorage), 10000);
+    }
     
     // Global click to close context menu
     document.addEventListener("click", (e) => {
@@ -226,7 +242,36 @@ const QuestionBase = {
     
     if (this.el.saveBtn) this.el.saveBtn.addEventListener("click", () => this.saveCurrentQuestion());
 
+    // Auto-save title on change
+    if (this.el.titleInput) {
+        this.el.titleInput.addEventListener("input", () => {
+            if (this.activeQuestionId) {
+                const q = this.state.questions.find(q => q.id === this.activeQuestionId);
+                if (q) {
+                    q.title = this.el.titleInput.value;
+                    this.saveData();
+                }
+            }
+        });
+        // Enable editing when question is loaded
+        this.el.titleInput.disabled = false;
+    }
+
     if (this.el.addOptionBtn) this.el.addOptionBtn.addEventListener("click", () => this.addOptionUI());
+    
+    // Play Button (Dungeon Layer)
+    const playBtn = document.getElementById("playQuestionsBtn");
+    if (playBtn) {
+        playBtn.addEventListener("click", () => {
+            if (this.state.questions.length === 0) {
+                alert("No questions to play!");
+                return;
+            }
+            if (typeof window.DungeonBase !== 'undefined') {
+                window.DungeonBase.open(this.state.questions);
+            }
+        });
+    }
     
     // Trash
     if (this.el.trashBtn) {
@@ -266,6 +311,14 @@ const QuestionBase = {
     document.addEventListener("keydown", (e) => {
         // Only handle if question base is visible
         if (!this.el.base || this.el.base.classList.contains("hidden")) return;
+        
+        // Ctrl+S to save
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            if (this.activeQuestionId) {
+                this.saveCurrentQuestion();
+            }
+        }
         
         if (e.key === "Delete" && this.state.selectedItems.size > 0) {
             e.preventDefault();
@@ -352,34 +405,54 @@ const QuestionBase = {
   },
 
   async loadData() {
-    // Wait for App Storage to be ready
-    if (typeof window.Storage === 'undefined') {
-        let attempts = 0;
-        while(typeof window.Storage === 'undefined' && attempts < 20) {
-            await new Promise(r => setTimeout(r, 100));
-            attempts++;
-        }
-    }
-
-    if (typeof window.Storage !== 'undefined' && window.Storage.loadQuestions) {
+    console.log('[QuestionBase] loadData() called');
+    console.log('[QuestionBase] Storage available?', typeof window.Storage, 'loadQuestions?', typeof window.Storage?.loadQuestions);
+    
+    if (typeof window.Storage !== 'undefined' && typeof window.Storage.loadQuestions === 'function') {
         try {
+            console.log('[QuestionBase] Loading questions from Storage...');
             const data = await window.Storage.loadQuestions();
+            console.log('[QuestionBase] Loaded data:', data);
             if (Array.isArray(data)) {
-                // Legacy format
                 this.state.questions = data;
                 this.state.folders = [];
             } else {
                 this.state.questions = data.questions || [];
                 this.state.folders = data.folders || [];
             }
+            console.log('[QuestionBase] Questions loaded:', this.state.questions.length, 'Folders:', this.state.folders.length);
         } catch (e) {
-            console.error("Failed to load questions", e);
-             this.state.questions = [];
-             this.state.folders = [];
+            console.error("[QuestionBase] Failed to load questions from Storage", e);
+            this.state.questions = [];
+            this.state.folders = [];
         }
     } else {
-         this.loadQuestionsLegacy(); // Fallback
+         console.warn('[QuestionBase] Storage not available yet, using localStorage fallback');
+         // Direct localStorage fallback
+         try {
+             const stored = localStorage.getItem("app-questions");
+             if (stored) {
+                 const data = JSON.parse(stored);
+                 if (Array.isArray(data)) {
+                     this.state.questions = data;
+                     this.state.folders = [];
+                 } else {
+                     this.state.questions = data.questions || [];
+                     this.state.folders = data.folders || [];
+                 }
+                 console.log('[QuestionBase] Loaded from localStorage:', this.state.questions.length, 'questions');
+             } else {
+                 console.log('[QuestionBase] No data in localStorage');
+                 this.state.questions = [];
+                 this.state.folders = [];
+             }
+         } catch (e) {
+             console.error("[QuestionBase] Failed to load from localStorage", e);
+             this.state.questions = [];
+             this.state.folders = [];
+         }
     }
+    console.log('[QuestionBase] Rendering sidebar after load');
     this.renderSidebar();
   },
   
@@ -467,6 +540,10 @@ const QuestionBase = {
       this.el.titleInput.disabled = true;
       this.el.titleInput.placeholder = "Select a question or create new";
       this.el.saveBtn.disabled = true;
+      this.el.saveBtn.style.display = "none";
+      
+      const playBtn = document.getElementById("playQuestionsBtn");
+      if (playBtn) playBtn.style.display = "none";
       
       this.renderSidebar();
   },  
@@ -501,9 +578,18 @@ const QuestionBase = {
 
     this.saveData(); // Persist and re-render sidebar
     
-    const originalText = this.el.saveBtn.textContent;
-    this.el.saveBtn.textContent = "Saved!";
-    setTimeout(() => this.el.saveBtn.textContent = originalText, 1500);
+    // Visual feedback with icon change
+    const originalHTML = this.el.saveBtn.innerHTML;
+    this.el.saveBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    `;
+    this.el.saveBtn.style.color = "var(--success)";
+    setTimeout(() => {
+      this.el.saveBtn.innerHTML = originalHTML;
+      this.el.saveBtn.style.color = "";
+    }, 1500);
   },
 
   loadQuestionIntoEditor(q) {
@@ -514,6 +600,14 @@ const QuestionBase = {
     this.el.titleInput.value = q.title;
     this.el.textInput.innerHTML = q.text || "";
     this.el.explanationInput.value = q.explanation || "";
+
+    // Enable save/play buttons
+    if (this.el.saveBtn) {
+      this.el.saveBtn.disabled = false;
+      this.el.saveBtn.style.display = "";
+    }
+    const playBtn = document.getElementById("playQuestionsBtn");
+    if (playBtn) playBtn.style.display = "";
 
     // Clear and rebuild options
     this.el.optionsContainer.innerHTML = '<label>Answer Options</label>';
@@ -784,6 +878,19 @@ const QuestionBase = {
       // Context Menu
       el.addEventListener("contextmenu", (e) => {
           e.preventDefault();
+          
+          // If item is not selected and we're not in multi-select mode, clear and select this item
+          if (!this.state.selectedItems.has(q.id) && this.state.selectedItems.size === 0) {
+              this.state.selectedItems.clear();
+              this.state.selectedItems.add(q.id);
+              this.renderSidebar();
+          }
+          // If ctrl is held, add to selection
+          else if ((e.ctrlKey || e.metaKey) && !this.state.selectedItems.has(q.id)) {
+              this.state.selectedItems.add(q.id);
+              this.renderSidebar();
+          }
+          
           this.showContextMenu(e.clientX, e.clientY, q.id, 'question', context);
       });
       
@@ -1080,9 +1187,17 @@ const QuestionBase = {
                    if (confirm("Delete this question?")) await deleteQuestion();
                }
           } else if (action === 'rename') {
-              const newTitle = prompt("Rename question:", q.title);
+              let newTitle;
+              if (typeof window.modalPrompt === 'function') {
+                  newTitle = await window.modalPrompt("Rename Question", "Question Title", q.title);
+              } else {
+                  newTitle = prompt("Rename question:", q.title);
+              }
               if (newTitle) {
                   q.title = newTitle;
+                  if (this.activeQuestionId === id) {
+                      this.el.titleInput.value = newTitle;
+                  }
                   this.saveData();
               }
           } else if (action === 'star') {
@@ -1304,4 +1419,5 @@ document.addEventListener("DOMContentLoaded", () => {
     QuestionBase.init();
 });
 
-export default QuestionBase;
+// Make QuestionBase available globally
+window.QuestionBase = QuestionBase;

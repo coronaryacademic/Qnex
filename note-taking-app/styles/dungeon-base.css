@@ -1,0 +1,180 @@
+/* Dungeon Layer Base */
+.dungeon-base {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg);
+  z-index: 2000; /* Above Question Base (1000?) */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dungeon-base.hidden {
+  display: none;
+}
+
+/* Dungeon Header (Progress Strip) */
+.dungeon-strip {
+  width: 100%;
+  height: 40px; /* Long strip */
+  display: flex;
+  flex-direction: row; /* Default LTR, assuming user intent; can switch if needed */
+  background: var(--bg-secondary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  position: relative;
+  z-index: 10;
+}
+
+.dungeon-segment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-header); /* Default 1 */
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: 1px solid rgba(0,0,0,0.05);
+  position: relative;
+}
+
+.dungeon-segment:nth-child(even) {
+  background: var(--bg-secondary); /* Alternating Color */
+}
+
+/* Active Segment (Bulging) */
+.dungeon-segment.active {
+  transform: scaleY(1.25) scaleX(1.05);
+  z-index: 20;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
+
+/* Status Colors */
+.dungeon-segment.correct {
+  background: var(--success-bg) !important;
+}
+
+.dungeon-segment.wrong {
+  background: var(--danger-bg) !important; /* Red */
+}
+
+/* Bullet Point / Icon */
+.dungeon-bullet {
+  width: 12px;
+  height: 12px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.dungeon-segment.active .dungeon-bullet {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-transparent);
+}
+
+.dungeon-segment.correct .dungeon-bullet,
+.dungeon-segment.wrong .dungeon-bullet {
+  background: transparent;
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Dungeon Main Content */
+.dungeon-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  overflow-y: auto;
+}
+
+.dungeon-card {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  border: 1px solid var(--border);
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.dungeon-question-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 30px;
+  line-height: 1.4;
+}
+
+.dungeon-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dungeon-option {
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dungeon-option:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-dim);
+}
+
+.dungeon-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.dungeon-option.correct {
+  border-color: var(--success);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.dungeon-option.wrong {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+/* Close Button (Access to go back) */
+.dungeon-close-btn {
+  position: absolute;
+  top: 60px; /* Below strip */
+  right: 20px;
+  padding: 10px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+  z-index: 100;
+}
+.dungeon-close-btn:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}

@@ -178,6 +178,31 @@ class FileSystemService {
     }
   }
 
+  // QUESTIONS OPERATIONS
+
+  async loadQuestions() {
+    try {
+      const data = await this.makeRequest("/questions");
+      return data || { questions: [], folders: [] };
+    } catch (error) {
+      console.error("Error loading questions:", error);
+      return { questions: [], folders: [] };
+    }
+  }
+
+  async saveQuestions(data) {
+    try {
+      const response = await this.makeRequest("/questions", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      return response;
+    } catch (error) {
+      console.error("Error saving questions:", error);
+      throw error;
+    }
+  }
+
   // TRASH OPERATIONS
 
   async loadTrash() {
