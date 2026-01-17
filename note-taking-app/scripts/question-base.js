@@ -690,8 +690,11 @@ const QuestionBase = {
         this.el.emptyState.style.display = "none";
         this.el.editor.classList.remove("hidden");
 
-        if (this.el.titleInput) this.el.titleInput.disabled = false; // Enable title input
-        this.el.titleInput.value = q.title;
+        if (this.el.titleInput) {
+             this.el.titleInput.disabled = false; // Enable title input
+             this.el.titleInput.placeholder = "Question Title"; // Reset placeholder
+             this.el.titleInput.value = q.title || ""; // Ensure value is set (handle null/undefined)
+        }
         this.el.textInput.innerHTML = q.text || "";
         this.el.explanationInput.value = q.explanation || "";
 
