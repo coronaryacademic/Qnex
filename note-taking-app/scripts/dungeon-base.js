@@ -46,7 +46,52 @@ export default class DungeonBase {
       return;
     }
 
+    // Initialize Sidebar Resizer
+    this.initResizer();
+
     this.bindEvents();
+  }
+
+  initResizer() {
+      // Load saved width
+      const savedWidth = localStorage.getItem("dungeonSidebarWidth");
+      if (savedWidth) {
+          this.el.sidebar.style.width = savedWidth + "px";
+      }
+
+      // Create handle if not exists
+      if (!this.el.sidebar.querySelector('.dungeon-resizer-handle')) {
+          const handle = document.createElement('div');
+          handle.className = 'dungeon-resizer-handle';
+          // Make grip area wider but keep visual invisible (or slight hint)
+          handle.style.cssText = "position: absolute; right: -4px; top: 0; width: 10px; height: 100%; cursor: col-resize; z-index: 99; background: transparent;";
+          
+          handle.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startWidth = this.el.sidebar.offsetWidth;
+              document.body.style.cursor = "col-resize"; // Force cursor on body during drag
+              
+              const onMouseMove = (ev) => {
+                  const newWidth = startWidth + (ev.clientX - startX);
+                  if (newWidth >= 50 && newWidth <= 300) {
+                      this.el.sidebar.style.width = newWidth + 'px';
+                  }
+              };
+              
+              const onMouseUp = () => {
+                  localStorage.setItem("dungeonSidebarWidth", parseInt(this.el.sidebar.style.width)); // Save
+                  document.body.style.cursor = ""; // Reset cursor
+                  document.removeEventListener('mousemove', onMouseMove);
+                  document.removeEventListener('mouseup', onMouseUp);
+              };
+              
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp);
+          });
+          
+          this.el.sidebar.appendChild(handle);
+      }
   }
 
   bindEvents() {
@@ -95,8 +140,15 @@ export default class DungeonBase {
   }
 
   renderSidebar() {
+    // Preserve Resizer Handle
+    const handle = this.el.sidebar.querySelector('.dungeon-resizer-handle');
+    
     this.el.sidebar.innerHTML = "";
     
+    // Re-append handle if it existed
+    if (handle) this.el.sidebar.appendChild(handle);
+    else this.initResizer(); // Fallback if handle wasn't there
+
     this.state.questions.forEach((q, index) => {
       const box = document.createElement("div");
       box.className = "dungeon-q-box";
