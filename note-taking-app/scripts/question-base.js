@@ -1032,12 +1032,12 @@ const QuestionBase = {
         };
 
         el.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="${q.starred ? "gold" : "none"}" stroke="${q.starred ? "gold" : "currentColor"}" stroke-width="2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${q.starred ? "gold" : "none"}" stroke="${q.starred ? "gold" : "currentColor"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           ${q.starred
                 ? '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>'
                 : '<circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>'}
         </svg>
-        <div class="question-item-title">${q.title || "Untitled"}</div>
+        <div class="question-item-title">${(q.title && q.title.trim() !== "") ? q.title : "Untitled Question"}</div>
       `;
 
         // Match Base Layer Note Styles (adding sidebar-item class and structure tweaks)

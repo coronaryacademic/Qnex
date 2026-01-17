@@ -806,10 +806,6 @@ textarea {
   flex-shrink: 0;
 }
 
-.sidebar-item.active svg {
-  color: #fff;
-}
-
 .sidebar-item span:first-of-type {
   flex: 1;
   overflow: hidden;
