@@ -91,6 +91,7 @@ body {
   --borderX: #333333;
   --boot: white;
   --settingsborder: #333333;
+  --bg-secondary: #1a1a1a;
 }
 
 /* Light Theme - Clean white/light gray */
@@ -109,6 +110,7 @@ body.theme-light {
   --borderX: #c4c4c4;
   --boot: black;
   --settingsborder: #c2c1c1;
+   --bg-secondary: #ffffff;
 }
 
 /* Classic Theme - Light professional theme with dark panels */
@@ -126,6 +128,7 @@ body.theme-classic {
   --panel-hover: rgb(39 39 39);
   --boot: black;
   --settingsborder: #ccc;
+   --bg-secondary: #393a3a;
 }
 
 /* Classic Theme - Specific overrides */
