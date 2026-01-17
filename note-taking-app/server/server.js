@@ -39,11 +39,11 @@ async function readMdNote(filePath) {
   try {
     const fileContent = await fs.readFile(filePath, 'utf8');
     const parsed = matter(fileContent);
-    
+
     return {
       ...parsed.data,
       contentHtml: parsed.content, // Plain text content from MD body
-      id: parsed.data.id || path.basename(filePath, '.md') 
+      id: parsed.data.id || path.basename(filePath, '.md')
     };
   } catch (error) {
     console.error(`Error parsing MD file ${filePath}:`, error);
@@ -63,9 +63,9 @@ function sanitizeFilename(title) {
 // Helper to convert HTML to Markdown
 function htmlToMarkdown(html) {
   if (!html) return '';
-  
+
   let md = html;
-  
+
   // Convert headings (h1-h6)
   md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
   md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
@@ -73,21 +73,21 @@ function htmlToMarkdown(html) {
   md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
   md = md.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n');
   md = md.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n');
-  
+
   // Convert bold
   md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
   md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
-  
+
   // Convert italic
   md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
   md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
-  
+
   // Convert code
   md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
-  
+
   // Convert links
   md = md.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
-  
+
   // Convert ordered lists (BEFORE unordered to avoid conflicts)
   md = md.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
     let counter = 1;
@@ -96,7 +96,7 @@ function htmlToMarkdown(html) {
     });
     return '\n' + listItems + '\n';
   });
-  
+
   // Convert unordered lists
   md = md.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
     const listItems = content.replace(/<li[^>]*>(.*?)<\/li>/gi, (m, item) => {
@@ -104,24 +104,24 @@ function htmlToMarkdown(html) {
     });
     return '\n' + listItems + '\n';
   });
-  
+
   // Convert blockquotes
   md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, (match, content) => {
     return content.split('\n').map(line => '> ' + line).join('\n') + '\n\n';
   });
-  
+
   // Convert line breaks
   md = md.replace(/<br\s*\/?>/gi, '\n');
-  
+
   // Convert paragraphs
   md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
-  
+
   // Convert horizontal rules
   md = md.replace(/<hr\s*\/?>/gi, '\n---\n\n');
-  
+
   // Remove remaining HTML tags
   md = md.replace(/<[^>]+>/g, '');
-  
+
   // Decode HTML entities
   md = md.replace(/&nbsp;/g, ' ');
   md = md.replace(/&lt;/g, '<');
@@ -129,11 +129,11 @@ function htmlToMarkdown(html) {
   md = md.replace(/&amp;/g, '&');
   md = md.replace(/&quot;/g, '"');
   md = md.replace(/&#39;/g, "'");
-  
+
   // Clean up extra whitespace
   md = md.replace(/\n{3,}/g, '\n\n'); // Max 2 newlines
   md = md.trim();
-  
+
   return md;
 }
 
@@ -141,18 +141,18 @@ function htmlToMarkdown(html) {
 async function getUniqueFilePath(baseDir, filename) {
   const ext = '.md';
   let filePath = path.join(baseDir, `${filename}${ext}`);
-  
+
   // If file doesn't exist, use it
   if (!await fs.pathExists(filePath)) {
     return filePath;
   }
-  
+
   // File exists, try with numbers
   let counter = 2;
   while (await fs.pathExists(path.join(baseDir, `${filename}_${counter}${ext}`))) {
     counter++;
   }
-  
+
   return path.join(baseDir, `${filename}_${counter}${ext}`);
 }
 
@@ -164,7 +164,7 @@ app.get('/api/notes', async (req, res) => {
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
     const files = await fs.readdir(notesDir);
     const notes = [];
-    
+
     for (const file of files) {
       if (file.endsWith('.md')) { // Changed from .json to .md
         const filePath = path.join(notesDir, file);
@@ -174,7 +174,7 @@ app.get('/api/notes', async (req, res) => {
         }
       }
     }
-    
+
     res.json(notes);
   } catch (error) {
     console.error('Error loading notes:', error);
@@ -187,16 +187,16 @@ app.post('/api/notes/:noteId', async (req, res) => {
   try {
     const { noteId } = req.params;
     const noteData = req.body;
-    
+
     // Separate content from metadata
     // The frontend sends contentHtml, convert it to Markdown
     const { content, contentHtml, ...metadata } = noteData;
-    
+
     // Ensure ID is in metadata
     if (!metadata.id) metadata.id = noteId;
 
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
-    
+
     // Check if this note already exists (find by ID in frontmatter)
     let existingFilePath = null;
     try {
@@ -206,7 +206,7 @@ app.post('/api/notes/:noteId', async (req, res) => {
           const filePath = path.join(notesDir, file);
           const fileContent = await fs.readFile(filePath, 'utf8');
           const parsed = matter(fileContent);
-          
+
           // If this file has the same ID, update it
           if (parsed.data.id === noteId) {
             existingFilePath = filePath;
@@ -217,21 +217,21 @@ app.post('/api/notes/:noteId', async (req, res) => {
     } catch (err) {
       // Directory doesn't exist yet, will be created
     }
-    
+
     // Use ID for filename to ensure perfect matching and avoid title-based mismatch
     const filePath = path.join(notesDir, `${noteId}.md`);
-    
+
     // Convert HTML to proper Markdown syntax
     const markdownContent = htmlToMarkdown(contentHtml || content || '');
-    
+
     // Create Markdown content with Frontmatter
     const fileContent = matter.stringify(markdownContent, metadata);
-    
+
     await fs.writeFile(filePath, fileContent, 'utf8');
-    
+
     // Log for debugging
     console.log(`[SERVER] Saved note: ${noteId}.md`);
-    
+
     res.json({ success: true, message: 'Note saved successfully' });
   } catch (error) {
     console.error('Error saving note:', error);
@@ -239,13 +239,72 @@ app.post('/api/notes/:noteId', async (req, res) => {
   }
 });
 
+// Batch save all notes (more efficient than individual saves)
+app.post('/api/notes', async (req, res) => {
+  try {
+    const notes = req.body;
+
+    if (!Array.isArray(notes)) {
+      return res.status(400).json({ error: 'Expected an array of notes' });
+    }
+
+    const notesDir = path.join(NOTES_BASE_DIR, 'notes');
+    let savedCount = 0;
+    let errors = [];
+
+    for (const noteData of notes) {
+      try {
+        const { content, contentHtml, ...metadata } = noteData;
+
+        // Ensure ID is in metadata
+        if (!metadata.id) {
+          errors.push({ note: noteData.title || 'Unknown', error: 'Missing ID' });
+          continue;
+        }
+
+        const noteId = metadata.id;
+        const filePath = path.join(notesDir, `${noteId}.md`);
+
+        // Convert HTML to proper Markdown syntax
+        const markdownContent = htmlToMarkdown(contentHtml || content || '');
+
+        // Create Markdown content with Frontmatter
+        const fileContent = matter.stringify(markdownContent, metadata);
+
+        await fs.writeFile(filePath, fileContent, 'utf8');
+        savedCount++;
+      } catch (error) {
+        errors.push({ note: noteData.title || noteData.id, error: error.message });
+      }
+    }
+
+    console.log(`[SERVER] Batch saved ${savedCount}/${notes.length} notes`);
+
+    if (errors.length > 0) {
+      console.warn(`[SERVER] Errors saving ${errors.length} notes:`, errors);
+    }
+
+    res.json({
+      success: true,
+      message: `Saved ${savedCount}/${notes.length} notes`,
+      savedCount,
+      totalCount: notes.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('Error batch saving notes:', error);
+    res.status(500).json({ error: 'Failed to batch save notes' });
+  }
+});
+
+
 // Delete a note
 app.delete('/api/notes/:noteId', async (req, res) => {
   try {
     const { noteId } = req.params;
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
     console.log(`[SERVER] DELETE request for note ID: ${noteId}`);
-    
+
     // 1. Try direct ID-based path
     const directPath = path.join(notesDir, `${noteId}.md`);
     console.log(`[SERVER] Checking direct path: ${directPath}`);
@@ -257,7 +316,7 @@ app.delete('/api/notes/:noteId', async (req, res) => {
 
     // 2. Search for the file recursively by reading frontmatter
     console.log(`[SERVER] Note not found via direct path. Starting recursive search for ID: ${noteId}...`);
-    
+
     const findAndDelete = async (dir) => {
       const files = await fs.readdir(dir);
       for (const file of files) {
@@ -287,7 +346,7 @@ app.delete('/api/notes/:noteId', async (req, res) => {
     if (await findAndDelete(notesDir)) {
       return res.json({ success: true, message: 'Note deleted successfully' });
     }
-    
+
     // If not found, still return success (idempotent)
     console.log(`[SERVER] ℹ️ Note ${noteId} not found on disk after recursive search.`);
     res.json({ success: true, message: 'Note already deleted or not found' });
@@ -305,7 +364,7 @@ app.get('/api/folders', async (req, res) => {
     const foldersDir = path.join(NOTES_BASE_DIR, 'folders');
     const files = await fs.readdir(foldersDir);
     const folders = [];
-    
+
     for (const file of files) {
       if (file.endsWith('.json')) {
         const filePath = path.join(foldersDir, file);
@@ -313,7 +372,7 @@ app.get('/api/folders', async (req, res) => {
         folders.push(folderData);
       }
     }
-    
+
     res.json(folders);
   } catch (error) {
     console.error('Error loading folders:', error);
@@ -326,7 +385,7 @@ app.post('/api/folders', async (req, res) => {
   try {
     const folders = req.body;
     const foldersDir = path.join(NOTES_BASE_DIR, 'folders');
-    
+
     // Clear existing folder files
     const existingFiles = await fs.readdir(foldersDir);
     for (const file of existingFiles) {
@@ -334,13 +393,13 @@ app.post('/api/folders', async (req, res) => {
         await fs.remove(path.join(foldersDir, file));
       }
     }
-    
+
     // Save each folder as a separate file
     for (const folder of folders) {
       const filePath = path.join(foldersDir, `${folder.id}.json`);
       await fs.writeJson(filePath, folder, { spaces: 2 });
     }
-    
+
     res.json({ success: true, message: 'Folders saved successfully' });
   } catch (error) {
     console.error('Error saving folders:', error);
@@ -354,7 +413,7 @@ app.delete('/api/folders/:folderId', async (req, res) => {
     const { folderId } = req.params;
     const metadataPath = path.join(NOTES_BASE_DIR, 'folders', `${folderId}.json`);
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
-    
+
     console.log(`[SERVER] DELETE request for folder ID: ${folderId}`);
 
     // 1. Reconstruct logical path to physical directory
@@ -370,7 +429,7 @@ app.delete('/api/folders/:folderId', async (req, res) => {
 
     const folders = await loadAllFolders();
     const folder = folders.find(f => f.id === folderId);
-    
+
     if (folder) {
       const folderMap = new Map(folders.map(f => [f.id, f]));
       const getPhysicalPath = (fid) => {
@@ -388,7 +447,7 @@ app.delete('/api/folders/:folderId', async (req, res) => {
 
       const physicalPath = getPhysicalPath(folderId);
       console.log(`[SERVER] Attempting to delete physical folder: ${physicalPath}`);
-      
+
       if (await fs.pathExists(physicalPath)) {
         await fs.remove(physicalPath);
         console.log(`[SERVER] ✅ Deleted physical folder: ${physicalPath}`);
@@ -414,7 +473,7 @@ app.delete('/api/folders/:folderId', async (req, res) => {
 app.get('/api/trash', async (req, res) => {
   try {
     const trashFile = path.join(NOTES_BASE_DIR, 'trash', 'trash.json');
-    
+
     if (await fs.pathExists(trashFile)) {
       const trashData = await fs.readJson(trashFile);
       res.json(trashData);
@@ -432,9 +491,9 @@ app.post('/api/trash', async (req, res) => {
   try {
     const trashData = req.body;
     const trashFile = path.join(NOTES_BASE_DIR, 'trash', 'trash.json');
-    
+
     await fs.writeJson(trashFile, trashData, { spaces: 2 });
-    
+
     res.json({ success: true, message: 'Trash saved successfully' });
   } catch (error) {
     console.error('Error saving trash:', error);
@@ -446,11 +505,11 @@ app.post('/api/trash', async (req, res) => {
 app.delete('/api/trash', async (req, res) => {
   try {
     const trashFile = path.join(NOTES_BASE_DIR, 'trash', 'trash.json');
-    
+
     if (await fs.pathExists(trashFile)) {
       await fs.remove(trashFile);
     }
-    
+
     res.json({ success: true, message: 'Trash cleared successfully' });
   } catch (error) {
     console.error('Error clearing trash:', error);
@@ -462,7 +521,7 @@ app.delete('/api/trash', async (req, res) => {
 app.delete('/api/notes', async (req, res) => {
   try {
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
-    
+
     if (await fs.pathExists(notesDir)) {
       // Remove all note files
       const files = await fs.readdir(notesDir);
@@ -472,7 +531,7 @@ app.delete('/api/notes', async (req, res) => {
         }
       }
     }
-    
+
     res.json({ success: true, message: 'All notes deleted successfully' });
   } catch (error) {
     console.error('Error deleting all notes:', error);
@@ -490,13 +549,13 @@ app.post('/api/backup', async (req, res) => {
       settings: {},
       createdAt: new Date().toISOString()
     };
-    
+
     // Load all data
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
     const foldersDir = path.join(NOTES_BASE_DIR, 'folders');
     const trashFile = path.join(NOTES_BASE_DIR, 'trash', 'trash.json');
     const settingsFile = path.join(NOTES_BASE_DIR, 'settings', 'settings.json');
-    
+
     // Load notes
     if (await fs.pathExists(notesDir)) {
       const noteFiles = await fs.readdir(notesDir);
@@ -509,7 +568,7 @@ app.post('/api/backup', async (req, res) => {
         }
       }
     }
-    
+
     // Load folders
     if (await fs.pathExists(foldersDir)) {
       const folderFiles = await fs.readdir(foldersDir);
@@ -520,29 +579,29 @@ app.post('/api/backup', async (req, res) => {
         }
       }
     }
-    
+
     // Load trash
     if (await fs.pathExists(trashFile)) {
       backupData.trash = await fs.readJson(trashFile);
     }
-    
+
     // Load settings
     if (await fs.pathExists(settingsFile)) {
       backupData.settings = await fs.readJson(settingsFile);
     }
-    
+
     // Save backup file
     const backupDir = path.join(NOTES_BASE_DIR, 'backups');
     await fs.ensureDir(backupDir);
-    
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupFileName = `backup-${timestamp}.json`;
     const backupFilePath = path.join(backupDir, backupFileName);
-    
+
     await fs.writeJson(backupFilePath, backupData, { spaces: 2 });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Backup created successfully',
       backupFile: backupFileName,
       backupPath: backupFilePath
@@ -559,7 +618,7 @@ app.post('/api/backup', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   try {
     const settingsFile = path.join(NOTES_BASE_DIR, 'settings', 'settings.json');
-    
+
     if (await fs.pathExists(settingsFile)) {
       const settings = await fs.readJson(settingsFile);
       res.json(settings);
@@ -583,9 +642,9 @@ app.post('/api/settings', async (req, res) => {
   try {
     const settings = req.body;
     const settingsFile = path.join(NOTES_BASE_DIR, 'settings', 'settings.json');
-    
+
     await fs.writeJson(settingsFile, settings, { spaces: 2 });
-    
+
     res.json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {
     console.error('Error saving settings:', error);
@@ -600,7 +659,7 @@ app.get('/api/file-structure', async (req, res) => {
       folders: [],
       notes: []
     };
-    
+
     // Get folders
     const foldersDir = path.join(NOTES_BASE_DIR, 'folders');
     if (await fs.pathExists(foldersDir)) {
@@ -612,7 +671,7 @@ app.get('/api/file-structure', async (req, res) => {
         }
       }
     }
-    
+
     // Get notes
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
     if (await fs.pathExists(notesDir)) {
@@ -632,7 +691,7 @@ app.get('/api/file-structure', async (req, res) => {
         }
       }
     }
-    
+
     res.json(structure);
   } catch (error) {
     console.error('Error getting file structure:', error);
@@ -642,8 +701,8 @@ app.get('/api/file-structure', async (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'File system server is running',
     baseDir: NOTES_BASE_DIR,
     timestamp: new Date().toISOString()
@@ -656,7 +715,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/tasks', async (req, res) => {
   try {
     const tasksFile = path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json');
-    
+
     if (await fs.pathExists(tasksFile)) {
       const tasks = await fs.readJson(tasksFile);
       res.json(tasks);
@@ -675,10 +734,10 @@ app.post('/api/tasks', async (req, res) => {
     const tasks = req.body;
     const tasksDir = path.join(NOTES_BASE_DIR, 'tasks');
     const tasksFile = path.join(tasksDir, 'tasks.json');
-    
+
     await fs.ensureDir(tasksDir);
     await fs.writeJson(tasksFile, tasks, { spaces: 2 });
-    
+
     res.json({ success: true, message: 'Tasks saved successfully' });
   } catch (error) {
     console.error('Error saving tasks:', error);
@@ -693,7 +752,7 @@ app.post('/api/tasks', async (req, res) => {
 app.get('/api/questions', async (req, res) => {
   try {
     const questionsFile = path.join(NOTES_BASE_DIR, 'questions', 'questions.json');
-    
+
     if (await fs.pathExists(questionsFile)) {
       const questions = await fs.readJson(questionsFile);
       res.json(questions);
@@ -712,12 +771,12 @@ app.post('/api/questions', async (req, res) => {
     const data = req.body;
     const questionsDir = path.join(NOTES_BASE_DIR, 'questions');
     const questionsFile = path.join(questionsDir, 'questions.json');
-    
+
     await fs.ensureDir(questionsDir);
     await fs.writeJson(questionsFile, data, { spaces: 2 });
-    
+
     console.log(`[SERVER] Saved questions: ${data.questions?.length || 0} questions, ${data.folders?.length || 0} folders`);
-    
+
     res.json({ success: true, message: 'Questions saved successfully' });
   } catch (error) {
     console.error('Error saving questions:', error);

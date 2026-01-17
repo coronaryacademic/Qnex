@@ -1,11 +1,41 @@
 // File System Service - Handles all file system operations via REST API
+// File System Service - Handles all file system operations via REST API
+// Version 1.2 - Dual-port auto-discovery
 class FileSystemService {
   constructor() {
-    // Try Electron port first (3002), then standalone server port (3001)
-    this.baseUrl = "http://localhost:3002/api";
-    this.fallbackUrl = "http://localhost:3001/api";
+    // Candidates to check
+    this.ports = [3001, 3002];
+    this.baseUrl = "http://localhost:3001/api"; // Default start
+    this.fallbackUrl = "http://localhost:3002/api";
     this.retryAttempts = 3;
-    this.retryDelay = 1000; // 1 second
+    this.retryDelay = 1000;
+
+    // Auto-discover which port is active
+    this.init();
+  }
+
+  async init() {
+    console.log("[FileSystemService] Probing for active server...");
+    for (const port of this.ports) {
+      const url = `http://localhost:${port}/api`;
+      try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`${url}/health`, { signal: controller.signal });
+        clearTimeout(id);
+
+        if (res.ok) {
+          console.log(`[FileSystemService] ✅ Found active server at port ${port}`);
+          this.baseUrl = url;
+          // Set fallback to the OTHER port just in case
+          this.fallbackUrl = `http://localhost:${port === 3001 ? 3002 : 3001}/api`;
+          return;
+        }
+      } catch (e) {
+        // Continue probing
+      }
+    }
+    console.warn("[FileSystemService] ⚠️ No active server found during probe. Using default:", this.baseUrl);
   }
 
   // Helper method for making HTTP requests with retry logic
@@ -25,7 +55,7 @@ class FileSystemService {
           // If it's a 404, we don't retry on the SAME port, 
           // but we might want to try the OTHER port if this is the primary.
           if (response.status === 404) {
-             return { status: 404, statusText: response.statusText };
+            return { status: 404, statusText: response.statusText };
           }
 
           if (!response.ok) {
@@ -53,18 +83,18 @@ class FileSystemService {
         this.baseUrl = this.fallbackUrl;
         return await this.makeRequest(url, options);
       }
-      
+
       // If result is a 404 object (meaning it's the final fallback that 404'd)
       if (result && result.status === 404) {
         throw new Error(`HTTP 404: ${result.statusText}`);
       }
-      
+
       return result;
     } catch (error) {
       if (this.baseUrl !== this.fallbackUrl) {
-         console.log(`[SERVICE] Error on ${this.baseUrl}, trying fallback ${this.fallbackUrl}`);
-         this.baseUrl = this.fallbackUrl;
-         return await this.makeRequest(url, options);
+        console.log(`[SERVICE] Error on ${this.baseUrl}, trying fallback ${this.fallbackUrl}`);
+        this.baseUrl = this.fallbackUrl;
+        return await this.makeRequest(url, options);
       }
       throw error;
     }
@@ -102,6 +132,19 @@ class FileSystemService {
       return response;
     } catch (error) {
       console.error("Error saving note:", error);
+      throw error;
+    }
+  }
+
+  async saveNotes(notes) {
+    try {
+      const response = await this.makeRequest('/notes', {
+        method: 'POST',
+        body: JSON.stringify(notes),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error batch saving notes:', error);
       throw error;
     }
   }

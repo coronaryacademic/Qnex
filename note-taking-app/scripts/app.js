@@ -63,18 +63,23 @@ const Storage = {
   },
 
   async saveNotes(data) {
+    console.log(`[Storage.saveNotes] Starting save of ${data.length} notes`);
+
     if (this.isElectron) {
       if (typeof window.electronAPI.writeNotes === "function") {
+        console.log("[Storage.saveNotes] Using Electron API");
         await window.electronAPI.writeNotes(data);
+        console.log("[Storage.saveNotes] Electron save complete");
         return;
       }
       console.warn("Electron detected but writeNotes missing - falling back");
     }
 
     if (this.useFileSystem) {
-      for (const note of data) {
-        await fileSystemService.saveNote(note.id, note);
-      }
+      console.log("[Storage.saveNotes] Using file system service");
+      // Use batch save endpoint for efficiency
+      await fileSystemService.saveNotes(data);
+      console.log("[Storage.saveNotes] File system save complete");
     } else {
       console.warn("File system not available - notes not saved");
     }
@@ -2244,10 +2249,12 @@ window.startImportProcess = function () {
 
   // Data persistence functions
   async function saveNotes() {
+    console.log(`[SAVE] Saving ${state.notes.length} notes to backend...`);
     try {
       await Storage.saveNotes(state.notes);
+      console.log(`[SAVE] ✅ Successfully saved ${state.notes.length} notes`);
     } catch (err) {
-      console.error("Critical: Failed to save notes to storage", err);
+      console.error("[SAVE] ❌ Critical: Failed to save notes to storage", err);
     }
     if (state.backupHandle) {
       writeBackup().catch(() => { });

@@ -9,6 +9,43 @@ window.addEventListener("load", async () => {
   const loader = document.getElementById("appLoader");
   const retryBtn = document.getElementById("loaderRetryBtn");
   const progressBar = document.getElementById("loaderProgress");
+  const loaderTerminal = document.getElementById("loaderTerminal");
+  const loaderHeader = loader?.querySelector(".loader-header");
+
+  // Check if this is a reload (not first load)
+  const isReload = sessionStorage.getItem("appLoaded") === "true";
+
+  if (isReload && loader) {
+    // Simple reload - just show spinner matching app theme
+    loader.style.background = "var(--bg)"; // Use app background color
+    loader.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+        <div class="simple-spinner" style="
+          width: 48px;
+          height: 48px;
+          border: 4px solid var(--border);
+          border-top-color: var(--accent);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        "></div>
+        <div style="color: var(--muted); font-size: 14px;">Loading...</div>
+      </div>
+      <style>
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    `;
+
+    // Hide after a short delay (server should be ready)
+    setTimeout(() => {
+      loader.classList.add("hidden");
+    }, 500);
+    return;
+  }
+
+  // First load - show full boot sequence
+  sessionStorage.setItem("appLoaded", "true");
 
   if (loader && window.electronAPI && window.electronAPI.isElectron) {
     let progress = 0;

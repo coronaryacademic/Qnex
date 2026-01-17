@@ -288,6 +288,63 @@ function createServer() {
     }
   });
 
+  expressApp.post('/api/notes', async (req, res) => {
+    try {
+      const notes = req.body;
+      if (!Array.isArray(notes)) {
+        return res.status(400).json({ error: 'Expected an array of notes' });
+      }
+
+      const { folderIdMap, noteIdMap } = await scanFileSystem();
+      let savedCount = 0;
+      let errors = [];
+
+      for (const noteData of notes) {
+        try {
+          const { content, contentHtml, folderId, ...metadata } = noteData;
+
+          if (!metadata.id) {
+            // Skip notes without ID? or generate one?
+            // Usually notes passed here should have IDs
+            errors.push({ note: noteData.title, error: 'Missing ID' });
+            continue;
+          }
+
+          metadata.folderId = folderId;
+
+          let targetDir = path.join(NOTES_BASE_DIR, UNCATEGORIZED_DIR_NAME);
+          if (folderId && folderIdMap.has(folderId)) {
+            targetDir = folderIdMap.get(folderId);
+          }
+          await fs.ensureDir(targetDir);
+
+          const filePath = path.join(targetDir, `${metadata.id}.md`);
+          const md = htmlToMarkdown(contentHtml || content || '');
+          const fileContent = matter.stringify(md, metadata);
+
+          await fs.writeFile(filePath, fileContent, 'utf8');
+
+          // Delete old file if moved
+          if (noteIdMap.has(metadata.id)) {
+            const oldPath = noteIdMap.get(metadata.id);
+            if (oldPath !== filePath) {
+              await fs.remove(oldPath);
+            }
+          }
+          savedCount++;
+        } catch (e) {
+          errors.push({ note: noteData.title || noteData.id, error: e.message });
+        }
+      }
+
+      log(`[BATCH SAVE] Saved ${savedCount}/${notes.length} notes`);
+      res.json({ success: true, savedCount, errors: errors.length > 0 ? errors : undefined });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   expressApp.post('/api/notes/:noteId', async (req, res) => {
     try {
       const { noteId } = req.params;
