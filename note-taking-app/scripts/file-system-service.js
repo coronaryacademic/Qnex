@@ -11,7 +11,11 @@ class FileSystemService {
     this.retryDelay = 1000;
 
     // Auto-discover which port is active
-    this.init();
+    this.readyPromise = this.init();
+  }
+
+  async waitForReady() {
+    return this.readyPromise;
   }
 
   async init() {

@@ -1521,41 +1521,24 @@
       // Make fileSystemService globally available FIRST
       window.fileSystemService = fileSystemService;
 
+      // Wait for port discovery to complete
+      await fileSystemService.waitForReady();
+
       // Check if file system server is running
       const serverStatus = await fileSystemService.checkHealth();
 
       if (!serverStatus) {
-        // Show connection error
+        console.warn("Server not running - starting in offline/limited mode");
+        // Show connection warning but continue loading
         const statusEl = document.getElementById("connectionStatus");
-        const statusIcon = document.getElementById("statusIcon");
-        const statusText = document.getElementById("connectionStatusText");
-
-        statusEl.style.display = "block";
-        statusIcon.innerHTML =
-          '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>';
-        statusText.textContent =
-          "File system server not running. Please start the server first.";
-
-        // Show instructions
-        const instructions = document.createElement("div");
-        instructions.style.cssText =
-          "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel);padding:32px;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.3);max-width:500px;z-index:10001;";
-        instructions.innerHTML = `
-            <h2 style="margin:0 0 16px 0;color:var(--text);">Server Required</h2>
-            <p style="margin:0 0 16px 0;color:var(--text-muted);line-height:1.5;">To use the file system storage, you need to start the backend server first.</p>
-            <ol style="margin:0 0 24px 0;color:var(--text-muted);line-height:1.6;padding-left:20px;">
-              <li>Navigate to the <code>server</code> folder</li>
-              <li>Run <code>start-server.bat</code> (Windows) or <code>npm start</code></li>
-              <li>Wait for "Server running on http://localhost:3001"</li>
-              <li>Refresh this page</li>
-            </ol>
-            <button onclick="location.reload()" style="padding:12px 24px;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Retry Connection</button>
-          `;
-        document.body.appendChild(instructions);
-        return;
+        if (statusEl) {
+          statusEl.style.display = "block";
+          document.getElementById("statusIcon").innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>';
+          document.getElementById("connectionStatusText").textContent = "Server offline - changes won't persist to disk";
+        }
+      } else {
+        console.log("File system service connected successfully");
       }
-
-      console.log("File system service connected successfully");
 
       // Setup backup button
       const backupBtn = document.getElementById("backupToFileSystemBtn");
