@@ -38,8 +38,8 @@
 .dungeon-q-box {
   width: 100%; /* Fill sidebar width */
   height: 30px;
-  border-bottom: 1px solid var(--border); /* Changed to bottom border for strip look */
-  border-radius: 0; /* Remove radius for edge-to-edge look */
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -47,23 +47,32 @@
   font-size: 1.2rem;
   cursor: pointer;
   transition: all 0.2s;
-  background: var(--bg-secondary);
   position: relative;
   line-height: 0; 
 }
 
-.dungeon-q-box:hover {
-  border-color: var(--accent);
-  background: var(--panel-hover);
+/* Alternating Backgrounds (Zebra Formatting) */
+.dungeon-q-box:nth-child(odd) {
+  background: var(--bg-secondary);
 }
 
+.dungeon-q-box:nth-child(even) {
+  background: var(--bg);
+}
+
+.dungeon-q-box:hover {
+  background: var(--panel-hover); /* Uniform hover color */
+  border-color: var(--accent);
+}
+
+/* Active State always overrides alternating colors */
 .dungeon-q-box.active {
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: 0 0 10px var(--accent-transparent);
   transform: scale(1.05);
   z-index: 2;
-  background: var(--bg);
+  background: var(--panel-header); /* Slightly distinct from both */
 }
 
 /* Status Icons inside box */
