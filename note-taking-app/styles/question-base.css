@@ -447,7 +447,7 @@ textarea:focus {
   font-size: 0.75rem;
   color: var(--muted);
   padding: 2px 6px;
-  background: var(--bg);
+  background: var(--panel-2);
   border-radius: 99px;
 }
 
@@ -520,10 +520,11 @@ textarea:focus {
 /* Classic Theme Additional Overrides */
 body.theme-classic .question-title-input::placeholder {
   color: #2c3e50 !important;
-  opacity: 0.7;
+  opacity: 1;
 }
 
 body.theme-classic .question-body label,
-body.theme-classic .question-editor-container .form-group label {
+body.theme-classic .question-editor-container .form-group label,
+body.theme-classic #addOptionBtn {
   color: #2c3e50 !important;
 }

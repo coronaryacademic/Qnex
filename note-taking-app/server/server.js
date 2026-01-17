@@ -162,6 +162,7 @@ async function getUniqueFilePath(baseDir, filename) {
 app.get('/api/notes', async (req, res) => {
   try {
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
+    await fs.ensureDir(notesDir); // Ensure directory exists before reading
     const files = await fs.readdir(notesDir);
     const notes = [];
 
@@ -178,7 +179,7 @@ app.get('/api/notes', async (req, res) => {
     res.json(notes);
   } catch (error) {
     console.error('Error loading notes:', error);
-    res.status(500).json({ error: 'Failed to load notes' });
+    res.status(500).json({ error: 'Failed to load notes', details: error.message });
   }
 });
 
