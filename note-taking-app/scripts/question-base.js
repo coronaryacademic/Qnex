@@ -999,39 +999,33 @@ const QuestionBase = {
         // Context Menu
         el.addEventListener("contextmenu", (e) => {
             e.preventDefault();
+            e.stopPropagation();
 
-            // If item is not selected and we're not in multi-select mode, clear and select this item
-            if (!this.state.selectedItems.has(q.id) && this.state.selectedItems.size === 0) {
-                this.state.selectedItems.clear();
-                this.state.selectedItems.add(q.id);
-                this.renderSidebar();
-            }
-            // If ctrl is held, add to selection
-            else if ((e.ctrlKey || e.metaKey) && !this.state.selectedItems.has(q.id)) {
-                this.state.selectedItems.add(q.id);
-                this.renderSidebar();
-            }
+            // Right click always selects the item (single select)
+            this.state.selectedItems.clear();
+            this.state.selectedItems.add(q.id);
+            
+            // Manual Visual Update (Avoid re-rendering which kills 'el')
+            // 1. Remove 'selected' and 'context-active' from all items
+            container.querySelectorAll(".question-item").forEach(item => {
+                item.classList.remove("selected", "context-active");
+            });
+            
+            // 2. Add classes to current element
+            el.classList.add("selected", "context-active");
 
+            // Show menu
             this.showContextMenu(e.clientX, e.clientY, q.id, 'question', context);
         });
 
-        // Click handler with Ctrl/Cmd support for multi-select
+        // Simple Click Handler (No Multi-select)
         el.onclick = (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                // Multi-select toggle
-                e.preventDefault();
-                if (this.state.selectedItems.has(q.id)) {
-                    this.state.selectedItems.delete(q.id);
-                } else {
-                    this.state.selectedItems.add(q.id);
-                }
-                this.renderSidebar();
-            } else {
-                // Single click - clear selection and open
-                this.state.selectedItems.clear();
-                this.state.activeContext = context;
-                this.loadQuestionIntoEditor(q);
-            }
+            // Single click - clear selection and open
+            this.state.selectedItems.clear();
+            this.state.selectedItems.add(q.id); 
+            this.state.activeContext = context;
+            this.loadQuestionIntoEditor(q);
+            this.renderSidebar();
         };
 
         el.innerHTML = `
