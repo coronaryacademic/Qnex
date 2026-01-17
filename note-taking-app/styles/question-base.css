@@ -28,13 +28,15 @@
   font-size: 1.1rem;
   text-align: center;
   padding: 2rem;
-  background: var(--bg); /* Ensure clean background */
+  background: var(--bg);
+  /* Ensure clean background */
 }
 
 /* Ensure empty state SVG handles theming via currentColor */
 .question-empty-state svg {
   margin-bottom: 1.5rem;
-  color: var(--muted); /* Default color */
+  color: var(--muted);
+  /* Default color */
   opacity: 0.3;
   transition: color 0.3s;
 }
@@ -57,9 +59,13 @@
 
 /* Classic Theme Overrides */
 body.theme-classic .question-empty-state svg,
-body.theme-classic .question-empty-state h3,
 body.theme-classic .question-empty-state p {
   color: #878787 !important;
+}
+
+body.theme-classic .question-title-input,
+body.theme-classic .question-empty-state h3 {
+  color: #2c3e50 !important;
 }
 
 /* Question Sidebar overrides */
@@ -93,7 +99,8 @@ body.theme-classic .question-empty-state p {
   padding: 12.5px 16px;
   border-bottom: 1px solid var(--border);
   display: flex !important;
-  justify-content: flex-start !important; /* Override main sidebar's flex-end */
+  justify-content: flex-start !important;
+  /* Override main sidebar's flex-end */
 }
 
 /* Inherit padding from .sidebar-search in style.css */
@@ -129,7 +136,7 @@ body.theme-classic .question-empty-state p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding:12.5px 1rem;
+  padding: 12.5px 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -279,7 +286,8 @@ textarea:focus {
 
 /* Sidebar Item for Questions */
 /* Sidebar Item for Questions */
-.question-item, .q-folder-header {
+.question-item,
+.q-folder-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -290,10 +298,12 @@ textarea:focus {
   color: var(--text);
   background: transparent;
   transition: all 0.2s;
-  border-left: none; /* Removed border-left in favor of rounded style */
+  border-left: none;
+  /* Removed border-left in favor of rounded style */
 }
 
-.question-item:hover, .q-folder-header:hover {
+.question-item:hover,
+.q-folder-header:hover {
   background: var(--panel-hover);
 }
 
@@ -305,15 +315,18 @@ textarea:focus {
 
 /* Chevron Styles (matching .sidebar-section-header-text .section-chevron) */
 .folder-chevron {
-  width: 20px; /* Increased size as requested */
+  width: 20px;
+  /* Increased size as requested */
   height: 20px;
   color: var(--muted);
   transition: transform 0.2s ease;
   margin-right: 4px;
 }
+
 .q-folder-header:hover .folder-chevron {
   color: var(--text);
 }
+
 .folder-chevron.open {
   transform: rotate(90deg);
 }
@@ -358,7 +371,8 @@ textarea:focus {
 }
 
 .question-sidebar {
-  position: relative; /* Ensure resizing works relative to this */
+  position: relative;
+  /* Ensure resizing works relative to this */
   pointer-events: auto;
 }
 
@@ -378,13 +392,13 @@ textarea:focus {
 }
 
 .q-sidebar-header {
-    padding: 0.5rem 1rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: var(--muted);
-    letter-spacing: 0.5px;
-    margin-top: 10px;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  margin-top: 10px;
 }
 
 /* Folders */
@@ -442,7 +456,8 @@ textarea:focus {
 }
 
 .q-folder-content .question-item {
-  padding-left: 1.8rem; /* Indent questions in folder */
+  padding-left: 1.8rem;
+  /* Indent questions in folder */
 }
 
 /* Selection Highlight Logic (Matching Base Layer) */
@@ -466,13 +481,16 @@ textarea:focus {
   background: var(--panel-2);
   color: var(--text);
 }
+
 .trash-btn:hover {
   background: var(--panel-hover);
 }
+
 .trash-btn.danger {
   color: var(--danger, #ef4444);
   border-color: rgba(239, 68, 68, 0.3);
 }
+
 .trash-btn.danger:hover {
   background: rgba(239, 68, 68, 0.1);
 }
@@ -487,3 +505,25 @@ textarea:focus {
   background: var(--panel-hover);
 }
 
+/* Back to Main Button Visibility */
+/* Default hidden (set in HTML style, but good to enforce if removed there) */
+#backToMainFromQuestionsHeader {
+  display: none;
+}
+
+/* Visible only when sidebar is collapsed */
+.question-sidebar.collapsed+.question-content .question-header #backToMainFromQuestionsHeader {
+  display: inline-flex !important;
+  margin-left: -7px;
+}
+
+/* Classic Theme Additional Overrides */
+body.theme-classic .question-title-input::placeholder {
+  color: #2c3e50 !important;
+  opacity: 0.7;
+}
+
+body.theme-classic .question-body label,
+body.theme-classic .question-editor-container .form-group label {
+  color: #2c3e50 !important;
+}

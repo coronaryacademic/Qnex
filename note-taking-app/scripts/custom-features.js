@@ -28,7 +28,7 @@ window.addEventListener("load", async () => {
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         "></div>
-        <div style="color: var(--muted); font-size: 14px;">Loading...</div>
+        <div class="simple-loader-text" style="color: var(--muted); font-size: 14px;">Loading...</div>
       </div>
       <style>
         @keyframes spin {

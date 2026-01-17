@@ -560,9 +560,11 @@ textarea {
   0% {
     transform: rotate(0deg);
   }
+
   50% {
     transform: rotate(45deg);
   }
+
   100% {
     transform: rotate(0deg);
   }
@@ -6379,7 +6381,7 @@ ol.editor-block {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6390,7 +6392,7 @@ ol.editor-block {
 
 .floating-action-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
   background: var(--panel-hover);
   border-color: var(--accent);
   color: var(--accent);
@@ -6403,4 +6405,24 @@ ol.editor-block {
 .floating-action-btn svg {
   width: 24px;
   height: 24px;
+}
+
+/* Classic Theme Specific Overrides requested by User */
+body.theme-classic .question-title-input,
+body.theme-classic .simple-loader-text {
+  color: #2c3e50 !important;
+}
+
+body.theme-classic .question-title-input::placeholder {
+  color: #2c3e50 !important;
+  opacity: 0.6;
+}
+
+body.theme-classic .question-body h1,
+body.theme-classic .question-body h2,
+body.theme-classic .question-body h3,
+body.theme-classic .question-body h4,
+body.theme-classic .question-body h5,
+body.theme-classic .question-body h6 {
+  color: #2c3e50 !important;
 }
