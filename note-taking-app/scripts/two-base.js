@@ -5115,18 +5115,32 @@
 
           const section = newChevron.closest(".sidebar-section");
           section.classList.toggle("collapsed");
+
+          const isCollapsed = section.classList.contains("collapsed");
           console.log(
             "[SIDEBAR] Section collapsed state:",
-            section.classList.contains("collapsed")
+            isCollapsed
           );
 
           // Save collapsed state to localStorage
           if (sectionName) {
-            const isCollapsed = section.classList.contains("collapsed");
             localStorage.setItem(
               `sidebar-section-${sectionName}-collapsed`,
               isCollapsed
             );
+
+            // SYNC: Update QuestionBase if applicable
+            if (window.QuestionBase && typeof window.QuestionBase.setSectionCollapsed === "function") {
+              // Map Base names to Q names
+              let targetQSection = null;
+              if (sectionName === "folders") targetQSection = "Folders";
+              else if (sectionName === "pinned") targetQSection = "Starred";
+              else if (sectionName === "notebooks") targetQSection = "All Questions";
+
+              if (targetQSection) {
+                window.QuestionBase.setSectionCollapsed(targetQSection, isCollapsed);
+              }
+            }
           }
         });
       }
@@ -7562,6 +7576,67 @@
     setupSidebarSections();
   };
 
+  // Allow external control of sidebar sections (for syncing with QuestionBase)
+  function setSectionCollapsed(sectionName, isCollapsed) {
+    // Map mismatched names if necessary
+    // Base: "cards" -> Q: "Cards" etc.
+    // Ensure case matching if needed, but for now exact match or specific known ones
+    // Convert Q-layer names to Base-layer names
+    // If exact match doesn't exist, try mapped names
+    let targetSection = sectionName;
+    if (sectionName === "Folders") targetSection = "folders";
+    else if (sectionName === "Starred") targetSection = "pinned";
+    else if (sectionName === "All Questions") targetSection = "notebooks";
+    
+    // Strategy 1: Specific ID selector (Best)
+    let header = document.querySelector(`#sidebar .sidebar-section-header-text[data-section="${targetSection}"]`);
+    
+    // Strategy 2: Global selector if specific fails (Fallback)
+    if (!header) {
+       header = document.querySelector(`.sidebar-section-header-text[data-section="${targetSection}"]`);
+    }
+
+    // Strategy 3: Text content match (Last resort)
+    if (!header) {
+       const allHeaders = document.querySelectorAll('.sidebar-section-header-text');
+       for (const h of allHeaders) {
+           if (h.textContent.trim().toLowerCase() === targetSection.toLowerCase() || 
+               h.textContent.trim().toLowerCase() === sectionName.toLowerCase()) {
+               header = h;
+               console.log(`[TwoBase] Found header by text content: ${h.textContent}`);
+               break;
+           }
+       }
+    }
+
+    if (header) {
+      console.log(`[TwoBase] Syncing section '${targetSection}' (orig: ${sectionName}) to collapsed=${isCollapsed}`);
+      
+      // Visual feedback for debugging (Flash header text color)
+      const originalColor = header.style.color;
+      header.style.transition = "color 0.2s";
+      header.style.color = "#00ff00"; // Flash green
+      setTimeout(() => {
+          header.style.color = originalColor;
+      }, 300);
+
+      const section = header.closest(".sidebar-section");
+      if (section) {
+        if (isCollapsed) {
+          section.classList.add("collapsed");
+        } else {
+          section.classList.remove("collapsed");
+        }
+        
+        // Save to localStorage specifically for Base Layer keys
+        // Note: Base layer uses lowercase keys typically: sidebar-section-folders-collapsed
+        localStorage.setItem(`sidebar-section-${targetSection}-collapsed`, isCollapsed);
+      }
+    } else {
+      console.warn(`[TwoBase] Could not find header for section '${targetSection}' (orig: ${sectionName})`);
+    }
+  }
+
   window.TwoBase = {
     init,
     renderWorkspaceSplit,
@@ -7574,6 +7649,7 @@
     refreshSidebar, // Export sidebar refresh function
     setupSidebarSections, // Export sidebar sections setup
     showDeleteConfirmation, // Export custom delete dialog
+    setSectionCollapsed, // Export section collapse sync
   };
 
   // Auto-initialize when DOM is ready

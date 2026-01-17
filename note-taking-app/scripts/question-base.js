@@ -445,6 +445,16 @@ const QuestionBase = {
         localStorage.setItem("app-question-expanded-folders-v2", JSON.stringify(arr));
     },
 
+    setSectionCollapsed(sectionName, isCollapsed) {
+        if (isCollapsed) {
+            this.state.collapsedSections.add(sectionName);
+        } else {
+            this.state.collapsedSections.delete(sectionName);
+        }
+        this.saveCollapsedSections();
+        this.renderSidebar();
+    },
+
     async loadData() {
         console.log('[QuestionBase] loadData() called');
         console.log('[QuestionBase] Storage available?', typeof window.Storage, 'loadQuestions?', typeof window.Storage?.loadQuestions);
@@ -793,12 +803,22 @@ const QuestionBase = {
      `;
         header.onclick = () => {
             section.classList.toggle("collapsed");
-            if (section.classList.contains("collapsed")) {
+            const isCollapsed = section.classList.contains("collapsed");
+            
+            if (isCollapsed) {
                 this.state.collapsedSections.add("Folders");
             } else {
                 this.state.collapsedSections.delete("Folders");
             }
             this.saveCollapsedSections();
+            
+            console.log(`[QuestionBase] Syncing 'Folders' to collapsed=${isCollapsed}`);
+            // Sync with TwoBase
+            if (window.TwoBase && typeof window.TwoBase.setSectionCollapsed === "function") {
+                window.TwoBase.setSectionCollapsed("Folders", isCollapsed);
+            } else {
+                console.warn("[QuestionBase] TwoBase.setSectionCollapsed not found");
+            }
         };
 
         const content = document.createElement("div");
@@ -849,13 +869,27 @@ const QuestionBase = {
         header.onclick = (e) => {
             e.stopPropagation();
             section.classList.toggle("collapsed");
+            const isCollapsed = section.classList.contains("collapsed");
+            
             // Save collapsed state
-            if (section.classList.contains("collapsed")) {
+            if (isCollapsed) {
                 this.state.collapsedSections.add(title);
             } else {
                 this.state.collapsedSections.delete(title);
             }
             this.saveCollapsedSections();
+            
+            console.log(`[QuestionBase] Syncing '${title}' to collapsed=${isCollapsed}`);
+            
+            // Sync with TwoBase (Delegate mapping to TwoBase)
+            if (window.TwoBase && typeof window.TwoBase.setSectionCollapsed === "function") {
+                // Add small delay to ensure UI threads are clear
+                setTimeout(() => {
+                    window.TwoBase.setSectionCollapsed(title, isCollapsed);
+                }, 10);
+            } else {
+                console.warn("[QuestionBase] TwoBase.setSectionCollapsed not found");
+            }
         };
 
         const content = document.createElement("div");
