@@ -179,50 +179,50 @@ const Storage = {
   },
 
   async loadQuestions() {
+    // Try Electron first
     if (this.isElectron) {
       if (typeof window.electronAPI.readQuestions === "function") {
-         return await window.electronAPI.readQuestions();
+        return await window.electronAPI.readQuestions();
       }
+      console.warn("Electron detected but readQuestions missing - falling back");
     }
-    // Fallback/Browser
-    const stored = localStorage.getItem("app-questions");
-    return stored ? JSON.parse(stored) : [];
-  },
 
-  async saveQuestions(data) {
-    if (this.isElectron) {
-      if (typeof window.electronAPI.writeQuestions === "function") {
-         await window.electronAPI.writeQuestions(data);
-         return;
-      }
-    }
-    // Fallback/Browser
-    localStorage.setItem("app-questions", JSON.stringify(data));
-  },
-
-  async loadQuestions() {
+    // Try file system service
     if (this.useFileSystem) {
       return await fileSystemService.loadQuestions();
-    } else {
-      const stored = localStorage.getItem("app-questions");
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch(e) {
-          console.error("Failed to parse questions:", e);
-          return { questions: [], folders: [] };
-        }
-      }
-      return { questions: [], folders: [] };
     }
+
+    // Fallback to localStorage
+    const stored = localStorage.getItem("app-questions");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error("Failed to parse questions:", e);
+        return { questions: [], folders: [] };
+      }
+    }
+    return { questions: [], folders: [] };
   },
 
   async saveQuestions(data) {
+    // Try Electron first
+    if (this.isElectron) {
+      if (typeof window.electronAPI.writeQuestions === "function") {
+        await window.electronAPI.writeQuestions(data);
+        return;
+      }
+      console.warn("Electron detected but writeQuestions missing - falling back");
+    }
+
+    // Try file system service
     if (this.useFileSystem) {
       await fileSystemService.saveQuestions(data);
-    } else {
-      localStorage.setItem("app-questions", JSON.stringify(data));
+      return;
     }
+
+    // Fallback to localStorage
+    localStorage.setItem("app-questions", JSON.stringify(data));
   },
 
   async loadTrash() {
@@ -2478,7 +2478,7 @@ window.startImportProcess = function () {
     }
 
     if (state.settings.sidebarWidth && !state.settings.sidebarCollapsed) {
-// continue...
+      // continue...
       el.sidebar.style.width = state.settings.sidebarWidth + "px";
 
       // Apply narrow class if width is small
@@ -4096,7 +4096,7 @@ window.startImportProcess = function () {
     sidebarActionBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       hideContextMenu(); // Close any open right-click menus
-      
+
       const isOpen = sidebarActionBtn.classList.contains("open");
       if (isOpen) {
         sidebarActionBtn.classList.remove("open");
@@ -4106,7 +4106,7 @@ window.startImportProcess = function () {
       } else {
         sidebarActionBtn.classList.add("open");
       }
-      
+
       sidebarActionMenu.classList.toggle("open");
     });
 
@@ -8505,7 +8505,7 @@ window.startImportProcess = function () {
       console.log(`Saving sidebar width: ${width}`);
       state.settings.sidebarWidth = width;
       Storage.saveSettings(state.settings);
-      
+
       // Also save for Question Bank to keep them in sync
       localStorage.setItem("app-question-sidebar-width", width + "px");
     };
@@ -8629,18 +8629,18 @@ window.startImportProcess = function () {
   window.renderSidebar = renderSidebar;
 
   // Helper to sync sidebar width from outside (e.g. Question Bank)
-  window.updateSidebarWidth = function(width) {
-     const sidebar = document.getElementById("sidebar");
-     if (sidebar) {
-        sidebar.style.width = width + "px";
-     }
-     // Use state if available (it is in this scope)
-     if (typeof state !== 'undefined' && state.settings) {
-        state.settings.sidebarWidth = parseInt(width);
-        Storage.saveSettings(state.settings);
-     }
-     // Also sync the local storage key for question bank
-     localStorage.setItem("app-question-sidebar-width", width + "px");
+  window.updateSidebarWidth = function (width) {
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar) {
+      sidebar.style.width = width + "px";
+    }
+    // Use state if available (it is in this scope)
+    if (typeof state !== 'undefined' && state.settings) {
+      state.settings.sidebarWidth = parseInt(width);
+      Storage.saveSettings(state.settings);
+    }
+    // Also sync the local storage key for question bank
+    localStorage.setItem("app-question-sidebar-width", width + "px");
   };
 
   // Final Initialization Step: Restore Split View Session
