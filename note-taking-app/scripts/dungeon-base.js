@@ -4,15 +4,42 @@ export default class DungeonBase {
     this.state = {
       questions: [],
       currentIndex: 0,
-      answers: new Map() // id -> { isCorrect: boolean, selectedId: string }
+      answers: new Map(), // id -> { isCorrect: boolean, selectedId: string, submitted: boolean }
+      selectedOption: null // Temporary selection before submit
     };
   }
 
   init() {
     this.el.container = document.getElementById("dungeonBase");
-    this.el.strip = document.getElementById("dungeonStrip");
-    this.el.card = document.getElementById("dungeonCard");
-    this.el.closeBtn = document.getElementById("dungeonCloseBtn");
+    
+    // Inject new structure if needed (since we changed layouts drastically)
+    if (this.el.container) {
+      if (!this.el.container.querySelector('.dungeon-sidebar')) {
+          this.el.container.innerHTML = `
+            <div id="dungeonSidebar" class="dungeon-sidebar"></div>
+            <div class="dungeon-main">
+                <div id="dungeonMainContent" class="dungeon-question-container"></div>
+            </div>
+            <div class="dungeon-right-panel">
+                <div class="dungeon-toolbar">
+                    <div class="dungeon-tool-btn" title="Highlight"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></div>
+                    <div class="dungeon-tool-btn" title="Note"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></div>
+                    <div class="dungeon-tool-btn" title="Flag"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg></div>
+                </div>
+                <div class="dungeon-nav-buttons">
+                    <button id="dungeonPrevBtn" class="dungeon-nav-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                    <button id="dungeonNextBtn" class="dungeon-nav-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+                </div>
+            </div>
+            <button id="dungeonCloseBtn" style="position:fixed; top:20px; left:20px; z-index:9999; padding:8px; background:#000; color:#fff; border:1px solid #333; cursor:pointer;" onclick="window.DungeonBase.close()">Exit</button>
+          `;
+      }
+    }
+
+    this.el.sidebar = document.getElementById("dungeonSidebar");
+    this.el.main = document.getElementById("dungeonMainContent");
+    this.el.prevBtn = document.getElementById("dungeonPrevBtn");
+    this.el.nextBtn = document.getElementById("dungeonNextBtn");
 
     if (!this.el.container) {
       console.error("DungeonBase container not found in DOM");
@@ -23,9 +50,8 @@ export default class DungeonBase {
   }
 
   bindEvents() {
-    if (this.el.closeBtn) {
-      this.el.closeBtn.onclick = () => this.close();
-    }
+    if (this.el.prevBtn) this.el.prevBtn.onclick = () => this.navPrev();
+    if (this.el.nextBtn) this.el.nextBtn.onclick = () => this.navNext();
     
     // Keyboard nav
     document.addEventListener("keydown", (e) => {
@@ -46,6 +72,7 @@ export default class DungeonBase {
     this.state.questions = [...questions];
     this.state.currentIndex = 0;
     this.state.answers.clear();
+    this.state.selectedOption = null;
     
     this.el.container.classList.remove("hidden");
     this.render();
@@ -56,131 +83,160 @@ export default class DungeonBase {
   }
 
   render() {
-    this.renderStrip();
+    // 1. Sidebar
+    this.renderSidebar();
+    
+    // 2. Main Question
     this.renderQuestion();
+
+    // 3. Nav Buttons State
+    if (this.el.prevBtn) this.el.prevBtn.style.opacity = this.state.currentIndex === 0 ? "0.3" : "1";
+    if (this.el.nextBtn) this.el.nextBtn.style.opacity = this.state.currentIndex === this.state.questions.length - 1 ? "0.3" : "1";
   }
 
-  renderStrip() {
-    this.el.strip.innerHTML = "";
+  renderSidebar() {
+    this.el.sidebar.innerHTML = "";
     
     this.state.questions.forEach((q, index) => {
-      const segment = document.createElement("div");
-      segment.className = "dungeon-segment";
+      const box = document.createElement("div");
+      box.className = "dungeon-q-box";
       
-      // Active State (Bulging)
       if (index === this.state.currentIndex) {
-        segment.classList.add("active");
+        box.classList.add("active");
       }
 
-      // Solved State
+      // Check Status
       const answer = this.state.answers.get(q.id);
-      let bulletContent = "";
-      
-      if (answer) {
-        if (answer.isCorrect) {
-          segment.classList.add("correct");
-          bulletContent = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-        } else {
-          segment.classList.add("wrong");
-          bulletContent = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-        }
+      let content = ".";
+      if (answer && answer.submitted) {
+          if (answer.isCorrect) {
+              box.classList.add("correct");
+              content = "✓";
+          } else {
+              box.classList.add("wrong");
+              content = "x";
+          }
       }
 
-      segment.innerHTML = `<div class="dungeon-bullet">${bulletContent}</div>`;
+      box.innerHTML = `<span class="dungeon-box-status">${content}</span>`;
       
-      // Click to jump
-      segment.onclick = () => {
+      box.onclick = () => {
+        this.saveCurrentSelection(); // If they selected something but didn't submit, save it? Or discard? Let's just switch.
         this.state.currentIndex = index;
+        this.state.selectedOption = null; // Reset temp selection on switch
+        // Restore temp selection if we want persistence of drafts? simpler to reset.
         this.render();
       };
       
-      this.el.strip.appendChild(segment);
+      this.el.sidebar.appendChild(box);
     });
+  }
+
+  saveCurrentSelection() {
+     // Optional: Persist unsubmitted selection? 
+     // For now, let's keep it simple: switching questions clears unsubmitted selection.
+     // To improve, we can store it in a separate map.
   }
 
   renderQuestion() {
     const q = this.state.questions[this.state.currentIndex];
     const answer = this.state.answers.get(q.id);
-    
+    const isSubmitted = answer && answer.submitted;
+
     let html = `
-      <div class="dungeon-question-title">${q.title || "Untitled Question"}</div>
-      <div class="dungeon-options">
-    `;
-    
-    const options = q.options || [];
-    options.forEach(opt => {
-      let className = "dungeon-option";
-      // Feedback logic
-      if (answer) {
-        // If answered, show verification
-        if (opt.id === answer.selectedId) {
-          className += answer.isCorrect ? " correct" : " wrong";
-        } else if (opt.isCorrect && !answer.isCorrect) {
-           // Show correct answer if user was wrong
-           className += " correct"; // Or maybe "missed-correct"? For now green.
-           // Actually, standard is: Highlight chosen (Red/Green). Highlight correct (Green).
-           // If user chose Wrong, highlight it Red. And highlight Correct one Green.
-        }
-      }
+      <div class="dungeon-question-header">${q.title || "Untitled Question"}</div>
       
-      html += `
-        <div class="dungeon-option ${className}" data-id="${opt.id}" ${answer ? '' : 'onclick="window.DungeonBase.handleAnswer(\'' + opt.id + '\')"'}>
-           <!-- Optional check/radio icon -->
-           <div class="option-marker" style="width:20px; height:20px; border:2px solid currentColor; border-radius:50%; display:flex; align-items:center; justify-content:center;">
-              ${(answer && (opt.id === answer.selectedId || (opt.isCorrect && !answer.isCorrect))) 
-                ? (opt.isCorrect ? '<div style="width:10px; height:10px; background:currentColor; border-radius:50%;"></div>' : '<span>×</span>') 
-                : ''}
-           </div>
-           <span>${opt.text || "Option"}</span>
-        </div>
-      `;
+      <!-- Context Box (Image/Code) - Placeholder if empty -->
+      <div class="dungeon-context-box">
+          <div style="text-align:center; padding: 20px;">
+             ${q.text || "No question details."}
+          </div>
+      </div>
+
+      <div class="dungeon-options-list">
+    `;
+
+    const options = q.options || [];
+    const currentSel = this.state.selectedOption; // Valid only if not submitted
+    const submittedSel = isSubmitted ? answer.selectedId : null;
+
+    options.forEach(opt => {
+        let classes = "dungeon-radio-option";
+        // Logic for styling
+        if (isSubmitted) {
+            // Submitted state
+            if (opt.id === submittedSel) {
+                 classes += " selected"; // Visual selected
+                 if (answer.isCorrect) classes += " correct-answer";
+                 else classes += " wrong-answer";
+            }
+            if (opt.isCorrect && !answer.isCorrect) {
+                 classes += " correct-answer"; // Show missed correct answer
+            }
+        } else {
+            // Interactive state
+            if (opt.id === currentSel) classes += " selected";
+        }
+
+        html += `
+          <div class="${classes}" onclick="window.DungeonBase.handleSelectOption('${opt.id}')">
+              <div class="dungeon-radio-circle"></div>
+              <div class="dungeon-radio-text">${opt.text || "Option"}</div>
+          </div>
+        `;
     });
-    
-    html += `</div>`; // Close options
-    
-    // Explanation if answered
-    if (answer && q.explanation) {
-       html += `
-         <div style="margin-top: 20px; padding: 15px; background: var(--bg); border-radius: 8px; border-left: 4px solid var(--accent);">
-            <strong>Explanation:</strong> ${q.explanation}
-         </div>
-       `;
+
+    html += `</div>`; // End options
+
+    // Submit Button (Show if not submitted)
+    if (!isSubmitted) {
+        html += `<button class="dungeon-submit-btn" onclick="window.DungeonBase.handleSubmit()">Submit</button>`;
+    } else {
+        // Explanation
+        html += `
+           <div class="dungeon-explanation">
+               <h3>${answer.isCorrect ? "Correct!" : "Incorrect"}</h3>
+               <p>${q.explanation || "No explanation provided."}</p>
+           </div>
+        `;
     }
 
-    this.el.card.innerHTML = html;
-    
-    // Re-bind clicks if needed (using global handler for simplicity in template string above is risky with modules, better addEventListener)
-    // I'll use querySelectorAll to bind clicks to avoid global scope issues.
-    this.el.card.querySelectorAll(".dungeon-option").forEach(el => {
-       if (!answer) {
-         el.onclick = () => this.handleAnswer(el.dataset.id);
-       }
-    });
+    this.el.main.innerHTML = html;
   }
 
-  handleAnswer(optionId) {
-    const q = this.state.questions[this.state.currentIndex];
-    
-    // Check correctness
-    const selectedOpt = q.options.find(o => o.id === optionId);
-    const isCorrect = selectedOpt && selectedOpt.isCorrect;
-    
-    // Save state
-    this.state.answers.set(q.id, {
-      isCorrect,
-      selectedId: optionId
-    });
-    
-    // Re-render
-    this.render();
-    
-    // Auto-advance? Maybe wait a second?
-    // User didn't request auto-advance, so stay.
+  handleSelectOption(optionId) {
+      const q = this.state.questions[this.state.currentIndex];
+      const answer = this.state.answers.get(q.id);
+      
+      if (answer && answer.submitted) return; // Locked
+
+      this.state.selectedOption = optionId;
+      this.renderQuestion();
+  }
+
+  handleSubmit() {
+      const q = this.state.questions[this.state.currentIndex];
+      if (!this.state.selectedOption) {
+          alert("Please select an option.");
+          return;
+      }
+
+      const selectedOpt = q.options.find(o => o.id === this.state.selectedOption);
+      const isCorrect = selectedOpt && selectedOpt.isCorrect;
+
+      this.state.answers.set(q.id, {
+          submitted: true,
+          selectedId: this.state.selectedOption,
+          isCorrect: isCorrect
+      });
+
+      this.render(); // Update sidebar and content
   }
 
   navNext() {
     if (this.state.currentIndex < this.state.questions.length - 1) {
       this.state.currentIndex++;
+      this.state.selectedOption = null;
       this.render();
     }
   }
@@ -188,6 +244,7 @@ export default class DungeonBase {
   navPrev() {
     if (this.state.currentIndex > 0) {
       this.state.currentIndex--;
+      this.state.selectedOption = null;
       this.render();
     }
   }

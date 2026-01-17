@@ -5,176 +5,311 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: var(--bg);
-  z-index: 2000; /* Above Question Base (1000?) */
+  background: #111; /* Deep dark background */
+  z-index: 2000;
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* Horizontal layout: Sidebar | Content | RightPanel */
   overflow: hidden;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
 }
 
 .dungeon-base.hidden {
   display: none;
 }
 
-/* Dungeon Header (Progress Strip) */
-.dungeon-strip {
-  width: 100%;
-  height: 40px; /* Long strip */
+/* LEFT SIDEBAR (Question Strip) */
+.dungeon-sidebar {
+  width: 80px;
+  height: 100%;
+  background: #1a1a1a;
+  border-right: 1px solid #333;
   display: flex;
-  flex-direction: row; /* Default LTR, assuming user intent; can switch if needed */
-  background: var(--bg-secondary);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  position: relative;
-  z-index: 10;
+  flex-direction: column;
+  padding: 20px 0;
+  overflow-y: auto;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
-.dungeon-segment {
-  flex: 1;
+/* Q-Box Items */
+.dungeon-q-box {
+  width: 50px;
+  height: 50px;
+  border: 1px solid #444;
+  border-radius: 4px; /* Slightly rounded, like wireframe */
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--panel-header); /* Default 1 */
+  color: #888;
+  font-size: 1.2rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-right: 1px solid rgba(0,0,0,0.05);
+  transition: all 0.2s;
+  background: #222;
   position: relative;
 }
 
-.dungeon-segment:nth-child(even) {
-  background: var(--bg-secondary); /* Alternating Color */
+.dungeon-q-box:hover {
+  border-color: #666;
+  background: #2a2a2a;
 }
 
-/* Active Segment (Bulging) */
-.dungeon-segment.active {
-  transform: scaleY(1.25) scaleX(1.05);
-  z-index: 20;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  border-radius: 4px;
+.dungeon-q-box.active {
+  border-color: #ffd700; /* Yellow highlight from wireframe */
+  color: #ffd700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+  transform: scale(1.05);
+  z-index: 2;
 }
 
-/* Status Colors */
-.dungeon-segment.correct {
-  background: var(--success-bg) !important;
+/* Status Icons inside box */
+.dungeon-box-status {
+  font-family: monospace;
+  font-weight: bold;
 }
 
-.dungeon-segment.wrong {
-  background: var(--danger-bg) !important; /* Red */
+.dungeon-q-box.correct {
+  color: #4ade80; /* Green */
+  border-color: #4ade80;
 }
 
-/* Bullet Point / Icon */
-.dungeon-bullet {
-  width: 12px;
-  height: 12px;
-  background: var(--text-muted);
-  border-radius: 50%;
-  transition: all 0.3s;
+.dungeon-q-box.wrong {
+  color: #ef4444; /* Red */
+  border-color: #ef4444;
 }
 
-.dungeon-segment.active .dungeon-bullet {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-transparent);
-}
 
-.dungeon-segment.correct .dungeon-bullet,
-.dungeon-segment.wrong .dungeon-bullet {
-  background: transparent;
-  width: 20px;
-  height: 20px;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* Dungeon Main Content */
-.dungeon-content {
+/* MAIN CONTENT CENTER */
+.dungeon-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 40px;
+  justify-content: flex-start;
+  padding: 40px 60px;
   overflow-y: auto;
+  position: relative;
 }
 
-.dungeon-card {
-  background: var(--bg-secondary);
-  border-radius: 16px;
-  padding: 40px;
+.dungeon-question-container {
   width: 100%;
   max-width: 800px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-  border: 1px solid var(--border);
-  animation: slideUp 0.4s ease-out;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.dungeon-question-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 30px;
-  line-height: 1.4;
-}
-
-.dungeon-options {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 30px;
 }
 
-.dungeon-option {
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 2px solid var(--border);
-  background: var(--bg);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 1.1rem;
+/* Question Header */
+.dungeon-question-header {
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: #e5e5e5;
+  margin-bottom: 20px;
+}
+
+/* The Big Rectangle (Image/Code/Context) */
+.dungeon-context-box {
+  width: 100%;
+  min-height: 200px;
+  border: 2px solid #ffd700; /* Yellow border from wireframe */
+  border-radius: 8px;
+  background: #1a1a1a;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  color: #666;
+  margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
 }
 
-.dungeon-option:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-dim);
+.dungeon-context-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
-.dungeon-option.selected {
-  border-color: var(--accent);
-  background: var(--accent-bg);
+/* Options */
+.dungeon-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.dungeon-option.correct {
-  border-color: var(--success);
-  background: var(--success-bg);
-  color: var(--success-text);
-}
-
-.dungeon-option.wrong {
-  border-color: var(--danger);
-  background: var(--danger-bg);
-  color: var(--danger-text);
-}
-
-/* Close Button (Access to go back) */
-.dungeon-close-btn {
-  position: absolute;
-  top: 60px; /* Below strip */
-  right: 20px;
-  padding: 10px;
-  background: var(--bg-secondary);
-  border-radius: 50%;
+.dungeon-radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
   cursor: pointer;
-  border: 1px solid var(--border);
-  transition: all 0.2s;
-  z-index: 100;
+  padding: 10px;
+  border-radius: 8px;
+  transition: background 0.2s;
 }
-.dungeon-close-btn:hover {
-  background: var(--danger-bg);
-  color: var(--danger);
-  border-color: var(--danger);
+
+.dungeon-radio-option:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.dungeon-radio-circle {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #666;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+
+.dungeon-radio-option.selected .dungeon-radio-circle {
+  border-color: #ffd700;
+  background: #ffd700;
+}
+
+.dungeon-radio-option.selected .dungeon-radio-circle::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: #000;
+  border-radius: 50%;
+}
+
+.dungeon-radio-text {
+  font-size: 1.1rem;
+  color: #d4d4d4;
+  line-height: 1.5;
+}
+
+/* Feedback Colors */
+.dungeon-radio-option.correct-answer .dungeon-radio-text {
+  color: #4ade80;
+}
+.dungeon-radio-option.wrong-answer .dungeon-radio-text {
+  color: #ef4444;
+}
+
+/* Submit Button */
+.dungeon-submit-btn {
+  width: fit-content;
+  padding: 10px 30px;
+  background: transparent;
+  border: 2px solid #ffd700;
+  color: #ffd700;
+  font-family: 'Patrick Hand', cursive, sans-serif; /* Handwritten style if avail, else sans */
+  font-size: 1.2rem;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; /* Sketchy border */
+  cursor: pointer;
+  margin-top: 20px;
+  transition: transform 0.1s;
+}
+
+.dungeon-submit-btn:hover {
+  transform: scale(1.05);
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.dungeon-submit-btn:active {
+  transform: scale(0.95);
+}
+
+/* Explanation */
+.dungeon-explanation {
+  margin-top: 40px;
+  border-top: 1px solid #333;
+  padding-top: 20px;
+  opacity: 0;
+  animation: fadeIn 0.5s forwards;
+}
+
+.dungeon-explanation h3 {
+  color: #ffd700;
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+}
+
+.dungeon-explanation p {
+  color: #ccc;
+  line-height: 1.6;
+}
+
+@keyframes fadeIn { to { opacity: 1; } }
+
+/* RIGHT SIDEBAR (Tools + Nav) */
+.dungeon-right-panel {
+  width: 80px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 40px 0;
+}
+
+.dungeon-toolbar {
+  width: 40px;
+  border: 1px solid #666;
+  border-radius: 20px;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+  background: #1a1a1a;
+}
+
+.dungeon-tool-btn {
+  width: 24px;
+  height: 24px;
+  color: #ffd700;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.dungeon-tool-btn:hover { opacity: 1; }
+
+.dungeon-nav-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 40px;
+}
+
+.dungeon-nav-btn {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #ffd700;
+  border-radius: 8px;
+  background: transparent;
+  color: #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dungeon-nav-btn:hover {
+  background: #ffd700;
+  color: #000;
+}
+
+/* Close btn absolute */
+#dungeonCloseBtn {
+   position: fixed;
+   top: 20px;
+   left: 20px; /* actually we might hide it or put it in corner */
+   display: none; /* Let's hide it for now unless user asks, or map to escape */
+}
+
+/* Custom Scrollbar for Sidebar */
+.dungeon-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.dungeon-sidebar::-webkit-scrollbar-track {
+  background: #111;
+}
+.dungeon-sidebar::-webkit-scrollbar-thumb {
+  background: #333;
 }

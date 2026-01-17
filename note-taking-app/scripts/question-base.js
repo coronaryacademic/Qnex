@@ -942,6 +942,12 @@ const QuestionBase = {
         // Context Menu
         header.addEventListener("contextmenu", (e) => {
             e.preventDefault();
+            e.stopPropagation(); // Prevent bubbling to sidebar container
+
+            // Visual Highlight
+            document.querySelectorAll(".question-item.context-active, .q-folder-header.context-active").forEach(el => el.classList.remove("context-active"));
+            header.classList.add("context-active");
+
             this.showContextMenu(e.clientX, e.clientY, folder.id, 'folder');
         });
 
