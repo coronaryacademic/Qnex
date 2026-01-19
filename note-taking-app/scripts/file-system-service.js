@@ -9,6 +9,7 @@ class FileSystemService {
     this.fallbackUrl = "http://localhost:3002/api";
     this.retryAttempts = 3;
     this.retryDelay = 1000;
+    this.isOffline = false; // Track connectivity state to prevent console spam
 
     // Auto-discover which port is active
     this.readyPromise = this.init();
@@ -24,7 +25,7 @@ class FileSystemService {
       const url = `http://localhost:${port}/api`;
       try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 2000);
+        const id = setTimeout(() => controller.abort(), 200); // Reduced timeout for faster offline detection
         const res = await fetch(`${url}/health`, { signal: controller.signal });
         clearTimeout(id);
 
@@ -33,6 +34,7 @@ class FileSystemService {
           this.baseUrl = url;
           // Set fallback to the OTHER port just in case
           this.fallbackUrl = `http://localhost:${port === 3001 ? 3002 : 3001}/api`;
+          this.isOffline = false;
           return;
         }
       } catch (e) {
@@ -40,10 +42,19 @@ class FileSystemService {
       }
     }
     console.warn("[FileSystemService] ⚠️ No active server found during probe. Using default:", this.baseUrl);
+    this.isOffline = true;
   }
 
   // Helper method for making HTTP requests with retry logic
   async makeRequest(url, options = {}) {
+    // Ensure we've finished probing before making requests
+    await this.waitForReady();
+
+    // If we determined we are offline, don't attempt fetch to avoid browser console errors
+    if (this.isOffline) {
+      throw new Error("SERVER_OFFLINE");
+    }
+
     const defaultOptions = {
       headers: {
         "Content-Type": "application/json",
@@ -106,11 +117,14 @@ class FileSystemService {
 
   // Check if server is running
   async checkHealth() {
+    await this.waitForReady();
+    if (this.isOffline) return false;
+    
     try {
       const response = await this.makeRequest("/health");
       return response.status === "OK";
     } catch (error) {
-      console.error("Health check failed:", error);
+      // console.error("Health check failed:", error); // Suppress log
       return false;
     }
   }
@@ -306,10 +320,12 @@ class FileSystemService {
       const settings = await this.makeRequest("/settings");
       return settings || {};
     } catch (error) {
-      console.warn(
-        "Error loading settings from server, returning defaults:",
-        error
-      );
+      if (error.message !== "SERVER_OFFLINE") {
+        console.warn(
+          "Error loading settings from server, returning defaults:",
+          error
+        );
+      }
       // Return empty object instead of throwing - let app.js handle defaults
       return {};
     }

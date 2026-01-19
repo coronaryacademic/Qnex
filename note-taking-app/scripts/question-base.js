@@ -635,8 +635,7 @@ const QuestionBase = {
         this.el.saveBtn.disabled = true;
         this.el.saveBtn.style.display = "none";
 
-        const playBtn = document.getElementById("playQuestionsBtn");
-        if (playBtn) playBtn.style.display = "none";
+
 
         this.renderSidebar();
     },
@@ -703,8 +702,7 @@ const QuestionBase = {
             this.el.saveBtn.disabled = false;
             this.el.saveBtn.style.display = "";
         }
-        const playBtn = document.getElementById("playQuestionsBtn");
-        if (playBtn) playBtn.style.display = "";
+
 
         // Clear and rebuild options
         this.el.optionsContainer.innerHTML = '<label>Answer Options</label>';
@@ -1069,11 +1067,13 @@ const QuestionBase = {
         this.el.ctxMenu = menu;
 
         menu.addEventListener("click", (e) => {
-            const btn = e.target.closest("button");
+            const btn = e.target.closest(".ctx-btn");
             if (!btn) return;
+            e.stopPropagation(); // Stop propagation to prevent immediate closing issues if nested
             const action = btn.dataset.action;
             const targetId = this.el.ctxMenu.dataset.targetId;
             const type = this.el.ctxMenu.dataset.targetType;
+            console.log("Context Action Triggered:", action, targetId, type); // Debug
             this.handleContextAction(action, targetId, type);
             this.hideContextMenu();
         });
@@ -1117,6 +1117,7 @@ const QuestionBase = {
                     Refresh
                 </button>
             </div>
+
             <div class="ctx-section">
                 <button class="ctx-btn" data-action="new-question">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -1277,6 +1278,7 @@ const QuestionBase = {
             return this.createNewFolder();
         }
         if (action === 'refresh') {
+            console.log("Refreshing Question Data...");
             return this.loadData();
         }
 
