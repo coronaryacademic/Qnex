@@ -74,37 +74,59 @@ export default class DungeonBase {
       const toolbar = document.getElementById("dungeonToolbar");
       if (!toolbar) return;
 
-      const snapThreshold = 100; // px distance to edge to trigger snap
+      // Create drop zones
+      const dropZones = {
+          top: this.createDropZone('top'),
+          bottom: this.createDropZone('bottom'),
+          left: this.createDropZone('left'),
+          right: this.createDropZone('right')
+      };
+
+      const snapThreshold = 80; // Distance to activate drop zone
       let isDragging = false;
-      let startX, startY;
+      let activeZone = null;
+      let lastValidState = null; // Store last valid docked position
       
       // Load saved state
       try {
         const saved = JSON.parse(localStorage.getItem("dungeonToolbarState"));
         if (saved) {
             this.setToolbarPosition(toolbar, saved);
+            lastValidState = saved;
         } else {
-            // Default center-ish
-            toolbar.style.top = '100px';
-            toolbar.style.right = '100px';
+            const defaultState = { orientation: 'vertical', side: 'right', pos: 0.5 };
+            this.setToolbarPosition(toolbar, defaultState);
+            lastValidState = defaultState;
         }
-      } catch(e) {}
+      } catch(e) {
+          const defaultState = { orientation: 'vertical', side: 'right', pos: 0.5 };
+          this.setToolbarPosition(toolbar, defaultState);
+          lastValidState = defaultState;
+      }
 
       // Drag Events
       toolbar.addEventListener('mousedown', (e) => {
           if (e.target.closest('.dungeon-tool-btn')) return;
           isDragging = true;
-          // startWidth = toolbar.offsetWidth; // Not needed
-          // startHeight = toolbar.offsetHeight; // Not needed
           toolbar.style.cursor = 'grabbing';
-          toolbar.style.transition = 'none'; // Disable transition during drag
+          toolbar.style.transition = 'none';
+          
+          // Show all drop zones and adjust left zone for sidebar
+          const sidebar = document.getElementById('dungeonSidebar');
+          const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
+          
+          Object.values(dropZones).forEach(zone => {
+              zone.style.display = 'block';
+              if (zone.dataset.needsSidebarAdjust) {
+                  zone.style.left = (sidebarWidth + 10) + 'px';
+              }
+          });
       });
 
       window.addEventListener('mousemove', (e) => {
           if (!isDragging) return;
           e.preventDefault();
           
-          // Constrain to window
           const x = e.clientX;
           const y = e.clientY;
           const w = window.innerWidth;
@@ -126,41 +148,98 @@ export default class DungeonBase {
           toolbar.style.top = newY + "px";
           toolbar.style.right = 'auto';
           toolbar.style.bottom = 'auto';
+
+          // Highlight nearest drop zone using toolbar center
+          const sidebar = document.getElementById('dungeonSidebar');
+          const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
+          
+          // Use toolbar center for distance calculations
+          const centerX = x;
+          const centerY = y;
+          
+          const distTop = centerY;
+          const distBottom = h - centerY;
+          const distLeft = centerX - sidebarWidth;
+          const distRight = w - centerX;
+          
+          // Clear all active states
+          Object.values(dropZones).forEach(zone => zone.classList.remove('active'));
+          activeZone = null;
+          
+          // Activate nearest zone if within threshold
+          if (distTop < snapThreshold) {
+              dropZones.top.classList.add('active');
+              activeZone = 'top';
+          } else if (distBottom < snapThreshold) {
+              dropZones.bottom.classList.add('active');
+              activeZone = 'bottom';
+          } else if (distLeft < snapThreshold && distLeft > 0) {
+              dropZones.left.classList.add('active');
+              activeZone = 'left';
+          } else if (distRight < snapThreshold) {
+              dropZones.right.classList.add('active');
+              activeZone = 'right';
+          }
       });
 
       window.addEventListener('mouseup', (e) => {
           if (isDragging) {
               isDragging = false;
               toolbar.style.cursor = 'grab';
-              toolbar.style.transition = ''; // Re-enable transition
+              toolbar.style.transition = '';
               
+              // Hide all drop zones
+              Object.values(dropZones).forEach(zone => {
+                  zone.style.display = 'none';
+                  zone.classList.remove('active');
+              });
+              
+              // Always snap to nearest edge
               const x = e.clientX;
               const y = e.clientY;
               const w = window.innerWidth;
               const h = window.innerHeight;
+              const sidebar = document.getElementById('dungeonSidebar');
+              const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
               
-              let newState = { orientation: 'vertical', side: 'right', pos: 0.5 }; // default
-
-              // Check proximities
+              // Calculate distances to each edge
               const distTop = y;
               const distBottom = h - y;
-              const distLeft = x;
+              const distLeft = x - sidebarWidth;
               const distRight = w - x;
               
-              const min = Math.min(distTop, distBottom, distLeft, distRight);
+              // Find nearest edge
+              const distances = {
+                  top: distTop,
+                  bottom: distBottom,
+                  left: distLeft > 0 ? distLeft : Infinity, // Only if outside sidebar
+                  right: distRight
+              };
               
-              if (min === distTop) {
-                  newState = { orientation: 'horizontal', side: 'top', pos: x / w };
-              } else if (min === distBottom) {
-                  newState = { orientation: 'horizontal', side: 'bottom', pos: x / w };
-              } else if (min === distLeft) {
-                  newState = { orientation: 'vertical', side: 'left', pos: y / h };
-              } else {
-                  newState = { orientation: 'vertical', side: 'right', pos: y / h };
+              const nearestEdge = Object.keys(distances).reduce((a, b) => 
+                  distances[a] < distances[b] ? a : b
+              );
+              
+              // Create state for nearest edge
+              let newState;
+              if (nearestEdge === 'top') {
+                  newState = { orientation: 'horizontal', side: 'top', pos: Math.max(0.1, Math.min(0.9, x / w)) };
+              } else if (nearestEdge === 'bottom') {
+                  newState = { orientation: 'horizontal', side: 'bottom', pos: Math.max(0.1, Math.min(0.9, x / w)) };
+              } else if (nearestEdge === 'left') {
+                  newState = { orientation: 'vertical', side: 'left', pos: Math.max(0.1, Math.min(0.9, y / h)) };
+              } else { // right
+                  newState = { orientation: 'vertical', side: 'right', pos: Math.max(0.1, Math.min(0.9, y / h)) };
               }
               
-              this.setToolbarPosition(toolbar, newState);
+              // Use requestAnimationFrame to ensure transition works
+              requestAnimationFrame(() => {
+                  this.setToolbarPosition(toolbar, newState);
+              });
               localStorage.setItem("dungeonToolbarState", JSON.stringify(newState));
+              lastValidState = newState;
+              
+              activeZone = null;
           }
       });
 
@@ -175,17 +254,38 @@ export default class DungeonBase {
       tools.forEach(btn => {
           btn.addEventListener('click', () => {
               btn.classList.toggle('active');
-              // Logic for tools here...
           });
       });
+  }
+  
+  createDropZone(position) {
+      const zone = document.createElement('div');
+      zone.className = `dungeon-drop-zone ${position}`;
+      zone.style.display = 'none';
+      
+      // Adjust left zone to be outside sidebar
+      if (position === 'left') {
+          // Will be updated dynamically when showing
+          zone.dataset.needsSidebarAdjust = 'true';
+      }
+      
+      document.getElementById('dungeonBase').appendChild(zone);
+      return zone;
   }
   
   setToolbarPosition(el, state) {
       el.classList.remove('vertical', 'horizontal');
       el.classList.add(state.orientation);
       
-      el.style.left = ''; el.style.right = ''; el.style.top = ''; el.style.bottom = '';
+      // Clear all positioning
+      el.style.left = '';
+      el.style.right = '';
+      el.style.top = '';
+      el.style.bottom = '';
       el.style.transform = '';
+      
+      const sidebar = document.getElementById('dungeonSidebar');
+      const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
       
       if (state.side === 'top') {
           el.style.top = '10px';
@@ -196,7 +296,7 @@ export default class DungeonBase {
           el.style.left = (state.pos * 100) + '%';
           el.style.transform = 'translateX(-50%)';
       } else if (state.side === 'left') {
-          el.style.left = '10px';
+          el.style.left = (sidebarWidth + 10) + 'px';
           el.style.top = (state.pos * 100) + '%';
           el.style.transform = 'translateY(-50%)';
       } else { // right
