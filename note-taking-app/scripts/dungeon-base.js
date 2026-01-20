@@ -12,34 +12,51 @@ export default class DungeonBase {
   init() {
     this.el.container = document.getElementById("dungeonBase");
     
-    // Inject new structure if needed (since we changed layouts drastically)
+    // Layout Migration / Enforcement
     if (this.el.container) {
-      if (!this.el.container.querySelector('.dungeon-sidebar')) {
-          this.el.container.innerHTML = `
-            <div id="dungeonSidebar" class="dungeon-sidebar"></div>
-            <div class="dungeon-main">
-                <div id="dungeonMainContent" class="dungeon-question-container"></div>
-            </div>
-            <div class="dungeon-right-panel">
-                <div class="dungeon-toolbar">
-                    <div class="dungeon-tool-btn" title="Highlight"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></div>
-                    <div class="dungeon-tool-btn" title="Note"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></div>
-                    <div class="dungeon-tool-btn" title="Flag"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg></div>
+        // 1. Remove obsolete Right Panel if present
+        const oldRightPanel = this.el.container.querySelector('.dungeon-right-panel');
+        if (oldRightPanel) {
+            oldRightPanel.remove();
+        }
+
+        // 2. Ensure Sidebar & Main exist (Basic reset if totally missing)
+        if (!this.el.container.querySelector('.dungeon-sidebar')) {
+            this.el.container.innerHTML = `
+              <div id="dungeonSidebar" class="dungeon-sidebar"></div>
+              <div class="dungeon-main">
+                  <div id="dungeonMainContent" class="dungeon-question-container"></div>
+              </div>
+              <button id="dungeonCloseBtn" style="position:fixed; top:20px; left:20px; z-index:9999; padding:8px; background:#000; color:#fff; border:1px solid #333; cursor:pointer;" onclick="window.DungeonBase.close()">Exit</button>
+            `;
+        }
+
+        // 3. Ensure Toolbar exists
+        if (!this.el.container.querySelector('#dungeonToolbar')) {
+             const toolbarHTML = `
+                <div id="dungeonToolbar" class="dungeon-toolbar vertical">
+                    <div class="dungeon-tool-btn" data-tool="highlight" title="Highlight">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>
+                    </div>
+                    <div class="dungeon-tool-btn" data-tool="flag" title="Flag">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    </div>
+                    <div class="dungeon-toolbar-divider"></div>
+                    <div id="dungeonToolPrev" class="dungeon-tool-btn" title="Previous">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </div>
+                    <div id="dungeonToolNext" class="dungeon-tool-btn" title="Next">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
                 </div>
-                <div class="dungeon-nav-buttons">
-                    <button id="dungeonPrevBtn" class="dungeon-nav-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-                    <button id="dungeonNextBtn" class="dungeon-nav-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
-                </div>
-            </div>
-            <button id="dungeonCloseBtn" style="position:fixed; top:20px; left:20px; z-index:9999; padding:8px; background:#000; color:#fff; border:1px solid #333; cursor:pointer;" onclick="window.DungeonBase.close()">Exit</button>
-          `;
-      }
+             `;
+             this.el.container.insertAdjacentHTML('beforeend', toolbarHTML);
+        }
     }
 
     this.el.sidebar = document.getElementById("dungeonSidebar");
     this.el.main = document.getElementById("dungeonMainContent");
-    this.el.prevBtn = document.getElementById("dungeonPrevBtn");
-    this.el.nextBtn = document.getElementById("dungeonNextBtn");
+    // prevBtn and nextBtn removed as they are dynamic now
 
     if (!this.el.container) {
       console.error("DungeonBase container not found in DOM");
@@ -48,11 +65,151 @@ export default class DungeonBase {
 
     // Initialize Sidebar Resizer
     this.initResizer();
+    this.initToolbar();
 
     this.bindEvents();
   }
 
+  initToolbar() {
+      const toolbar = document.getElementById("dungeonToolbar");
+      if (!toolbar) return;
+
+      const snapThreshold = 100; // px distance to edge to trigger snap
+      let isDragging = false;
+      let startX, startY;
+      
+      // Load saved state
+      try {
+        const saved = JSON.parse(localStorage.getItem("dungeonToolbarState"));
+        if (saved) {
+            this.setToolbarPosition(toolbar, saved);
+        } else {
+            // Default center-ish
+            toolbar.style.top = '100px';
+            toolbar.style.right = '100px';
+        }
+      } catch(e) {}
+
+      // Drag Events
+      toolbar.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.dungeon-tool-btn')) return;
+          isDragging = true;
+          // startWidth = toolbar.offsetWidth; // Not needed
+          // startHeight = toolbar.offsetHeight; // Not needed
+          toolbar.style.cursor = 'grabbing';
+          toolbar.style.transition = 'none'; // Disable transition during drag
+      });
+
+      window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          e.preventDefault();
+          
+          // Constrain to window
+          const x = e.clientX;
+          const y = e.clientY;
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          const rect = toolbar.getBoundingClientRect();
+          const tw = rect.width;
+          const th = rect.height;
+
+          let newX = x - 25;
+          let newY = y - 25;
+          
+          // Clamp
+          if (newX < 0) newX = 0;
+          if (newX + tw > w) newX = w - tw;
+          if (newY < 0) newY = 0;
+          if (newY + th > h) newY = h - th;
+
+          toolbar.style.left = newX + "px";
+          toolbar.style.top = newY + "px";
+          toolbar.style.right = 'auto';
+          toolbar.style.bottom = 'auto';
+      });
+
+      window.addEventListener('mouseup', (e) => {
+          if (isDragging) {
+              isDragging = false;
+              toolbar.style.cursor = 'grab';
+              toolbar.style.transition = ''; // Re-enable transition
+              
+              const x = e.clientX;
+              const y = e.clientY;
+              const w = window.innerWidth;
+              const h = window.innerHeight;
+              
+              let newState = { orientation: 'vertical', side: 'right', pos: 0.5 }; // default
+
+              // Check proximities
+              const distTop = y;
+              const distBottom = h - y;
+              const distLeft = x;
+              const distRight = w - x;
+              
+              const min = Math.min(distTop, distBottom, distLeft, distRight);
+              
+              if (min === distTop) {
+                  newState = { orientation: 'horizontal', side: 'top', pos: x / w };
+              } else if (min === distBottom) {
+                  newState = { orientation: 'horizontal', side: 'bottom', pos: x / w };
+              } else if (min === distLeft) {
+                  newState = { orientation: 'vertical', side: 'left', pos: y / h };
+              } else {
+                  newState = { orientation: 'vertical', side: 'right', pos: y / h };
+              }
+              
+              this.setToolbarPosition(toolbar, newState);
+              localStorage.setItem("dungeonToolbarState", JSON.stringify(newState));
+          }
+      });
+
+      // Bind Nav Buttons inside Toolbar
+      const btnPrev = document.getElementById("dungeonToolPrev");
+      const btnNext = document.getElementById("dungeonToolNext");
+      if (btnPrev) btnPrev.onclick = () => this.navPrev();
+      if (btnNext) btnNext.onclick = () => this.navNext();
+      
+      // Bind Tools
+      const tools = toolbar.querySelectorAll('.dungeon-tool-btn[data-tool]');
+      tools.forEach(btn => {
+          btn.addEventListener('click', () => {
+              btn.classList.toggle('active');
+              // Logic for tools here...
+          });
+      });
+  }
+  
+  setToolbarPosition(el, state) {
+      el.classList.remove('vertical', 'horizontal');
+      el.classList.add(state.orientation);
+      
+      el.style.left = ''; el.style.right = ''; el.style.top = ''; el.style.bottom = '';
+      el.style.transform = '';
+      
+      if (state.side === 'top') {
+          el.style.top = '10px';
+          el.style.left = (state.pos * 100) + '%';
+          el.style.transform = 'translateX(-50%)';
+      } else if (state.side === 'bottom') {
+          el.style.bottom = '10px';
+          el.style.left = (state.pos * 100) + '%';
+          el.style.transform = 'translateX(-50%)';
+      } else if (state.side === 'left') {
+          el.style.left = '10px';
+          el.style.top = (state.pos * 100) + '%';
+          el.style.transform = 'translateY(-50%)';
+      } else { // right
+          el.style.right = '10px';
+          el.style.top = (state.pos * 100) + '%';
+          el.style.transform = 'translateY(-50%)';
+      }
+  }
+
   initResizer() {
+      // Safety check
+      if (!this.el.sidebar) return;
+
       // Load saved width
       const savedWidth = localStorage.getItem("dungeonSidebarWidth");
       if (savedWidth) {
@@ -95,9 +252,6 @@ export default class DungeonBase {
   }
 
   bindEvents() {
-    if (this.el.prevBtn) this.el.prevBtn.onclick = () => this.navPrev();
-    if (this.el.nextBtn) this.el.nextBtn.onclick = () => this.navNext();
-    
     // Keyboard nav
     document.addEventListener("keydown", (e) => {
       if (this.el.container.classList.contains("hidden")) return;
@@ -133,10 +287,29 @@ export default class DungeonBase {
     
     // 2. Main Question
     this.renderQuestion();
-
-    // 3. Nav Buttons State
-    if (this.el.prevBtn) this.el.prevBtn.style.opacity = this.state.currentIndex === 0 ? "0.3" : "1";
-    if (this.el.nextBtn) this.el.nextBtn.style.opacity = this.state.currentIndex === this.state.questions.length - 1 ? "0.3" : "1";
+    
+    // 3. Nav Buttons State (Toolbar)
+    const prev = document.getElementById("dungeonToolPrev");
+    const next = document.getElementById("dungeonToolNext");
+    
+    if (prev) {
+        if (this.state.currentIndex === 0) {
+            prev.style.opacity = "0.3";
+            prev.style.pointerEvents = "none";
+        } else {
+            prev.style.opacity = "1";
+            prev.style.pointerEvents = "auto";
+        }
+    }
+    if (next) {
+        if (this.state.currentIndex === this.state.questions.length - 1) {
+            next.style.opacity = "0.3";
+            next.style.pointerEvents = "none";
+        } else {
+            next.style.opacity = "1";
+            next.style.pointerEvents = "auto";
+        }
+    }
   }
 
   renderSidebar() {
@@ -199,10 +372,9 @@ export default class DungeonBase {
       <div class="dungeon-question-header">${q.title || "Untitled Question"}</div>
       
       <!-- Context Box (Image/Code) - Placeholder if empty -->
+      <!-- Context Box (Image/Code) -->
       <div class="dungeon-context-box">
-          <div style="text-align:center; padding: 20px;">
-             ${q.text || "No question details."}
-          </div>
+             ${q.text || q.body || q.content || "No question details."}
       </div>
 
       <div class="dungeon-options-list">
@@ -240,11 +412,18 @@ export default class DungeonBase {
 
     html += `</div>`; // End options
 
-    // Submit Button (Show if not submitted)
+    // Actions Row (Submit only now)
+    html += `<div class="dungeon-actions-row" style="justify-content: center;">`;
+
     if (!isSubmitted) {
         html += `<button class="dungeon-submit-btn" onclick="window.DungeonBase.handleSubmit()">Submit</button>`;
     } else {
-        // Explanation
+        html += `<div style="padding: 10px; color: var(--text-muted);">Answer Submitted</div>`;
+    }
+
+    html += `</div>`; // End actions row
+
+    if (isSubmitted) {
         html += `
            <div class="dungeon-explanation">
                <h3>${answer.isCorrect ? "Correct!" : "Incorrect"}</h3>

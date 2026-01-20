@@ -24,11 +24,12 @@
   min-width: 50px;
   max-width: 300px;
   height: 100%;
-  background: var(--panel-header);
+  background: var(--panel);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden; /* Prevent horizontal scrollbar */
   align-items: stretch; /* Align items to stretch to full width */
   flex-shrink: 0;
   position: relative; /* For resizer handle */
@@ -72,7 +73,6 @@
   box-shadow: 0 0 10px var(--accent-transparent);
   transform: scale(1.05);
   z-index: 2;
-  background: var(--panel-header); /* Slightly distinct from both */
 }
 
 /* Status Icons inside box */
@@ -114,26 +114,30 @@
 
 /* Question Header */
 .dungeon-question-header {
-  font-size: 1.5rem;
-  line-height: 1.5;
+  font-size: 1.8rem; /* Reduced from 2.2rem for long headers */
+  line-height: 1.3;
   color: var(--text);
   margin-bottom: 20px;
+  font-weight: 600;
 }
 
 /* The Big Rectangle (Image/Code/Context) */
 .dungeon-context-box {
   width: 100%;
-  min-height: 200px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg-secondary);
+  min-height: auto; /* Allow it to collapse or just be text */
+  /* padding: 0; Removed box padding implications */
+  /* border: none; remove box look */
+  /* background: transparent; remove box look */
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
+  flex-direction: column; /* Allow content to flow naturally */
+  align-items: flex-start; /* Align text start instead of center center box */
+  justify-content: flex-start;
+  color: var(--text); /* Main text color */
+  font-size: 20px;
+  line-height: 1.6;
   margin-bottom: 30px;
   position: relative;
-  overflow: hidden;
+  /* overflow: hidden; Not typically needed if not a box */
 }
 
 .dungeon-context-box img {
@@ -146,7 +150,11 @@
 .dungeon-options-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0; /* Remove gap */
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden; /* Clip corners */
+  margin-top: 10px;
 }
 
 .dungeon-radio-option {
@@ -154,89 +162,117 @@
   align-items: flex-start;
   gap: 16px;
   cursor: pointer;
-  padding: 10px;
-  border-radius: 8px;
-  transition: background 0.2s;
-  border: 1px solid transparent; /* Prevent jump on hover/select if using border */
+  padding: 18px 20px; /* Comfortable hit area */
+  border-radius: 0; /* Reset box radius */
+  background: transparent;
+  border: none;
+  /* Removed border-bottom separator */
+  transition: background 0.2s ease;
+  position: relative;
 }
 
-.dungeon-radio-option:hover {
-  background: var(--panel-hover);
-}
+
 
 .dungeon-radio-circle {
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--text-muted);
+  width: 20px; /* Slightly smaller for elegance */
+  height: 20px;
+  border: 2px solid var(--text); /* High contrast border */
   border-radius: 50%;
+  background: var(--bg);
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dungeon-radio-option:hover .dungeon-radio-circle {
+  border-color: var(--text);
 }
 
 .dungeon-radio-option.selected .dungeon-radio-circle {
   border-color: var(--accent);
   background: var(--accent);
+  box-shadow: 0 0 5px var(--accent-transparent);
 }
 
 .dungeon-radio-option.selected .dungeon-radio-circle::after {
   content: '';
-  width: 10px;
-  height: 10px;
-  background: var(--bg); /* Usually contrasting text color or bg */
+  width: 8px;
+  height: 8px;
+  background: var(--bg); /* Dot color */
   border-radius: 50%;
+  display: block; /* Ensure visibility */
 }
 
+/* Text Styling */
 .dungeon-radio-text {
   font-size: 1.1rem;
   color: var(--text);
   line-height: 1.5;
+  font-weight: 500;
 }
 
 /* Feedback Colors */
+.dungeon-radio-option.correct-answer {
+  background: rgba(var(--success-rgb, 34, 197, 94), 0.1);
+}
 .dungeon-radio-option.correct-answer .dungeon-radio-text {
-  color: var(--success);
+  color: var(--text); 
+}
+.dungeon-radio-option.wrong-answer {
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
 }
 .dungeon-radio-option.wrong-answer .dungeon-radio-text {
-  color: var(--danger);
+  color: var(--text);
 }
+
+/* Feedback Circles */
 .dungeon-radio-option.correct-answer .dungeon-radio-circle {
     border-color: var(--success);
-    background: var(--success-bg);
-}
-.dungeon-radio-option.correct-answer .dungeon-radio-circle::after {
     background: var(--success);
 }
+.dungeon-radio-option.correct-answer .dungeon-radio-circle::after {
+    background: var(--bg);
+    width: 8px; height: 8px; /* Ensure dot persists */
+}
+
 .dungeon-radio-option.wrong-answer .dungeon-radio-circle {
     border-color: var(--danger);
-    background: var(--danger-bg);
+    background: var(--danger);
+}
+.dungeon-radio-option.wrong-answer .dungeon-radio-circle::after {
+    background: var(--bg);
+    content: ''; width: 8px; height: 8px; stroke: none; /* Make it a dot or X? Dot is consistent */
 }
 
 /* Submit Button */
 .dungeon-submit-btn {
   width: fit-content;
-  padding: 10px 30px;
-  background: transparent;
-  border: 2px solid var(--accent);
-  color: var(--accent);
+  padding: 12px 40px;
+  background: var(--accent);
+  border: none;
+  color: var(--bg); /* Contrast text */
   font-family: inherit;
-  font-size: 1.2rem;
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; /* Sketchy border */
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 8px; /* Modern rounded corners */
   cursor: pointer;
-  margin-top: 20px;
-  transition: transform 0.1s;
+  margin-top: 30px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .dungeon-submit-btn:hover {
-  transform: scale(1.05);
-  background: var(--accent-transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.1);
 }
 
 .dungeon-submit-btn:active {
-  transform: scale(0.95);
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Explanation */
@@ -262,56 +298,102 @@
 @keyframes fadeIn { to { opacity: 1; } }
 
 /* RIGHT SIDEBAR (Tools + Nav) */
-.dungeon-right-panel {
-  width: 80px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 40px 0;
-  background: var(--panel-header); /* Should match left sidebar */
-  border-left: 1px solid var(--border);
-}
+/* RIGHT SIDEBAR Removed */
+/* .dungeon-right-panel removed */
 
+/* Draggable Toolbar */
 .dungeon-toolbar {
-  width: 40px;
+  position: fixed;
+  /* Default Position (will be overridden by JS) */
+  top: 100px;
+  right: 100px;
+  
+  background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 10px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  border-radius: 12px;
+  
   display: flex;
-  flex-direction: column;
-  gap: 15px;
+  justify-content: center;
   align-items: center;
-  background: var(--bg-secondary);
+  padding: 8px;
+  gap: 12px;
+  
+  z-index: 3000;
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s, border-radius 0.2s;
 }
 
-.dungeon-tool-btn {
+.dungeon-toolbar.vertical {
+  flex-direction: column;
+  width: 50px;
+  height: auto;
+}
+
+.dungeon-toolbar.horizontal {
+  flex-direction: row;
+  width: auto;
+  height: 50px;
+}
+
+.dungeon-toolbar:active {
+  cursor: grabbing;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  transform: scale(1.02);
+}
+
+.dungeon-toolbar-divider {
+  background: var(--border);
+  opacity: 0.5;
+}
+.dungeon-toolbar.vertical .dungeon-toolbar-divider {
   width: 24px;
+  height: 1px;
+}
+.dungeon-toolbar.horizontal .dungeon-toolbar-divider {
+  width: 1px;
   height: 24px;
+}
+
+/* Tool Buttons */
+.dungeon-tool-btn {
+  width: 32px;
+  height: 32px;
   color: var(--text-muted);
   cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 .dungeon-tool-btn:hover { 
-    opacity: 1; 
+    background: var(--panel-hover);
     color: var(--accent);
 }
+.dungeon-tool-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+}
 
-.dungeon-nav-buttons {
+/* Actions Row (Footer) */
+.dungeon-actions-row {
   display: flex;
-  gap: 10px;
-  margin-bottom: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  margin-top: 30px;
+  padding-bottom: 40px;
 }
 
 .dungeon-nav-btn {
-  width: 40px;
-  height: 40px;
-  border: 2px solid var(--accent);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--accent);
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -319,9 +401,20 @@
   transition: all 0.2s;
 }
 
-.dungeon-nav-btn:hover {
-  background: var(--accent);
-  color: var(--bg);
+.dungeon-nav-btn:hover:not([disabled]) {
+  background: var(--panel-hover);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.dungeon-nav-btn[disabled] {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Ensure submit button in this row doesn't have top margin if it handles it */
+.dungeon-actions-row .dungeon-submit-btn {
+  margin-top: 0;
 }
 
 /* Close btn absolute */
