@@ -97,11 +97,20 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 40px 60px;
-  overflow-y: auto;
+  overflow: hidden; /* No scroll on main container */
+  padding: 0;
   position: relative;
+  background: var(--bg);
+}
+
+.dungeon-scroll-wrapper {
+  flex: 1;
+  overflow-y: auto; /* Scroll mainly checks here */
+  padding: 90px 100px 40px 100px; /* Increased left padding as requested */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .dungeon-question-container {
@@ -110,6 +119,7 @@
   display: flex;
   flex-direction: column;
   gap: 30px;
+  margin-left: 0; /* Align to left */
 }
 
 /* Question Header */
@@ -124,20 +134,16 @@
 /* The Big Rectangle (Image/Code/Context) */
 .dungeon-context-box {
   width: 100%;
-  min-height: auto; /* Allow it to collapse or just be text */
-  /* padding: 0; Removed box padding implications */
-  /* border: none; remove box look */
-  /* background: transparent; remove box look */
+  min-height: auto;
   display: flex;
-  flex-direction: column; /* Allow content to flow naturally */
-  align-items: flex-start; /* Align text start instead of center center box */
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
-  color: var(--text); /* Main text color */
-  font-size: 20px;
+  color: var(--text);
+  font-size: 1.15rem; /* Reduced from 20px, but larger than options */
   line-height: 1.6;
   margin-bottom: 30px;
   position: relative;
-  /* overflow: hidden; Not typically needed if not a box */
 }
 
 .dungeon-context-box img {
@@ -208,7 +214,7 @@
 
 /* Text Styling */
 .dungeon-radio-text {
-  font-size: 1.1rem;
+  font-size: 1rem; /* Reduced from 1.1rem */
   color: var(--text);
   line-height: 1.5;
   font-weight: 500;
@@ -301,45 +307,62 @@
 /* RIGHT SIDEBAR Removed */
 /* .dungeon-right-panel removed */
 
-/* Draggable Toolbar */
+/* Floating Toolbar */
 .dungeon-toolbar {
-  position: fixed;
-  /* Default Position (will be overridden by JS) */
-  top: 100px;
-  right: 100px;
+  position: fixed; /* Fixed to viewport for free movement */
+  top: 40px;
+  left: 50%;
+  /* transform managed by JS for dragging now, dragging logic overrides centering */
+  width: fit-content;
+  min-width: auto;
+  height: 50px;
+  border-radius: 25px;
   
-  background: var(--panel);
+  background: var(--panel); /* Exact panel color as requested */
+  /* Remove color-mix/backdrop if strict panel requested, but blur looks nice. Keeping purely panel per request? "use bakcground var --panel". */
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 8px;
-  gap: 12px;
+  padding: 0 24px;
+  gap: 16px;
   
-  z-index: 3000;
-  cursor: grab;
-  transition: transform 0.2s, box-shadow 0.2s, border-radius 0.2s;
+  z-index: 9999; /* Highest z-index */
+  cursor: grab; /* Movable cursor */
+  transition: box-shadow 0.2s, border-radius 0.2s, background 0.2s; /* Removed transform transition to allow smooth drag */
+  user-select: none;
+}
+
+.dungeon-toolbar:active {
+  cursor: grabbing;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.2);
 }
 
 .dungeon-toolbar.vertical {
   flex-direction: column;
   width: 50px;
-  height: auto;
+  height: fit-content;
+  padding: 24px 0;
 }
 
-.dungeon-toolbar.horizontal {
-  flex-direction: row;
-  width: auto;
-  height: 50px;
+.dungeon-toolbar-divider {
+  background: var(--border);
+  opacity: 0.5;
 }
 
-.dungeon-toolbar:active {
-  cursor: grabbing;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-  transform: scale(1.02);
+/* Horizontal Divider (default) */
+.dungeon-toolbar:not(.vertical) .dungeon-toolbar-divider {
+  width: 1px; 
+  height: 24px;
+}
+
+/* Vertical Divider */
+.dungeon-toolbar.vertical .dungeon-toolbar-divider {
+  width: 24px;
+  height: 1px;
 }
 
 .dungeon-toolbar-divider {
@@ -427,6 +450,39 @@
     color: var(--bg);
 }
 
+.dungeon-tool-btn[data-tool="star"].active {
+    color: #fbbf24; /* yellow-400 */
+    background: transparent; /* No bg for star, just fill? or button active style? */
+    background: rgba(251, 191, 36, 0.1);
+}
+.dungeon-tool-btn[data-tool="star"].active svg {
+    fill: #fbbf24;
+}
+
+.dungeon-tool-btn[data-tool="submit"]:hover {
+    color: var(--success);
+    background: rgba(var(--success-rgb, 34, 197, 94), 0.1);
+}
+
+/* Highlighted Text */
+.dungeon-context-box .highlight {
+    background-color: #fde047; /* yellow-300 */
+    color: #000;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* Sidebar Star Indicator */
+.dungeon-starred-indicator {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    background: #fbbf24;
+    border-radius: 50%;
+}
+
 /* Actions Row (Footer) */
 .dungeon-actions-row {
   display: flex;
@@ -469,11 +525,29 @@
 }
 
 /* Close btn absolute */
+/* Close btn fixed over sidebar */
 #dungeonCloseBtn {
    position: fixed;
-   top: 20px;
-   left: 20px; 
-   display: none; 
+   top: 12px;
+   right: 20px; /* Moved to Right */
+   left: auto;
+   width: 36px; 
+   height: 36px;
+   display: flex;
+   align-items: center; 
+   justify-content: center;
+   background: transparent;
+   border: none;
+   color: var(--text-muted);
+   border-radius: 6px;
+   cursor: pointer;
+   z-index: 3001; 
+   transition: all 0.2s;
+}
+
+#dungeonCloseBtn:hover {
+    background: var(--bg-secondary);
+    color: var(--text);
 }
 
 /* Custom Scrollbar for Sidebar */

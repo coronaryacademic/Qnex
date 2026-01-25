@@ -5,7 +5,8 @@ export default class DungeonBase {
       questions: [],
       currentIndex: 0,
       answers: new Map(), // id -> { isCorrect: boolean, selectedId: string, submitted: boolean }
-      selectedOption: null // Temporary selection before submit
+      selectedOption: null, // Temporary selection before submit
+      highlightMode: false // Auto-highlight toggle
     };
   }
 
@@ -25,21 +26,31 @@ export default class DungeonBase {
             this.el.container.innerHTML = `
               <div id="dungeonSidebar" class="dungeon-sidebar"></div>
               <div class="dungeon-main">
-                  <div id="dungeonMainContent" class="dungeon-question-container"></div>
+                  <div class="dungeon-scroll-wrapper">
+                      <div id="dungeonMainContent" class="dungeon-question-container"></div>
+                  </div>
               </div>
-              <button id="dungeonCloseBtn" style="position:fixed; top:20px; left:20px; z-index:9999; padding:8px; background:#000; color:#fff; border:1px solid #333; cursor:pointer;" onclick="window.DungeonBase.close()">Exit</button>
+              <button id="dungeonCloseBtn" title="Close">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             `;
         }
 
         // 3. Ensure Toolbar exists
         if (!this.el.container.querySelector('#dungeonToolbar')) {
              const toolbarHTML = `
-                <div id="dungeonToolbar" class="dungeon-toolbar vertical">
-                    <div class="dungeon-tool-btn" data-tool="highlight" title="Highlight">
+                <div id="dungeonToolbar" class="dungeon-toolbar horizontal">
+                    <div class="dungeon-tool-btn" data-tool="highlight" title="Highlight Mode">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>
                     </div>
-                    <div class="dungeon-tool-btn" data-tool="flag" title="Flag">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    <div class="dungeon-tool-btn" data-tool="star" title="Star Question">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </div>
+                    <div class="dungeon-tool-btn" data-tool="submit" title="Submit Answer">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                     <div class="dungeon-toolbar-divider"></div>
                     <div id="dungeonToolPrev" class="dungeon-tool-btn" title="Previous">
@@ -74,237 +85,207 @@ export default class DungeonBase {
       const toolbar = document.getElementById("dungeonToolbar");
       if (!toolbar) return;
 
-      // Create drop zones
-      const dropZones = {
-          top: this.createDropZone('top'),
-          bottom: this.createDropZone('bottom'),
-          left: this.createDropZone('left'),
-          right: this.createDropZone('right')
+      // Add tooltip for interaction hints
+      toolbar.title = "Drag to move, Double-click to rotate";
+
+      // 1. Initial Position (Restored or Centered)
+      const restoreOrCenterToolbar = () => {
+          const savedPos = localStorage.getItem("dungeonToolbarPos");
+          if (savedPos) {
+              try {
+                  const pos = JSON.parse(savedPos);
+                  toolbar.style.left = pos.left;
+                  toolbar.style.top = pos.top;
+                  if (pos.vertical) toolbar.classList.add('vertical');
+                  return;
+              } catch(e) {}
+          }
+
+          // Fallback to center
+          const w = window.innerWidth;
+          const tw = toolbar.offsetWidth || 300; 
+          toolbar.style.left = (w / 2 - tw / 2) + "px";
+          toolbar.style.top = "40px";
+      };
+      setTimeout(restoreOrCenterToolbar, 0);
+
+      // 2. Drag Logic
+      let isDragging = false;
+      let startX, startY, startLeft, startTop;
+
+      const onMouseDown = (e) => {
+          if (e.target.closest('.dungeon-tool-btn')) return; 
+          if (e.button !== 0) return; 
+
+          isDragging = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          
+          const rect = toolbar.getBoundingClientRect();
+          startLeft = rect.left;
+          startTop = rect.top;
+
+          toolbar.style.cursor = 'grabbing';
+          document.body.style.userSelect = 'none';
+          
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
       };
 
-      const snapThreshold = 80; // Distance to activate drop zone
-      let isDragging = false;
-      let activeZone = null;
-      let lastValidState = null; // Store last valid docked position
-      
-      // Load saved state
-      try {
-        const saved = JSON.parse(localStorage.getItem("dungeonToolbarState"));
-        if (saved) {
-            this.setToolbarPosition(toolbar, saved);
-            lastValidState = saved;
-        } else {
-            const defaultState = { orientation: 'vertical', side: 'right', pos: 0.5 };
-            this.setToolbarPosition(toolbar, defaultState);
-            lastValidState = defaultState;
-        }
-      } catch(e) {
-          const defaultState = { orientation: 'vertical', side: 'right', pos: 0.5 };
-          this.setToolbarPosition(toolbar, defaultState);
-          lastValidState = defaultState;
-      }
-
-      // Drag Events
-      toolbar.addEventListener('mousedown', (e) => {
-          if (e.target.closest('.dungeon-tool-btn')) return;
-          isDragging = true;
-          toolbar.style.cursor = 'grabbing';
-          toolbar.style.transition = 'none';
+      const onMouseMove = (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
           
-          // Show all drop zones and adjust left zone for sidebar
+          let newLeft = startLeft + dx;
+          let newTop = startTop + dy;
+
+          // Constraints
           const sidebar = document.getElementById('dungeonSidebar');
           const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
-          
-          Object.values(dropZones).forEach(zone => {
-              zone.style.display = 'block';
-              if (zone.dataset.needsSidebarAdjust) {
-                  zone.style.left = (sidebarWidth + 10) + 'px';
-              }
-          });
-      });
-
-      window.addEventListener('mousemove', (e) => {
-          if (!isDragging) return;
-          e.preventDefault();
-          
-          const x = e.clientX;
-          const y = e.clientY;
           const w = window.innerWidth;
           const h = window.innerHeight;
           const rect = toolbar.getBoundingClientRect();
           const tw = rect.width;
           const th = rect.height;
 
-          let newX = x - 25;
-          let newY = y - 25;
+          if (newLeft < sidebarWidth) newLeft = sidebarWidth;
+          if (newLeft + tw > w) newLeft = w - tw;
+          if (newTop < 0) newTop = 0;
+          if (newTop + th > h) newTop = h - th;
           
-          // Clamp
-          if (newX < 0) newX = 0;
-          if (newX + tw > w) newX = w - tw;
-          if (newY < 0) newY = 0;
-          if (newY + th > h) newY = h - th;
+          toolbar.style.left = newLeft + 'px';
+          toolbar.style.top = newTop + 'px';
+      };
 
-          toolbar.style.left = newX + "px";
-          toolbar.style.top = newY + "px";
-          toolbar.style.right = 'auto';
-          toolbar.style.bottom = 'auto';
+      const onMouseUp = () => {
+          isDragging = false;
+          toolbar.style.cursor = 'grab';
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
 
-          // Highlight nearest drop zone using toolbar center
-          const sidebar = document.getElementById('dungeonSidebar');
-          const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
-          
-          // Use toolbar center for distance calculations
-          const centerX = x;
-          const centerY = y;
-          
-          const distTop = centerY;
-          const distBottom = h - centerY;
-          const distLeft = centerX - sidebarWidth;
-          const distRight = w - centerX;
-          
-          // Clear all active states
-          Object.values(dropZones).forEach(zone => zone.classList.remove('active'));
-          activeZone = null;
-          
-          // Activate nearest zone if within threshold
-          if (distTop < snapThreshold) {
-              dropZones.top.classList.add('active');
-              activeZone = 'top';
-          } else if (distBottom < snapThreshold) {
-              dropZones.bottom.classList.add('active');
-              activeZone = 'bottom';
-          } else if (distLeft < snapThreshold && distLeft > 0) {
-              dropZones.left.classList.add('active');
-              activeZone = 'left';
-          } else if (distRight < snapThreshold) {
-              dropZones.right.classList.add('active');
-              activeZone = 'right';
-          }
+          // Save Position
+          const state = {
+              left: toolbar.style.left,
+              top: toolbar.style.top,
+              vertical: toolbar.classList.contains('vertical')
+          };
+          localStorage.setItem("dungeonToolbarPos", JSON.stringify(state));
+      };
+
+      toolbar.addEventListener('mousedown', onMouseDown);
+
+      // 3. Rotation Logic
+      toolbar.addEventListener('dblclick', (e) => {
+          if (e.target.closest('.dungeon-tool-btn')) return;
+          toolbar.classList.toggle('vertical');
+          // Save state after rotate
+           const state = {
+              left: toolbar.style.left,
+              top: toolbar.style.top,
+              vertical: toolbar.classList.contains('vertical')
+          };
+          localStorage.setItem("dungeonToolbarPos", JSON.stringify(state));
       });
 
-      window.addEventListener('mouseup', (e) => {
-          if (isDragging) {
-              isDragging = false;
-              toolbar.style.cursor = 'grab';
-              toolbar.style.transition = '';
-              
-              // Hide all drop zones
-              Object.values(dropZones).forEach(zone => {
-                  zone.style.display = 'none';
-                  zone.classList.remove('active');
-              });
-              
-              // Always snap to nearest edge
-              const x = e.clientX;
-              const y = e.clientY;
-              const w = window.innerWidth;
-              const h = window.innerHeight;
-              const sidebar = document.getElementById('dungeonSidebar');
-              const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
-              
-              // Calculate distances to each edge
-              const distTop = y;
-              const distBottom = h - y;
-              const distLeft = x - sidebarWidth;
-              const distRight = w - x;
-              
-              // Find nearest edge
-              const distances = {
-                  top: distTop,
-                  bottom: distBottom,
-                  left: distLeft > 0 ? distLeft : Infinity, // Only if outside sidebar
-                  right: distRight
-              };
-              
-              const nearestEdge = Object.keys(distances).reduce((a, b) => 
-                  distances[a] < distances[b] ? a : b
-              );
-              
-              // Create state for nearest edge
-              let newState;
-              if (nearestEdge === 'top') {
-                  newState = { orientation: 'horizontal', side: 'top', pos: Math.max(0.1, Math.min(0.9, x / w)) };
-              } else if (nearestEdge === 'bottom') {
-                  newState = { orientation: 'horizontal', side: 'bottom', pos: Math.max(0.1, Math.min(0.9, x / w)) };
-              } else if (nearestEdge === 'left') {
-                  newState = { orientation: 'vertical', side: 'left', pos: Math.max(0.1, Math.min(0.9, y / h)) };
-              } else { // right
-                  newState = { orientation: 'vertical', side: 'right', pos: Math.max(0.1, Math.min(0.9, y / h)) };
-              }
-              
-              // Use requestAnimationFrame to ensure transition works
-              requestAnimationFrame(() => {
-                  this.setToolbarPosition(toolbar, newState);
-              });
-              localStorage.setItem("dungeonToolbarState", JSON.stringify(newState));
-              lastValidState = newState;
-              
-              activeZone = null;
-          }
-      });
-
-      // Bind Nav Buttons inside Toolbar
+      // Bind Nav Buttons
       const btnPrev = document.getElementById("dungeonToolPrev");
       const btnNext = document.getElementById("dungeonToolNext");
       if (btnPrev) btnPrev.onclick = () => this.navPrev();
       if (btnNext) btnNext.onclick = () => this.navNext();
       
       // Bind Tools
-      const tools = toolbar.querySelectorAll('.dungeon-tool-btn[data-tool]');
-      tools.forEach(btn => {
-          btn.addEventListener('click', () => {
-              btn.classList.toggle('active');
-          });
-      });
+      const starBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="star"]');
+      if (starBtn) starBtn.onclick = () => this.toggleStar();
+
+      const highlightBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="highlight"]');
+      if (highlightBtn) highlightBtn.onclick = () => this.toggleHighlightMode();
+
+      const submitBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="submit"]');
+      if (submitBtn) submitBtn.onclick = () => this.handleSubmit();
   }
-  
-  createDropZone(position) {
-      const zone = document.createElement('div');
-      zone.className = `dungeon-drop-zone ${position}`;
-      zone.style.display = 'none';
-      
-      // Adjust left zone to be outside sidebar
-      if (position === 'left') {
-          // Will be updated dynamically when showing
-          zone.dataset.needsSidebarAdjust = 'true';
-      }
-      
-      document.getElementById('dungeonBase').appendChild(zone);
-      return zone;
+
+  toggleHighlightMode() {
+      this.state.highlightMode = !this.state.highlightMode;
+      this.renderToolbarState();
   }
-  
-  setToolbarPosition(el, state) {
-      el.classList.remove('vertical', 'horizontal');
-      el.classList.add(state.orientation);
+
+  toggleStar() {
+      const q = this.state.questions[this.state.currentIndex];
+      if (!q) return;
+      q.isStarred = !q.isStarred;
+      this.renderToolbarState();
+      this.renderSidebar(); // Update indicator
+      this.saveQuestionsToBackend();
+  }
+
+  handleHighlight(e) {
+      if (!this.state.highlightMode) return;
       
-      // Clear all positioning
-      el.style.left = '';
-      el.style.right = '';
-      el.style.top = '';
-      el.style.bottom = '';
-      el.style.transform = '';
-      
-      const sidebar = document.getElementById('dungeonSidebar');
-      const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
-      
-      if (state.side === 'top') {
-          el.style.top = '10px';
-          el.style.left = (state.pos * 100) + '%';
-          el.style.transform = 'translateX(-50%)';
-      } else if (state.side === 'bottom') {
-          el.style.bottom = '10px';
-          el.style.left = (state.pos * 100) + '%';
-          el.style.transform = 'translateX(-50%)';
-      } else if (state.side === 'left') {
-          el.style.left = (sidebarWidth + 10) + 'px';
-          el.style.top = (state.pos * 100) + '%';
-          el.style.transform = 'translateY(-50%)';
-      } else { // right
-          el.style.right = '10px';
-          el.style.top = (state.pos * 100) + '%';
-          el.style.transform = 'translateY(-50%)';
+      const selection = window.getSelection();
+      if (selection.toString().length > 0) {
+          const range = selection.getRangeAt(0);
+          
+          // Ensure we are selecting inside the context box
+          if (!e.currentTarget.contains(range.commonAncestorContainer)) return;
+
+          const span = document.createElement("span");
+          span.className = "highlight";
+          try {
+              range.surroundContents(span);
+              selection.removeAllRanges();
+              
+              // Persist: Update question text in state
+              const q = this.state.questions[this.state.currentIndex];
+              q.text = e.currentTarget.innerHTML; // Save modified HTML
+              this.saveQuestionsToBackend();
+
+              // Auto-disable highlight? No, keep active as requested ("highlights yellow by defult after releasing...").
+              // User said: "make pressing on it to active that autohighligh the text highlights yellow by defult after releasing the highlight"
+              // This implies the mode stays on.
+          } catch(err) {
+              console.warn("Highlight failed (crossing tags?)", err);
+          }
       }
   }
+
+  saveQuestionsToBackend() {
+      // Placeholder for persistence
+      // Optimistically dispatch event
+      const event = new CustomEvent('dungeon-questions-update', { detail: this.state.questions });
+      window.dispatchEvent(event);
+      
+      // Try generic storage if available
+      if (window.electronAPI && window.electronAPI.saveQuestions) {
+          window.electronAPI.saveQuestions(JSON.parse(JSON.stringify(this.state.questions))); // Deep copy
+      } else {
+          // console.log("Backend save not integrated. Changes are in-memory.");
+      }
+  }
+
+  renderToolbarState() {
+      const toolbar = document.getElementById("dungeonToolbar");
+      if (!toolbar) return;
+
+      const q = this.state.questions[this.state.currentIndex];
+      
+      // Star
+      const starBtn = toolbar.querySelector('[data-tool="star"]');
+      if (starBtn && q) {
+          if (q.isStarred) starBtn.classList.add('active');
+          else starBtn.classList.remove('active');
+      }
+
+      // Highlight
+      const highlightBtn = toolbar.querySelector('[data-tool="highlight"]');
+      if (highlightBtn) {
+          if (this.state.highlightMode) highlightBtn.classList.add('active');
+          else highlightBtn.classList.remove('active');
+      }
+  }
+  
+
 
   initResizer() {
       // Safety check
@@ -352,6 +333,10 @@ export default class DungeonBase {
   }
 
   bindEvents() {
+    // Close button
+    const closeBtn = document.getElementById("dungeonCloseBtn");
+    if (closeBtn) closeBtn.onclick = () => this.close();
+
     // Keyboard nav
     document.addEventListener("keydown", (e) => {
       if (this.el.container.classList.contains("hidden")) return;
@@ -445,6 +430,14 @@ export default class DungeonBase {
 
       box.innerHTML = `<span class="dungeon-box-status">${content}</span>`;
       
+      // Star Indicator
+      if (q.isStarred) {
+          const star = document.createElement('div');
+          star.className = 'dungeon-starred-indicator';
+          box.appendChild(star);
+          box.style.position = 'relative'; // Ensure relative for abs star
+      }
+      
       box.onclick = () => {
         this.saveCurrentSelection(); // If they selected something but didn't submit, save it? Or discard? Let's just switch.
         this.state.currentIndex = index;
@@ -473,7 +466,8 @@ export default class DungeonBase {
       
       <!-- Context Box (Image/Code) - Placeholder if empty -->
       <!-- Context Box (Image/Code) -->
-      <div class="dungeon-context-box">
+      <!-- Context Box (Image/Code) -->
+      <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event)">
              ${q.text || q.body || q.content || "No question details."}
       </div>
 
@@ -512,16 +506,9 @@ export default class DungeonBase {
 
     html += `</div>`; // End options
 
-    // Actions Row (Submit only now)
-    html += `<div class="dungeon-actions-row" style="justify-content: center;">`;
-
-    if (!isSubmitted) {
-        html += `<button class="dungeon-submit-btn" onclick="window.DungeonBase.handleSubmit()">Submit</button>`;
-    } else {
-        html += `<div style="padding: 10px; color: var(--text-muted);">Answer Submitted</div>`;
-    }
-
     html += `</div>`; // End actions row
+
+    this.renderToolbarState(); // Sync toolbar with current question state
 
     if (isSubmitted) {
         html += `
