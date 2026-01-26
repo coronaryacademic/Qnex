@@ -5,8 +5,7 @@ export default class DungeonBase {
       questions: [],
       currentIndex: 0,
       answers: new Map(), // id -> { isCorrect: boolean, selectedId: string, submitted: boolean }
-      selectedOption: null, // Temporary selection before submit
-      highlightMode: false // Auto-highlight toggle
+      selectedOption: null // Temporary selection before submit
     };
   }
 
@@ -43,21 +42,26 @@ export default class DungeonBase {
         if (!this.el.container.querySelector('#dungeonToolbar')) {
              const toolbarHTML = `
                 <div id="dungeonToolbar" class="dungeon-toolbar horizontal">
-                    <div class="dungeon-tool-btn" data-tool="highlight" title="Highlight Mode">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>
+                    <div id="dungeonToolPrev" class="dungeon-tool-btn" title="Previous Question">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </div>
                     <div class="dungeon-tool-btn" data-tool="star" title="Star Question">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </div>
+                    <div class="dungeon-tool-btn" data-tool="note" title="Add Note">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </div>
                     <div class="dungeon-tool-btn" data-tool="submit" title="Submit Answer">
-                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
-                    <div class="dungeon-toolbar-divider"></div>
-                    <div id="dungeonToolPrev" class="dungeon-tool-btn" title="Previous">
-                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    <div class="dungeon-tool-btn" data-tool="highlight" title="Highlight Mode">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3z"></path><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4l3-3 3 3L24 10z"></path></svg>
                     </div>
-                    <div id="dungeonToolNext" class="dungeon-tool-btn" title="Next">
-                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    <div class="dungeon-tool-btn" data-tool="clear" title="Clear Highlights">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"></path><path d="M22 21H7"></path><path d="m5 11 9 9"></path></svg>
+                    </div>
+                    <div id="dungeonToolNext" class="dungeon-tool-btn" title="Next Question">
+                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </div>
                 </div>
              `;
@@ -180,6 +184,10 @@ export default class DungeonBase {
       toolbar.addEventListener('dblclick', (e) => {
           if (e.target.closest('.dungeon-tool-btn')) return;
           toolbar.classList.toggle('vertical');
+          
+          // Update highlight SVG based on orientation
+          this.updateHighlightSVG(toolbar);
+          
           // Save state after rotate
            const state = {
               left: toolbar.style.left,
@@ -204,6 +212,33 @@ export default class DungeonBase {
 
       const submitBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="submit"]');
       if (submitBtn) submitBtn.onclick = () => this.handleSubmit();
+
+      const noteBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="note"]');
+      if (noteBtn) noteBtn.onclick = () => this.addNote();
+
+      const clearBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="clear"]');
+      if (clearBtn) clearBtn.onclick = () => this.clearHighlights();
+      
+      // Set initial highlight SVG based on orientation
+      this.updateHighlightSVG(toolbar);
+  }
+
+  updateHighlightSVG(toolbar) {
+      const highlightBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="highlight"]');
+      if (!highlightBtn) return;
+      
+      const isVertical = toolbar.classList.contains('vertical');
+      const svgPath = highlightBtn.querySelector('svg path:nth-child(2)');
+      
+      if (svgPath) {
+          if (isVertical) {
+              // Vertical orientation - slightly different end point
+              svgPath.setAttribute('d', 'm22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4l3-3 3 3L23 10z');
+          } else {
+              // Horizontal orientation - original path
+              svgPath.setAttribute('d', 'm22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4l3-3 3 3L24 10z');
+          }
+      }
   }
 
   toggleHighlightMode() {
@@ -282,6 +317,31 @@ export default class DungeonBase {
       if (highlightBtn) {
           if (this.state.highlightMode) highlightBtn.classList.add('active');
           else highlightBtn.classList.remove('active');
+      }
+  }
+
+  addNote() {
+      const q = this.state.questions[this.state.currentIndex];
+      if (!q) return;
+      
+      const note = prompt("Add a note for this question:", q.note || "");
+      if (note !== null) {
+          q.note = note;
+          this.saveQuestionsToBackend();
+      }
+  }
+
+  clearHighlights() {
+      const q = this.state.questions[this.state.currentIndex];
+      if (!q) return;
+      
+      if (confirm("Clear all highlights from this question?")) {
+          // Remove all highlight spans from the text
+          if (q.text) {
+              q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
+              this.renderQuestion(); // Re-render to show changes
+              this.saveQuestionsToBackend();
+          }
       }
   }
   
