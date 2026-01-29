@@ -357,7 +357,7 @@
 .dungeon-scroll-wrapper {
   flex: 1;
   overflow-y: auto; /* Scroll mainly checks here */
-  padding: 40px 100px 40px 100px;
+  padding: 85px 65px 160px 117px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
