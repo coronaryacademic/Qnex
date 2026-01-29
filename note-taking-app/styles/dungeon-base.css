@@ -18,6 +18,186 @@
   display: none;
 }
 
+/* TOPBAR */
+.dungeon-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 2001;
+  gap: 20px;
+}
+
+.dungeon-topbar-left,
+.dungeon-topbar-center,
+.dungeon-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dungeon-topbar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.dungeon-topbar-center {
+  flex-shrink: 0;
+}
+
+.dungeon-topbar-right {
+  flex-shrink: 0;
+}
+
+.dungeon-topbar-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.dungeon-topbar-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+
+.dungeon-topbar-btn:active {
+  transform: scale(0.95);
+}
+
+.dungeon-question-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.dungeon-topbar-separator {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* Save Status (Simplified - only in center now) */
+
+.dungeon-save-status {
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.dungeon-save-status.saved {
+  color: var(--success);
+  background: rgba(var(--success-rgb, 34, 197, 94), 0.1);
+}
+
+.dungeon-save-status.saving {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb, 99, 102, 241), 0.1);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.dungeon-save-status.unsaved {
+  color: var(--danger);
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Toolbar Options Menu */
+.dungeon-toolbar-menu {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 2002;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 180px;
+}
+
+.dungeon-toolbar-menu.hidden {
+  display: none;
+}
+
+.dungeon-toolbar-menu-section {
+  padding: 4px 0;
+}
+
+.dungeon-toolbar-menu-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 6px 12px 4px 12px;
+  margin-bottom: 2px;
+}
+
+.dungeon-toolbar-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.dungeon-toolbar-menu button {
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dungeon-toolbar-menu button svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.dungeon-toolbar-menu button:hover {
+  background: var(--bg-secondary);
+  color: var(--accent);
+}
+
+.dungeon-toolbar-menu button:hover svg {
+  opacity: 1;
+}
+
 /* LEFT SIDEBAR (Question Strip) */
 .dungeon-sidebar {
   width: 80px; /* Default start width */
@@ -32,7 +212,63 @@
   overflow-x: hidden; /* Prevent horizontal scrollbar */
   align-items: stretch; /* Align items to stretch to full width */
   flex-shrink: 0;
-  position: relative; /* For resizer handle */
+  position: fixed;
+  left: 0;
+  top: 60px; /* Below topbar */
+  bottom: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), top 0.3s cubic-bezier(0.4, 0, 0.2, 1), bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1999; /* Below toolbar when docked */
+}
+
+.dungeon-sidebar.collapsed {
+  transform: translateX(-100%);
+}
+
+/* Sidebar Questions Container */
+.dungeon-sidebar-questions {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Sidebar Stats at Bottom */
+.dungeon-sidebar-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 12px 8px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 8px;
+  position: relative;
+  z-index: 10; /* Above resizer handle */
+}
+
+.dungeon-sidebar-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  flex: 1;
+  justify-content: center;
+}
+
+.dungeon-sidebar-stat.correct {
+  color: var(--success);
+  background: rgba(var(--success-rgb, 34, 197, 94), 0.1);
+}
+
+.dungeon-sidebar-stat.wrong {
+  color: var(--danger);
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
+}
+
+.dungeon-sidebar-stat svg {
+  flex-shrink: 0;
 }
 
 /* Q-Box Items */
@@ -99,14 +335,27 @@
   flex-direction: column;
   overflow: hidden; /* No scroll on main container */
   padding: 0;
-  position: relative;
+  position: fixed;
+  left: 80px; /* Default sidebar width */
+  top: 60px; /* Below topbar */
+  right: 0;
+  bottom: 0;
   background: var(--bg);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), top 0.3s cubic-bezier(0.4, 0, 0.2, 1), bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1998; /* Below sidebar and toolbar */
 }
+
+.dungeon-main.sidebar-collapsed {
+  left: 0;
+}
+
+/* Padding handled by layout resizing in JS now */
+/* .dungeon-main.toolbar-docked-* classes removed as padding is no longer needed */
 
 .dungeon-scroll-wrapper {
   flex: 1;
   overflow-y: auto; /* Scroll mainly checks here */
-  padding: 90px 100px 40px 100px; /* Increased left padding as requested */
+  padding: 40px 100px 40px 100px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -122,14 +371,7 @@
   margin-left: 0; /* Align to left */
 }
 
-/* Question Header */
-.dungeon-question-header {
-  font-size: 1.8rem; /* Reduced from 2.2rem for long headers */
-  line-height: 1.3;
-  color: var(--text);
-  margin-bottom: 20px;
-  font-weight: 600;
-}
+/* Question Header - Removed, now in topbar */
 
 /* The Big Rectangle (Image/Code/Context) */
 .dungeon-context-box {
@@ -322,7 +564,6 @@
   /* Remove color-mix/backdrop if strict panel requested, but blur looks nice. Keeping purely panel per request? "use bakcground var --panel". */
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   
   display: flex;
   justify-content: center;
@@ -332,11 +573,23 @@
   
   z-index: 9999; /* Highest z-index */
   cursor: grab; /* Movable cursor */
-  transition: box-shadow 0.2s, border-radius 0.2s, background 0.2s; /* Removed transform transition to allow smooth drag */
+  transition: box-shadow 0.2s, border-radius 0.2s, background 0.2s, opacity 0.3s, transform 0.3s; /* Added opacity and transform for animations */
   user-select: none;
+  opacity: 0;
+  transform: scale(0.9);
 }
 
-.dungeon-toolbar:active {
+.dungeon-toolbar.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Only show grab cursor when in floating mode */
+.dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.docked-left):not(.docked-right) {
+  cursor: grab;
+}
+
+.dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.docked-left):not(.docked-right):active {
   cursor: grabbing;
   box-shadow: 0 12px 32px rgba(0,0,0,0.2);
 }
@@ -346,6 +599,52 @@
   width: 50px;
   height: fit-content;
   padding: 24px 0;
+}
+
+/* Docked Toolbar Styles */
+.dungeon-toolbar.docked-top,
+.dungeon-toolbar.docked-bottom {
+  position: fixed;
+  left: 0; /* Full width from left edge */
+  right: 0;
+  width: 100%;
+  border-radius: 0;
+  justify-content: center;
+  cursor: default !important; /* Force non-draggable cursor */
+  z-index: 2000; /* Above sidebar */
+}
+
+.dungeon-toolbar.docked-left,
+.dungeon-toolbar.docked-right {
+  position: fixed;
+  height: auto;
+  border-radius: 0;
+  cursor: default !important; /* Force non-draggable cursor */
+  z-index: 2000; /* Above sidebar */
+}
+
+.dungeon-toolbar.docked-top {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.dungeon-toolbar.docked-bottom {
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+}
+
+.dungeon-toolbar.docked-left {
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+}
+
+.dungeon-toolbar.docked-right {
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
 }
 
 .dungeon-toolbar-divider {
@@ -524,39 +823,114 @@
   margin-top: 0;
 }
 
-/* Close btn absolute */
-/* Close btn fixed over sidebar */
-#dungeonCloseBtn {
-   position: fixed;
-   top: 12px;
-   right: 20px; /* Moved to Right */
-   left: auto;
-   width: 36px; 
-   height: 36px;
-   display: flex;
-   align-items: center; 
-   justify-content: center;
-   background: transparent;
-   border: none;
-   color: var(--text-muted);
-   border-radius: 6px;
-   cursor: pointer;
-   z-index: 3001; 
-   transition: all 0.2s;
-}
-
-#dungeonCloseBtn:hover {
-    background: var(--bg-secondary);
-    color: var(--text);
-}
+/* Close btn removed from fixed position, now in topbar */
 
 /* Custom Scrollbar for Sidebar */
-.dungeon-sidebar::-webkit-scrollbar {
+.dungeon-sidebar::-webkit-scrollbar,
+.dungeon-sidebar-questions::-webkit-scrollbar {
   width: 4px;
 }
-.dungeon-sidebar::-webkit-scrollbar-track {
+.dungeon-sidebar::-webkit-scrollbar-track,
+.dungeon-sidebar-questions::-webkit-scrollbar-track {
   background: var(--bg);
 }
-.dungeon-sidebar::-webkit-scrollbar-thumb {
+.dungeon-sidebar::-webkit-scrollbar-thumb,
+.dungeon-sidebar-questions::-webkit-scrollbar-thumb {
   background: var(--border);
+}
+
+/* Responsive adjustments for docked toolbars when sidebar collapses */
+.dungeon-main.sidebar-collapsed ~ .dungeon-toolbar.docked-top,
+.dungeon-main.sidebar-collapsed ~ .dungeon-toolbar.docked-bottom {
+  left: 0;
+}
+
+.dungeon-main.sidebar-collapsed ~ .dungeon-toolbar.docked-left {
+  left: 0;
+}
+
+/* Dungeon Search Header */
+.dungeon-search-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.dungeon-search-toggle {
+  z-index: 10;
+  position: relative;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.dungeon-search-toggle:hover {
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+
+.dungeon-search-input {
+  width: 0;
+  opacity: 0;
+  height: 32px;
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.9rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  pointer-events: none;
+  margin-left: 0;
+}
+
+.dungeon-search-wrapper.active .dungeon-search-input {
+  width: 220px;
+  opacity: 1;
+  padding: 0 12px 0 12px; 
+  border-color: var(--border);
+  pointer-events: auto;
+  margin-left: 4px; 
+}
+
+/* When active, button acts as toggle? 
+   Actually if input expands to RIGHT as requested 
+   [Status] [Button] -> [Status] [Button] [Input]
+   Then button stays, input expands right.
+   Simple flex logic handles this if order is Button, Input.
+*/
+.dungeon-topbar-center {
+    display: flex;
+    align-items: center;
+}
+
+/* Save Status */
+.dungeon-save-status {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: opacity 0.5s ease;
+  opacity: 0;
+}
+
+.dungeon-save-status.saving {
+  color: var(--warning);
+  opacity: 1;
+}
+
+.dungeon-save-status.saved {
+  color: var(--success);
+}
+
+.dungeon-save-status.unsaved {
+  color: var(--error);
+  opacity: 1;
 }

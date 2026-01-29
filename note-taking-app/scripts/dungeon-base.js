@@ -5,7 +5,11 @@ export default class DungeonBase {
       questions: [],
       currentIndex: 0,
       answers: new Map(), // id -> { isCorrect: boolean, selectedId: string, submitted: boolean }
-      selectedOption: null // Temporary selection before submit
+      selectedOption: null, // Temporary selection before submit
+      sidebarCollapsed: false,
+      toolbarVisible: true,
+      toolbarPosition: 'floating', // 'floating', 'top', 'bottom', 'left', 'right'
+      unsavedChanges: false
     };
   }
 
@@ -23,18 +27,103 @@ export default class DungeonBase {
         // 2. Ensure Sidebar & Main exist (Basic reset if totally missing)
         if (!this.el.container.querySelector('.dungeon-sidebar')) {
             this.el.container.innerHTML = `
-              <div id="dungeonSidebar" class="dungeon-sidebar"></div>
+              <!-- Topbar -->
+              <div id="dungeonTopbar" class="dungeon-topbar">
+                <div class="dungeon-topbar-left">
+                  <button id="dungeonSidebarToggle" class="dungeon-topbar-btn" title="Toggle Sidebar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                  </button>
+                  <div id="dungeonQuestionTitle" class="dungeon-question-title">Untitled Question</div>
+                </div>
+                <div class="dungeon-topbar-center">
+                  <span id="dungeonSaveStatus" class="dungeon-save-status saved" style="margin-right: 12px;">Saved</span>
+                  <div id="dungeonSearchWrapper" class="dungeon-search-wrapper">
+                      <button id="dungeonSearchToggle" class="dungeon-search-toggle" title="Search">
+                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                      </button>
+                      <input type="text" id="dungeonSearchInput" class="dungeon-search-input" placeholder="Search...">
+                  </div>
+                </div>
+                <div class="dungeon-topbar-right">
+                  <button id="dungeonToolbarOptions" class="dungeon-topbar-btn" title="Toolbar Options">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="4" y1="6" x2="20" y2="6"></line>
+                      <line x1="4" y1="12" x2="20" y2="12"></line>
+                      <line x1="4" y1="18" x2="20" y2="18"></line>
+                    </svg>
+                  </button>
+                  <button id="dungeonCloseBtn" class="dungeon-topbar-btn" title="Close">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Toolbar Options Menu -->
+              <div id="dungeonToolbarMenu" class="dungeon-toolbar-menu hidden">
+                <div class="dungeon-toolbar-menu-section">
+                  <div class="dungeon-toolbar-menu-label">Visibility</div>
+                  <button id="dungeonToolbarToggle" data-action="toggle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Toggle Toolbar</span>
+                  </button>
+                </div>
+                <div class="dungeon-toolbar-menu-divider"></div>
+                <div class="dungeon-toolbar-menu-section">
+                  <div class="dungeon-toolbar-menu-label">Position</div>
+                  <button data-position="floating">Floating</button>
+                  <button data-position="top">Top</button>
+                  <button data-position="bottom">Bottom</button>
+                  <button data-position="left">Left</button>
+                  <button data-position="right">Right</button>
+                </div>
+              </div>
+              
+              <div id="dungeonSidebar" class="dungeon-sidebar">
+                <!-- Stats will be added at bottom by JS -->
+              </div>
               <div class="dungeon-main">
                   <div class="dungeon-scroll-wrapper">
                       <div id="dungeonMainContent" class="dungeon-question-container"></div>
                   </div>
               </div>
-              <button id="dungeonCloseBtn" title="Close">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
+              
+              <!-- Footer (Bottom Header) -->
+              <div id="dungeonFooter" class="dungeon-footer">
+                  <div class="dungeon-footer-left">
+                      <div class="dungeon-stat-item" title="Time Elapsed">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                          <span id="dungeonTimer" style="font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums;">00:00</span>
+                      </div>
+                  </div>
+                  <div class="dungeon-footer-center">
+                      <div class="dungeon-stat-item" title="Correct Answers">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          <span id="dungeonStatCorrect">0</span>
+                      </div>
+                      <div class="dungeon-stat-item wrong" title="Incorrect Answers">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          <span id="dungeonStatWrong">0</span>
+                      </div>
+                  </div>
+                  <div class="dungeon-footer-right">
+                      <button id="dungeonRevealBtn" class="dungeon-reveal-btn" title="Reveal Answer">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M9 18h6"></path>
+                              <path d="M10 22h4"></path>
+                              <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"></path>
+                          </svg>
+                      </button>
+                  </div>
+              </div>
             `;
         }
 
@@ -81,8 +170,18 @@ export default class DungeonBase {
     // Initialize Sidebar Resizer
     this.initResizer();
     this.initToolbar();
+    this.initTopbar();
+    this.initFooter(); // New footer init
 
     this.bindEvents();
+  }
+
+  initFooter() {
+      // Bind Reveal Button
+      const revealBtn = document.getElementById('dungeonRevealBtn');
+      if (revealBtn) {
+          revealBtn.onclick = () => this.toggleReveal();
+      }
   }
 
   initToolbar() {
@@ -93,7 +192,30 @@ export default class DungeonBase {
       toolbar.title = "Drag to move, Double-click to rotate";
 
       // 1. Initial Position (Restored or Centered)
-      const restoreOrCenterToolbar = () => {
+      const restoreOrCenterToolbar = async () => {
+          let savedMode = localStorage.getItem('dungeonToolbarPosition');
+          
+          // Try backend persistence
+          if (window.Storage && window.Storage.loadSettings) {
+              try {
+                  const settings = await window.Storage.loadSettings();
+                  if (settings.dungeonToolbarPosition) {
+                      savedMode = settings.dungeonToolbarPosition;
+                      // Sync to local
+                      localStorage.setItem('dungeonToolbarPosition', savedMode);
+                  }
+              } catch(e) {
+                  console.warn("Dungeon: Failed to load backend settings for toolbar", e);
+              }
+          }
+          
+          if (savedMode && savedMode !== 'floating') {
+             this.setToolbarPosition(savedMode);
+             toolbar.classList.add('visible');
+             return;
+          }
+
+          // Floating mode logic
           const savedPos = localStorage.getItem("dungeonToolbarPos");
           if (savedPos) {
               try {
@@ -101,23 +223,34 @@ export default class DungeonBase {
                   toolbar.style.left = pos.left;
                   toolbar.style.top = pos.top;
                   if (pos.vertical) toolbar.classList.add('vertical');
-                  return;
               } catch(e) {}
+          } else {
+             // Fallback (Default) -> Top
+             this.setToolbarPosition('top');
           }
-
-          // Fallback to center
-          const w = window.innerWidth;
-          const tw = toolbar.offsetWidth || 300; 
-          toolbar.style.left = (w / 2 - tw / 2) + "px";
-          toolbar.style.top = "40px";
+          
+          // Ensure visible class is added after positioning
+          toolbar.classList.add('visible');
       };
-      setTimeout(restoreOrCenterToolbar, 0);
+      setTimeout(() => {
+          restoreOrCenterToolbar();
+          // Add visible class after positioning
+          toolbar.classList.add('visible');
+      }, 0);
 
-      // 2. Drag Logic
+      // 2. Drag Logic (only for floating mode)
       let isDragging = false;
       let startX, startY, startLeft, startTop;
 
       const onMouseDown = (e) => {
+          // Don't allow dragging if toolbar is docked
+          if (toolbar.classList.contains('docked-top') || 
+              toolbar.classList.contains('docked-bottom') || 
+              toolbar.classList.contains('docked-left') || 
+              toolbar.classList.contains('docked-right')) {
+              return;
+          }
+          
           if (e.target.closest('.dungeon-tool-btn')) return; 
           if (e.button !== 0) return; 
 
@@ -180,8 +313,16 @@ export default class DungeonBase {
 
       toolbar.addEventListener('mousedown', onMouseDown);
 
-      // 3. Rotation Logic
+      // 3. Rotation Logic (only for floating mode)
       toolbar.addEventListener('dblclick', (e) => {
+          // Don't allow rotation if toolbar is docked
+          if (toolbar.classList.contains('docked-top') || 
+              toolbar.classList.contains('docked-bottom') || 
+              toolbar.classList.contains('docked-left') || 
+              toolbar.classList.contains('docked-right')) {
+              return;
+          }
+          
           if (e.target.closest('.dungeon-tool-btn')) return;
           toolbar.classList.toggle('vertical');
           
@@ -223,6 +364,379 @@ export default class DungeonBase {
       this.updateHighlightSVG(toolbar);
   }
 
+  initTopbar() {
+    // Sidebar Toggle
+    const sidebarToggle = document.getElementById('dungeonSidebarToggle');
+    if (sidebarToggle) {
+      sidebarToggle.onclick = () => this.toggleSidebar();
+    }
+
+    // Toolbar Options Menu
+    const toolbarOptionsBtn = document.getElementById('dungeonToolbarOptions');
+    const toolbarMenu = document.getElementById('dungeonToolbarMenu');
+    
+    if (toolbarOptionsBtn && toolbarMenu) {
+      toolbarOptionsBtn.onclick = (e) => {
+        e.stopPropagation();
+        toolbarMenu.classList.toggle('hidden');
+      };
+
+      // Close menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toolbarMenu.contains(e.target) && e.target !== toolbarOptionsBtn) {
+          toolbarMenu.classList.add('hidden');
+        }
+      });
+
+      // Toolbar Toggle button
+      const toolbarToggle = document.getElementById('dungeonToolbarToggle');
+      if (toolbarToggle) {
+        toolbarToggle.onclick = (e) => {
+          e.stopPropagation();
+          this.toggleToolbar();
+          // Update button text
+          const span = toolbarToggle.querySelector('span');
+          if (span) {
+            span.textContent = this.state.toolbarVisible ? 'Hide Toolbar' : 'Show Toolbar';
+          }
+        };
+      }
+
+      // Position buttons
+      toolbarMenu.querySelectorAll('button[data-position]').forEach(btn => {
+        btn.onclick = () => {
+          const position = btn.dataset.position;
+          this.setToolbarPosition(position);
+          toolbarMenu.classList.add('hidden');
+        };
+      });
+
+      // Bind Search
+      const searchWrapper = document.getElementById('dungeonSearchWrapper');
+      const searchToggle = document.getElementById('dungeonSearchToggle');
+      const searchInput = document.getElementById('dungeonSearchInput');
+
+      if (searchToggle && searchWrapper && searchInput) {
+          searchToggle.onclick = (e) => {
+              e.stopPropagation();
+              searchWrapper.classList.toggle('active');
+              if (searchWrapper.classList.contains('active')) {
+                  searchInput.focus();
+              }
+          };
+          
+          searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+          
+          // Click outside to close
+          document.addEventListener('click', (e) => {
+             if (!searchWrapper.contains(e.target) && searchWrapper.classList.contains('active')) {
+                 if (!searchInput.value) { 
+                     searchWrapper.classList.remove('active');
+                 }
+             } 
+          });
+      }
+    }
+
+    // Load saved states
+    const savedSidebarState = localStorage.getItem('dungeonSidebarCollapsed');
+    if (savedSidebarState === 'true') {
+      this.toggleSidebar();
+    }
+
+    const savedToolbarVisible = localStorage.getItem('dungeonToolbarVisible');
+    if (savedToolbarVisible === 'false') {
+      this.state.toolbarVisible = false;
+      this.updateToolbarVisibility();
+    }
+
+
+  }
+
+  toggleSidebar() {
+    this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
+    const sidebar = document.getElementById('dungeonSidebar');
+    const main = document.querySelector('.dungeon-main');
+    const toolbar = document.getElementById('dungeonToolbar');
+    
+    if (sidebar) {
+      sidebar.classList.toggle('collapsed', this.state.sidebarCollapsed);
+    }
+    
+    if (main) {
+      main.classList.toggle('sidebar-collapsed', this.state.sidebarCollapsed);
+      // Update inline style to ensure it works with resizer
+      if (this.state.sidebarCollapsed) {
+          main.style.left = '0';
+          if (this.state.toolbarPosition === 'left' && toolbar) {
+              toolbar.style.left = '0';
+          }
+      } else {
+          // Expanding - restore positions
+          const w = sidebar ? sidebar.offsetWidth : 0;
+          if (w > 0) {
+              if (this.state.toolbarPosition === 'left') {
+                  main.style.left = (w + 50) + 'px';
+                  if (toolbar) toolbar.style.left = w + 'px';
+              } else {
+                  main.style.left = w + 'px';
+              }
+          } else {
+             // Fallback if offsetWidth is 0 (shouldn't happen if expanding)
+             // Clear inline to let CSS take over or previous logic
+             main.style.left = '';
+          }
+
+      }
+    }
+
+    localStorage.setItem('dungeonSidebarCollapsed', this.state.sidebarCollapsed);
+  }
+
+  toggleToolbar() {
+    this.state.toolbarVisible = !this.state.toolbarVisible;
+    this.updateToolbarVisibility();
+    localStorage.setItem('dungeonToolbarVisible', this.state.toolbarVisible);
+  }
+
+  updateToolbarVisibility() {
+    const toolbar = document.getElementById('dungeonToolbar');
+    if (toolbar) {
+      if (this.state.toolbarVisible) {
+        toolbar.style.display = 'flex';
+        // Trigger reflow for animation
+        toolbar.offsetHeight;
+        toolbar.classList.add('visible');
+      } else {
+        toolbar.classList.remove('visible');
+        setTimeout(() => {
+          toolbar.style.display = 'none';
+        }, 300); // Match animation duration
+      }
+    }
+    
+    // Update toggle button text
+    const toggleBtn = document.getElementById('dungeonToolbarToggle');
+    if (toggleBtn) {
+      const span = toggleBtn.querySelector('span');
+      if (span) {
+        span.textContent = this.state.toolbarVisible ? 'Hide Toolbar' : 'Show Toolbar';
+      }
+    }
+  }
+
+  setToolbarPosition(position) {
+    this.state.toolbarPosition = position;
+    const toolbar = document.getElementById('dungeonToolbar');
+    if (!toolbar) return;
+
+    const sidebar = document.getElementById('dungeonSidebar');
+    // Robust width calculation: prefer style width (if resized), fallback to offset, default to 80
+    let sidebarWidth = 80;
+    if (sidebar && !this.state.sidebarCollapsed) {
+        if (sidebar.style.width) {
+            sidebarWidth = parseInt(sidebar.style.width, 10);
+        } else if (sidebar.offsetWidth > 0) {
+            sidebarWidth = sidebar.offsetWidth;
+        }
+    } else if (this.state.sidebarCollapsed) {
+        sidebarWidth = 0;
+    }
+    
+    // Remove all position classes
+    toolbar.classList.remove('docked-top', 'docked-bottom', 'docked-left', 'docked-right', 'vertical');
+    toolbar.style.left = '';
+    toolbar.style.top = '';
+    toolbar.style.right = '';
+    toolbar.style.bottom = '';
+    toolbar.style.cursor = ''; // Reset cursor
+
+    const topbar = document.getElementById('dungeonTopbar');
+    const topbarHeight = (topbar && topbar.offsetHeight) || 60;
+
+    const toolbarHeight = 50; // Default toolbar height
+    
+    // Get main content area for adding padding classes
+    const main = document.querySelector('.dungeon-main');
+    if (main) {
+      main.classList.remove('toolbar-docked-top', 'toolbar-docked-bottom');
+    }
+
+    // Reset sidebar positioning
+    if (sidebar) {
+      sidebar.style.top = '';
+      sidebar.style.bottom = '';
+    }
+
+    switch(position) {
+      case 'top':
+        toolbar.classList.add('docked-top');
+        toolbar.style.top = topbarHeight + 'px';
+        toolbar.style.left = '0'; // Start from left edge, above sidebar
+        toolbar.style.right = '0';
+        toolbar.style.cursor = 'default'; // Not draggable
+        
+        // Push sidebar down below toolbar
+        if (sidebar) {
+          sidebar.style.top = (topbarHeight + toolbarHeight) + 'px';
+        }
+        if (main) {
+          main.classList.add('toolbar-docked-top');
+          main.style.top = (topbarHeight + toolbarHeight) + 'px';
+        }
+        break;
+      case 'bottom':
+        const footerHeight = 40;
+        toolbar.classList.add('docked-bottom');
+        toolbar.style.bottom = footerHeight + 'px'; // Sit above footer
+        toolbar.style.top = 'auto'; 
+        toolbar.style.left = '0'; 
+        toolbar.style.right = '0';
+        toolbar.style.cursor = 'default'; 
+        
+        // Push sidebar up above toolbar + footer
+        if (sidebar) {
+          sidebar.style.bottom = (toolbarHeight + footerHeight) + 'px';
+        }
+        if (main) {
+          main.classList.add('toolbar-docked-bottom');
+          main.style.bottom = (toolbarHeight + footerHeight) + 'px';
+        }
+        break;
+      case 'left':
+        toolbar.classList.add('docked-left', 'vertical');
+        toolbar.style.left = sidebarWidth + 'px';
+        toolbar.style.top = topbarHeight + 'px';
+        toolbar.style.bottom = '0';
+        toolbar.style.cursor = 'default'; // Not draggable
+        
+        // Reset sidebar to default
+        if (sidebar) {
+          sidebar.style.top = topbarHeight + 'px';
+          sidebar.style.bottom = '0';
+        }
+        if (main) {
+          main.style.top = topbarHeight + 'px';
+          main.style.bottom = '0';
+          // Push main content right to make room for toolbar (50px)
+          const contentLeft = sidebarWidth + 50;
+          main.style.left = contentLeft + 'px';
+        }
+        break;
+      case 'right':
+        toolbar.classList.add('docked-right', 'vertical');
+        toolbar.style.left = 'auto'; // Explicitly override any previous or default left value
+        toolbar.style.right = '0';
+        toolbar.style.top = topbarHeight + 'px';
+        toolbar.style.bottom = '0';
+        toolbar.style.cursor = 'default'; // Not draggable
+        
+        // Reset sidebar to default
+        if (sidebar) {
+          sidebar.style.top = topbarHeight + 'px';
+          sidebar.style.bottom = '0';
+        }
+        if (main) {
+          main.style.top = topbarHeight + 'px';
+          main.style.bottom = '0';
+        }
+        break;
+      case 'floating':
+      default:
+        toolbar.style.cursor = 'grab'; // Draggable
+        
+        // Reset sidebar and main to default
+        if (sidebar) {
+          sidebar.style.top = topbarHeight + 'px';
+          sidebar.style.bottom = '0';
+        }
+        if (main) {
+          main.style.top = topbarHeight + 'px';
+          main.style.bottom = '0';
+        }
+        
+        // Restore saved position or center
+        const savedPos = localStorage.getItem('dungeonToolbarPos');
+        if (savedPos) {
+          try {
+            const pos = JSON.parse(savedPos);
+            toolbar.style.left = pos.left;
+            toolbar.style.top = pos.top;
+            if (pos.vertical) toolbar.classList.add('vertical');
+          } catch(e) {}
+        } else {
+          const w = window.innerWidth;
+          const tw = toolbar.offsetWidth || 300;
+          toolbar.style.left = (w / 2 - tw / 2) + 'px';
+          toolbar.style.top = (topbarHeight + 40) + 'px';
+        }
+        break;
+    }
+
+    this.updateHighlightSVG(toolbar);
+    localStorage.setItem('dungeonToolbarPosition', position);
+    
+    // Persist to backend
+    (async () => {
+        if (window.Storage && window.Storage.loadSettings && window.Storage.saveSettings) {
+            try {
+                const current = await window.Storage.loadSettings();
+                // Only save if changed
+                if (current.dungeonToolbarPosition !== position) {
+                    current.dungeonToolbarPosition = position;
+                    await window.Storage.saveSettings(current);
+                }
+            } catch(e) {
+                console.error("Dungeon: Failed to save toolbar position to backend", e);
+            }
+        }
+    })();
+  }
+
+  updateStats() {
+    // Stats are now in sidebar, updated during renderSidebar()
+    // This method kept for compatibility but does nothing
+  }
+
+  updateSaveStatus(status = 'saved') {
+    const saveStatusEl = document.getElementById('dungeonSaveStatus');
+    if (!saveStatusEl) return;
+
+    if (this.saveStatusTimeout) {
+        clearTimeout(this.saveStatusTimeout);
+        this.saveStatusTimeout = null;
+    }
+
+    saveStatusEl.style.opacity = '1';
+    saveStatusEl.className = 'dungeon-save-status ' + status;
+    
+    switch(status) {
+      case 'saving':
+        saveStatusEl.textContent = 'Saving...';
+        break;
+      case 'unsaved':
+        saveStatusEl.textContent = 'Unsaved';
+        this.state.unsavedChanges = true;
+        break;
+      case 'saved':
+      default:
+        saveStatusEl.textContent = 'Saved';
+        this.state.unsavedChanges = false;
+        this.saveStatusTimeout = setTimeout(() => {
+            saveStatusEl.style.opacity = '0';
+        }, 2000);
+        break;
+    }
+  }
+
+  updateQuestionTitle() {
+    const q = this.state.questions[this.state.currentIndex];
+    const titleEl = document.getElementById('dungeonQuestionTitle');
+    if (titleEl && q) {
+      titleEl.textContent = q.title || 'Untitled Question';
+    }
+  }
+
   updateHighlightSVG(toolbar) {
       const highlightBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="highlight"]');
       if (!highlightBtn) return;
@@ -252,6 +766,7 @@ export default class DungeonBase {
       q.isStarred = !q.isStarred;
       this.renderToolbarState();
       this.renderSidebar(); // Update indicator
+      this.updateSaveStatus('unsaved');
       this.saveQuestionsToBackend();
   }
 
@@ -274,6 +789,7 @@ export default class DungeonBase {
               // Persist: Update question text in state
               const q = this.state.questions[this.state.currentIndex];
               q.text = e.currentTarget.innerHTML; // Save modified HTML
+              this.updateSaveStatus('unsaved');
               this.saveQuestionsToBackend();
 
               // Auto-disable highlight? No, keep active as requested ("highlights yellow by defult after releasing...").
@@ -287,6 +803,8 @@ export default class DungeonBase {
 
   saveQuestionsToBackend() {
       // Placeholder for persistence
+      this.updateSaveStatus('saving');
+      
       // Optimistically dispatch event
       const event = new CustomEvent('dungeon-questions-update', { detail: this.state.questions });
       window.dispatchEvent(event);
@@ -294,8 +812,10 @@ export default class DungeonBase {
       // Try generic storage if available
       if (window.electronAPI && window.electronAPI.saveQuestions) {
           window.electronAPI.saveQuestions(JSON.parse(JSON.stringify(this.state.questions))); // Deep copy
+          setTimeout(() => this.updateSaveStatus('saved'), 500);
       } else {
           // console.log("Backend save not integrated. Changes are in-memory.");
+          setTimeout(() => this.updateSaveStatus('saved'), 500);
       }
   }
 
@@ -327,10 +847,95 @@ export default class DungeonBase {
       const note = prompt("Add a note for this question:", q.note || "");
       if (note !== null) {
           q.note = note;
+          this.updateSaveStatus('unsaved');
           this.saveQuestionsToBackend();
       }
   }
 
+  toggleReveal() {
+      const q = this.state.questions[this.state.currentIndex];
+      // If already submitted, reveal does nothing or maybe just ignores (user sees answer anyway)
+      // If not submitted, we show answer but mark as "revealed" (maybe count as wrong?)
+      // User said: "button 'light bulb' to show the answer if the user didnt know it or gave up"
+      
+      const answer = this.state.answers.get(q.id);
+      if (answer && answer.submitted) return; // Already done
+      
+      this.state.revealed = true; // Set flag
+      
+      // Visual feedback
+      const revealBtn = document.getElementById('dungeonRevealBtn');
+      if (revealBtn) revealBtn.classList.add('active');
+      
+      // Highlight correct answer in UI
+      const options = document.querySelectorAll('.dungeon-radio-option');
+      options.forEach(opt => {
+          if (opt.dataset.value === q.correctAnswer) {
+              opt.classList.add('correct-answer'); // Reuse correct style? Or distinctive?
+              // Let's use a distinctive style if needed, but correct-answer is green.
+              // Maybe we should style it yellow?
+              opt.style.background = 'rgba(251, 191, 36, 0.1)';
+              opt.style.borderColor = '#fbbf24';
+          }
+      });
+      
+      // Stop timer? Usually giving up stops timer? 
+      // Let's keep timer running until they actually submit or move on? 
+      // "gave up" usually implies done.
+      // Let's stop timer.
+      this.stopTimer();
+  }
+
+  startTimer() {
+      this.stopTimer(); // Clear existing
+      this.timerStart = Date.now();
+      const timerEl = document.getElementById('dungeonTimer');
+      if (!timerEl) return;
+      
+      this.updateTimerDisplay(0);
+      
+      this.timerInterval = setInterval(() => {
+          const elapsed = Date.now() - this.timerStart;
+          this.updateTimerDisplay(elapsed);
+      }, 1000);
+  }
+
+  stopTimer() {
+      if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+          this.timerInterval = null;
+      }
+  }
+
+  updateTimerDisplay(ms) {
+      const timerEl = document.getElementById('dungeonTimer');
+      if (!timerEl) return;
+      
+      const totalSeconds = Math.floor(ms / 1000);
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      timerEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+
+  updateFooterStats() {
+      // Calculate stats
+      let correct = 0;
+      let wrong = 0;
+      
+      this.state.answers.forEach(a => {
+          if (a.submitted) {
+              if (a.isCorrect) correct++;
+              else wrong++;
+          }
+      });
+      
+      const correctEl = document.getElementById('dungeonStatCorrect');
+      const wrongEl = document.getElementById('dungeonStatWrong');
+      
+      if (correctEl) correctEl.textContent = correct;
+      if (wrongEl) wrongEl.textContent = wrong;
+  }
+  
   clearHighlights() {
       const q = this.state.questions[this.state.currentIndex];
       if (!q) return;
@@ -340,6 +945,7 @@ export default class DungeonBase {
           if (q.text) {
               q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
               this.renderQuestion(); // Re-render to show changes
+              this.updateSaveStatus('unsaved');
               this.saveQuestionsToBackend();
           }
       }
@@ -370,16 +976,43 @@ export default class DungeonBase {
               const startWidth = this.el.sidebar.offsetWidth;
               document.body.style.cursor = "col-resize"; // Force cursor on body during drag
               
+              // Disable transitions during drag for responsiveness
+              this.el.sidebar.style.transition = 'none';
+              const main = document.querySelector('.dungeon-main');
+              if (main) main.style.transition = 'none';
+              const toolbar = document.getElementById('dungeonToolbar');
+              if (toolbar) toolbar.style.transition = 'none';
+
               const onMouseMove = (ev) => {
                   const newWidth = startWidth + (ev.clientX - startX);
                   if (newWidth >= 50 && newWidth <= 300) {
                       this.el.sidebar.style.width = newWidth + 'px';
+                      
+                      // Update Main Content Position
+                      if (main) {
+                          if (this.state.toolbarPosition === 'left') {
+                              main.style.left = (newWidth + 50) + 'px';
+                          } else {
+                              main.style.left = newWidth + 'px';
+                          }
+                      }
+
+                      // Update Toolbar Position if docked left
+                      if (this.state.toolbarPosition === 'left' && toolbar) {
+                          toolbar.style.left = newWidth + 'px';
+                      }
                   }
               };
               
               const onMouseUp = () => {
                   localStorage.setItem("dungeonSidebarWidth", parseInt(this.el.sidebar.style.width)); // Save
                   document.body.style.cursor = ""; // Reset cursor
+                  
+                  // Re-enable transitions
+                  this.el.sidebar.style.transition = '';
+                  if (main) main.style.transition = '';
+                  if (toolbar) toolbar.style.transition = '';
+
                   document.removeEventListener('mousemove', onMouseMove);
                   document.removeEventListener('mouseup', onMouseUp);
               };
@@ -389,6 +1022,19 @@ export default class DungeonBase {
           });
           
           this.el.sidebar.appendChild(handle);
+      }
+  }
+
+  // Helper to sync main content with sidebar on load/toggle
+  updateMainPosition() {
+      const sidebar = document.getElementById('dungeonSidebar');
+      const main = document.querySelector('.dungeon-main');
+      if (sidebar && main) {
+          if (this.state.sidebarCollapsed) {
+              main.style.left = '0';
+          } else {
+              main.style.left = sidebar.offsetWidth + 'px';
+          }
       }
   }
 
@@ -424,6 +1070,7 @@ export default class DungeonBase {
 
   close() {
     this.el.container.classList.add("hidden");
+    this.stopTimer();
   }
 
   render() {
@@ -432,6 +1079,18 @@ export default class DungeonBase {
     
     // 2. Main Question
     this.renderQuestion();
+    
+    // 3. Update topbar and footer
+    this.updateQuestionTitle();
+    this.updateStats(); // Keeps old hook just in case
+    this.updateFooterStats(); // New Stats
+    
+    // Reset Reveal Btn
+    const revealBtn = document.getElementById('dungeonRevealBtn');
+    if (revealBtn) revealBtn.classList.remove('active');
+    
+    // Start Timer
+    this.startTimer();
     
     // 3. Nav Buttons State (Toolbar)
     const prev = document.getElementById("dungeonToolPrev");
@@ -457,17 +1116,35 @@ export default class DungeonBase {
     }
   }
 
+  handleSearch(query) {
+      this.state.searchQuery = query;
+      this.renderSidebar();
+  }
+
   renderSidebar() {
-    // Preserve Resizer Handle
+    // Clear sidebar but preserve resizer handle
     const handle = this.el.sidebar.querySelector('.dungeon-resizer-handle');
     
     this.el.sidebar.innerHTML = "";
-    
-    // Re-append handle if it existed
-    if (handle) this.el.sidebar.appendChild(handle);
-    else this.initResizer(); // Fallback if handle wasn't there
+
+    this.el.sidebar.innerHTML = "";
+
+    // Create scrollable container for questions
+    const questionsContainer = document.createElement('div');
+    questionsContainer.className = 'dungeon-sidebar-questions';
 
     this.state.questions.forEach((q, index) => {
+      // Filter logic
+      if (this.state.searchQuery) {
+          const query = this.state.searchQuery.toLowerCase();
+          const textMatch = (q.text || "").toLowerCase().includes(query);
+          const optionMatch = q.options && q.options.some(o => o.text && o.text.toLowerCase().includes(query));
+          // If no match, skip this question
+          if (!textMatch && !optionMatch && !(q.title||"").toLowerCase().includes(query)) {
+              return;
+          }
+      }
+
       const box = document.createElement("div");
       box.className = "dungeon-q-box";
       
@@ -506,8 +1183,18 @@ export default class DungeonBase {
         this.render();
       };
       
-      this.el.sidebar.appendChild(box);
+      questionsContainer.appendChild(box);
     });
+
+    // Add questions container to sidebar
+    this.el.sidebar.appendChild(questionsContainer);
+
+    // Re-append handle at the end so it's on top
+    if (handle) {
+      this.el.sidebar.appendChild(handle);
+    } else {
+      this.initResizer(); // Fallback if handle wasn't there
+    }
   }
 
   saveCurrentSelection() {
@@ -522,7 +1209,6 @@ export default class DungeonBase {
     const isSubmitted = answer && answer.submitted;
 
     let html = `
-      <div class="dungeon-question-header">${q.title || "Untitled Question"}</div>
       
       <!-- Context Box (Image/Code) - Placeholder if empty -->
       <!-- Context Box (Image/Code) -->
@@ -608,6 +1294,9 @@ export default class DungeonBase {
           isCorrect: isCorrect
       });
 
+      this.updateSaveStatus('unsaved');
+      this.saveQuestionsToBackend();
+      this.stopTimer();
       this.render(); // Update sidebar and content
   }
 

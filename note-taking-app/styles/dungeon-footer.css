@@ -1,0 +1,99 @@
+/* Dungeon Footer (Bottom Header) */
+.dungeon-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  z-index: 2002; /* Above sidebar */
+  font-size: 0.9rem;
+}
+
+.dungeon-footer-left,
+.dungeon-footer-center,
+.dungeon-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dungeon-footer-left {
+  flex: 1;
+}
+
+.dungeon-footer-center {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.dungeon-footer-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* Footer Stats */
+.dungeon-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.dungeon-stat-item.correct {
+  color: var(--success);
+}
+
+.dungeon-stat-item.wrong {
+  color: var(--danger);
+}
+
+/* Lightbulb Button */
+.dungeon-reveal-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.dungeon-reveal-btn:hover {
+  color: #fbbf24; /* yellow-400 */
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.dungeon-reveal-btn:active {
+  transform: scale(0.95);
+}
+
+.dungeon-reveal-btn.active {
+  color: #fbbf24;
+  opacity: 1;
+}
+
+/* Adjust Sidebar and Main Layout */
+.dungeon-sidebar {
+  bottom: 40px; /* Space for footer */
+}
+
+.dungeon-main {
+  bottom: 40px; /* Space for footer */
+}
+
+/* Remove old stats from sidebar if they exist */
+.dungeon-sidebar-stats {
+  display: none !important;
+}
