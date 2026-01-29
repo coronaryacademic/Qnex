@@ -290,11 +290,11 @@
 
 /* Alternating Backgrounds (Zebra Formatting) */
 .dungeon-q-box:nth-child(odd) {
-  background: var(--bg-secondary);
+  background: var(--panel);
 }
 
 .dungeon-q-box:nth-child(even) {
-  background: var(--bg);
+  background: var(--panel-2);
 }
 
 .dungeon-q-box:hover {
@@ -318,12 +318,14 @@
 }
 
 .dungeon-q-box.correct {
-  color: var(--success);
+  color: #ffffff;
+  background: var(--success);
   border-color: var(--success);
 }
 
 .dungeon-q-box.wrong {
-  color: var(--danger);
+  color: #ffffff;
+  background: var(--danger);
   border-color: var(--danger);
 }
 

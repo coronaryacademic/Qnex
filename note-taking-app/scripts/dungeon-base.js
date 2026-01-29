@@ -1154,17 +1154,17 @@ export default class DungeonBase {
 
       // Check Status
       const answer = this.state.answers.get(q.id);
-      let content = ".";
+      let content = `<span class="q-number" style="font-size: 0.9rem;">${index + 1}</span>`;
+      
       if (answer && answer.submitted) {
           if (answer.isCorrect) {
               box.classList.add("correct");
-              content = "✓";
           } else {
               box.classList.add("wrong");
-              content = "x";
           }
       }
 
+      box.title = q.title || `Question ${index + 1}`; // Tooltip
       box.innerHTML = `<span class="dungeon-box-status">${content}</span>`;
       
       // Star Indicator
@@ -1229,7 +1229,7 @@ export default class DungeonBase {
         // Logic for styling
         if (isSubmitted) {
             // Submitted state
-            if (opt.id === submittedSel) {
+            if (String(opt.id) === String(submittedSel)) {
                  classes += " selected"; // Visual selected
                  if (answer.isCorrect) classes += " correct-answer";
                  else classes += " wrong-answer";
@@ -1239,7 +1239,7 @@ export default class DungeonBase {
             }
         } else {
             // Interactive state
-            if (opt.id === currentSel) classes += " selected";
+            if (String(opt.id) === String(currentSel)) classes += " selected";
         }
 
         html += `
@@ -1285,7 +1285,7 @@ export default class DungeonBase {
           return;
       }
 
-      const selectedOpt = q.options.find(o => o.id === this.state.selectedOption);
+      const selectedOpt = q.options.find(o => String(o.id) === String(this.state.selectedOption));
       const isCorrect = selectedOpt && selectedOpt.isCorrect;
 
       this.state.answers.set(q.id, {

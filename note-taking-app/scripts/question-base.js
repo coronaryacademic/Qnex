@@ -658,7 +658,7 @@ const QuestionBase = {
             const radio = item.querySelector("input[type='radio']");
             const input = item.querySelector("input[type='text']");
             // preserve ID if possible, else gen new
-            const id = item.dataset.oid || (Date.now() + Math.random());
+            const id = (item.dataset.oid || (Date.now() + Math.random())).toString();
             newOptions.push({
                 id: id,
                 text: input.value,
