@@ -109,7 +109,7 @@ export default class DungeonBase {
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           <span id="dungeonStatCorrect">0</span>
                       </div>
-                      <div class="dungeon-stat-item wrong" title="Incorrect Answers">
+                      <div class="dungeon-stat-item" title="Incorrect Answers">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                           <span id="dungeonStatWrong">0</span>
                       </div>
