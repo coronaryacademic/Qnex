@@ -7611,14 +7611,7 @@
 
     if (header) {
       console.log(`[TwoBase] Syncing section '${targetSection}' (orig: ${sectionName}) to collapsed=${isCollapsed}`);
-      
-      // Visual feedback for debugging (Flash header text color)
-      const originalColor = header.style.color;
-      header.style.transition = "color 0.2s";
-      header.style.color = "#00ff00"; // Flash green
-      setTimeout(() => {
-          header.style.color = originalColor;
-      }, 300);
+
 
       const section = header.closest(".sidebar-section");
       if (section) {
