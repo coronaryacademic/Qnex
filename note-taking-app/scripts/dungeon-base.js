@@ -184,6 +184,14 @@ export default class DungeonBase {
                       </button>
                   </div>
               </div>
+              
+              <!-- Loading Screen -->
+              <div id="dungeonLoadingScreen" class="dungeon-loading-screen hidden">
+                  <div class="dungeon-loading-content">
+                      <div class="dungeon-loading-spinner"></div>
+                      <div class="dungeon-loading-text">Loading Questions...</div>
+                  </div>
+              </div>
             `;
         }
 
@@ -1241,8 +1249,21 @@ export default class DungeonBase {
     this.state.answers.clear();
     this.state.selectedOption = null;
     
+    // Show container and loading screen
     this.el.container.classList.remove("hidden");
-    this.render();
+    const loadingScreen = document.getElementById('dungeonLoadingScreen');
+    if (loadingScreen) {
+      loadingScreen.classList.remove('hidden');
+      
+      // Hide loading screen and render content after brief delay
+      setTimeout(() => {
+        loadingScreen.classList.add('hidden');
+        this.render();
+      }, 400); // Fast loading (400ms)
+    } else {
+      // Fallback if loading screen doesn't exist
+      this.render();
+    }
   }
 
   close() {
