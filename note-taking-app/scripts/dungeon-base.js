@@ -207,6 +207,60 @@ export default class DungeonBase {
                       <div class="dungeon-loading-text">Loading Questions...</div>
                   </div>
               </div>
+              
+              <!-- Calculator -->
+              <div id="dungeonCalculator" class="dungeon-calculator hidden">
+                  <div class="dungeon-calc-header" id="dungeonCalcHeader">
+                      <span>Calculator</span>
+                      <button id="dungeonCalcClose" title="Close">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                  </div>
+                  <div class="dungeon-calc-display-container">
+                      <div id="dungeonCalcDisplay" class="dungeon-calc-display">0</div>
+                  </div>
+                  <div class="dungeon-calc-mode-switch">
+                      <button id="dungeonCalcModeBasic" class="active" data-mode="basic">Basic</button>
+                      <button id="dungeonCalcModeAdv" data-mode="advanced">Advanced</button>
+                  </div>
+                  <div id="dungeonCalcAdvRow" class="dungeon-calc-keys advanced-keys hidden">
+                       <button class="calc-btn fn" data-val="sin">sin</button>
+                       <button class="calc-btn fn" data-val="cos">cos</button>
+                       <button class="calc-btn fn" data-val="tan">tan</button>
+                       <button class="calc-btn fn" data-val="log">log</button>
+                       
+                       <button class="calc-btn fn" data-val="ln">ln</button>
+                       <button class="calc-btn fn" data-val="sqrt">√</button>
+                       <button class="calc-btn fn" data-val="pow">^</button>
+                       <button class="calc-btn fn" data-val="pi">π</button>
+                  </div>
+                  <div class="dungeon-calc-keys basic-keys">
+                      <button class="calc-btn op" data-val="C">C</button>
+                      <button class="calc-btn op" data-val="backspace">⌫</button>
+                      <button class="calc-btn op" data-val="(">(</button>
+                      <button class="calc-btn op" data-val=")">)</button>
+                      
+                      <button class="calc-btn num" data-val="7">7</button>
+                      <button class="calc-btn num" data-val="8">8</button>
+                      <button class="calc-btn num" data-val="9">9</button>
+                      <button class="calc-btn op" data-val="/">÷</button>
+                      
+                      <button class="calc-btn num" data-val="4">4</button>
+                      <button class="calc-btn num" data-val="5">5</button>
+                      <button class="calc-btn num" data-val="6">6</button>
+                      <button class="calc-btn op" data-val="*">×</button>
+                      
+                      <button class="calc-btn num" data-val="1">1</button>
+                      <button class="calc-btn num" data-val="2">2</button>
+                      <button class="calc-btn num" data-val="3">3</button>
+                      <button class="calc-btn op" data-val="-">-</button>
+                      
+                      <button class="calc-btn num" data-val="0">0</button>
+                      <button class="calc-btn num" data-val=".">.</button>
+                      <button class="calc-btn eq" data-val="=">=</button>
+                      <button class="calc-btn op" data-val="+">+</button>
+                  </div>
+              </div>
             `;
         }
 
@@ -254,7 +308,8 @@ export default class DungeonBase {
     this.initResizer();
     this.initToolbar();
     this.initTopbar();
-    this.initFooter(); // New footer init
+    this.initFooter();
+    this.initCalculator();
 
     this.bindEvents();
   }
@@ -994,6 +1049,229 @@ export default class DungeonBase {
     
     // Save preference
     localStorage.setItem('dungeonTopbarButtonsPosition', position);
+  }
+
+  initCalculator() {
+    const calc = document.getElementById('dungeonCalculator');
+    const display = document.getElementById('dungeonCalcDisplay');
+    const header = document.getElementById('dungeonCalcHeader');
+    const closeBtn = document.getElementById('dungeonCalcClose');
+    const toggleBtn = document.getElementById('dungeonCalcBtn');
+    
+    if (!calc || !display || !header || !closeBtn) return;
+    
+    // Toggle Visibility
+    if (toggleBtn) {
+        toggleBtn.onclick = () => {
+            calc.classList.toggle('hidden');
+            if(!calc.classList.contains('hidden')) {
+                // Determine safe position if off-screen (reset)
+                const rect = calc.getBoundingClientRect();
+                if (rect.bottom < 0 || rect.right < 0 || rect.top < 0) {
+                     calc.style.top = '80px';
+                     calc.style.right = '20px';
+                     calc.style.left = '';
+                }
+            }
+        };
+    }
+    
+    closeBtn.onclick = () => calc.classList.add('hidden');
+    
+    // Draggable Logic
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+    
+    header.onmousedown = (e) => {
+        if (e.target.closest('button')) return; // Don't drag if clicking close button
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = calc.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        calc.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none'; // Prevent text selection
+    };
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        calc.style.left = `${initialLeft + dx}px`;
+        calc.style.top = `${initialTop + dy}px`;
+        calc.style.right = 'auto'; // Disable right once moved
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        if (header) header.style.cursor = 'grab';
+        document.body.style.userSelect = '';
+    });
+    
+    // Calculator Logic
+    let currentExpr = '';
+    let resultDisplayed = false;
+    
+    const updateDisplay = (val) => {
+        display.textContent = val || '0';
+        display.scrollLeft = display.scrollWidth; // Auto scroll to end
+    };
+    
+    // Mode Switch
+    const modeBasicBtn = document.getElementById('dungeonCalcModeBasic');
+    const modeAdvBtn = document.getElementById('dungeonCalcModeAdv');
+    const advRow = document.getElementById('dungeonCalcAdvRow');
+    
+    if (modeBasicBtn && modeAdvBtn && advRow) {
+        modeBasicBtn.onclick = () => {
+            modeBasicBtn.classList.add('active');
+            modeAdvBtn.classList.remove('active');
+            advRow.classList.add('hidden');
+        };
+        modeAdvBtn.onclick = () => {
+             modeAdvBtn.classList.add('active');
+             modeBasicBtn.classList.remove('active');
+             advRow.classList.remove('hidden');
+        };
+    }
+    
+    // Keys
+    calc.querySelectorAll('.calc-btn').forEach(btn => {
+        btn.onclick = () => {
+            const val = btn.dataset.val;
+            if (!val) return;
+            
+            // Clear handling
+            if (val === 'C') {
+                currentExpr = '';
+                resultDisplayed = false;
+                updateDisplay('0');
+                return;
+            }
+            
+            // Backspace
+            if (val === 'backspace') {
+                if (resultDisplayed) {
+                    currentExpr = '';
+                    resultDisplayed = false;
+                } else {
+                    currentExpr = currentExpr.slice(0, -1);
+                }
+                updateDisplay(currentExpr);
+                return;
+            }
+            
+            // Calculate
+            if (val === '=') {
+                try {
+                    // Safe-ish Evaluation
+                    // Replace symbols for evaluation
+                    let evalExpr = currentExpr
+                        .replace(/×/g, '*') // Just in case visual use
+                        .replace(/pi/g, 'Math.PI')
+                        .replace(/e/g, 'Math.E')
+                        .replace(/sin/g, 'Math.sin')
+                        .replace(/cos/g, 'Math.cos')
+                        .replace(/tan/g, 'Math.tan')
+                        .replace(/log/g, 'Math.log10')
+                        .replace(/ln/g, 'Math.log')
+                        .replace(/sqrt/g, 'Math.sqrt')
+                        .replace(/pow/g, 'Math.pow') // Handling pow if used as func
+                        .replace(/\^/g, '**')
+                        .replace(/exp/g, 'Math.exp');
+
+                    // Filter unsafe characters
+                    if (/[^0-9+\-*/().% \w]/.test(evalExpr.replace(/Math\.\w+/g, ''))) {
+                         throw new Error('Invalid Input');
+                    }
+
+                    // Simple evaluation
+                    // eslint-disable-next-line no-eval
+                    const result = eval(evalExpr); 
+                    
+                    // Check for Infinity/NaN
+                    if (!isFinite(result) || isNaN(result)) {
+                        throw new Error('Math Error');
+                    }
+
+                    // formatting
+                    let final = parseFloat(result.toFixed(10)).toString(); // 10 decimal precision
+                    currentExpr = final;
+                    resultDisplayed = true;
+                    updateDisplay(final);
+                    
+                } catch (e) {
+                    updateDisplay('Error');
+                    resultDisplayed = true;
+                    currentExpr = '';
+                }
+                return;
+            }
+            
+            // Append input
+            if (resultDisplayed) {
+                // If starting new number/func, clear previous result unless operator
+                if (['+', '-', '*', '/', '^', '%'].includes(val)) {
+                   resultDisplayed = false;
+                } else {
+                   currentExpr = '';
+                   resultDisplayed = false;
+                }
+            }
+            
+            // Function wrapping
+            if (['sin', 'cos', 'tan', 'log', 'ln', 'sqrt', 'exp'].includes(val)) {
+                currentExpr += val + '(';
+            } else if (val === 'pow') {
+                currentExpr += '^';
+            } else {
+                currentExpr += val;
+            }
+            
+            updateDisplay(currentExpr);
+        };
+    });
+    
+    // Keyboard Support
+    document.addEventListener('keydown', (e) => {
+        if (calc.classList.contains('hidden')) return;
+        
+        const key = e.key;
+        let btnSelector = null;
+        
+        if (/[0-9]/.test(key)) {
+            btnSelector = `.calc-btn[data-val="${key}"]`;
+        } else if (key === '.') {
+            btnSelector = '.calc-btn[data-val="."]';
+        } else if (key === '+' || key === '-') {
+            btnSelector = `.calc-btn[data-val="${key}"]`;
+        } else if (key === '*' || key.toLowerCase() === 'x') {
+            btnSelector = '.calc-btn[data-val="*"]';
+        } else if (key === '/') {
+            btnSelector = '.calc-btn[data-val="/"]';
+        } else if (key === 'Enter' || key === '=') {
+            btnSelector = '.calc-btn[data-val="="]';
+            e.preventDefault(); // Prevent default enter behavior
+        } else if (key === 'Backspace') {
+            btnSelector = '.calc-btn[data-val="backspace"]';
+        } else if (key === 'Escape') {
+            btnSelector = '.calc-btn[data-val="C"]';
+        } else if (key === '(' || key === ')') {
+            btnSelector = `.calc-btn[data-val="${key}"]`;
+        }
+        
+        if (btnSelector) {
+            const btn = calc.querySelector(btnSelector);
+            if (btn) {
+                btn.click();
+                // Optional: Add visual active state briefly
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => btn.style.transform = '', 100);
+            }
+        }
+    });
   }
 
   async setTheme(theme) {
