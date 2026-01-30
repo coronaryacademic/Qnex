@@ -61,9 +61,11 @@ export default class DungeonBase {
                         <line x1="8" y1="18" x2="8" y2="18"></line>
                     </svg>
                   </button>
-                  <button class="dungeon-topbar-btn dungeon-font-btn small" data-font-size="small" title="Small Font">A</button>
-                  <button class="dungeon-topbar-btn dungeon-font-btn medium active" data-font-size="medium" title="Medium Font">A</button>
-                  <button class="dungeon-topbar-btn dungeon-font-btn large" data-font-size="large" title="Large Font">A</button>
+                  <div class="dungeon-font-group">
+                      <button class="dungeon-topbar-btn dungeon-font-btn small" data-font-size="small" title="Small Font">A</button>
+                      <button class="dungeon-topbar-btn dungeon-font-btn medium active" data-font-size="medium" title="Medium Font">A</button>
+                      <button class="dungeon-topbar-btn dungeon-font-btn large" data-font-size="large" title="Large Font">A</button>
+                  </div>
                   <button id="dungeonSearchToggle" class="dungeon-topbar-btn" title="Search">
                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                   </button>
@@ -940,9 +942,11 @@ export default class DungeonBase {
   }
 
   setTopbarButtonsPosition(position) {
-    // Get the buttons to move
+    // Get the buttons/groups to move
     const labBtn = document.getElementById('dungeonLabBtn');
     const calcBtn = document.getElementById('dungeonCalcBtn');
+    const fontGroup = document.querySelector('.dungeon-font-group');
+    // Fallback if group not found
     const fontBtns = document.querySelectorAll('.dungeon-font-btn');
     
     // Get the containers
@@ -950,34 +954,41 @@ export default class DungeonBase {
     const topbarCenter = document.querySelector('.dungeon-topbar-center');
     const topbarRight = document.querySelector('.dungeon-topbar-right');
     
-    if (!labBtn || !calcBtn || !fontBtns.length || !topbarLeft || !topbarCenter || !topbarRight) return;
+    if (!labBtn || !calcBtn || !topbarLeft || !topbarCenter || !topbarRight) return;
     
-    // Determine target container and insertion method
+    // Helper to move items
+    const moveItems = (container, refNode = null) => {
+        if (refNode) {
+            container.insertBefore(labBtn, refNode);
+            container.insertBefore(calcBtn, refNode);
+            if (fontGroup) {
+                container.insertBefore(fontGroup, refNode);
+            } else if (fontBtns.length) {
+                Array.from(fontBtns).reverse().forEach(btn => container.insertBefore(btn, refNode));
+            }
+        } else {
+            container.appendChild(labBtn);
+            container.appendChild(calcBtn);
+            if (fontGroup) {
+                container.appendChild(fontGroup);
+            } else if (fontBtns.length) {
+                fontBtns.forEach(btn => container.appendChild(btn));
+            }
+        }
+    };
+    
     if (position === 'left') {
-      // Append to left (after sidebar toggle and title)
-      topbarLeft.appendChild(labBtn);
-      topbarLeft.appendChild(calcBtn);
-      fontBtns.forEach(btn => topbarLeft.appendChild(btn));
+      moveItems(topbarLeft);
     } else if (position === 'center') {
-      // Append to center (after save status)
-      topbarCenter.appendChild(labBtn);
-      topbarCenter.appendChild(calcBtn);
-      fontBtns.forEach(btn => topbarCenter.appendChild(btn));
+      moveItems(topbarCenter);
     } else {
-      // Insert at beginning of right (before search, menu, close)
+      // Right (Default)
       const searchBtn = document.getElementById('dungeonSearchToggle');
+      // If searchBtn exists, insert before it. Otherwise prepend to right (or append if empty, but prepend is safer fallback)
       if (searchBtn) {
-        topbarRight.insertBefore(labBtn, searchBtn);
-        topbarRight.insertBefore(calcBtn, searchBtn);
-        // Insert font buttons in reverse order to maintain their sequence
-        Array.from(fontBtns).reverse().forEach(btn => {
-          topbarRight.insertBefore(btn, searchBtn);
-        });
+          moveItems(topbarRight, searchBtn);
       } else {
-        // Fallback: prepend to right
-        topbarRight.insertBefore(labBtn, topbarRight.firstChild);
-        topbarRight.insertBefore(calcBtn, topbarRight.firstChild);
-        fontBtns.forEach(btn => topbarRight.insertBefore(btn, topbarRight.firstChild));
+          moveItems(topbarRight, topbarRight.firstChild);
       }
     }
     

@@ -101,7 +101,12 @@
 .dungeon-font-group {
     display: flex;
     align-items: center;
-    gap: 8px; /* Match the topbar-right gap */
+    gap: 2px;
+    background: var(--bg-secondary);
+    padding: 3px;
+    border-radius: 6px;
+    margin: 0 4px;
+    border: 1px solid var(--border);
 }
 
 .dungeon-font-btn {
