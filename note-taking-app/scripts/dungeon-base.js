@@ -135,15 +135,13 @@ export default class DungeonBase {
                 <div class="dungeon-toolbar-menu-divider"></div>
                 <div class="dungeon-toolbar-menu-section">
                   <div class="dungeon-toolbar-menu-label">Theme</div>
-                  <div class="dungeon-menu-grid three-col">
-                    <button data-theme="dark" title="Dark Theme">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                  <div class="dungeon-theme-selector">
+                    <button id="dungeonThemePrev" class="dungeon-theme-nav-btn" title="Previous Theme">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
-                    <button data-theme="light" title="Light Theme">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                    </button>
-                    <button data-theme="classic" title="Classic Theme">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                    <div id="dungeonThemeDisplay" class="dungeon-theme-display">Dark</div>
+                    <button id="dungeonThemeNext" class="dungeon-theme-nav-btn" title="Next Theme">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
                   </div>
                 </div>
@@ -501,7 +499,6 @@ export default class DungeonBase {
         btn.onclick = () => {
           const position = btn.dataset.position;
           this.setToolbarPosition(position);
-          toolbarMenu.classList.add('hidden');
         };
       });
       
@@ -510,18 +507,67 @@ export default class DungeonBase {
         btn.onclick = () => {
           const position = btn.dataset.topbarPosition;
           this.setTopbarButtonsPosition(position);
-          toolbarMenu.classList.add('hidden');
         };
       });
       
-      // Theme buttons
-      toolbarMenu.querySelectorAll('button[data-theme]').forEach(btn => {
-        btn.onclick = () => {
-          const theme = btn.dataset.theme;
-          this.setTheme(theme);
-          toolbarMenu.classList.add('hidden');
-        };
+      // Theme Carousel Logic
+      const themes = ['dark', 'light', 'classic'];
+      const themeDisplay = document.getElementById('dungeonThemeDisplay');
+      
+      const updateThemeDisplay = () => {
+          const currentTheme = localStorage.getItem('theme') || 'dark';
+          if (themeDisplay) themeDisplay.textContent = currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1);
+      };
+      
+      // Initialize display
+      updateThemeDisplay();
+      
+      const cycleTheme = (direction) => {
+          const currentTheme = localStorage.getItem('theme') || 'dark';
+          let index = themes.indexOf(currentTheme);
+          if (index === -1) index = 0; // Default to dark if unknown
+          
+          if (direction === 'next') {
+              index = (index + 1) % themes.length;
+          } else {
+              index = (index - 1 + themes.length) % themes.length;
+          }
+          
+          const newTheme = themes[index];
+          this.setTheme(newTheme);
+          updateThemeDisplay();
+      };
+      
+      const prevThemeBtn = document.getElementById('dungeonThemePrev');
+      const nextThemeBtn = document.getElementById('dungeonThemeNext');
+      
+      if (prevThemeBtn) {
+          prevThemeBtn.onclick = (e) => {
+              e.stopPropagation(); // prevent menu close
+              cycleTheme('prev');
+          };
+      }
+      
+      if (nextThemeBtn) {
+          nextThemeBtn.onclick = (e) => {
+              e.stopPropagation(); // prevent menu close
+              cycleTheme('next');
+          };
+      }
+      
+      // Listen for theme changes from other parts of the app
+      window.addEventListener('theme-changed', (e) => {
+         updateThemeDisplay();
       });
+      
+      // Also update when toggling menu to be safe
+      const originalToggleClick = toolbarToggle ? toolbarToggle.onclick : null;
+      if (toolbarToggle) {
+          toolbarToggle.onclick = (e) => {
+              updateThemeDisplay(); // Sync before opening
+              if (originalToggleClick) originalToggleClick(e);
+          };
+      }
 
       // Bind Search
       const searchWrapper = document.getElementById('dungeonSearchWrapper');
@@ -939,36 +985,46 @@ export default class DungeonBase {
     localStorage.setItem('dungeonTopbarButtonsPosition', position);
   }
 
-  setTheme(theme) {
-    // Apply theme to document body
-    document.body.className = ''; // Clear existing theme classes
+  async setTheme(theme) {
+    // Apply theme to document body (Matching app.js logic)
+    document.body.classList.remove('theme-light', 'theme-classic');
     
-    // Map theme names to body classes
-    const themeMap = {
-      'dark': 'dark-mode',
-      'light': 'light-mode',
-      'classic': '' // Classic is default, no class needed
-    };
+    if (theme === 'light') {
+        document.body.classList.add('theme-light');
+    } else if (theme === 'classic') {
+        document.body.classList.add('theme-classic');
+    }
+    // 'dark' is default (no class)
     
-    const themeClass = themeMap[theme];
-    if (themeClass) {
-      document.body.classList.add(themeClass);
+    // Sync with backend storage
+    if (window.Storage && window.Storage.saveSettings) {
+        try {
+            // Load fresh settings to avoid overwrites
+            let settings = {};
+            if (window.Storage.loadSettings) {
+                settings = await window.Storage.loadSettings();
+            }
+            
+            // Update
+            settings.theme = theme;
+            
+            // Save
+            await window.Storage.saveSettings(settings);
+            
+            // Update global state if exposed
+            if (window.state && window.state.settings) {
+                window.state.settings.theme = theme;
+            }
+            
+        } catch(e) {
+            console.error("Dungeon: Failed to sync theme", e);
+        }
     }
     
-    // Save to localStorage
+    // Fallback / Local sync
     localStorage.setItem('theme', theme);
     
-    // Sync with main app settings if available
-    if (window.state && window.state.settings) {
-      window.state.settings.theme = theme;
-      
-      // Trigger settings save if function exists
-      if (window.saveSettings) {
-        window.saveSettings();
-      }
-    }
-    
-    // Dispatch event for other parts of app to listen
+    // Notify app
     window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme } }));
   }
 

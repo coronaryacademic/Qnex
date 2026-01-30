@@ -1157,6 +1157,47 @@
   scrollbar-color: rgba(var(--text-rgb, 128, 128, 128), 0.2) transparent;
 }
 
+/* Theme Selector (Carousel) */
+.dungeon-theme-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-hover);
+  border-radius: 6px;
+  padding: 4px;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+}
+
+.dungeon-theme-nav-btn {
+  background: transparent;
+  border: none;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.dungeon-theme-nav-btn:hover {
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--text);
+}
+
+.dungeon-theme-display {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  text-transform: capitalize;
+  user-select: none;
+  min-width: 80px;
+  text-align: center;
+}
+
 /* Loading Screen */
 .dungeon-loading-screen {
   position: fixed;
