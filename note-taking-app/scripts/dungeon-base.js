@@ -69,6 +69,23 @@ export default class DungeonBase {
                   <button id="dungeonSearchToggle" class="dungeon-topbar-btn" title="Search">
                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                   </button>
+                  <div id="dungeonSearchWrapper" class="dungeon-search-wrapper">
+                     <div class="dungeon-search-container">
+                         <input type="text" id="dungeonSearchInput" placeholder="Search..." spellcheck="false" autocomplete="off" />
+                         <div class="dungeon-search-actions">
+                             <span id="dungeonSearchCount" class="hidden"></span>
+                             <button id="dungeonSearchPrev" class="search-nav-btn" disabled title="Prev">
+                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                             </button>
+                             <button id="dungeonSearchNext" class="search-nav-btn" disabled title="Next">
+                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                             </button>
+                             <button id="dungeonSearchClose" class="search-close-btn" title="Close">
+                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                             </button>
+                         </div>
+                     </div>
+                  </div>
                   <button id="dungeonToolbarOptions" class="dungeon-topbar-btn" title="Toolbar Options">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="4" y1="6" x2="20" y2="6"></line>
@@ -148,6 +165,8 @@ export default class DungeonBase {
                   </div>
                 </div>
               </div>
+              
+
               
               <div id="dungeonSidebar" class="dungeon-sidebar">
                 <!-- Stats will be added at bottom by JS -->
@@ -310,6 +329,7 @@ export default class DungeonBase {
     this.initTopbar();
     this.initFooter();
     this.initCalculator();
+    this.initSearch();
 
     this.bindEvents();
   }
@@ -1647,6 +1667,20 @@ export default class DungeonBase {
     }
     
     this.state.questions = [...questions];
+    
+    // Performance: Pre-cache search text to avoid stripping HTML during search loop
+    this.state.questions.forEach(q => {
+         if (q._searchCached) return;
+         q._searchTitle = (q.title || "").toLowerCase();
+         q._searchContent = this.stripHtml(q.text || q.body || q.content || "").toLowerCase();
+         // Cache options text
+         if (q.options) {
+             q.options.forEach(opt => {
+                 opt._searchText = (opt.text || "").toLowerCase();
+             });
+         }
+         q._searchCached = true;
+    });
     this.state.currentIndex = 0;
     this.state.answers.clear();
     this.state.selectedOption = null;
@@ -1734,19 +1768,26 @@ export default class DungeonBase {
     questionsContainer.className = 'dungeon-sidebar-questions';
 
     this.state.questions.forEach((q, index) => {
-      // Filter logic
+      let isHidden = false;
       if (this.state.searchQuery) {
           const query = this.state.searchQuery.toLowerCase();
-          const textMatch = (q.text || "").toLowerCase().includes(query);
-          const optionMatch = q.options && q.options.some(o => o.text && o.text.toLowerCase().includes(query));
-          // If no match, skip this question
-          if (!textMatch && !optionMatch && !(q.title||"").toLowerCase().includes(query)) {
-              return;
+          // Use cache for speed
+          const title = q._searchTitle !== undefined ? q._searchTitle : (q.title || "").toLowerCase();
+          const content = q._searchContent !== undefined ? q._searchContent : (q.text || "").toLowerCase();
+          
+          let match = title.includes(query) || content.includes(query);
+          if (!match && q.options) {
+             match = q.options.some(o => (o._searchText !== undefined ? o._searchText : (o.text || "").toLowerCase()).includes(query));
           }
+          
+          if (!match) isHidden = true;
       }
 
       const box = document.createElement("div");
       box.className = "dungeon-q-box";
+      if (isHidden) box.style.display = "none";
+      // Add data-index for fast filtering updates without re-render
+      box.dataset.qIndex = index;
       
       if (index === this.state.currentIndex) {
         box.classList.add("active");
@@ -1797,10 +1838,326 @@ export default class DungeonBase {
     }
   }
 
-  saveCurrentSelection() {
-     // Optional: Persist unsubmitted selection? 
-     // For now, let's keep it simple: switching questions clears unsubmitted selection.
-     // To improve, we can store it in a separate map.
+  // Search Implementation
+  initSearch() {
+      const wrapper = document.getElementById('dungeonSearchWrapper');
+      const toggle = document.getElementById('dungeonSearchToggle');
+      const input = document.getElementById('dungeonSearchInput');
+      const closeBtn = document.getElementById('dungeonSearchClose');
+      const nextBtn = document.getElementById('dungeonSearchNext');
+      const prevBtn = document.getElementById('dungeonSearchPrev');
+      
+      if (!wrapper || !toggle || !input) return;
+      
+      // Global Shortcut (Ctrl+F)
+      document.addEventListener('keydown', (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+              e.preventDefault();
+              if (!wrapper.classList.contains('active')) {
+                  wrapper.classList.add('active');
+              }
+              setTimeout(() => {
+                  input.focus();
+                  input.select();
+              }, 50);
+              if (input.value) this.runSearch(input.value);
+          }
+      });
+      
+      // Toggle Visibility
+      toggle.onclick = (e) => {
+          e.stopPropagation();
+          wrapper.classList.toggle('active');
+          if (wrapper.classList.contains('active')) {
+              input.focus();
+              if (input.value) this.runSearch(input.value);
+          } else {
+              this.clearSearchHighlights(); // Clear when closing via toggle
+          }
+      };
+      
+      // Close
+      if (closeBtn) {
+          closeBtn.onclick = () => {
+              wrapper.classList.remove('active');
+              this.clearSearchHighlights();
+          };
+      }
+      
+      // Input with debounce
+      let debounceTimeout;
+      input.oninput = (e) => {
+          const term = e.target.value;
+          clearTimeout(debounceTimeout);
+          debounceTimeout = setTimeout(() => {
+              this.runSearch(term);
+          }, 300);
+      };
+      
+      // Navigation
+      if (nextBtn) nextBtn.onclick = () => this.navigateSearch(1);
+      if (prevBtn) prevBtn.onclick = () => this.navigateSearch(-1);
+
+      // Keyboard
+      input.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+              if (e.shiftKey) this.navigateSearch(-1);
+              else this.navigateSearch(1);
+          } else if (e.key === 'Escape') {
+              wrapper.classList.remove('active');
+              this.clearSearchHighlights();
+          }
+      };
+  }
+
+  filterSidebarQuery(term) {
+       this.state.searchQuery = term;
+       const container = this.el.sidebar.querySelector('.dungeon-sidebar-questions');
+       if (!container) return;
+       
+       const boxes = container.children;
+       const termLower = term ? term.toLowerCase() : "";
+       
+       for (let i = 0; i < boxes.length; i++) {
+           const box = boxes[i];
+           const index = parseInt(box.dataset.qIndex);
+           const q = this.state.questions[index];
+           if (!q) continue;
+           
+           if (!term) {
+               box.style.display = "";
+               continue;
+           }
+           
+           const title = q._searchTitle !== undefined ? q._searchTitle : (q.title || "").toLowerCase();
+           const content = q._searchContent !== undefined ? q._searchContent : (q.text || "").toLowerCase();
+           
+           let match = title.includes(termLower) || content.includes(termLower);
+           if (!match && q.options) {
+              match = q.options.some(o => (o._searchText !== undefined ? o._searchText : (o.text || "").toLowerCase()).includes(termLower));
+           }
+           
+           box.style.display = match ? "" : "none";
+       }
+  }
+
+  escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  runSearch(term) {
+      if (!term) {
+          this.clearSearchHighlights();
+          return;
+      }
+      
+      // Update Sidebar Filtering (Fast)
+      this.filterSidebarQuery(term);
+      
+      const termLower = term.toLowerCase();
+      // Regex for finding ALL occurrences
+      const regex = new RegExp(this.escapeRegExp(termLower), 'g');
+      const results = [];
+      
+      this.state.questions.forEach((q, qIndex) => {
+          // 1. Check Title (Use Cached)
+          const title = q._searchTitle !== undefined ? q._searchTitle : (q.title || "").toLowerCase();
+          const titleMatches = title.match(regex);
+          if (titleMatches) {
+               titleMatches.forEach(() => results.push({ qIndex, type: 'title' }));
+          }
+
+          // 2. Check Content (Use Cached)
+          const content = q._searchContent !== undefined ? q._searchContent : this.stripHtml(q.text || q.body || q.content || "").toLowerCase();
+          const contentMatches = content.match(regex);
+          if (contentMatches) {
+              contentMatches.forEach(() => results.push({ qIndex, type: 'content' }));
+          }
+          
+          // 3. Check Options (Use Cached)
+          if (q.options) {
+             q.options.forEach((opt, optIndex) => {
+                 const optText = opt._searchText !== undefined ? opt._searchText : (opt.text || "").toLowerCase();
+                 const optMatches = optText.match(regex);
+                 if (optMatches) {
+                     optMatches.forEach(() => results.push({ qIndex, type: 'option', optIndex }));
+                 }
+             });
+          }
+      });
+      
+      this.state.search = {
+          results,
+          currentIndex: 0,
+          term
+      };
+      
+      this.updateSearchUI();
+      
+      if (results.length > 0) {
+          const currentMatches = results.filter(r => r.qIndex === this.state.currentIndex);
+          if (currentMatches.length === 0) {
+             const first = results[0];
+             this.jumpToQuestion(first.qIndex); 
+          } else {
+             const idx = results.findIndex(r => r.qIndex === this.state.currentIndex);
+             if (idx !== -1) this.state.search.currentIndex = idx;
+             this.highlightSearchTerms();
+          }
+      } else {
+          this.highlightSearchTerms();
+      }
+  }
+
+  navigateSearch(direction) {
+      const s = this.state.search;
+      if (!s || !s.results.length) return;
+      
+      s.currentIndex += direction;
+      // Wrap around
+      if (s.currentIndex >= s.results.length) s.currentIndex = 0;
+      if (s.currentIndex < 0) s.currentIndex = s.results.length - 1;
+      
+      const result = s.results[s.currentIndex];
+      
+      this.updateSearchUI();
+      
+      if (result.qIndex !== this.state.currentIndex) {
+          this.jumpToQuestion(result.qIndex);
+      } else {
+          this.highlightSearchTerms();
+      }
+  }
+  
+  updateSearchUI() {
+      const s = this.state.search;
+      const countEl = document.getElementById('dungeonSearchCount');
+      const prev = document.getElementById('dungeonSearchPrev');
+      const next = document.getElementById('dungeonSearchNext');
+      
+      if (countEl) {
+          if (!s || !s.term) {
+              countEl.classList.add('hidden');
+               if(prev) prev.disabled = true;
+               if(next) next.disabled = true;
+          } else {
+              countEl.classList.remove('hidden');
+              countEl.textContent = `${s.results.length ? s.currentIndex + 1 : 0}/${s.results.length}`;
+              if(prev) prev.disabled = s.results.length === 0;
+              if(next) next.disabled = s.results.length === 0;
+          }
+      }
+  }
+
+  clearSearchHighlights() {
+      this.state.search = null;
+      
+      // Clear Sidebar Filtering
+      this.filterSidebarQuery("");
+      
+      this.updateSearchUI();
+      const highlights = document.querySelectorAll('.search-highlight');
+      highlights.forEach(h => {
+          const parent = h.parentNode;
+          if (parent) {
+            parent.replaceChild(document.createTextNode(h.textContent), h);
+            parent.normalize();
+          }
+      });
+  }
+  
+  highlightSearchTerms() {
+      // Remove old
+      const oldHighlights = document.querySelectorAll('.search-highlight');
+      oldHighlights.forEach(h => {
+          const parent = h.parentNode;
+           if (parent) {
+            parent.replaceChild(document.createTextNode(h.textContent), h);
+            parent.normalize();
+           }
+      });
+
+      const s = this.state.search;
+      if (!s || !s.term || s.results.length === 0) return;
+      
+      if (this.state.currentIndex !== s.results[s.currentIndex].qIndex && s.results.some(r => r.qIndex === this.state.currentIndex)) {
+          // Allow manual nav match
+      } else if (this.state.currentIndex !== s.results[s.currentIndex].qIndex) {
+          return; // No results on this page
+      }
+      
+      const container = document.querySelector('.dungeon-main') || document.body;
+      const titleEl = document.getElementById('dungeonQuestionTitle');
+      
+      // Highlight Main Content
+      this.highlightTextInNode(container, s.term);
+      
+      // Highlight Title
+      if (titleEl) {
+          this.highlightTextInNode(titleEl, s.term);
+      }
+      
+      // Mark current
+      const pageResults = s.results.filter(r => r.qIndex === this.state.currentIndex);
+      const localIndex = pageResults.findIndex(r => r === s.results[s.currentIndex]);
+      
+      if (localIndex !== -1) {
+          const highlights = document.querySelectorAll('.search-highlight'); // Grab ALL highlights (title + content)
+          // We need to map localIndex to the actual highlight element.
+          // This is tricky because title highlights come before main highlights in DOM order usually?
+          // #dungeonQuestionTitle is in topbar (before main).
+          // So highlights[0] might be title.
+          
+          // Re-query all to be sure of order
+          if (highlights[localIndex]) {
+              highlights[localIndex].classList.add('current');
+              highlights[localIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (highlights.length > 0) {
+              highlights[0].classList.add('current');
+          }
+      }
+  }
+  
+  highlightTextInNode(node, term) {
+      if (node.nodeType === 3) { // Text
+          const val = node.nodeValue;
+          const lowerVal = val.toLowerCase();
+          const lowerTerm = term.toLowerCase();
+          let index = lowerVal.indexOf(lowerTerm);
+          
+          if (index >= 0) {
+              const span = document.createElement('span');
+              span.className = 'search-highlight';
+              span.textContent = val.substr(index, term.length);
+              
+              const after = val.substr(index + term.length);
+              const afterNode = document.createTextNode(after);
+              
+              node.nodeValue = val.substr(0, index);
+              node.parentNode.insertBefore(span, node.nextSibling);
+              node.parentNode.insertBefore(afterNode, span.nextSibling);
+              
+              // Continue in afterNode?
+              // YES, invoke recursively to catch multiple occurrences in same text node
+              this.highlightTextInNode(afterNode, term);
+          }
+      } else if (node.nodeType === 1 && node.childNodes && !/(script|style|button|textarea)/i.test(node.tagName) && !node.classList.contains('search-highlight')) {
+           for (let i = node.childNodes.length - 1; i >= 0; i--) {
+               this.highlightTextInNode(node.childNodes[i], term);
+           }
+      }
+  }
+
+  stripHtml(html) {
+     if (!html) return "";
+     // Regex is much faster than DOM creation for search indexing
+     return html.replace(/<[^>]*>/g, ' ').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  
+  jumpToQuestion(index) {
+       this.state.currentIndex = index;
+       this.state.selectedOption = null;
+       this.render(); 
   }
 
   renderQuestion() {
@@ -1877,6 +2234,11 @@ export default class DungeonBase {
   }
 
   this.el.main.innerHTML = html;
+  
+  // Re-apply search highlights if active
+  if (this.state.search) {
+      setTimeout(() => this.highlightSearchTerms(), 10);
+  }
 }
 
 handleSelectOption(optionId) {
