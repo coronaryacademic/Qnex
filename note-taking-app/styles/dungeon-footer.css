@@ -56,6 +56,18 @@
   color: var(--danger);
 }
 
+/* Timer Clickable */
+#dungeonTimer {
+  transition: all 0.2s;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+#dungeonTimer:hover {
+  background: var(--bg-secondary);
+  color: var(--accent);
+}
+
 /* Lightbulb Button */
 .dungeon-reveal-btn {
   background: transparent;
@@ -68,6 +80,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  position: relative;
 }
 
 .dungeon-reveal-btn:hover {
@@ -82,6 +95,10 @@
 .dungeon-reveal-btn.active {
   color: #fbbf24;
   opacity: 1;
+}
+
+.dungeon-reveal-btn .reveal-cross {
+  color: #ef4444; /* red for the cross */
 }
 
 /* Adjust Sidebar and Main Layout */

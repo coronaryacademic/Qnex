@@ -36,29 +36,46 @@
 }
 
 .dungeon-topbar-left,
-.dungeon-topbar-center,
 .dungeon-topbar-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  z-index: 2; /* Ensure clickable over absolute center if overlap (though unlikely) */
+}
+
+/* 
+ * Center group now just for save status and search
+ */
+.dungeon-topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  z-index: 1;
 }
 
 .dungeon-topbar-left {
   flex: 1;
   min-width: 0;
-}
-
-.dungeon-topbar-center {
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Gap between all left-side items */
 }
 
 .dungeon-topbar-right {
   flex-shrink: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Gap between all right-side items */
 }
 
 .dungeon-topbar-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -79,6 +96,46 @@
 .dungeon-topbar-btn:active {
   transform: scale(0.95);
 }
+
+/* Font Resizer Group */
+.dungeon-font-group {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Match the topbar-right gap */
+}
+
+.dungeon-font-btn {
+    width: 32px; /* Match topbar button size */
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    line-height: 1;
+}
+
+.dungeon-font-btn:hover {
+    background: var(--panel-hover);
+    color: var(--text);
+}
+
+.dungeon-font-btn.active {
+    background: var(--bg);
+    color: var(--accent);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    font-weight: 600;
+}
+
+/* Font sizes for the buttons themselves */
+.dungeon-font-btn.small { font-size: 0.75rem; }
+.dungeon-font-btn.medium { font-size: 0.9rem; }
+.dungeon-font-btn.large { font-size: 1.1rem; }
 
 .dungeon-question-title {
   font-size: 1.1rem;
@@ -187,6 +244,36 @@
 .dungeon-toolbar-menu button svg {
   flex-shrink: 0;
   opacity: 0.7;
+}
+
+/* Menu Grid Layout */
+.dungeon-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.dungeon-menu-grid.three-col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.dungeon-menu-grid button {
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.dungeon-menu-grid button:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.dungeon-toolbar-menu button .dungeon-menu-toggle {
+  /* Inherits base button styles */
 }
 
 .dungeon-toolbar-menu button:hover {
@@ -371,6 +458,31 @@
   flex-direction: column;
   gap: 30px;
   margin-left: 0; /* Align to left */
+}
+
+/* Font Size Modifiers */
+.dungeon-question-container.font-small .dungeon-context-box {
+  font-size: 0.95rem;
+}
+
+.dungeon-question-container.font-small .dungeon-radio-text {
+  font-size: 0.85rem;
+}
+
+.dungeon-question-container.font-medium .dungeon-context-box {
+  font-size: 1.15rem;
+}
+
+.dungeon-question-container.font-medium .dungeon-radio-text {
+  font-size: 1rem;
+}
+
+.dungeon-question-container.font-large .dungeon-context-box {
+  font-size: 1.35rem;
+}
+
+.dungeon-question-container.font-large .dungeon-radio-text {
+  font-size: 1.15rem;
 }
 
 /* Question Header - Removed, now in topbar */
@@ -935,4 +1047,112 @@
 .dungeon-save-status.unsaved {
   color: var(--error);
   opacity: 1;
+}
+
+/* Footer Styles */
+.dungeon-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 1000;
+  gap: 16px;
+}
+
+.dungeon-footer-left,
+.dungeon-footer-center,
+.dungeon-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dungeon-footer-center {
+  flex: 1;
+  justify-content: center;
+}
+
+.dungeon-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.dungeon-stat-item svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.dungeon-stat-item span {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dungeon-reveal-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.dungeon-reveal-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.dungeon-reveal-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+/* Modern Scrollbar Styles */
+.dungeon-scroll-wrapper {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+.dungeon-scroll-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dungeon-scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dungeon-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(var(--text-rgb, 128, 128, 128), 0.2);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.dungeon-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--text-rgb, 128, 128, 128), 0.4);
+}
+
+.dungeon-scroll-wrapper::-webkit-scrollbar-thumb:active {
+  background: rgba(var(--text-rgb, 128, 128, 128), 0.6);
+}
+
+/* Firefox */
+.dungeon-scroll-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--text-rgb, 128, 128, 128), 0.2) transparent;
 }

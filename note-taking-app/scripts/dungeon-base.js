@@ -39,15 +39,34 @@ export default class DungeonBase {
                   <div id="dungeonQuestionTitle" class="dungeon-question-title">Untitled Question</div>
                 </div>
                 <div class="dungeon-topbar-center">
-                  <span id="dungeonSaveStatus" class="dungeon-save-status saved" style="margin-right: 12px;">Saved</span>
-                  <div id="dungeonSearchWrapper" class="dungeon-search-wrapper">
-                      <button id="dungeonSearchToggle" class="dungeon-search-toggle" title="Search">
-                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                      </button>
-                      <input type="text" id="dungeonSearchInput" class="dungeon-search-input" placeholder="Search...">
-                  </div>
                 </div>
                 <div class="dungeon-topbar-right">
+                  <button id="dungeonLabBtn" class="dungeon-topbar-btn" title="Lab Values">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 2v7.31"></path>
+                        <path d="M14 2v7.31"></path>
+                        <path d="M8.5 2h7"></path>
+                        <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+                    </svg>
+                  </button>
+                  <button id="dungeonCalcBtn" class="dungeon-topbar-btn" title="Calculator">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+                        <line x1="8" y1="6" x2="16" y2="6"></line>
+                        <line x1="16" y1="14" x2="16" y2="14"></line>
+                        <line x1="12" y1="14" x2="12" y2="14"></line>
+                        <line x1="8" y1="14" x2="8" y2="14"></line>
+                        <line x1="16" y1="18" x2="16" y2="18"></line>
+                        <line x1="12" y1="18" x2="12" y2="18"></line>
+                        <line x1="8" y1="18" x2="8" y2="18"></line>
+                    </svg>
+                  </button>
+                  <button class="dungeon-topbar-btn dungeon-font-btn small" data-font-size="small" title="Small Font">A</button>
+                  <button class="dungeon-topbar-btn dungeon-font-btn medium active" data-font-size="medium" title="Medium Font">A</button>
+                  <button class="dungeon-topbar-btn dungeon-font-btn large" data-font-size="large" title="Large Font">A</button>
+                  <button id="dungeonSearchToggle" class="dungeon-topbar-btn" title="Search">
+                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  </button>
                   <button id="dungeonToolbarOptions" class="dungeon-topbar-btn" title="Toolbar Options">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="4" y1="6" x2="20" y2="6"></line>
@@ -78,12 +97,40 @@ export default class DungeonBase {
                 </div>
                 <div class="dungeon-toolbar-menu-divider"></div>
                 <div class="dungeon-toolbar-menu-section">
-                  <div class="dungeon-toolbar-menu-label">Position</div>
-                  <button data-position="floating">Floating</button>
-                  <button data-position="top">Top</button>
-                  <button data-position="bottom">Bottom</button>
-                  <button data-position="left">Left</button>
-                  <button data-position="right">Right</button>
+                  <div class="dungeon-toolbar-menu-label">Toolbar Position</div>
+                  <button id="dungeonFloatingToggle" data-position="floating" class="dungeon-menu-toggle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M9 9h6v6H9z"></path></svg>
+                    <span>Floating Mode</span>
+                  </button>
+                  <div class="dungeon-menu-grid" style="margin-top: 8px;">
+                    <button data-position="top" title="Top">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>
+                    </button>
+                    <button data-position="bottom" title="Bottom">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 15h18"></path></svg>
+                    </button>
+                    <button data-position="left" title="Left">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg>
+                    </button>
+                    <button data-position="right" title="Right">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M15 3v18"></path></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="dungeon-toolbar-menu-divider"></div>
+                <div class="dungeon-toolbar-menu-section">
+                  <div class="dungeon-toolbar-menu-label">Topbar Buttons</div>
+                  <div class="dungeon-menu-grid three-col">
+                    <button data-topbar-position="left" title="Align Left">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+                    </button>
+                    <button data-topbar-position="center" title="Align Center">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="17" y1="12" x2="7" y2="12"></line><line x1="19" y1="18" x2="5" y2="18"></line></svg>
+                    </button>
+                    <button data-topbar-position="right" title="Align Right">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="12" x2="9" y2="12"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -109,17 +156,30 @@ export default class DungeonBase {
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           <span id="dungeonStatCorrect">0</span>
                       </div>
+                      <div class="dungeon-stat-item" title="Question Progress">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="3" y="3" width="7" height="7"></rect>
+                              <rect x="14" y="3" width="7" height="7"></rect>
+                              <rect x="14" y="14" width="7" height="7"></rect>
+                              <rect x="3" y="14" width="7" height="7"></rect>
+                          </svg>
+                          <span id="dungeonStatTotal">0/0</span>
+                      </div>
                       <div class="dungeon-stat-item" title="Incorrect Answers">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                           <span id="dungeonStatWrong">0</span>
                       </div>
                   </div>
                   <div class="dungeon-footer-right">
+                      <span id="dungeonSaveStatus" class="dungeon-save-status saved">Saved</span>
                       <button id="dungeonRevealBtn" class="dungeon-reveal-btn" title="Reveal Answer">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                               <path d="M9 18h6"></path>
                               <path d="M10 22h4"></path>
                               <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"></path>
+                          </svg>
+                          <svg class="reveal-cross" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none; position: absolute;">
+                              <line x1="4" y1="4" x2="20" y2="20"></line>
                           </svg>
                       </button>
                   </div>
@@ -181,6 +241,17 @@ export default class DungeonBase {
       const revealBtn = document.getElementById('dungeonRevealBtn');
       if (revealBtn) {
           revealBtn.onclick = () => this.toggleReveal();
+      }
+      
+      // Bind Timer Reset
+      const timerEl = document.getElementById('dungeonTimer');
+      if (timerEl) {
+          timerEl.style.cursor = 'pointer';
+          timerEl.title = 'Click to reset timer';
+          timerEl.onclick = () => {
+              this.timerStart = Date.now();
+              this.updateTimerDisplay(0);
+          };
       }
   }
 
@@ -410,6 +481,15 @@ export default class DungeonBase {
           toolbarMenu.classList.add('hidden');
         };
       });
+      
+      // Topbar buttons position
+      toolbarMenu.querySelectorAll('button[data-topbar-position]').forEach(btn => {
+        btn.onclick = () => {
+          const position = btn.dataset.topbarPosition;
+          this.setTopbarButtonsPosition(position);
+          toolbarMenu.classList.add('hidden');
+        };
+      });
 
       // Bind Search
       const searchWrapper = document.getElementById('dungeonSearchWrapper');
@@ -438,11 +518,41 @@ export default class DungeonBase {
       }
     }
 
+    // Font Resize Buttons
+    const fontButtons = document.querySelectorAll('.dungeon-font-btn');
+    if (fontButtons.length > 0) {
+      fontButtons.forEach(btn => {
+        btn.onclick = () => {
+          const size = btn.dataset.fontSize;
+          this.setFontSize(size);
+          
+          // Update active state
+          fontButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        };
+      });
+      
+      // Load saved font size
+      const savedFontSize = localStorage.getItem('dungeonFontSize') || 'medium';
+      this.setFontSize(savedFontSize);
+      fontButtons.forEach(btn => {
+        if (btn.dataset.fontSize === savedFontSize) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
     // Load saved states
     const savedSidebarState = localStorage.getItem('dungeonSidebarCollapsed');
     if (savedSidebarState === 'true') {
       this.toggleSidebar();
     }
+    
+    // Load saved topbar buttons position
+    const savedTopbarPosition = localStorage.getItem('dungeonTopbarButtonsPosition') || 'right';
+    this.setTopbarButtonsPosition(savedTopbarPosition);
 
     const savedToolbarVisible = localStorage.getItem('dungeonToolbarVisible');
     if (savedToolbarVisible === 'false') {
@@ -737,6 +847,67 @@ export default class DungeonBase {
     }
   }
 
+  setFontSize(size) {
+    const container = document.getElementById('dungeonMainContent');
+    if (!container) return;
+
+    // Remove all font size classes
+    container.classList.remove('font-small', 'font-medium', 'font-large');
+    
+    // Add the selected font size class
+    container.classList.add(`font-${size}`);
+    
+    // Save to localStorage
+    localStorage.setItem('dungeonFontSize', size);
+  }
+
+  setTopbarButtonsPosition(position) {
+    // Get the buttons to move
+    const labBtn = document.getElementById('dungeonLabBtn');
+    const calcBtn = document.getElementById('dungeonCalcBtn');
+    const fontBtns = document.querySelectorAll('.dungeon-font-btn');
+    
+    // Get the containers
+    const topbarLeft = document.querySelector('.dungeon-topbar-left');
+    const topbarCenter = document.querySelector('.dungeon-topbar-center');
+    const topbarRight = document.querySelector('.dungeon-topbar-right');
+    
+    if (!labBtn || !calcBtn || !fontBtns.length || !topbarLeft || !topbarCenter || !topbarRight) return;
+    
+    // Determine target container and insertion method
+    if (position === 'left') {
+      // Append to left (after sidebar toggle and title)
+      topbarLeft.appendChild(labBtn);
+      topbarLeft.appendChild(calcBtn);
+      fontBtns.forEach(btn => topbarLeft.appendChild(btn));
+    } else if (position === 'center') {
+      // Append to center (after save status)
+      topbarCenter.appendChild(labBtn);
+      topbarCenter.appendChild(calcBtn);
+      fontBtns.forEach(btn => topbarCenter.appendChild(btn));
+    } else {
+      // Insert at beginning of right (before search, menu, close)
+      const searchBtn = document.getElementById('dungeonSearchToggle');
+      if (searchBtn) {
+        topbarRight.insertBefore(labBtn, searchBtn);
+        topbarRight.insertBefore(calcBtn, searchBtn);
+        // Insert font buttons in reverse order to maintain their sequence
+        Array.from(fontBtns).reverse().forEach(btn => {
+          topbarRight.insertBefore(btn, searchBtn);
+        });
+      } else {
+        // Fallback: prepend to right
+        topbarRight.insertBefore(labBtn, topbarRight.firstChild);
+        topbarRight.insertBefore(calcBtn, topbarRight.firstChild);
+        fontBtns.forEach(btn => topbarRight.insertBefore(btn, topbarRight.firstChild));
+      }
+    }
+    
+    // Save preference
+    localStorage.setItem('dungeonTopbarButtonsPosition', position);
+  }
+
+
   updateHighlightSVG(toolbar) {
       const highlightBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="highlight"]');
       if (!highlightBtn) return;
@@ -931,9 +1102,15 @@ export default class DungeonBase {
       
       const correctEl = document.getElementById('dungeonStatCorrect');
       const wrongEl = document.getElementById('dungeonStatWrong');
+      const totalEl = document.getElementById('dungeonStatTotal');
       
       if (correctEl) correctEl.textContent = correct;
       if (wrongEl) wrongEl.textContent = wrong;
+      if (totalEl) {
+          const currentQuestion = this.state.currentIndex + 1;
+          const totalQuestions = this.state.questions.length;
+          totalEl.textContent = `${currentQuestion}/${totalQuestions}`;
+      }
   }
   
   clearHighlights() {
@@ -1204,71 +1381,82 @@ export default class DungeonBase {
   }
 
   renderQuestion() {
-    const q = this.state.questions[this.state.currentIndex];
-    const answer = this.state.answers.get(q.id);
-    const isSubmitted = answer && answer.submitted;
+  const q = this.state.questions[this.state.currentIndex];
+  const answer = this.state.answers.get(q.id);
+  const isSubmitted = answer && answer.submitted;
+  const isRevealed = q.revealed || false;
 
-    let html = `
+  let html = `
+    
+    <!-- Context Box (Image/Code) - Placeholder if empty -->
+    <!-- Context Box (Image/Code) -->
+    <!-- Context Box (Image/Code) -->
+    <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event)">
+           ${q.text || q.body || q.content || "No question details."}
+    </div>
+
+    <div class="dungeon-options-list">
+  `;
+
+  const options = q.options || [];
+  const currentSel = this.state.selectedOption; // Valid only if not submitted
+  const submittedSel = isSubmitted ? answer.selectedId : null;
+
+  options.forEach(opt => {
+      let classes = "dungeon-radio-option";
+      // Logic for styling
+      if (isSubmitted) {
+          // Submitted state
+          if (String(opt.id) === String(submittedSel)) {
+               classes += " selected"; // Visual selected
+               if (answer.isCorrect) classes += " correct-answer";
+               else classes += " wrong-answer";
+          }
+          if (opt.isCorrect && !answer.isCorrect) {
+               classes += " correct-answer"; // Show missed correct answer
+          }
+      } else if (isRevealed) {
+          // Revealed state (not submitted but showing answers)
+          if (opt.isCorrect) {
+               classes += " correct-answer"; // Highlight correct answer
+          }
+      } else {
+          // Interactive state
+          if (String(opt.id) === String(currentSel)) classes += " selected";
+      }
+
+      html += `
+        <div class="${classes}" onclick="window.DungeonBase.handleSelectOption('${opt.id}')">
+            <div class="dungeon-radio-circle"></div>
+            <div class="dungeon-radio-text">${opt.text || "Option"}</div>
+        </div>
+      `;
+  });
+
+  html += `</div>`; // End options
+
+  html += `</div>`; // End actions row
+
+  this.renderToolbarState(); // Sync toolbar with current question state
+
+  // Show explanation if submitted OR revealed
+  if (isSubmitted || isRevealed) {
+      const explanationTitle = isSubmitted 
+          ? (answer.isCorrect ? "Correct!" : "Incorrect")
+          : "Answer Revealed";
       
-      <!-- Context Box (Image/Code) - Placeholder if empty -->
-      <!-- Context Box (Image/Code) -->
-      <!-- Context Box (Image/Code) -->
-      <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event)">
-             ${q.text || q.body || q.content || "No question details."}
-      </div>
-
-      <div class="dungeon-options-list">
-    `;
-
-    const options = q.options || [];
-    const currentSel = this.state.selectedOption; // Valid only if not submitted
-    const submittedSel = isSubmitted ? answer.selectedId : null;
-
-    options.forEach(opt => {
-        let classes = "dungeon-radio-option";
-        // Logic for styling
-        if (isSubmitted) {
-            // Submitted state
-            if (String(opt.id) === String(submittedSel)) {
-                 classes += " selected"; // Visual selected
-                 if (answer.isCorrect) classes += " correct-answer";
-                 else classes += " wrong-answer";
-            }
-            if (opt.isCorrect && !answer.isCorrect) {
-                 classes += " correct-answer"; // Show missed correct answer
-            }
-        } else {
-            // Interactive state
-            if (String(opt.id) === String(currentSel)) classes += " selected";
-        }
-
-        html += `
-          <div class="${classes}" onclick="window.DungeonBase.handleSelectOption('${opt.id}')">
-              <div class="dungeon-radio-circle"></div>
-              <div class="dungeon-radio-text">${opt.text || "Option"}</div>
-          </div>
-        `;
-    });
-
-    html += `</div>`; // End options
-
-    html += `</div>`; // End actions row
-
-    this.renderToolbarState(); // Sync toolbar with current question state
-
-    if (isSubmitted) {
-        html += `
-           <div class="dungeon-explanation">
-               <h3>${answer.isCorrect ? "Correct!" : "Incorrect"}</h3>
-               <p>${q.explanation || "No explanation provided."}</p>
-           </div>
-        `;
-    }
-
-    this.el.main.innerHTML = html;
+      html += `
+         <div class="dungeon-explanation">
+             <h3>${explanationTitle}</h3>
+             <p>${q.explanation || "No explanation provided."}</p>
+         </div>
+      `;
   }
 
-  handleSelectOption(optionId) {
+  this.el.main.innerHTML = html;
+}
+
+handleSelectOption(optionId) {
       const q = this.state.questions[this.state.currentIndex];
       const answer = this.state.answers.get(q.id);
       
@@ -1298,6 +1486,51 @@ export default class DungeonBase {
       this.saveQuestionsToBackend();
       this.stopTimer();
       this.render(); // Update sidebar and content
+  }
+
+  toggleReveal() {
+      const q = this.state.questions[this.state.currentIndex];
+      if (!q) return;
+      
+      const revealBtn = document.getElementById('dungeonRevealBtn');
+      const answer = this.state.answers.get(q.id);
+      
+      // Toggle reveal state
+      q.revealed = !q.revealed;
+      
+      // Update button visual state
+      if (revealBtn) {
+          const cross = revealBtn.querySelector('.reveal-cross');
+          if (q.revealed) {
+              // Show crossed bulb when revealed
+              revealBtn.classList.add('active');
+              if (cross) cross.style.display = 'block';
+              revealBtn.title = 'Hide Answer';
+          } else {
+              // Show normal bulb when hidden
+              revealBtn.classList.remove('active');
+              if (cross) cross.style.display = 'none';
+              revealBtn.title = 'Reveal Answer';
+              
+              // If question was answered, reset it when hiding
+              if (answer && answer.submitted) {
+                  this.state.answers.delete(q.id);
+                  this.state.selectedOption = null;
+                  
+                  // Clear any highlights
+                  if (q.text && q.text.includes('<span class="highlight">')) {
+                      q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
+                  }
+                  
+                  // Save changes
+                  this.updateSaveStatus('unsaved');
+                  this.saveQuestionsToBackend();
+              }
+          }
+      }
+      
+      // Re-render to show/hide the answer
+      this.renderQuestion();
   }
 
   navNext() {
