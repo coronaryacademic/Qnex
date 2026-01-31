@@ -410,7 +410,7 @@ export default class DungeonBase {
         // 3. Ensure Toolbar exists
         if (!this.el.container.querySelector('#dungeonToolbar')) {
              const toolbarHTML = `
-                <div id="dungeonToolbar" class="dungeon-toolbar horizontal">
+                <div id="dungeonToolbar" class="dungeon-toolbar">
                     <div id="dungeonToolPrev" class="dungeon-tool-btn" title="Previous Question">
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </div>
@@ -510,33 +510,19 @@ export default class DungeonBase {
           }
           
           if (savedMode && savedMode !== 'floating') {
-             this.setToolbarPosition(savedMode);
-             toolbar.classList.add('visible');
-             return;
-          }
-
-          // Floating mode logic
-          const savedPos = localStorage.getItem("dungeonToolbarPos");
-          if (savedPos) {
-              try {
-                  const pos = JSON.parse(savedPos);
-                  toolbar.style.left = pos.left;
-                  toolbar.style.top = pos.top;
-                  if (pos.vertical) toolbar.classList.add('vertical');
-              } catch(e) {}
-          } else {
-             // Fallback (Default) -> Top
-             this.setToolbarPosition('top');
-          }
-          
-          // Ensure visible class is added after positioning
-          toolbar.classList.add('visible');
-      };
-      setTimeout(() => {
-          restoreOrCenterToolbar();
-          // Add visible class after positioning
-          toolbar.classList.add('visible');
-      }, 0);
+           this.setToolbarPosition(savedMode);
+        } else {
+           this.setToolbarPosition('floating');
+        }
+        
+        // Ensure visible class is added after positioning
+        toolbar.classList.add('visible');
+    };
+    setTimeout(() => {
+        restoreOrCenterToolbar();
+        // Add visible class after positioning
+        toolbar.classList.add('visible');
+    }, 0);
 
       // 2. Drag Logic (only for floating mode)
       let isDragging = false;
@@ -613,30 +599,48 @@ export default class DungeonBase {
 
       toolbar.addEventListener('mousedown', onMouseDown);
 
-      // 3. Rotation Logic (only for floating mode)
-      toolbar.addEventListener('dblclick', (e) => {
+      // 3. Rotation Logic (Manual Double Click for robustness)
+      let lastClickTime = 0;
+      toolbar.addEventListener('click', (e) => {
+          console.log('[DungeonToolbar] Click detected on:', e.target.tagName);
+          console.log('[DungeonToolbar] Current Classes:', toolbar.className);
+          
           // Don't allow rotation if toolbar is docked
           if (toolbar.classList.contains('docked-top') || 
               toolbar.classList.contains('docked-bottom') || 
               toolbar.classList.contains('docked-left') || 
               toolbar.classList.contains('docked-right')) {
+              console.log('[DungeonToolbar] Rotation blocked: Toolbar is docked.');
               return;
           }
+
+          const currentTime = Date.now();
+          const timeDiff = currentTime - lastClickTime;
+          console.log('[DungeonToolbar] TimeDiff:', timeDiff);
           
-          if (e.target.closest('.dungeon-tool-btn')) return;
-          toolbar.classList.toggle('vertical');
-          
-          // Update highlight SVG based on orientation
-          this.updateHighlightSVG(toolbar);
-          
-          // Save state after rotate
-           const state = {
-              left: toolbar.style.left,
-              top: toolbar.style.top,
-              vertical: toolbar.classList.contains('vertical')
-          };
-          localStorage.setItem("dungeonToolbarPos", JSON.stringify(state));
-      });
+          if (timeDiff < 400 && timeDiff > 0) {
+              console.log('[DungeonToolbar] Double Click Triggered! Rotation starting...');
+              // Double Click Detected
+              e.preventDefault(); 
+              e.stopPropagation(); // Stop propagation to buttons if possible
+              
+              toolbar.classList.toggle('vertical');
+              console.log('[DungeonToolbar] New Classes:', toolbar.className);
+              
+              this.updateHighlightSVG(toolbar);
+              
+              const state = {
+                 left: toolbar.style.left,
+                 top: toolbar.style.top,
+                 vertical: toolbar.classList.contains('vertical')
+             };
+             localStorage.setItem("dungeonToolbarPos", JSON.stringify(state));
+             
+             lastClickTime = 0; // Reset
+          } else {
+              lastClickTime = currentTime;
+          }
+      }, true); // Capture phase to intercept before buttons
 
       // Bind Nav Buttons
       const btnPrev = document.getElementById("dungeonToolPrev");
@@ -679,12 +683,14 @@ export default class DungeonBase {
       toolbarOptionsBtn.onclick = (e) => {
         e.stopPropagation();
         toolbarMenu.classList.toggle('hidden');
+        toolbarOptionsBtn.classList.toggle('active', !toolbarMenu.classList.contains('hidden'));
       };
 
       // Close menu when clicking outside
       document.addEventListener('click', (e) => {
         if (!toolbarMenu.contains(e.target) && e.target !== toolbarOptionsBtn) {
           toolbarMenu.classList.add('hidden');
+          toolbarOptionsBtn.classList.remove('active');
         }
       });
 
@@ -1342,11 +1348,30 @@ export default class DungeonBase {
           };
           
           const stopResize = () => {
-              document.removeEventListener('mousemove', onResize);
-              document.removeEventListener('mouseup', stopResize);
               sidebar.style.transition = '';
               localStorage.setItem('dungeonLabWidth', parseInt(sidebar.style.width));
           };
+      }
+
+      // Sync with Toolbar Position
+      const toolbar = document.getElementById('dungeonToolbar');
+      if (toolbar) {
+          const updateLabPos = () => {
+              sidebar.classList.remove('toolbar-top', 'toolbar-bottom');
+              
+              // Check common docking classes
+              if (toolbar.classList.contains('docked-top')) {
+                  sidebar.classList.add('toolbar-top');
+              } else if (toolbar.classList.contains('docked-bottom')) {
+                  sidebar.classList.add('toolbar-bottom');
+              } 
+              // Fallback: Check if localStorage says 'top'/bottom if classes fail? 
+              // But classes are safer if dynamic.
+          };
+          
+          updateLabPos();
+          const obs = new MutationObserver(updateLabPos);
+          obs.observe(toolbar, { attributes: true, attributeFilter: ['class'] });
       }
   }
 
@@ -1489,7 +1514,10 @@ export default class DungeonBase {
     if (toggleBtn) {
         toggleBtn.onclick = () => {
             calc.classList.toggle('hidden');
-            if(!calc.classList.contains('hidden')) {
+            const isActive = !calc.classList.contains('hidden');
+            toggleBtn.classList.toggle('active', isActive);
+            
+            if(isActive) {
                 // Determine safe position if off-screen (reset)
                 const rect = calc.getBoundingClientRect();
                 if (rect.bottom < 0 || rect.right < 0 || rect.top < 0) {
@@ -1501,7 +1529,10 @@ export default class DungeonBase {
         };
     }
     
-    closeBtn.onclick = () => calc.classList.add('hidden');
+    closeBtn.onclick = () => {
+        calc.classList.add('hidden');
+        if (toggleBtn) toggleBtn.classList.remove('active');
+    };
     
     // Draggable Logic
     let isDragging = false;
@@ -2256,6 +2287,10 @@ export default class DungeonBase {
       const prevBtn = document.getElementById('dungeonSearchPrev');
       
       if (!wrapper || !toggle || !input) return;
+
+      const updateToggleState = () => {
+          toggle.classList.toggle('active', wrapper.classList.contains('active'));
+      };
       
         // Global Shortcut (Ctrl+F)
       if (this._searchCtrlFHandler) {
@@ -2272,6 +2307,7 @@ export default class DungeonBase {
 
               e.preventDefault();
               wrapper.classList.toggle('active');
+              updateToggleState();
               
               if (wrapper.classList.contains('active')) {
                   setTimeout(() => {
@@ -2292,11 +2328,14 @@ export default class DungeonBase {
       toggle.onclick = (e) => {
           e.stopPropagation();
           wrapper.classList.toggle('active');
+          updateToggleState(); // Sync state
+          
           if (wrapper.classList.contains('active')) {
               input.focus();
               if (input.value) this.runSearch(input.value);
           } else {
               this.clearSearchHighlights(); // Clear when closing via toggle
+              input.blur();
           }
       };
       
@@ -2304,11 +2343,17 @@ export default class DungeonBase {
       if (closeBtn) {
           closeBtn.onclick = () => {
               wrapper.classList.remove('active');
+              updateToggleState();
               this.clearSearchHighlights();
           };
       }
       
-      // Input with debounce
+      // Update toggle state initially and on Ctrl+F
+      // (Modify Ctrl+F handler in same block if possible, or assume separate)
+      // I'll update keydown handler too.
+      
+      // ... input logic ...
+      
       let debounceTimeout;
       input.oninput = (e) => {
           const term = e.target.value;

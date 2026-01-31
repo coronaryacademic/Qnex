@@ -102,6 +102,11 @@
   color: var(--text);
 }
 
+.dungeon-topbar-btn.active {
+  color: var(--accent);
+  background: var(--bg-secondary); /* Optional: distinct background */
+}
+
 .dungeon-search-wrapper {
   display: none;
   align-items: center;
@@ -1597,6 +1602,16 @@
   box-shadow: none !important;
 }
 
+.dungeon-lab-sidebar.toolbar-top {
+  top: 110px !important;
+  bottom: 40px !important;
+}
+
+.dungeon-lab-sidebar.toolbar-bottom {
+  top: 60px !important;
+  bottom: 90px !important;
+}
+
 .lab-resizer {
   position: absolute;
   left: -4px; /* Slightly outside to grab */
@@ -1887,4 +1902,10 @@
   color: var(--text-muted);
   text-align: right;
   flex-shrink: 0;
+}
+/* Vertical Toolbar State */
+.dungeon-toolbar.vertical {
+  flex-direction: column;
+  width: 48px;
+  height: auto;
 }
