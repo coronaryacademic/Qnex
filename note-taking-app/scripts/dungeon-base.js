@@ -1348,6 +1348,8 @@ export default class DungeonBase {
           };
           
           const stopResize = () => {
+              document.removeEventListener('mousemove', onResize);
+              document.removeEventListener('mouseup', stopResize);
               sidebar.style.transition = '';
               localStorage.setItem('dungeonLabWidth', parseInt(sidebar.style.width));
           };
