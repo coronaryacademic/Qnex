@@ -1386,22 +1386,23 @@ export default class DungeonBase {
   }
 
   updateToolbarPush() {
-      const sidebar = document.getElementById('dungeonLabSidebar');
-      const toolbar = document.getElementById('dungeonToolbar');
-      if (!sidebar || !toolbar) return;
+      // Disabled: Toolbar should not move when lab sidebar opens
+      // const sidebar = document.getElementById('dungeonLabSidebar');
+      // const toolbar = document.getElementById('dungeonToolbar');
+      // if (!sidebar || !toolbar) return;
       
-      const rect = toolbar.getBoundingClientRect();
-      const isRight = rect.left > window.innerWidth / 2;
+      // const rect = toolbar.getBoundingClientRect();
+      // const isRight = rect.left > window.innerWidth / 2;
       
-      const isActive = sidebar.classList.contains('active');
-      const width = sidebar.getBoundingClientRect().width;
+      // const isActive = sidebar.classList.contains('active');
+      // const width = sidebar.getBoundingClientRect().width;
       
-      if (isActive && isRight) {
-           toolbar.style.transform = `translateX(-${width}px)`;
-           toolbar.style.transition = 'transform 0.3s ease';
-      } else {
-           toolbar.style.transform = '';
-      }
+      // if (isActive && isRight) {
+      //      toolbar.style.transform = `translateX(-${width}px)`;
+      //      toolbar.style.transition = 'transform 0.3s ease';
+      // } else {
+      //      toolbar.style.transform = '';
+      // }
   }
 
   renderLabFilters(container) {
