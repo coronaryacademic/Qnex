@@ -335,6 +335,12 @@ export default class DungeonBase {
                               <line x1="4" y1="4" x2="20" y2="20"></line>
                           </svg>
                       </button>
+                      <button id="dungeonClearBtn" class="dungeon-clear-btn" title="Clear Answer & Start Over" style="display: none;">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                          </svg>
+                      </button>
                   </div>
               </div>
               
@@ -490,6 +496,12 @@ export default class DungeonBase {
       
       // Initialize Sub-components
       this.initLab();
+      
+      // Clear Answer Button
+      const clearBtn = document.getElementById('dungeonClearBtn');
+      if (clearBtn) {
+          clearBtn.onclick = () => this.clearAnswer();
+      }
   }
 
   initToolbar() {
@@ -1974,36 +1986,28 @@ export default class DungeonBase {
 
   toggleReveal() {
       const q = this.state.questions[this.state.currentIndex];
-      // If already submitted, reveal does nothing or maybe just ignores (user sees answer anyway)
-      // If not submitted, we show answer but mark as "revealed" (maybe count as wrong?)
-      // User said: "button 'light bulb' to show the answer if the user didnt know it or gave up"
-      
       const answer = this.state.answers.get(q.id);
-      if (answer && answer.submitted) return; // Already done
       
-      this.state.revealed = true; // Set flag
+      // If already submitted, don't allow reveal toggle
+      if (answer && answer.submitted) return;
       
-      // Visual feedback
-      const revealBtn = document.getElementById('dungeonRevealBtn');
-      if (revealBtn) revealBtn.classList.add('active');
+      // Toggle revealed state
+      q.revealed = !q.revealed;
       
-      // Highlight correct answer in UI
-      const options = document.querySelectorAll('.dungeon-radio-option');
-      options.forEach(opt => {
-          if (opt.dataset.value === q.correctAnswer) {
-              opt.classList.add('correct-answer'); // Reuse correct style? Or distinctive?
-              // Let's use a distinctive style if needed, but correct-answer is green.
-              // Maybe we should style it yellow?
-              opt.style.background = 'rgba(251, 191, 36, 0.1)';
-              opt.style.borderColor = '#fbbf24';
-          }
-      });
+      // Persist
+      this.updateSaveStatus('unsaved');
+      this.saveQuestionsToBackend();
       
-      // Stop timer? Usually giving up stops timer? 
-      // Let's keep timer running until they actually submit or move on? 
-      // "gave up" usually implies done.
-      // Let's stop timer.
-      this.stopTimer();
+      // Re-render to show/hide answer
+      this.renderQuestion();
+      
+      // Update reveal button state
+      this.updateRevealButton();
+      
+      // Stop timer when revealing
+      if (q.revealed) {
+          this.stopTimer();
+      }
   }
 
   startTimer() {
@@ -2059,6 +2063,72 @@ export default class DungeonBase {
           const currentQuestion = this.state.currentIndex + 1;
           const totalQuestions = this.state.questions.length;
           totalEl.textContent = `${currentQuestion}/${totalQuestions}`;
+      }
+  }
+  
+  clearAnswer() {
+      const q = this.state.questions[this.state.currentIndex];
+      const answer = this.state.answers.get(q.id);
+      
+      // Only allow clearing if answered
+      if (!answer || !answer.submitted) return;
+      
+      // Remove from runtime state
+      this.state.answers.delete(q.id);
+      
+      // Remove from question object
+      delete q.submittedAnswer;
+      
+      // Clear revealed state too
+      if (q.revealed) {
+          q.revealed = false;
+      }
+      
+      // Reset selection
+      this.state.selectedOption = null;
+      
+      // Persist
+      this.updateSaveStatus('unsaved');
+      this.saveQuestionsToBackend();
+      
+      // Re-render
+      this.render();
+  }
+  
+  updateRevealButton() {
+      const q = this.state.questions[this.state.currentIndex];
+      const answer = this.state.answers.get(q.id);
+      const revealBtn = document.getElementById('dungeonRevealBtn');
+      const clearBtn = document.getElementById('dungeonClearBtn');
+      
+      if (!revealBtn) return;
+      
+      // Show/hide clear button based on answer state
+      if (clearBtn) {
+          if (answer && answer.submitted) {
+              clearBtn.style.display = 'inline-flex';
+          } else {
+              clearBtn.style.display = 'none';
+          }
+      }
+      
+      // If submitted, disable reveal button
+      if (answer && answer.submitted) {
+          revealBtn.style.opacity = '0.3';
+          revealBtn.style.pointerEvents = 'none';
+          revealBtn.classList.remove('active');
+          return;
+      }
+      
+      // Enable button
+      revealBtn.style.opacity = '1';
+      revealBtn.style.pointerEvents = 'auto';
+      
+      // Toggle active state based on revealed
+      if (q.revealed) {
+          revealBtn.classList.add('active');
+      } else {
+          revealBtn.classList.remove('active');
       }
   }
   
@@ -2227,6 +2297,14 @@ export default class DungeonBase {
     });
     this.state.currentIndex = 0;
     this.state.answers.clear();
+    
+    // Load persisted answers from question objects
+    this.state.questions.forEach(q => {
+        if (q.submittedAnswer) {
+            this.state.answers.set(q.id, q.submittedAnswer);
+        }
+    });
+    
     this.state.selectedOption = null;
     
     // Show container and loading screen
@@ -2266,9 +2344,8 @@ export default class DungeonBase {
     this.updateStats(); // Keeps old hook just in case
     this.updateFooterStats(); // New Stats
     
-    // Reset Reveal Btn
-    const revealBtn = document.getElementById('dungeonRevealBtn');
-    if (revealBtn) revealBtn.classList.remove('active');
+    // Update Reveal Button State
+    this.updateRevealButton();
     
     // Start Timer
     this.startTimer();
@@ -2913,11 +2990,21 @@ export default class DungeonBase {
       const selectedOpt = q.options.find(o => String(o.id) === String(this.state.selectedOption));
       const isCorrect = selectedOpt && selectedOpt.isCorrect;
 
-      this.state.answers.set(q.id, {
+      const answerData = {
           submitted: true,
           selectedId: this.state.selectedOption,
           isCorrect: isCorrect
-      });
+      };
+      
+      this.state.answers.set(q.id, answerData);
+      
+      // Persist to question object
+      q.submittedAnswer = answerData;
+      
+      // Clear revealed state when submitting
+      if (q.revealed) {
+          q.revealed = false;
+      }
 
       this.updateSaveStatus('unsaved');
       this.saveQuestionsToBackend();

@@ -663,13 +663,18 @@
 }
 
 /* Feedback Circles */
+/* Feedback Circles */
 .dungeon-radio-option.correct-answer .dungeon-radio-circle {
     border-color: var(--success);
     background: var(--success);
 }
 .dungeon-radio-option.correct-answer .dungeon-radio-circle::after {
-    background: var(--bg);
-    width: 8px; height: 8px; /* Ensure dot persists */
+    content: '';
+    display: block;
+    width: 8px; 
+    height: 8px; 
+    background: var(--bg); /* Dot color */
+    border-radius: 50%;
 }
 
 .dungeon-radio-option.wrong-answer .dungeon-radio-circle {
@@ -677,8 +682,12 @@
     background: var(--danger);
 }
 .dungeon-radio-option.wrong-answer .dungeon-radio-circle::after {
-    background: var(--bg);
-    content: ''; width: 8px; height: 8px; stroke: none; /* Make it a dot or X? Dot is consistent */
+    content: ''; 
+    display: block;
+    width: 8px; 
+    height: 8px; 
+    background: var(--bg); 
+    border-radius: 50%;
 }
 
 /* Submit Button */
@@ -1127,7 +1136,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 40px;
+  height: 55px;
   background: var(--panel);
   border-top: 1px solid var(--border);
   display: flex;
@@ -1139,11 +1148,14 @@
 }
 
 .dungeon-footer-left,
-.dungeon-footer-center,
-.dungeon-footer-right {
+.dungeon-footer-center {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.dungeon-footer-right {
+  gap: 6px !important;
 }
 
 .dungeon-footer-center {
@@ -2007,4 +2019,37 @@
     opacity: 1;
     transform: translateY(0);
 }
+
+/* Clear Answer Button */
+.dungeon-clear-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-muted);
+    padding: 0;
+    margin-left: 0;
+}
+
+.dungeon-clear-btn:hover {
+    background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
+    border-color: var(--danger);
+    color: var(--danger);
+    transform: translateY(-1px);
+}
+
+.dungeon-clear-btn:active {
+    transform: translateY(0);
+}
+
+.dungeon-clear-btn svg {
+    flex-shrink: 0;
+}
+
 
