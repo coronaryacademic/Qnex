@@ -1117,7 +1117,16 @@ export default class DungeonBase {
         this.saveStatusTimeout = null;
     }
 
-    saveStatusEl.style.opacity = '1';
+    // Ensure visible and layout-occupying when active
+    saveStatusEl.style.display = 'inline-block';
+    // Trigger reflow if needed for transition, but display:none->block breaks transition usually.
+    // For smooth entry, we might accept instant appearance or simple opacity fade in.
+    // Since transparency is 0 -> 1, it should fade in if display was already block.
+    // If it was none, it appears instantly. That's usually fine.
+    requestAnimationFrame(() => {
+        saveStatusEl.style.opacity = '1';
+    });
+    
     saveStatusEl.className = 'dungeon-save-status ' + status;
     
     switch(status) {
@@ -1134,6 +1143,12 @@ export default class DungeonBase {
         this.state.unsavedChanges = false;
         this.saveStatusTimeout = setTimeout(() => {
             saveStatusEl.style.opacity = '0';
+            // Wait for transition to finish (300ms) before hiding layout
+            setTimeout(() => {
+                if (saveStatusEl.style.opacity === '0') { // Check if still hidden
+                    saveStatusEl.style.display = 'none';
+                }
+            }, 300);
         }, 2000);
         break;
     }
@@ -2051,13 +2066,21 @@ export default class DungeonBase {
       const q = this.state.questions[this.state.currentIndex];
       if (!q) return;
       
-      // Remove all highlight spans from the text
-      if (q.text) {
+      let changed = false;
+
+      // 1. Remove all highlight spans from the main text
+      if (q.text && q.text.includes('class="highlight"')) {
           q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
-          
-          // Also clear from options if needed (though options highlighting isn't persisted yet in same way)
-          // For now just main text as per existing logic
-          
+          changed = true;
+      }
+      
+      // 2. Clear crossed out options
+      if (q.crossedOutOptionIds && q.crossedOutOptionIds.length > 0) {
+          q.crossedOutOptionIds = [];
+          changed = true;
+      }
+      
+      if (changed) {
           this.renderQuestion(); // Re-render to show changes
           this.updateSaveStatus('unsaved');
           this.saveQuestionsToBackend();
@@ -2806,7 +2829,11 @@ export default class DungeonBase {
       
       if (answer && answer.submitted) return; // Locked
 
-      this.state.selectedOption = optionId;
+      if (this.state.selectedOption === optionId) {
+          this.state.selectedOption = null;
+      } else {
+          this.state.selectedOption = optionId;
+      }
       this.renderQuestion();
   }
 
@@ -2837,10 +2864,49 @@ export default class DungeonBase {
       this.renderQuestion();
   }
 
+  showNotification(msg) {
+      // Find the save status element to position beside
+      const saveStatus = document.querySelector('.dungeon-save-status');
+      // Fallback container if save status hidden/missing
+      let parent = saveStatus ? saveStatus.parentElement : document.body;
+      
+      // Check for existing notification
+      let notif = document.getElementById('dungeonNotification');
+      if (!notif) {
+          notif = document.createElement('div');
+          notif.id = 'dungeonNotification';
+          notif.className = 'dungeon-notification';
+          
+          if (saveStatus && parent) {
+              // Insert before save status (to its left)
+              parent.insertBefore(notif, saveStatus);
+          } else {
+              // Fallback fixed position
+              notif.style.position = 'fixed';
+              notif.style.bottom = '20px';
+              notif.style.right = '100px';
+              parent.appendChild(notif);
+          }
+      }
+      
+      notif.textContent = msg;
+      
+      // Trigger reflow for animation
+      notif.classList.remove('show');
+      void notif.offsetWidth;
+      notif.classList.add('show');
+      
+      // Auto hide
+      if (this._notifTimeout) clearTimeout(this._notifTimeout);
+      this._notifTimeout = setTimeout(() => {
+          notif.classList.remove('show');
+      }, 3000);
+  }
+
   handleSubmit() {
       const q = this.state.questions[this.state.currentIndex];
       if (!this.state.selectedOption) {
-          alert("Please select an option.");
+          this.showNotification("Please choose an option first");
           return;
       }
 

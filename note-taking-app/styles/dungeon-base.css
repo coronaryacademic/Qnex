@@ -222,6 +222,7 @@
   padding: 2px 8px;
   border-radius: 4px;
   transition: all 0.3s;
+  display: none; /* Hidden by default to prevent gap */
 }
 
 .dungeon-save-status.saved {
@@ -1982,5 +1983,28 @@
 }
 .dungeon-radio-circle {
     cursor: pointer;
+}
+
+/* Dungeon Notification (Toast) */
+.dungeon-notification {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--danger); /* RED */
+    background: rgba(var(--danger-rgb, 239, 68, 68), 0.1); /* RED bg */
+    border-radius: 4px;
+    margin-right: 12px; /* Space between notification and save status */
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.dungeon-notification.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
