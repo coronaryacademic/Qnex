@@ -2016,6 +2016,8 @@ export default class DungeonBase {
       if (savedWidth) {
           this.el.sidebar.style.width = savedWidth + "px";
       }
+      // Ensure layout is synced on load
+      this.updateMainPosition();
 
       // Create handle if not exists
       if (!this.el.sidebar.querySelector('.dungeon-resizer-handle')) {
@@ -2087,7 +2089,20 @@ export default class DungeonBase {
           if (this.state.sidebarCollapsed) {
               main.style.left = '0';
           } else {
-              main.style.left = sidebar.offsetWidth + 'px';
+              // Prioritize inline style (from resizer) or localStorage
+              let w = sidebar.style.width;
+              if (!w) {
+                  const saved = localStorage.getItem("dungeonSidebarWidth");
+                  if (saved) w = saved + 'px';
+              }
+              
+              // Fallback to offsetWidth if visible, otherwise default to 80px (CSS default)
+              if (!w) {
+                   const offset = sidebar.offsetWidth;
+                   w = (offset > 0 ? offset : 80) + 'px';
+              }
+              
+              main.style.left = w;
           }
       }
   }
