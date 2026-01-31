@@ -14,42 +14,108 @@ export default class DungeonBase {
     this.labData = {
       "Blood": [
           { name: "Hemoglobin (Hb)", normal: "M: 13.5-17.5, F: 12.0-15.5 g/dL" },
-          { name: "WBC", normal: "4.5 - 11.0 k/µL" },
+          { name: "White Blood Cells (WBC)", normal: "4.5 - 11.0 k/µL" },
           { name: "Platelets", normal: "150 - 450 k/µL" },
-          { name: "Hematocrit", normal: "M: 41-50%, F: 36-48%" }
+          { name: "Hematocrit", normal: "M: 41-50%, F: 36-48%" },
+          { name: "Neutrophils", normal: "40 - 60%" },
+          { name: "Lymphocytes", normal: "20 - 40%" },
+          { name: "Monocytes", normal: "2 - 8%" },
+          { name: "Eosinophils", normal: "1 - 4%" },
+          { name: "Basophils", normal: "0.5 - 1%" },
+          { name: "Reticulocytes", normal: "0.5 - 1.5%" },
+          { name: "Erythrocyte Sedimentation Rate (ESR)", normal: "M: 0-15, F: 0-20 mm/hr" }
       ],
       "Electrolytes": [
           { name: "Sodium (Na+)", normal: "135 - 145 mEq/L" },
           { name: "Potassium (K+)", normal: "3.5 - 5.0 mEq/L" },
           { name: "Chloride (Cl-)", normal: "98 - 106 mEq/L" },
-          { name: "Bicarbonate", normal: "22 - 28 mEq/L" },
-          { name: "Calcium", normal: "8.5 - 10.5 mg/dL" },
-          { name: "Magnesium", normal: "1.5 - 2.5 mg/dL" },
-          { name: "Phosphorus", normal: "2.5 - 4.5 mg/dL" }
+          { name: "Bicarbonate (HCO3)", normal: "22 - 28 mEq/L" },
+          { name: "Calcium (Total)", normal: "8.5 - 10.5 mg/dL" },
+          { name: "Calcium (Ionized)", normal: "4.6 - 5.3 mg/dL" },
+          { name: "Magnesium (Mg)", normal: "1.5 - 2.5 mg/dL" },
+          { name: "Phosphorus (PO4)", normal: "2.5 - 4.5 mg/dL" },
+          { name: "Anion Gap", normal: "8 - 12 mEq/L" }
       ],
       "Kidney": [
-          { name: "BUN", normal: "7 - 20 mg/dL" },
+          { name: "Blood Urea Nitrogen (BUN)", normal: "7 - 20 mg/dL" },
           { name: "Creatinine", normal: "0.6 - 1.2 mg/dL" },
-          { name: "GFR", normal: "> 90 mL/min" }
+          { name: "Glomerular Filtration Rate (GFR)", normal: "> 90 mL/min" },
+          { name: "BUN/Creatinine Ratio", normal: "10:1 - 20:1" }
       ],
-      "Liver": [
-          { name: "ALT", normal: "7 - 56 U/L" },
-          { name: "AST", normal: "10 - 40 U/L" },
-          { name: "ALP", normal: "44 - 147 U/L" },
-          { name: "Bilirubin Total", normal: "0.1 - 1.2 mg/dL" },
-          { name: "Albumin", normal: "3.5 - 5.5 g/dL" }
+      "Liver / GI": [
+          { name: "Alanine Aminotransferase (ALT)", normal: "7 - 56 U/L" },
+          { name: "Aspartate Aminotransferase (AST)", normal: "10 - 40 U/L" },
+          { name: "Alkaline Phosphatase (ALP)", normal: "44 - 147 U/L" },
+          { name: "Bilirubin (Total)", normal: "0.1 - 1.2 mg/dL" },
+          { name: "Bilirubin (Direct)", normal: "< 0.3 mg/dL" },
+          { name: "Albumin", normal: "3.5 - 5.5 g/dL" },
+          { name: "Total Protein", normal: "6.0 - 8.3 g/dL" },
+          { name: "Amylase", normal: "23 - 85 U/L" },
+          { name: "Lipase", normal: "0 - 160 U/L" },
+          { name: "Lactate", normal: "0.5 - 1 mmol/L" },
+          { name: "Ammonia", normal: "15 - 45 µg/dL" }
+      ],
+      "Vitals / Bedside": [
+          { name: "Heart Rate (Pulse)", normal: "60 - 100 bpm" },
+          { name: "Blood Pressure (Systolic)", normal: "90 - 120 mmHg" },
+          { name: "Blood Pressure (Diastolic)", normal: "60 - 80 mmHg" },
+          { name: "Mean Arterial Pressure (MAP)", normal: "70 - 105 mmHg" },
+          { name: "Respiratory Rate", normal: "12 - 20 /min" },
+          { name: "Temperature", normal: "36.5 - 37.5 °C" },
+          { name: "Oxygen Saturation (O2 Sat)", normal: "> 95%" },
+          { name: "Body Mass Index (BMI)", normal: "18.5 - 24.9" }
+      ],
+      "Hemodynamics": [
+          { name: "Central Venous Pressure (CVP/JVP)", normal: "2 - 6 mmHg" },
+          { name: "Pulmonary Capillary Wedge Pressure (PCWP)", normal: "6 - 12 mmHg" },
+          { name: "Cardiac Output (CO)", normal: "4 - 8 L/min" },
+          { name: "Cardiac Index (CI)", normal: "2.5 - 4.0 L/min/m²" },
+          { name: "Systemic Vascular Resistance (SVR)", normal: "800 - 1200 dynes·s/cm⁵" },
+          { name: "Pulmonary Vascular Resistance (PVR)", normal: "< 250 dynes·s/cm⁵" },
+          { name: "Mixed Venous O2 (SvO2)", normal: "65 - 75%" },
+          { name: "Ejection Fraction (LVEF)", normal: "55 - 70%" }
+      ],
+      "Coagulation": [
+          { name: "Prothrombin Time (PT)", normal: "11 - 13.5 sec" },
+          { name: "INR", normal: "0.8 - 1.1" },
+          { name: "Partial Thromboplastin Time (PTT)", normal: "25 - 35 sec" },
+          { name: "Bleeding Time", normal: "2 - 7 min" },
+          { name: "Fibrinogen", normal: "200 - 400 mg/dL" },
+          { name: "D-Dimer", normal: "< 500 ng/mL" }
       ],
       "Lipids": [
-          { name: "Cholesterol", normal: "< 200 mg/dL" },
-          { name: "LDL", normal: "< 100 mg/dL" },
-          { name: "HDL", normal: "> 60 mg/dL" },
+          { name: "Cholesterol (Total)", normal: "< 200 mg/dL" },
+          { name: "LDL Cholesterol", normal: "< 100 mg/dL" },
+          { name: "HDL Cholesterol", normal: "> 60 mg/dL" },
           { name: "Triglycerides", normal: "< 150 mg/dL" }
       ],
-      "ABG": [
+      "ABG (Arterial)": [
           { name: "pH", normal: "7.35 - 7.45" },
-          { name: "pCO2", normal: "35 - 45 mmHg" },
-          { name: "pO2", normal: "80 - 100 mmHg" },
-          { name: "HCO3", normal: "22 - 26 mEq/L" }
+          { name: "PaCO2", normal: "35 - 45 mmHg" },
+          { name: "PaO2", normal: "80 - 100 mmHg" },
+          { name: "Bicarbonate (HCO3)", normal: "22 - 26 mEq/L" },
+          { name: "Base Excess", normal: "-2 to +2 mEq/L" }
+      ],
+      "Urine": [
+          { name: "Urine Output", normal: "0.5 - 1.5 mL/kg/hr" },
+          { name: "Specific Gravity", normal: "1.005 - 1.030" },
+          { name: "Urine pH", normal: "4.6 - 8.0" },
+          { name: "Urine Osmolality", normal: "50 - 1200 mOsm/kg" },
+          { name: "Urine Sodium", normal: "20 mEq/L" },
+          { name: "Urine Protein", normal: "0 - 8 mg/dL" }
+      ],
+      "Endocrine": [
+          { name: "Thyroid Stimulating Hormone (TSH)", normal: "0.4 - 4.0 mIU/L" },
+          { name: "Free T4", normal: "0.8 - 1.8 ng/dL" },
+          { name: "Hemoglobin A1c (HbA1c)", normal: "< 5.7%" },
+          { name: "Glucose (Fasting)", normal: "70 - 99 mg/dL" },
+          { name: "Cortisol (AM)", normal: "6 - 23 µg/dL" }
+      ],
+       "CSF": [
+          { name: "Opening Pressure", normal: "6 - 20 cmH2O" },
+          { name: "WBC", normal: "0 - 5 /µL" },
+          { name: "Glucose", normal: "40 - 80 mg/dL" },
+          { name: "Protein", normal: "15 - 45 mg/dL" }
       ]
     };
   }
@@ -1138,21 +1204,53 @@ export default class DungeonBase {
 
   ensureLabComponents() {
       // 1. Sidebar
-      if (!document.getElementById('dungeonLabSidebar') && this.el.container) {
+      let sidebar = document.getElementById('dungeonLabSidebar');
+      
+      if (!sidebar && this.el.container) {
           const html = `
                <div id="dungeonLabSidebar" class="dungeon-lab-sidebar">
+                   <div class="lab-resizer"></div>
                    <div class="lab-sidebar-header" id="dungeonLabHeader" title="Click to close">
                        <h3>Lab Values</h3>
                    </div>
+                   <div id="dungeonLabFilters" class="lab-filters"></div>
                    <div class="lab-search-container">
                        <input type="text" id="dungeonLabSearch" placeholder="Search lab values..." spellcheck="false" />
                        <svg class="lab-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                    </div>
-                   <div id="dungeonLabFilters" class="lab-filters"></div>
                    <div id="dungeonLabContent" class="lab-content"></div>
                </div>
           `;
           this.el.container.insertAdjacentHTML('beforeend', html);
+      } else if (sidebar) {
+          // Legacy Fixes
+          
+          // Remove Close Button
+          const closeBtn = document.getElementById('dungeonLabClose') || sidebar.querySelector('.lab-close-btn');
+          if (closeBtn) closeBtn.remove();
+          
+          // Add Resizer
+          if (!sidebar.querySelector('.lab-resizer')) {
+               const resizer = document.createElement('div');
+               resizer.className = 'lab-resizer';
+               sidebar.insertBefore(resizer, sidebar.firstChild);
+          }
+          
+          // Add Filters (Immediately after Header)
+          if (!document.getElementById('dungeonLabFilters')) {
+               const filters = document.createElement('div');
+               filters.id = 'dungeonLabFilters';
+               filters.className = 'lab-filters';
+               
+               const header = document.getElementById('dungeonLabHeader') || sidebar.querySelector('.lab-sidebar-header');
+               const search = sidebar.querySelector('.lab-search-container');
+               
+               if (header) {
+                   header.insertAdjacentElement('afterend', filters);
+               } else if (search) {
+                   search.insertAdjacentElement('beforebegin', filters);
+               }
+          }
       }
       
       // 2. Button
@@ -1178,10 +1276,11 @@ export default class DungeonBase {
       this.ensureLabComponents();
       
       const sidebar = document.getElementById('dungeonLabSidebar');
-      const header = document.getElementById('dungeonLabHeader');
+      const header = document.getElementById('dungeonLabHeader') || sidebar.querySelector('.lab-sidebar-header');
       const toggle = document.getElementById('dungeonLabBtn');
       const search = document.getElementById('dungeonLabSearch');
       const filters = document.getElementById('dungeonLabFilters');
+      const resizer = sidebar.querySelector('.lab-resizer');
       
       if (!sidebar || !toggle) return;
       
@@ -1189,12 +1288,18 @@ export default class DungeonBase {
       this.renderLabFilters(filters);
       this.renderLabValues();
       
+      // Prevent closing when clicking inside sidebar
+      sidebar.onclick = (e) => {
+          e.stopPropagation();
+      };
+      
       toggle.onclick = (e) => {
           e.stopPropagation();
           e.preventDefault();
           sidebar.classList.toggle('active');
           const isActive = sidebar.classList.contains('active');
           toggle.classList.toggle('active', isActive);
+          this.updateToolbarPush();
           if (isActive && search) setTimeout(() => search.focus(), 50);
       };
       
@@ -1202,22 +1307,65 @@ export default class DungeonBase {
           header.onclick = () => {
               sidebar.classList.remove('active');
               toggle.classList.remove('active');
+              this.updateToolbarPush();
           };
       }
-
-      document.addEventListener('click', (e) => {
-          if (sidebar.classList.contains('active') && 
-              !sidebar.contains(e.target) && 
-              !toggle.contains(e.target)) {
-              sidebar.classList.remove('active');
-              toggle.classList.remove('active');
-          }
-      });
+      
+      // Removed: Click outside to close (User request)
       
       if (search) {
           search.oninput = (e) => {
               this.renderLabValues(e.target.value);
           };
+      }
+      
+      if (resizer) {
+          // Restore saved width
+          const savedLabWidth = localStorage.getItem('dungeonLabWidth');
+          if (savedLabWidth) {
+              const w = Math.max(310, Math.min(parseInt(savedLabWidth), 550));
+              sidebar.style.width = `${w}px`;
+          }
+
+          resizer.onmousedown = (e) => {
+              e.preventDefault();
+              document.addEventListener('mousemove', onResize);
+              document.addEventListener('mouseup', stopResize);
+              sidebar.style.transition = 'none';
+          };
+          
+          const onResize = (e) => {
+              let newWidth = window.innerWidth - e.clientX;
+              newWidth = Math.max(310, Math.min(newWidth, 550));
+              sidebar.style.width = `${newWidth}px`;
+              this.updateToolbarPush();
+          };
+          
+          const stopResize = () => {
+              document.removeEventListener('mousemove', onResize);
+              document.removeEventListener('mouseup', stopResize);
+              sidebar.style.transition = '';
+              localStorage.setItem('dungeonLabWidth', parseInt(sidebar.style.width));
+          };
+      }
+  }
+
+  updateToolbarPush() {
+      const sidebar = document.getElementById('dungeonLabSidebar');
+      const toolbar = document.getElementById('dungeonToolbar');
+      if (!sidebar || !toolbar) return;
+      
+      const rect = toolbar.getBoundingClientRect();
+      const isRight = rect.left > window.innerWidth / 2;
+      
+      const isActive = sidebar.classList.contains('active');
+      const width = sidebar.getBoundingClientRect().width;
+      
+      if (isActive && isRight) {
+           toolbar.style.transform = `translateX(-${width}px)`;
+           toolbar.style.transition = 'transform 0.3s ease';
+      } else {
+           toolbar.style.transform = '';
       }
   }
 
@@ -1246,16 +1394,53 @@ export default class DungeonBase {
       if (!content || !this.labData) return;
       
       content.innerHTML = "";
-      const filterLower = filter.toLowerCase();
+      const filterLower = filter.toLowerCase().trim();
       const activeCat = this.state.activeLabCategory || 'All';
+      
+      // Abbreviation Mappings for Search
+      const searchMappings = {
+          "bp": "blood pressure",
+          "hr": "heart rate",
+          "rr": "respiratory rate",
+          "temp": "temperature",
+          "hgb": "hemoglobin",
+          "hct": "hematocrit",
+          "o2": "oxygen",
+          "sat": "saturation",
+          "plt": "platelets",
+          "na": "sodium",
+          "k": "potassium",
+          "cl": "chloride",
+          "ca": "calcium",
+          "mg": "magnesium",
+          "glu": "glucose",
+          "cr": "creatinine",
+          "pmn": "neutrophils",
+          "anc": "neutrophils",
+          "bil": "bilirubin",
+          "alb": "albumin",
+          "tsh": "thyroid",
+          "ua": "urine"
+      };
+
+      const mappedTerm = searchMappings[filterLower];
       
       for (const [category, items] of Object.entries(this.labData)) {
            if (activeCat !== 'All' && activeCat !== category) continue;
            
            const filteredItems = items.filter(item => {
-               if (!filter) return true;
-               return item.name.toLowerCase().includes(filterLower) || 
-                      item.normal.toLowerCase().includes(filterLower);
+               if (!filterLower) return true;
+               
+               const nameLower = item.name.toLowerCase();
+               const valLower = item.normal.toLowerCase();
+               
+               // 1. Direct Match
+               if (nameLower.includes(filterLower) || valLower.includes(filterLower)) return true;
+               
+               // 2. Mapped Match (e.g. user typed "bp", we check if name includes "blood pressure")
+               if (mappedTerm && nameLower.includes(mappedTerm)) return true;
+               
+               return false;
            });
            
            if (filteredItems.length > 0) {
@@ -1274,6 +1459,11 @@ export default class DungeonBase {
                        <span class="lab-name">${item.name}</span>
                        <span class="lab-value">${item.normal}</span>
                    `;
+                   // Highlight search match if simple
+                   if (filterLower.length > 1) {
+                        const regex = new RegExp(`(${filterLower})`, 'gi');
+                        // Optional: highlighting logic could go here
+                   }
                    group.appendChild(itemEl);
                });
                
