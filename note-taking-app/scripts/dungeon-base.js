@@ -1811,17 +1811,63 @@ export default class DungeonBase {
   toggleStar() {
       const q = this.state.questions[this.state.currentIndex];
       if (!q) return;
-      q.isStarred = !q.isStarred;
+      
+      // Update local state (standardize on 'starred' to match QuestionBase)
+      q.starred = !q.starred;
+      // remove legacy isStarred if present to avoid confusion
+      delete q.isStarred;
+      
       this.renderToolbarState();
-      this.renderSidebar(); // Update indicator
-      this.updateSaveStatus('unsaved');
-      this.saveQuestionsToBackend();
+      
+      // SYNC WITH QUESTION BASE & PERSIST
+      if (window.QuestionBase && window.QuestionBase.state) {
+          const qBaseQuestion = window.QuestionBase.state.questions.find(item => item.id === q.id);
+          if (qBaseQuestion) {
+               qBaseQuestion.starred = q.starred;
+               
+               // Persist via QuestionBase (Handles FileSystem/Electron/LocalStorage)
+               window.QuestionBase.saveData();
+               
+               // Update UI
+               window.QuestionBase.renderSidebar();
+          }
+      }
+      
+      this.renderSidebar(); // Update Dungeon Sidebar instantly
+      this.updateSaveStatus('saved');
   }
 
-  handleHighlight(e) {
+  handleHighlight(e, type, id) {
       if (!this.state.highlightMode) return;
       
+      // Stop highlighting for options entirely (Crossing out is enough)
+      if (type === 'option') return;
+      
+      const q = this.state.questions[this.state.currentIndex];
       const selection = window.getSelection();
+      
+      // 1. Un-Highlight (Clicking existing highlight)
+      if (selection.toString().length === 0) {
+          if (e.target.classList.contains('highlight')) {
+              const content = e.target.textContent;
+              const parent = e.target.parentNode;
+              // replace span with text node
+              const textNode = document.createTextNode(content);
+              parent.replaceChild(textNode, e.target);
+              parent.normalize(); // merge text nodes
+              
+              // Persist Removal
+              if (type === 'main') {
+                  q.text = e.currentTarget.innerHTML;
+              }
+              
+              this.updateSaveStatus('unsaved');
+              this.saveQuestionsToBackend();
+          }
+          return;
+      }
+
+      // 2. Add Highlight (Selection)
       if (selection.toString().length > 0) {
           const range = selection.getRangeAt(0);
           
@@ -1832,17 +1878,20 @@ export default class DungeonBase {
           span.className = "highlight";
           try {
               range.surroundContents(span);
-              selection.removeAllRanges();
               
-              // Persist: Update question text in state
-              const q = this.state.questions[this.state.currentIndex];
-              q.text = e.currentTarget.innerHTML; // Save modified HTML
+              // Copy Logic: Keep selection on the new span so Ctrl+C works immediately
+              selection.removeAllRanges();
+              const newRange = document.createRange();
+              newRange.selectNodeContents(span);
+              selection.addRange(newRange);
+              
+              // Persist Addition
+              if (type === 'main') {
+                  q.text = e.currentTarget.innerHTML;
+              }
+              
               this.updateSaveStatus('unsaved');
               this.saveQuestionsToBackend();
-
-              // Auto-disable highlight? No, keep active as requested ("highlights yellow by defult after releasing...").
-              // User said: "make pressing on it to active that autohighligh the text highlights yellow by defult after releasing the highlight"
-              // This implies the mode stays on.
           } catch(err) {
               console.warn("Highlight failed (crossing tags?)", err);
           }
@@ -1853,18 +1902,25 @@ export default class DungeonBase {
       // Placeholder for persistence
       this.updateSaveStatus('saving');
       
-      // Optimistically dispatch event
-      const event = new CustomEvent('dungeon-questions-update', { detail: this.state.questions });
-      window.dispatchEvent(event);
-      
-      // Try generic storage if available
-      if (window.electronAPI && window.electronAPI.saveQuestions) {
-          window.electronAPI.saveQuestions(JSON.parse(JSON.stringify(this.state.questions))); // Deep copy
-          setTimeout(() => this.updateSaveStatus('saved'), 500);
-      } else {
-          // console.log("Backend save not integrated. Changes are in-memory.");
-          setTimeout(() => this.updateSaveStatus('saved'), 500);
+      // 1. Persist via QuestionBase (Best for FileSystem sync)
+      if (window.QuestionBase && window.QuestionBase.state) {
+          // Sync current question back to QuestionBase state
+          const currentQ = this.state.questions[this.state.currentIndex];
+          const qBaseIndex = window.QuestionBase.state.questions.findIndex(item => item.id === currentQ.id);
+          
+          if (qBaseIndex !== -1) {
+               // Update the specific question in the master list
+               window.QuestionBase.state.questions[qBaseIndex] = currentQ;
+               window.QuestionBase.saveData(); // Triggers JSON file write
+          }
       }
+
+      // 2. Fallback / Electron API direct call
+      if (window.electronAPI && window.electronAPI.saveQuestions) {
+          window.electronAPI.saveQuestions(JSON.parse(JSON.stringify(this.state.questions))); 
+      }
+      
+      setTimeout(() => this.updateSaveStatus('saved'), 500);
   }
 
   renderToolbarState() {
@@ -1876,7 +1932,8 @@ export default class DungeonBase {
       // Star
       const starBtn = toolbar.querySelector('[data-tool="star"]');
       if (starBtn && q) {
-          if (q.isStarred) starBtn.classList.add('active');
+          // Check both for backward compatibility during migration
+          if (q.starred || q.isStarred) starBtn.classList.add('active');
           else starBtn.classList.remove('active');
       }
 
@@ -1994,14 +2051,16 @@ export default class DungeonBase {
       const q = this.state.questions[this.state.currentIndex];
       if (!q) return;
       
-      if (confirm("Clear all highlights from this question?")) {
-          // Remove all highlight spans from the text
-          if (q.text) {
-              q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
-              this.renderQuestion(); // Re-render to show changes
-              this.updateSaveStatus('unsaved');
-              this.saveQuestionsToBackend();
-          }
+      // Remove all highlight spans from the text
+      if (q.text) {
+          q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
+          
+          // Also clear from options if needed (though options highlighting isn't persisted yet in same way)
+          // For now just main text as per existing logic
+          
+          this.renderQuestion(); // Re-render to show changes
+          this.updateSaveStatus('unsaved');
+          this.saveQuestionsToBackend();
       }
   }
   
@@ -2274,7 +2333,7 @@ export default class DungeonBase {
       box.innerHTML = `<span class="dungeon-box-status">${content}</span>`;
       
       // Star Indicator
-      if (q.isStarred) {
+      if (q.starred || q.isStarred) {
           const star = document.createElement('div');
           star.className = 'dungeon-starred-indicator';
           box.appendChild(star);
@@ -2282,10 +2341,9 @@ export default class DungeonBase {
       }
       
       box.onclick = () => {
-        this.saveCurrentSelection(); // If they selected something but didn't submit, save it? Or discard? Let's just switch.
+        // this.saveCurrentSelection(); // Not needed or undefined
         this.state.currentIndex = index;
         this.state.selectedOption = null; // Reset temp selection on switch
-        // Restore temp selection if we want persistence of drafts? simpler to reset.
         this.render();
       };
       
@@ -2666,7 +2724,7 @@ export default class DungeonBase {
     <!-- Context Box (Image/Code) - Placeholder if empty -->
     <!-- Context Box (Image/Code) -->
     <!-- Context Box (Image/Code) -->
-    <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event)">
+    <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event, 'main')">
            ${q.text || q.body || q.content || "No question details."}
     </div>
 
@@ -2700,10 +2758,15 @@ export default class DungeonBase {
           if (String(opt.id) === String(currentSel)) classes += " selected";
       }
 
+      // Check crossed out state
+      if (q.crossedOutOptionIds && q.crossedOutOptionIds.includes(String(opt.id))) {
+          classes += " crossed-out";
+      }
+
       html += `
-        <div class="${classes}" onclick="window.DungeonBase.handleSelectOption('${opt.id}')">
-            <div class="dungeon-radio-circle"></div>
-            <div class="dungeon-radio-text">${opt.text || "Option"}</div>
+        <div class="${classes}">
+            <div class="dungeon-radio-circle" onclick="window.DungeonBase.handleSelectOption('${opt.id}')"></div>
+            <div class="dungeon-radio-text" onclick="window.DungeonBase.handleStrikeOption(event, this)" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')">${opt.text || "Option"}</div>
         </div>
       `;
   });
@@ -2736,13 +2799,41 @@ export default class DungeonBase {
   }
 }
 
-handleSelectOption(optionId) {
+  handleSelectOption(optionId) {
       const q = this.state.questions[this.state.currentIndex];
+      if (q.crossedOutOptionIds && q.crossedOutOptionIds.includes(String(optionId))) return; // Prevent selection if crossed out
       const answer = this.state.answers.get(q.id);
       
       if (answer && answer.submitted) return; // Locked
 
       this.state.selectedOption = optionId;
+      this.renderQuestion();
+  }
+
+  handleStrikeOption(e, el) {
+      if (this.state.highlightMode) {
+           if (window.getSelection().toString().length > 0) return; 
+      }
+      
+      const optionId = el.closest('.dungeon-radio-option').querySelector('.dungeon-radio-circle').getAttribute('onclick').match(/'([^']+)'/)[1];
+      const q = this.state.questions[this.state.currentIndex];
+      
+      // Initialize if missing
+      if (!q.crossedOutOptionIds) q.crossedOutOptionIds = [];
+      
+      const idx = q.crossedOutOptionIds.indexOf(optionId);
+      if (idx !== -1) {
+          q.crossedOutOptionIds.splice(idx, 1);
+      } else {
+          q.crossedOutOptionIds.push(optionId);
+          // If this was selected, deselect it
+          if (this.state.selectedOption === optionId) this.state.selectedOption = null;
+      }
+      
+      // Persist
+      this.updateSaveStatus('unsaved');
+      this.saveQuestionsToBackend();
+      
       this.renderQuestion();
   }
 

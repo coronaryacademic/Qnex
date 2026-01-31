@@ -1920,3 +1920,67 @@
   width: 48px;
   height: auto;
 }
+
+/* Starred Indicator */
+.dungeon-starred-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  background-color: #fbbf24; /* Amber-400 */
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.5);
+}
+
+/* Crossed Out Option */
+.dungeon-radio-option.crossed-out {
+  opacity: 0.6;
+}
+
+.dungeon-radio-option.crossed-out .dungeon-radio-text {
+  text-decoration: line-through;
+}
+
+/* Logical Fix: Hide highlights when option is crossed out (suppressed) */
+.dungeon-radio-option.crossed-out .highlight {
+    background-color: transparent;
+    color: inherit;
+}
+
+.dungeon-radio-option.crossed-out .dungeon-radio-circle {
+  border-color: var(--text-muted);
+  background: var(--bg-hover);
+  cursor: not-allowed;
+  position: relative;
+  overflow: hidden; 
+}
+
+/* Diagonal line through circle */
+/* Horizontal line through circle to match text strikethrough */
+.dungeon-radio-option.crossed-out .dungeon-radio-circle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120%; 
+  height: 2px;
+  background-color: var(--text-muted);
+  transform: translate(-50%, -50%); /* Horizontal */
+}
+
+/* Fix User Selection for Highlighting */
+.dungeon-context-box,
+.dungeon-radio-text {
+    user-select: text !important;
+    cursor: text;
+}
+.dungeon-radio-option {
+    cursor: default; /* Container is default, circle is pointer, text is text */
+}
+.dungeon-radio-circle {
+    cursor: pointer;
+}
+
