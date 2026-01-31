@@ -465,7 +465,6 @@
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: 0 0 10px var(--accent-transparent);
-  background: var(--bg-hover) !important; /* Ensure visibility */
   z-index: 2;
   font-weight: bold;
 }

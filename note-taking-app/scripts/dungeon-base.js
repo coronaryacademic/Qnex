@@ -489,10 +489,6 @@ export default class DungeonBase {
       }
       
       // Initialize Sub-components
-      this.initToolbar();
-      this.initTopbar();
-      this.initCalculator();
-      this.initSearch();
       this.initLab();
   }
 
