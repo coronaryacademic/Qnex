@@ -435,6 +435,17 @@
   line-height: 0; 
 }
 
+.dungeon-q-box::before {
+  content: "•"; /* Bullet point */
+  position: absolute;
+  left: 8px; /* Closer to edge */
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.4rem;
+  line-height: 1;
+  opacity: 0.6; 
+}
+
 /* Alternating Backgrounds (Zebra Formatting) */
 .dungeon-q-box:nth-child(odd) {
   background: var(--panel);
@@ -454,8 +465,9 @@
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: 0 0 10px var(--accent-transparent);
-  transform: scale(1.05);
+  background: var(--bg-hover) !important; /* Ensure visibility */
   z-index: 2;
+  font-weight: bold;
 }
 
 /* Status Icons inside box */

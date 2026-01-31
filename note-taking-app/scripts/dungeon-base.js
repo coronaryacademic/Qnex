@@ -63,7 +63,10 @@ export default class DungeonBase {
           { name: "Respiratory Rate", normal: "12 - 20 /min" },
           { name: "Temperature", normal: "36.5 - 37.5 °C" },
           { name: "Oxygen Saturation (O2 Sat)", normal: "> 95%" },
-          { name: "Body Mass Index (BMI)", normal: "18.5 - 24.9" }
+          { name: "BMI (Underweight)", normal: "< 18.5" },
+          { name: "BMI (Normal)", normal: "18.5 - 24.9" },
+          { name: "BMI (Overweight)", normal: "25 - 29.9" },
+          { name: "BMI (Obese)", normal: "≥ 30" }
       ],
       "Hemodynamics": [
           { name: "Central Venous Pressure (CVP/JVP)", normal: "2 - 6 mmHg" },
@@ -106,10 +109,19 @@ export default class DungeonBase {
       ],
       "Endocrine": [
           { name: "Thyroid Stimulating Hormone (TSH)", normal: "0.4 - 4.0 mIU/L" },
-          { name: "Free T4", normal: "0.8 - 1.8 ng/dL" },
+          { name: "Free T4 (Thyroxine)", normal: "0.8 - 1.8 ng/dL" },
+          { name: "Total T3 (Triiodothyronine)", normal: "80 - 200 ng/dL" },
+          { name: "Estradiol (E2)", normal: "Follicular: 30-120, Luteal: 70-300 pg/mL" },
+          { name: "Progesterone", normal: "Follicular: <1, Luteal: 2-25 ng/mL" },
+          { name: "FSH", normal: "Varies by cycle phase" },
+          { name: "LH", normal: "Varies by cycle phase" },
+          { name: "Testosterone (Total, M)", normal: "300 - 1000 ng/dL" },
+          { name: "Testosterone (Total, F)", normal: "15 - 70 ng/dL" },
+          { name: "Prolactin", normal: "< 25 ng/mL" },
+          { name: "Parathyroid Hormone (PTH)", normal: "10 - 65 pg/mL" },
+          { name: "Cortisol (AM)", normal: "6 - 23 µg/dL" },
           { name: "Hemoglobin A1c (HbA1c)", normal: "< 5.7%" },
-          { name: "Glucose (Fasting)", normal: "70 - 99 mg/dL" },
-          { name: "Cortisol (AM)", normal: "6 - 23 µg/dL" }
+          { name: "Glucose (Fasting)", normal: "70 - 99 mg/dL" }
       ],
        "CSF": [
           { name: "Opening Pressure", normal: "6 - 20 cmH2O" },
