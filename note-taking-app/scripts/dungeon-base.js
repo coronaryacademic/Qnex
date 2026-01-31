@@ -2257,20 +2257,36 @@ export default class DungeonBase {
       
       if (!wrapper || !toggle || !input) return;
       
-      // Global Shortcut (Ctrl+F)
-      document.addEventListener('keydown', (e) => {
+        // Global Shortcut (Ctrl+F)
+      if (this._searchCtrlFHandler) {
+          document.removeEventListener('keydown', this._searchCtrlFHandler);
+      }
+
+      this._searchCtrlFHandler = (e) => {
           if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
-              e.preventDefault();
-              if (!wrapper.classList.contains('active')) {
-                  wrapper.classList.add('active');
+              // Zombie check
+              if (!wrapper.isConnected) {
+                  document.removeEventListener('keydown', this._searchCtrlFHandler);
+                  return;
               }
-              setTimeout(() => {
-                  input.focus();
-                  input.select();
-              }, 50);
-              if (input.value) this.runSearch(input.value);
+
+              e.preventDefault();
+              wrapper.classList.toggle('active');
+              
+              if (wrapper.classList.contains('active')) {
+                  setTimeout(() => {
+                      input.focus();
+                      input.select();
+                  }, 50);
+                  if (input.value) this.runSearch(input.value);
+              } else {
+                  this.clearSearchHighlights();
+                  input.blur();
+              }
           }
-      });
+      };
+
+      document.addEventListener('keydown', this._searchCtrlFHandler);
       
       // Toggle Visibility
       toggle.onclick = (e) => {
