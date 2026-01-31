@@ -11,6 +11,47 @@ export default class DungeonBase {
       toolbarPosition: 'floating', // 'floating', 'top', 'bottom', 'left', 'right'
       unsavedChanges: false
     };
+    this.labData = {
+      "Blood": [
+          { name: "Hemoglobin (Hb)", normal: "M: 13.5-17.5, F: 12.0-15.5 g/dL" },
+          { name: "WBC", normal: "4.5 - 11.0 k/µL" },
+          { name: "Platelets", normal: "150 - 450 k/µL" },
+          { name: "Hematocrit", normal: "M: 41-50%, F: 36-48%" }
+      ],
+      "Electrolytes": [
+          { name: "Sodium (Na+)", normal: "135 - 145 mEq/L" },
+          { name: "Potassium (K+)", normal: "3.5 - 5.0 mEq/L" },
+          { name: "Chloride (Cl-)", normal: "98 - 106 mEq/L" },
+          { name: "Bicarbonate", normal: "22 - 28 mEq/L" },
+          { name: "Calcium", normal: "8.5 - 10.5 mg/dL" },
+          { name: "Magnesium", normal: "1.5 - 2.5 mg/dL" },
+          { name: "Phosphorus", normal: "2.5 - 4.5 mg/dL" }
+      ],
+      "Kidney": [
+          { name: "BUN", normal: "7 - 20 mg/dL" },
+          { name: "Creatinine", normal: "0.6 - 1.2 mg/dL" },
+          { name: "GFR", normal: "> 90 mL/min" }
+      ],
+      "Liver": [
+          { name: "ALT", normal: "7 - 56 U/L" },
+          { name: "AST", normal: "10 - 40 U/L" },
+          { name: "ALP", normal: "44 - 147 U/L" },
+          { name: "Bilirubin Total", normal: "0.1 - 1.2 mg/dL" },
+          { name: "Albumin", normal: "3.5 - 5.5 g/dL" }
+      ],
+      "Lipids": [
+          { name: "Cholesterol", normal: "< 200 mg/dL" },
+          { name: "LDL", normal: "< 100 mg/dL" },
+          { name: "HDL", normal: "> 60 mg/dL" },
+          { name: "Triglycerides", normal: "< 150 mg/dL" }
+      ],
+      "ABG": [
+          { name: "pH", normal: "7.35 - 7.45" },
+          { name: "pCO2", normal: "35 - 45 mmHg" },
+          { name: "pO2", normal: "80 - 100 mmHg" },
+          { name: "HCO3", normal: "22 - 26 mEq/L" }
+      ]
+    };
   }
 
   init() {
@@ -280,6 +321,23 @@ export default class DungeonBase {
                       <button class="calc-btn op" data-val="+">+</button>
                   </div>
               </div>
+               
+               <!-- Lab Sidebar -->
+               <div id="dungeonLabSidebar" class="dungeon-lab-sidebar">
+                   <div class="lab-sidebar-header">
+                       <h3>Lab Values</h3>
+                       <button id="dungeonLabClose" class="lab-close-btn">
+                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                       </button>
+                   </div>
+                   <div class="lab-search-container">
+                       <input type="text" id="dungeonLabSearch" placeholder="Search lab values..." spellcheck="false" />
+                       <svg class="lab-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                   </div>
+                   <div id="dungeonLabContent" class="lab-content">
+                       <!-- Values injected by JS -->
+                   </div>
+               </div>
             `;
         }
 
@@ -351,6 +409,13 @@ export default class DungeonBase {
               this.updateTimerDisplay(0);
           };
       }
+      
+      // Initialize Sub-components
+      this.initToolbar();
+      this.initTopbar();
+      this.initCalculator();
+      this.initSearch();
+      this.initLab();
   }
 
   initToolbar() {
@@ -1071,6 +1136,156 @@ export default class DungeonBase {
     localStorage.setItem('dungeonTopbarButtonsPosition', position);
   }
 
+  ensureLabComponents() {
+      // 1. Sidebar
+      if (!document.getElementById('dungeonLabSidebar') && this.el.container) {
+          const html = `
+               <div id="dungeonLabSidebar" class="dungeon-lab-sidebar">
+                   <div class="lab-sidebar-header" id="dungeonLabHeader" title="Click to close">
+                       <h3>Lab Values</h3>
+                   </div>
+                   <div class="lab-search-container">
+                       <input type="text" id="dungeonLabSearch" placeholder="Search lab values..." spellcheck="false" />
+                       <svg class="lab-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                   </div>
+                   <div id="dungeonLabFilters" class="lab-filters"></div>
+                   <div id="dungeonLabContent" class="lab-content"></div>
+               </div>
+          `;
+          this.el.container.insertAdjacentHTML('beforeend', html);
+      }
+      
+      // 2. Button
+      if (!document.getElementById('dungeonLabBtn')) {
+          const rightBar = document.querySelector('.dungeon-topbar-right');
+          if (rightBar) {
+               const btnHtml = `
+                  <button id="dungeonLabBtn" class="dungeon-topbar-btn" title="Lab Values">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 2v7.31"></path>
+                        <path d="M14 2v7.31"></path>
+                        <path d="M8.5 2h7"></path>
+                        <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
+                    </svg>
+                  </button>
+               `;
+               rightBar.insertAdjacentHTML('afterbegin', btnHtml);
+          }
+      }
+  }
+
+  initLab() {
+      this.ensureLabComponents();
+      
+      const sidebar = document.getElementById('dungeonLabSidebar');
+      const header = document.getElementById('dungeonLabHeader');
+      const toggle = document.getElementById('dungeonLabBtn');
+      const search = document.getElementById('dungeonLabSearch');
+      const filters = document.getElementById('dungeonLabFilters');
+      
+      if (!sidebar || !toggle) return;
+      
+      this.state.activeLabCategory = 'All';
+      this.renderLabFilters(filters);
+      this.renderLabValues();
+      
+      toggle.onclick = (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          sidebar.classList.toggle('active');
+          const isActive = sidebar.classList.contains('active');
+          toggle.classList.toggle('active', isActive);
+          if (isActive && search) setTimeout(() => search.focus(), 50);
+      };
+      
+      if (header) {
+          header.onclick = () => {
+              sidebar.classList.remove('active');
+              toggle.classList.remove('active');
+          };
+      }
+
+      document.addEventListener('click', (e) => {
+          if (sidebar.classList.contains('active') && 
+              !sidebar.contains(e.target) && 
+              !toggle.contains(e.target)) {
+              sidebar.classList.remove('active');
+              toggle.classList.remove('active');
+          }
+      });
+      
+      if (search) {
+          search.oninput = (e) => {
+              this.renderLabValues(e.target.value);
+          };
+      }
+  }
+
+  renderLabFilters(container) {
+      if (!container || !this.labData) return;
+      const categories = ['All', ...Object.keys(this.labData)];
+      
+      container.innerHTML = categories.map(cat => `
+          <button class="lab-filter-chip ${cat === this.state.activeLabCategory ? 'active' : ''}" data-cat="${cat}">
+              ${cat}
+          </button>
+      `).join('');
+      
+      container.querySelectorAll('.lab-filter-chip').forEach(btn => {
+          btn.onclick = () => {
+              this.state.activeLabCategory = btn.dataset.cat;
+              this.renderLabFilters(container);
+              const search = document.getElementById('dungeonLabSearch');
+              this.renderLabValues(search ? search.value : "");
+          };
+      });
+  }
+
+  renderLabValues(filter = "") {
+      const content = document.getElementById('dungeonLabContent');
+      if (!content || !this.labData) return;
+      
+      content.innerHTML = "";
+      const filterLower = filter.toLowerCase();
+      const activeCat = this.state.activeLabCategory || 'All';
+      
+      for (const [category, items] of Object.entries(this.labData)) {
+           if (activeCat !== 'All' && activeCat !== category) continue;
+           
+           const filteredItems = items.filter(item => {
+               if (!filter) return true;
+               return item.name.toLowerCase().includes(filterLower) || 
+                      item.normal.toLowerCase().includes(filterLower);
+           });
+           
+           if (filteredItems.length > 0) {
+               const group = document.createElement('div');
+               group.className = 'lab-group';
+               
+               const header = document.createElement('div');
+               header.className = 'lab-group-header';
+               header.textContent = category;
+               group.appendChild(header);
+               
+               filteredItems.forEach(item => {
+                   const itemEl = document.createElement('div');
+                   itemEl.className = 'lab-item';
+                   itemEl.innerHTML = `
+                       <span class="lab-name">${item.name}</span>
+                       <span class="lab-value">${item.normal}</span>
+                   `;
+                   group.appendChild(itemEl);
+               });
+               
+               content.appendChild(group);
+           }
+      }
+      
+      if (content.children.length === 0) {
+          content.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No matches found</div>`;
+      }
+  }
+
   initCalculator() {
     const calc = document.getElementById('dungeonCalculator');
     const display = document.getElementById('dungeonCalcDisplay');
@@ -1700,6 +1915,9 @@ export default class DungeonBase {
       // Fallback if loading screen doesn't exist
       this.render();
     }
+    
+    // Ensure Lab is initialized (fixes hot-reload/state issues)
+    this.initLab();
   }
 
   close() {
