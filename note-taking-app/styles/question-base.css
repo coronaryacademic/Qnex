@@ -133,12 +133,23 @@ body.theme-classic .question-empty-state h3 {
 }
 
 .question-header {
+  position: relative; /* Added for absolute centering of child */
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12.5px 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
+}
+
+/* ... existing styles ... */
+
+body.theme-classic .question-editor-container .form-group label,
+body.theme-classic #addOptionBtn,
+body.theme-classic #addSessionQBtn,
+body.theme-classic #cancelSessionBtn,
+body.theme-classic #startSessionBtn {
+  color: #2c3e50 !important;
 }
 
 .question-title-input {
@@ -527,4 +538,237 @@ body.theme-classic .question-body label,
 body.theme-classic .question-editor-container .form-group label,
 body.theme-classic #addOptionBtn {
   color: #2c3e50 !important;
+}
+
+/* Session Creator Styles */
+.session-creator {
+  flex: 1;
+  display: flex !important; /* Ensure flex layout is used when visible */
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.session-creator.hidden {
+  display: none !important;
+}
+
+.session-creator-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.session-creator-actions-left,
+.session-creator-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-editor-container {
+  flex: 1;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+#sessionInput {
+  width: 100%;
+  height: 100%;
+  border: none;
+  resize: none;
+  padding: 20px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+}
+
+#sessionInput::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* Scrollbar for session input */
+#sessionInput::-webkit-scrollbar {
+  width: 8px;
+}
+
+#sessionInput::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#sessionInput::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+#sessionInput::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+/* Recent Sessions - Empty State Enhancement */
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+
+#recentSessionsContainer {
+  margin-top: 30px;
+  width: 100%;
+  /* Removed max-width and max-height to fill space */
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Allow it to grow */
+  overflow: hidden;
+  min-height: 200px;
+}
+
+.recent-sessions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.recent-sessions-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.recent-sessions-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.recent-sessions-list {
+  padding: 15px;
+  overflow-y: auto;
+}
+
+/* Grid View */
+.recent-sessions-list.grid-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+/* List View */
+.recent-sessions-list.list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.session-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transform: translateY(-2px);
+}
+
+.session-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.session-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.session-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.session-title {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.95rem;
+}
+
+.session-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.delete-session-btn {
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 4px;
+}
+
+.session-card:hover .delete-session-btn {
+  opacity: 1;
+}
+
+.session-actions {
+  margin-top: auto;
+}
+
+.list-view .session-card {
+  flex-direction: row;
+  align-items: center;
+}
+
+.list-view .session-info {
+  flex: 1;
+}
+
+.list-view .session-actions {
+  margin-top: 0;
+  width: auto;
+}
+
+.list-view .session-card-header {
+  flex: 1;
+  align-items: center;
+}
+
+.full-width {
+  width: 100%;
 }

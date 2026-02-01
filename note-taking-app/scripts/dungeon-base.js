@@ -40,7 +40,11 @@ export default class DungeonBase {
           { name: "Blood Urea Nitrogen (BUN)", normal: "7 - 20 mg/dL" },
           { name: "Creatinine", normal: "0.6 - 1.2 mg/dL" },
           { name: "Glomerular Filtration Rate (GFR)", normal: "> 90 mL/min" },
-          { name: "BUN/Creatinine Ratio", normal: "10:1 - 20:1" }
+          { name: "BUN/Creatinine Ratio", normal: "10:1 - 20:1" },
+          { name: "Fractional Excretion of Sodium (FeNa)", normal: "< 1% (Prerenal), > 2% (ATN)" },
+          { name: "Fractional Excretion of Urea (FeUrea)", normal: "< 35% (Prerenal)" },
+          { name: "Urine Creatinine", normal: "M: 14-26, F: 11-20 mg/kg/day" },
+          { name: "Urine Urea Nitrogen", normal: "12 - 20 g/24h" }
       ],
       "Liver / GI": [
           { name: "Alanine Aminotransferase (ALT)", normal: "7 - 56 U/L" },

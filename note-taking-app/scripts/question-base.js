@@ -11,6 +11,10 @@ const QuestionBase = {
         expandedFolders: new Set(), // Set of folder IDs
         selectedItems: new Set(), // Set of selected question IDs for multi-select
         collapsedSections: new Set(), // Set of collapsed section names
+        sessionCreatorVisible: false,
+        recentSessions: [],
+        recentSessionsView: 'grid', // 'grid' or 'list'
+        recentSessionsSort: 'date', // 'date' or 'name'
     },
 
     el: {
@@ -34,6 +38,14 @@ const QuestionBase = {
         searchInput: null,
         clearSearchBtn: null,
         ctxMenu: null, // Custom context menu
+        // Session Creator
+        sessionCreator: null,
+        sessionInput: null,
+        createSessionBtn: null,
+        addSessionQBtn: null,
+        clearSessionBtn: null,
+        cancelSessionBtn: null,
+        startSessionBtn: null,
     },
 
     init() {
@@ -51,6 +63,8 @@ const QuestionBase = {
         this.loadSidebarWidth();
         this.loadCollapsedSections(); // Load BEFORE data so state is ready for renderSidebar
         this.loadExpandedFolders();
+        this.loadExpandedFolders();
+        this.loadRecentSessions();
         this.loadData();
 
         // If Storage wasn't ready initially, reload once it becomes available
@@ -113,6 +127,22 @@ const QuestionBase = {
 
         // create context menu element
         this.createContextMenu();
+
+        // Session Creator Elements
+        this.el.sessionCreator = document.getElementById("sessionCreator");
+        this.el.sessionInput = document.getElementById("sessionInput");
+        this.el.createSessionBtn = document.getElementById("createSessionBtn");
+        this.el.addSessionQBtn = document.getElementById("addSessionQBtn");
+        this.el.clearSessionBtn = document.getElementById("clearSessionBtn");
+        this.el.cancelSessionBtn = document.getElementById("cancelSessionBtn");
+        this.el.startSessionBtn = document.getElementById("startSessionBtn");
+        
+        // Recent Sessions Elements
+        this.el.recentSessionsContainer = document.getElementById("recentSessionsContainer");
+        this.el.recentSessionsList = document.getElementById("recentSessionsList");
+        this.el.createSessionEmptyStateBtn = document.getElementById("createSessionEmptyStateBtn");
+        this.el.sortSessionsBtn = document.getElementById("sortSessionsBtn");
+        this.el.toggleViewBtn = document.getElementById("toggleViewBtn");
     },
 
     createBase() {
@@ -366,6 +396,40 @@ const QuestionBase = {
                 this.deleteSelectedItems();
             }
         });
+
+        
+        // Session Creator Events
+        if (this.el.createSessionBtn) {
+            this.el.createSessionBtn.addEventListener("click", () => this.openSessionCreator());
+        }
+        if (this.el.cancelSessionBtn) {
+            this.el.cancelSessionBtn.addEventListener("click", () => this.closeSessionCreator());
+        }
+        if (this.el.addSessionQBtn) {
+            this.el.addSessionQBtn.addEventListener("click", () => this.addSessionQuestionTemplate());
+        }
+        if (this.el.clearSessionBtn) {
+            this.el.clearSessionBtn.addEventListener("click", () => {
+                if (confirm("Clear all session text?")) {
+                    this.el.sessionInput.value = "";
+                }
+            });
+        }
+        if (this.el.startSessionBtn) {
+            this.el.startSessionBtn.addEventListener("click", () => this.startSession());
+        }
+
+        if (this.el.createSessionEmptyStateBtn) {
+            this.el.createSessionEmptyStateBtn.addEventListener("click", () => this.openSessionCreator());
+        }
+        
+        if (this.el.sortSessionsBtn) {
+            this.el.sortSessionsBtn.addEventListener("click", () => this.toggleRecentSessionsSort());
+        }
+        
+        if (this.el.toggleViewBtn) {
+            this.el.toggleViewBtn.addEventListener("click", () => this.toggleRecentSessionsView());
+        }
     },
 
     initResizer() {
@@ -453,6 +517,23 @@ const QuestionBase = {
         }
         this.saveCollapsedSections();
         this.renderSidebar();
+    },
+
+    async loadRecentSessions() {
+        const stored = localStorage.getItem("active-recall-recent-sessions");
+        if (stored) {
+            try {
+                this.state.recentSessions = JSON.parse(stored);
+            } catch (e) {
+                this.state.recentSessions = [];
+            }
+        }
+        this.renderRecentSessions();
+    },
+
+
+    saveRecentSessions() {
+        localStorage.setItem("active-recall-recent-sessions", JSON.stringify(this.state.recentSessions));
     },
 
     async loadData() {
@@ -1146,6 +1227,10 @@ const QuestionBase = {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     Rename
                 </button>
+                <button class="ctx-btn" data-action="edit-session">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    Edit as Session
+                </button>
             </div>
             <div class="ctx-section">
                 <button class="ctx-btn delete-btn" data-action="delete" style="color: var(--danger, #ef4444);">
@@ -1349,25 +1434,23 @@ const QuestionBase = {
                         });
                         trash.push({ ...folder, type: 'folder', deletedAt: new Date().toISOString() });
                         await window.Storage.saveTrash(trash);
-                    } catch (e) { }
-
-                    this.state.questions = this.state.questions.filter(q => q.folderId !== id);
-                    this.state.folders.splice(fIndex, 1);
-                    this.saveData();
+                    } catch (e) {
+                        console.warn("Failed to sync to trash", e);
+                    }
+                    
+                    this.deleteFolder(id); // Call the new robust deleteFolder method
                     if (typeof window.updateTrashButton === "function") window.updateTrashButton();
                 };
 
                 if (typeof window.TwoBase?.showDeleteConfirmation === "function") {
                     window.TwoBase.showDeleteConfirmation(count, deleteFolder);
                 } else {
-                    if (confirm(`Delete folder "${folder.title}" and its questions?`)) await deleteFolder();
+                    if (confirm(`Delete folder "${folder.title}" and its ${questionsInFolder.length} question(s)?`)) await deleteFolder();
                 }
             } else if (action === 'rename') {
-                const newTitle = prompt("Rename folder:", folder.title);
-                if (newTitle) {
-                    folder.title = newTitle;
-                    this.saveData();
-                }
+                this.renameFolder(id);
+            } else if (action === 'edit-session') {
+                this.editSessionFromFolder(id);
             } else if (action === 'new-sub-question') {
                 this.createNewQuestion(id);
             } else if (action === 'new-sub-folder') {
@@ -1530,14 +1613,450 @@ const QuestionBase = {
 
         header.querySelector('.close-modal-btn').onclick = close;
         overlay.onclick = (e) => { if (e.target === overlay) close(); };
-    }
+    },
+
+    // --- Session Creator Logic ---
+
+    openSessionCreator() {
+        this.state.sessionCreatorVisible = true;
+        this.el.emptyState.style.display = "none";
+        this.el.editor.classList.add("hidden");
+        this.el.sessionCreator.classList.remove("hidden");
+        
+        // If empty, add one template to start
+        if (!this.el.sessionInput.value.trim()) {
+            this.addSessionQuestionTemplate();
+        }
+    },
+
+    closeSessionCreator() {
+        this.state.sessionCreatorVisible = false;
+        this.el.sessionCreator.classList.add("hidden");
+        if (this.activeQuestionId) {
+            this.el.editor.classList.remove("hidden");
+        } else {
+            this.el.emptyState.style.display = "flex";
+        }
+    },
+
+    addSessionQuestionTemplate() {
+const template = `Question title: 
+Question context: 
+Question options:
+  (A) 
+  *(B) 
+  (C) 
+  (D) 
+Question explanation: 
+
+`;
+        const input = this.el.sessionInput;
+        const currentVal = input.value;
+        // Add newline if needed
+        const prefix = (currentVal && !currentVal.endsWith("\n\n")) ? "\n\n" : "";
+        
+        input.value += prefix + template;
+        
+        // Scroll to bottom
+        input.scrollTop = input.scrollHeight;
+        input.focus();
+    },
+
+    parseSessionText(text) {
+        // Simple parser based on user format
+        // Split by "Question title:" but keep it (lookahead? or just simple split and map)
+        
+        // Normalize line endings
+        text = text.replace(/\r\n/g, "\n");
+        
+        const chunks = text.split(/Question title:/g);
+        const questions = [];
+        
+        // Skip first empty chunk if text starts with "Question title:"
+        for (let i = 0; i < chunks.length; i++) {
+            let chunk = chunks[i].trim();
+            if (!chunk) continue;
+            
+            // Re-add the title label effectively by processing the chunk
+            // Structure expected:
+            // [Title Text]
+            // Question context: [Context Text]
+            // Question options: [Options Text]
+            // Question explanation: [Explanation Text]
+            
+            const q = {
+                id: Date.now().toString() + "-" + Math.random().toString(36).substr(2, 5),
+                title: "Untitled",
+                text: "",
+                options: [],
+                explanation: "",
+                starred: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            // Parse Title (First line(s) until "Question context:" or end)
+            // But wait, the split removed "Question title:". So the start of chunk is the title.
+            
+            // Regex to find parts
+            // This is loose parsing
+            const contextIdx = chunk.indexOf("Question context:");
+            const optionsIdx = chunk.indexOf("Question options:");
+            const explIdx = chunk.indexOf("Question explanation:");
+            
+            let titleEnd = chunk.length;
+            if (contextIdx !== -1) titleEnd = Math.min(titleEnd, contextIdx);
+            else if (optionsIdx !== -1) titleEnd = Math.min(titleEnd, optionsIdx); // Fallback if context missing
+            
+            q.title = chunk.substring(0, titleEnd).trim() || "Untitled Question";
+            
+            // Context
+            if (contextIdx !== -1) {
+                let contextEnd = chunk.length;
+                if (optionsIdx !== -1) contextEnd = Math.min(contextEnd, optionsIdx);
+                else if (explIdx !== -1) contextEnd = Math.min(contextEnd, explIdx);
+                
+                let contextText = chunk.substring(contextIdx + "Question context:".length, contextEnd).trim();
+                q.text = contextText; // Use raw text, maybe convert newlines to <br>? 
+                // For now, simple text. The renderer in Dungeon might need HTML. 
+                // Let's wrap in paragraphs or leave as is. User said "text format div", likely plain text input.
+                // Dungeon renderer usually expects HTML in q.text.
+                q.text = contextText.replace(/\n/g, "<br>");
+            }
+            
+            // Options
+            if (optionsIdx !== -1) {
+                let optionsEnd = chunk.length;
+                if (explIdx !== -1) optionsEnd = Math.min(optionsEnd, explIdx);
+                
+                const optionsBlock = chunk.substring(optionsIdx + "Question options:".length, optionsEnd).trim();
+                const optionLines = optionsBlock.split("\n");
+                
+                optionLines.forEach((line, idx) => {
+                    line = line.trim();
+                    if (!line) return;
+                    
+                    const isCorrect = line.startsWith("*");
+                    if (isCorrect) line = line.substring(1).trim();
+                    
+                    // Strip prefixes like "(A)", "A.", "1.", "(1)"
+                    line = line.replace(/^(\([A-Za-z0-9]+\)|[A-Za-z0-9]+\.)\s*/, "");
+ 
+                    // Let's keep the text as is but maybe strip leading "A. " if user wants?
+                    // User prompt: "A.", "*B." etc. So we should strip standard prefixes if we want clean text, 
+                    // or just keep them. Let's keep them active for now, but `isCorrect` logic is handled.
+                    
+                    q.options.push({
+                        id: (Date.now() + idx).toString() + Math.random().toString().substr(2,4),
+                        text: line,
+                        isCorrect: isCorrect
+                    });
+                });
+            }
+            
+            // Explanation
+            if (explIdx !== -1) {
+                q.explanation = chunk.substring(explIdx + "Question explanation:".length).trim();
+            }
+            
+            // Validation
+            if (q.options.length > 0) {
+                 questions.push(q);
+            }
+            
+            if (questions.length >= 100) break;
+        }
+        
+        return questions;
+    },
+
+    async startSession() {
+        const text = this.el.sessionInput.value;
+        if (!text.trim()) {
+            alert("Please add some questions first.");
+            return;
+        }
+        
+        const questions = this.parseSessionText(text);
+        if (questions.length === 0) {
+            alert("No valid questions found. Please check the format.");
+            return;
+        }
+        
+        const hasCorrect = questions.every(q => q.options.some(o => o.isCorrect));
+        if (!hasCorrect) {
+            if (!confirm("Some questions do not have a correct answer marked (with *). Continue anyway?")) {
+                return;
+            }
+        }
+        
+        // Create a new folder for this session
+        const folderName = "Session " + new Date().toLocaleString();
+        
+        // logic from createNewFolder but returning the object
+        const newFolder = {
+            id: "fq-" + Date.now(),
+            title: folderName,
+            parentId: null
+        };
+        
+        // Link questions to this folder
+        // Link questions to this folder
+        questions.forEach(q => q.folderId = newFolder.id);
+        
+        // Save to state
+        this.state.folders.push(newFolder);
+        this.state.questions.push(...questions);
+        
+        await this.saveData();
+        
+        // Save session locally
+        const session = {
+            id: newFolder.id, // Use folder ID as session ID
+            title: folderName,
+            date: new Date().toISOString(),
+            count: questions.length,
+            folderId: newFolder.id,
+            questions: questions // Store questions directly for now as backup/resume without full load
+        };
+        this.state.recentSessions.unshift(session); // Add to the beginning
+        this.saveRecentSessions();
+        this.renderRecentSessions();
+        
+        // Switch to Dungeon (Play) Mode with these questions
+        if (typeof window.DungeonBase !== 'undefined') {
+            window.DungeonBase.open(questions);
+        } else {
+             alert("Dungeon Mode is not loaded.");
+        }
+        
+        // Hide session creator
+        this.closeSessionCreator();
+        
+        // Also expand the new folder in sidebar so user sees it when they return
+        this.state.expandedFolders.add(newFolder.id);
+        this.saveExpandedFolders();
+        this.renderSidebar();
+    },
+
+    renderRecentSessions() {
+        if (!this.el.recentSessionsContainer || !this.el.recentSessionsList) return;
+        
+        const sessions = this.state.recentSessions;
+        
+        if (sessions.length === 0) {
+            this.el.recentSessionsContainer.classList.add('hidden');
+            return;
+        }
+        
+        this.el.recentSessionsContainer.classList.remove('hidden');
+        
+        // Sort
+        const sorted = [...sessions].sort((a, b) => {
+            if (this.state.recentSessionsSort === 'name') {
+                return a.title.localeCompare(b.title);
+            } else {
+                return new Date(b.date) - new Date(a.date);
+            }
+        });
+        
+        // View Class
+        this.el.recentSessionsList.className = `recent-sessions-list ${this.state.recentSessionsView}-view`;
+        
+        this.el.recentSessionsList.innerHTML = sorted.map(s => `
+            <div class="session-card">
+               <div class="session-card-header">
+                  <div class="session-icon">
+                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                     </svg>
+                  </div>
+                  <div class="session-info">
+                     <span class="session-title">${s.title}</span>
+                     <span class="session-meta">${new Date(s.date).toLocaleDateString()} • ${s.count} Qs</span>
+                  </div>
+                  <button class="icon-btn danger delete-session-btn" onclick="QuestionBase.deleteSession('${s.id}', event)" title="Delete Session">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <line x1="18" y1="6" x2="6" y2="18"></line>
+                           <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                  </button>
+               </div>
+               <div class="session-actions">
+                  <button class="btn primary small full-width" onclick="QuestionBase.resumeSession('${s.id}')">Resume</button>
+               </div>
+            </div>
+        `).join('');
+    },
+    
+    toggleRecentSessionsSort() {
+        this.state.recentSessionsSort = this.state.recentSessionsSort === 'date' ? 'name' : 'date';
+        this.renderRecentSessions();
+    },
+    
+    toggleRecentSessionsView() {
+        this.state.recentSessionsView = this.state.recentSessionsView === 'grid' ? 'list' : 'grid';
+        this.renderRecentSessions();
+    },
+    
+    deleteSession(id, event) {
+        if (event) event.stopPropagation();
+        
+        if (confirm("Delete this session record and its folder?")) {
+            const session = this.state.recentSessions.find(s => s.id === id);
+            
+            // Delete from recent sessions list
+            this.state.recentSessions = this.state.recentSessions.filter(s => s.id !== id);
+            this.saveRecentSessions();
+            this.renderRecentSessions();
+            
+            // Delete associated folder if it exists
+            if (session && session.folderId) {
+                this.deleteFolder(session.folderId);
+            }
+        }
+    },
+    
+    resumeSession(id) {
+        const session = this.state.recentSessions.find(s => s.id === id);
+        if (!session) return;
+        
+        // If we stored questions in session object, use them
+        // Otherwise try to find by folder
+        
+        let questionsToOpen = session.questions || [];
+        
+        if (!questionsToOpen.length && session.folderId) {
+             questionsToOpen = this.state.questions.filter(q => q.folderId === session.folderId);
+        }
+        
+        if (questionsToOpen.length === 0) {
+            alert("No questions found for this session.");
+            return;
+        }
+        
+        if (typeof window.DungeonBase !== 'undefined') {
+            window.DungeonBase.open(questionsToOpen);
+        }
+    },
+        
+
+
+    deleteFolder(id) {
+        if (!id) return;
+        
+        // Find folder
+        const folderIndex = this.state.folders.findIndex(f => f.id === id);
+        if (folderIndex === -1) return;
+        
+        // Find all questions in this folder
+        const questionsToDelete = this.state.questions.filter(q => q.folderId === id);
+        
+        // Remove questions
+        this.state.questions = this.state.questions.filter(q => q.folderId !== id);
+        
+        // Remove folder
+        this.state.folders.splice(folderIndex, 1);
+        
+        // Also remove from recent sessions if exists
+        this.state.recentSessions = this.state.recentSessions.filter(s => s.folderId !== id);
+        this.saveRecentSessions();
+        this.renderRecentSessions();
+        
+        this.saveData();
+        this.renderSidebar();
+        
+        // If active question was in this folder, clear main view
+        if (this.state.activeQuestionId && questionsToDelete.find(q => q.id === this.state.activeQuestionId)) {
+             this.el.emptyState.classList.remove("hidden");
+             this.el.editor.classList.add("hidden");
+             this.state.activeQuestionId = null;
+        }
+    },
+
+    renameFolder(id) {
+        const folder = this.state.folders.find(f => f.id === id);
+        if (!folder) return;
+        
+        const newName = prompt("Enter new folder name:", folder.title);
+        if (newName && newName.trim() !== "") {
+            folder.title = newName.trim();
+            this.saveData();
+            this.renderSidebar();
+            
+            // Update session name if linked
+            const session = this.state.recentSessions.find(s => s.folderId === id);
+            if (session) {
+                session.title = folder.title;
+                this.saveRecentSessions();
+                this.renderRecentSessions();
+            }
+        }
+    },
+
+    editSessionFromFolder(folderId) {
+        const folder = this.state.folders.find(f => f.id === folderId);
+        if (!folder) return;
+        
+        const questions = this.state.questions.filter(q => q.folderId === folderId);
+        if (questions.length === 0) {
+            alert("No questions in this folder to edit.");
+            return;
+        }
+        
+        if (confirm("This will overwrite current text in Session Creator. Continue?")) {
+            const text = this.reverseParseQuestions(questions);
+            this.el.sessionInput.value = text;
+            this.openSessionCreator();
+        }
+    },
+
+    reverseParseQuestions(questions) {
+        return questions.map(q => {
+            let block = `Question title:\n${q.title}\n\n`;
+            
+            // Context (convert <br> back to newlines if needed, though usually regex handles it)
+            // Stored text might have <br> or be plain.
+            let context = q.text || "";
+            context = context.replace(/<br\s*\/?>/gi, "\n");
+            if (context) {
+                block += `Question context:\n${context}\n\n`;
+            }
+            
+            block += `Question options:\n`;
+            ['A', 'B', 'C', 'D'].forEach((letter, i) => {
+                const opt = q.options[i];
+                if (opt) {
+                    const prefix = opt.isCorrect ? "*" : "";
+                    block += `  ${prefix}(${letter}) ${opt.text}\n`;
+                }
+            });
+            // Handle if more options than 4?
+            if (q.options.length > 4) {
+                for (let i = 4; i < q.options.length; i++) {
+                     const opt = q.options[i];
+                     const prefix = opt.isCorrect ? "*" : "";
+                     block += `  ${prefix}(${i+1}) ${opt.text}\n`;
+                }
+            }
+            
+            if (q.explanation) {
+                block += `\nQuestion explanation:\n${q.explanation}\n`;
+            }
+            
+            return block;
+        }).join("\n\n" + "-".repeat(20) + "\n\n"); // Separator optional but good for reading
+    },
+
 };
 
-
-// Auto-initialize on DOM ready
-document.addEventListener("DOMContentLoaded", () => {
-    QuestionBase.init();
-});
-
-// Make QuestionBase available globally
 window.QuestionBase = QuestionBase;
+document.addEventListener("DOMContentLoaded", () => {
+    // Check if we are on a page where we should init (index.html usually)
+    if (document.getElementById("questionBase")) {
+        QuestionBase.init();
+    }
+});
