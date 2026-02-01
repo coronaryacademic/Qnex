@@ -28,6 +28,7 @@
   font-size: 1.1rem;
   text-align: center;
   padding: 2rem;
+  padding-top: 0px; 
   background: var(--bg);
   /* Ensure clean background */
 }
@@ -559,8 +560,6 @@ body.theme-classic #addOptionBtn {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
 }
 
 .session-creator-actions-left,
@@ -580,15 +579,39 @@ body.theme-classic #addOptionBtn {
 #sessionInput {
   width: 100%;
   height: 100%;
+  min-height: 100%;
   border: none;
-  resize: none;
-  padding: 20px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.6;
+  padding: 24px;
+  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 15px;
+  line-height: 1.7;
   color: var(--text);
   background: var(--bg);
   outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+  user-select: text;
+  cursor: text;
+}
+
+#sessionInput:empty::before {
+  content: attr(placeholder);
+  color: var(--muted);
+  opacity: 0.5;
+  pointer-events: none;
+  display: block;
+}
+
+.highlight-yellow {
+  background-color: var(--nav-highlight, rgba(234, 179, 8, 0.4)) !important;
+  border-radius: 2px;
+  padding: 2px 0;
+  color: #000 !important; /* Ensure text is readable on yellow */
+}
+
+.highlight-yellow-flash {
+  background-color: var(--nav-highlight, rgba(234, 179, 8, 0.6)) !important;
 }
 
 #sessionInput::placeholder {
@@ -613,6 +636,45 @@ body.theme-classic #addOptionBtn {
 #sessionInput::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }
+/* Breadcrumb Actions */
+.breadcrumb-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Consistent gap */
+}
+
+.breadcrumb-actions .icon-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted); /* Default color matching theme */
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.breadcrumb-actions .icon-btn:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.breadcrumb-actions .icon-btn svg {
+  stroke: currentColor; /* Ensure SVG uses button color */
+}
+
+/* Classic Theme Override for Breadcrumb Buttons handled in style.css or here */
+body.theme-classic .breadcrumb-actions .icon-btn {
+  color: #2c3e50;
+}
+
+body.theme-classic .breadcrumb-actions .icon-btn:hover {
+  background: rgba(0,0,0,0.05); /* Light hover */
+}
 /* Recent Sessions - Empty State Enhancement */
 .empty-state-content {
   display: flex;
@@ -623,36 +685,33 @@ body.theme-classic #addOptionBtn {
   text-align: center;
 }
 
+/* Utility Hidden Class */
+.hidden {
+  display: none !important;
+}
+
 #recentSessionsContainer {
-  margin-top: 30px;
+  margin-top: 20px;
   width: 100%;
-  /* Removed max-width and max-height to fill space */
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
   display: flex;
   flex-direction: column;
   flex: 1; /* Allow it to grow */
   overflow: hidden;
   min-height: 200px;
+  /* Removed Max Width/Height/Background/Border as requested */
 }
 
 .recent-sessions-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 15px;
-  background: var(--bg-alt);
+  justify-content: flex-end; /* Push controls to right */
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
 }
 
 .recent-sessions-header h4 {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  display: none; /* Hide default title, using main header instead */
 }
 
 .recent-sessions-controls {

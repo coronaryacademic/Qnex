@@ -30,18 +30,24 @@ class FileSystemService {
         clearTimeout(id);
 
         if (res.ok) {
-          console.log(`[FileSystemService] ✅ Found active server at port ${port}`);
-          this.baseUrl = url;
-          // Set fallback to the OTHER port just in case
-          this.fallbackUrl = `http://localhost:${port === 3001 ? 3002 : 3001}/api`;
-          this.isOffline = false;
-          return;
+          try {
+            const data = await res.json();
+            if (data && data.status === 'OK') {
+              console.log(`[FileSystemService] ✅ Verified active server at port ${port}`);
+              this.baseUrl = url;
+              this.fallbackUrl = `http://localhost:${port === 3001 ? 3002 : 3001}/api`;
+              this.isOffline = false;
+              return;
+            }
+          } catch (err) {
+            console.warn(`[FileSystemService] ⚠️ Port ${port} responded but content invalid:`, err);
+          }
         }
       } catch (e) {
         // Continue probing
       }
     }
-    console.warn("[FileSystemService] ⚠️ No active server found during probe. Using default:", this.baseUrl);
+    console.warn("[FileSystemService] ⚠️ No active server found during probe. Using baseline:", this.baseUrl);
     this.isOffline = true;
   }
 
@@ -260,6 +266,23 @@ class FileSystemService {
       return response;
     } catch (error) {
       console.error("Error saving questions:", error);
+      throw error;
+    }
+  }
+
+  // IMAGE OPERATIONS
+  async uploadImage(imageName, base64Data) {
+    try {
+      const response = await this.makeRequest("/upload", {
+        method: "POST",
+        body: JSON.stringify({
+          image: base64Data,
+          name: imageName
+        }),
+      });
+      return response;
+    } catch (error) {
+      console.error("Error uploading image:", error);
       throw error;
     }
   }

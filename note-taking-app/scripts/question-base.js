@@ -8,6 +8,8 @@ const QuestionBase = {
         folders: [],
         activeQuestionId: null,
         activeContext: null, // Track where selection happened (e.g. 'All Questions', 'folder-123')
+        editingFolderId: null,
+        editingQuestionId: null,
         expandedFolders: new Set(), // Set of folder IDs
         selectedItems: new Set(), // Set of selected question IDs for multi-select
         collapsedSections: new Set(), // Set of collapsed section names
@@ -83,9 +85,17 @@ const QuestionBase = {
         }
 
         // Global click to close context menu
-        document.addEventListener("click", (e) => {
-            if (this.el.ctxMenu && !this.el.ctxMenu.contains(e.target)) {
-                this.hideContextMenu();
+        document.addEventListener("mousedown", (e) => {
+            if (this.el.ctxMenu && !this.el.ctxMenu.classList.contains("hidden")) {
+                // Ignore if clicking inside menu
+                if (this.el.ctxMenu.contains(e.target)) return;
+                
+                // Only close on left-click elsewhere
+                if (e.button === 0) {
+                    console.log("[QuestionBase] Closing context menu due to outside mousedown on:", e.target);
+                    // Add a small delay to avoid race conditions with other handlers
+                    setTimeout(() => this.hideContextMenu(), 10);
+                }
             }
         });
     },
@@ -140,9 +150,13 @@ const QuestionBase = {
         // Recent Sessions Elements
         this.el.recentSessionsContainer = document.getElementById("recentSessionsContainer");
         this.el.recentSessionsList = document.getElementById("recentSessionsList");
-        this.el.createSessionEmptyStateBtn = document.getElementById("createSessionEmptyStateBtn");
+        this.el.openRecentSessionsBtn = document.getElementById("openRecentSessionsBtn");
+        this.el.backToEmptyStateBtn = document.getElementById("backToEmptyStateBtn");
         this.el.sortSessionsBtn = document.getElementById("sortSessionsBtn");
         this.el.toggleViewBtn = document.getElementById("toggleViewBtn");
+        // Select all session control buttons (sort + view toggle)
+        this.el.sessionControls = document.querySelectorAll('.session-control-btn');
+        this.toggleSessionControls(false); // Ensure hidden on init
     },
 
     createBase() {
@@ -336,7 +350,6 @@ const QuestionBase = {
         }
 
         // Context Menu for Sidebar (Handles list items + empty space)
-        if (this.el.sidebar) {
             this.el.sidebar.addEventListener("contextmenu", (e) => {
                 e.preventDefault();
                 e.stopPropagation(); // Prevent main app context menu
@@ -344,16 +357,34 @@ const QuestionBase = {
                 const item = e.target.closest(".question-item, .q-folder-header");
                 const targetId = item ? item.dataset.id : null;
 
-                // Check if clicking specific item type
-                let type = 'empty';
+                console.log("[QuestionBase] Sidebar ContextMenu Triggered on:", e.target, "Item:", item);
+
+                // Visual Highlight Synchronization
+                document.querySelectorAll(".question-item.context-active, .q-folder-header.context-active").forEach(el => el.classList.remove("context-active"));
                 if (item) {
-                    if (item.classList.contains("q-folder-header")) type = 'folder';
-                    else type = 'question';
+                    item.classList.add("context-active");
+                    
+                    // If it's a question, also ensure it's selected in state
+                    if (item.classList.contains("question-item")) {
+                        this.state.selectedItems.clear();
+                        this.state.selectedItems.add(targetId);
+                        item.classList.add("selected");
+                    }
                 }
 
-                this.showContextMenu(e.clientX, e.clientY, targetId, type);
+                // Check if clicking specific item type
+                let type = 'empty';
+                let context = null;
+                if (item) {
+                    if (item.classList.contains("q-folder-header")) type = 'folder';
+                    else {
+                        type = 'question';
+                        context = item.getAttribute("data-context");
+                    }
+                }
+
+                this.showContextMenu(e.clientX, e.clientY, targetId, type, context);
             });
-        }
 
         // Context Menu for Empty State
         if (this.el.emptyState) {
@@ -386,7 +417,9 @@ const QuestionBase = {
             // Ctrl+S to save
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
-                if (this.activeQuestionId) {
+                if (this.state.sessionCreatorVisible) {
+                    this.saveTextEditorChanges();
+                } else if (this.activeQuestionId) {
                     this.saveCurrentQuestion();
                 }
             }
@@ -419,8 +452,15 @@ const QuestionBase = {
             this.el.startSessionBtn.addEventListener("click", () => this.startSession());
         }
 
-        if (this.el.createSessionEmptyStateBtn) {
-            this.el.createSessionEmptyStateBtn.addEventListener("click", () => this.openSessionCreator());
+
+        
+        if (this.el.openRecentSessionsBtn) {
+            this.el.openRecentSessionsBtn.addEventListener("click", () => this.openRecentSessionsView());
+        }
+
+        
+        if (this.el.backToEmptyStateBtn) {
+            this.el.backToEmptyStateBtn.addEventListener("click", () => this.closeQuestion());
         }
         
         if (this.el.sortSessionsBtn) {
@@ -429,6 +469,9 @@ const QuestionBase = {
         
         if (this.el.toggleViewBtn) {
             this.el.toggleViewBtn.addEventListener("click", () => this.toggleRecentSessionsView());
+        }
+        if (this.el.sessionInput) {
+            this.el.sessionInput.addEventListener("paste", (e) => this.handlePaste(e));
         }
     },
 
@@ -619,6 +662,18 @@ const QuestionBase = {
 
     open() {
         this.el.base.classList.remove("hidden");
+        
+        // Ensure correct view state
+        if (this.activeQuestionId) {
+             // If we have an active question (e.g. from persistence if implemented later), make sure editor is shown
+             const q = this.state.questions.find(q => q.id === this.activeQuestionId);
+             if (q) this.loadQuestionIntoEditor(q);
+             else this.closeQuestion(); 
+        } else {
+             // Default to Home/Empty State
+             this.closeQuestion();
+        }
+
         // Update Floating Button to "Back to Notes"
         if (this.el.floatBtn) {
             this.el.floatBtn.style.zIndex = "2000"; // Ensure on top of question layer
@@ -641,6 +696,7 @@ const QuestionBase = {
 
     close() {
         this.el.base.classList.add("hidden");
+        this.toggleSessionControls(false); // Hide controls when closing QuestionBase
         // Revert Floating Button to "Questions"
         if (this.el.floatBtn) {
             this.el.floatBtn.style.zIndex = ""; // Revert to CSS default
@@ -685,34 +741,55 @@ const QuestionBase = {
         this.saveData();
     },
 
-    createNewQuestion(folderId = null) {
+    createNewQuestion() {
+        const id = 'q_' + Date.now();
         const newQ = {
-            id: Date.now().toString(),
-            title: "",
+            id,
+            title: "Untitled Question",
             text: "",
-            options: [],
-            folderId: folderId,
-            createdAt: new Date().toISOString(),
-            starred: false
+            options: [
+                { id: 'opt1', text: "Option A", isCorrect: true },
+                { id: 'opt2', text: "Option B", isCorrect: false }
+            ],
+            explanation: "",
+            starred: false,
+            folderId: null,
+            createdAt: new Date().toISOString()
         };
+
         this.state.questions.push(newQ);
-        this.activeQuestionId = newQ.id;
-        this.saveData(); // Save initially to persist ID
+        this.saveData();
         this.renderSidebar();
-        this.loadQuestionIntoEditor(newQ);
+        
+        // Open directly in text editor
+        this.openSessionCreator(null, id);
     },
 
+    // Unified Editor Routing
+    openSessionCreator(folderId = null, targetQuestionId = null) {
+        // Implementation remains in the dedicated section below (around line 1864)
+    },
 
+    saveTextEditorChanges() {
+        // Implementation remains in the dedicated section below (around line 1904)
+    },
 
     closeQuestion() {
         this.activeQuestionId = null;
         this.el.editor.classList.add("hidden");
-        this.el.emptyState.style.display = "flex";
-
-        // Reset Header
-        this.el.titleInput.value = "";
-        this.el.titleInput.disabled = true;
-        this.el.titleInput.placeholder = "Select a question or create new";
+        this.el.emptyState.classList.remove("hidden");
+        
+        // Hide session-specific UI
+        this.state.sessionCreatorVisible = false;
+        if (this.el.sessionCreator) this.el.sessionCreator.classList.add("hidden");
+        if (this.el.recentSessionsContainer) this.el.recentSessionsContainer.classList.add("hidden");
+        
+        const emptyStateContent = this.el.emptyState.querySelector('.empty-state-content');
+        if (emptyStateContent) emptyStateContent.classList.remove('hidden'); // Show default empty msg
+        
+        // Reset Header -> HOME
+        this.updateHeaderUI('HOME');
+        
         this.el.saveBtn.disabled = true;
         this.el.saveBtn.style.display = "none";
 
@@ -769,11 +846,12 @@ const QuestionBase = {
         this.activeQuestionId = q.id;
         this.el.emptyState.style.display = "none";
         this.el.editor.classList.remove("hidden");
+        
+        // Update Header -> EDITOR
+        this.updateHeaderUI('EDITOR');
 
         if (this.el.titleInput) {
-             this.el.titleInput.disabled = false; // Enable title input
-             this.el.titleInput.placeholder = "Question Title"; // Reset placeholder
-             this.el.titleInput.value = q.title || ""; // Ensure value is set (handle null/undefined)
+             this.el.titleInput.value = q.title || ""; // Ensure value is set
         }
         this.el.textInput.innerHTML = q.text || "";
         this.el.explanationInput.value = q.explanation || "";
@@ -855,9 +933,9 @@ const QuestionBase = {
 
         // Default View: 3 Persistent Sections
 
-        // 1. All Questions (Uncategorized)
-        const uncategorized = this.state.questions.filter(q => !q.folderId && !q.starred);
-        this.renderSection("All Questions", uncategorized, "list", "No questions");
+        // 1. All Questions (Truly ALL questions)
+        const allQuestions = this.state.questions;
+        this.renderSection("All Questions", allQuestions, "list", "No questions");
 
         // 2. Starred
         const starred = this.state.questions.filter(q => q.starred);
@@ -1007,28 +1085,23 @@ const QuestionBase = {
         const header = folderEl.querySelector(".q-folder-header");
         const content = folderEl.querySelector(".q-folder-content");
 
+        // Click Handling: Distinguish between Toggle (Chevron) and Edit (Title/Header)
         header.onclick = (e) => {
             e.stopPropagation();
-            if (isExpanded) {
-                this.state.expandedFolders.delete(folder.id);
+            // Check if clicked element is the chevron or within it
+            if (e.target.closest('svg') || e.target.closest('.section-chevron')) {
+                 if (isExpanded) {
+                    this.state.expandedFolders.delete(folder.id);
+                } else {
+                    this.state.expandedFolders.add(folder.id);
+                }
+                this.saveExpandedFolders();
+                this.renderSidebar();
             } else {
-                this.state.expandedFolders.add(folder.id);
+                // Clicked title or background -> Open Session Editor
+                this.openSessionCreator(folder.id);
             }
-            this.saveExpandedFolders();
-            this.renderSidebar();
         };
-
-        // Context Menu
-        header.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation(); // Prevent bubbling to sidebar container
-
-            // Visual Highlight
-            document.querySelectorAll(".question-item.context-active, .q-folder-header.context-active").forEach(el => el.classList.remove("context-active"));
-            header.classList.add("context-active");
-
-            this.showContextMenu(e.clientX, e.clientY, folder.id, 'folder');
-        });
 
         if (isExpanded) {
             // Render Questions (First)
@@ -1081,35 +1154,15 @@ const QuestionBase = {
         el.dataset.id = q.id;
         if (context) el.setAttribute("data-context", context);
 
-        // Context Menu
-        el.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            // Right click always selects the item (single select)
-            this.state.selectedItems.clear();
-            this.state.selectedItems.add(q.id);
-            
-            // Manual Visual Update (Avoid re-rendering which kills 'el')
-            // 1. Remove 'selected' and 'context-active' from all items
-            container.querySelectorAll(".question-item").forEach(item => {
-                item.classList.remove("selected", "context-active");
-            });
-            
-            // 2. Add classes to current element
-            el.classList.add("selected", "context-active");
-
-            // Show menu
-            this.showContextMenu(e.clientX, e.clientY, q.id, 'question', context);
-        });
-
         // Simple Click Handler (No Multi-select)
         el.onclick = (e) => {
             // Single click - clear selection and open
             this.state.selectedItems.clear();
             this.state.selectedItems.add(q.id); 
             this.state.activeContext = context;
-            this.loadQuestionIntoEditor(q);
+            
+            // Universal Text Editor: Always open session editor
+            this.openSessionCreator(q.folderId, q.id);
             this.renderSidebar();
         };
 
@@ -1295,7 +1348,25 @@ const QuestionBase = {
         this.el.ctxMenu.innerHTML = html;
         this.el.ctxMenu.style.top = `${y}px`;
         this.el.ctxMenu.style.left = `${x}px`;
+        this.el.ctxMenu.style.zIndex = "100000"; // Ensure it's above everything else
+        this.el.ctxMenu.style.display = "grid"; // Explicit display
+        
+        // Ensure menu is visible and correctly positioned
         this.el.ctxMenu.classList.remove("hidden");
+        console.log(`[QuestionBase] Attempting to show menu at X:${x}, Y:${y}. Type:${type}, ID:${id}`);
+
+        // Handle off-screen menu with slightly more padding
+        requestAnimationFrame(() => {
+            const rect = this.el.ctxMenu.getBoundingClientRect();
+            console.log(`[QuestionBase] Menu rendered rect:`, rect);
+            
+            if (rect.right > window.innerWidth) {
+                this.el.ctxMenu.style.left = `${window.innerWidth - rect.width - 15}px`;
+            }
+            if (rect.bottom > window.innerHeight) {
+                this.el.ctxMenu.style.top = `${window.innerHeight - rect.height - 15}px`;
+            }
+        });
     },
 
     hideContextMenu() {
@@ -1342,6 +1413,7 @@ const QuestionBase = {
 
             this.state.selectedItems.clear();
             this.saveData();
+            this.syncEditorDeletion(selectedIds);
             if (typeof window.updateTrashButton === "function") window.updateTrashButton();
         };
 
@@ -1383,6 +1455,7 @@ const QuestionBase = {
                     this.state.questions.splice(qIndex, 1);
                     if (this.activeQuestionId === id) this.resetEditor();
                     this.saveData();
+                    this.syncEditorDeletion([id]);
                     if (typeof window.updateTrashButton === "function") window.updateTrashButton();
                 };
 
@@ -1617,16 +1690,217 @@ const QuestionBase = {
 
     // --- Session Creator Logic ---
 
-    openSessionCreator() {
+    toggleSessionControls(show) {
+        if (this.el.sessionControls) {
+            this.el.sessionControls.forEach(btn => {
+                btn.style.display = show ? '' : 'none';
+            });
+        }
+    },
+
+    generateSessionText(questions) {
+        return questions.map(q => {
+            let text = `<div class="question-block" data-q-id="${q.id}">`;
+            text += `Question title: ${q.title}\n`;
+            if (q.text) text += `Question context: ${q.text.replace(/<br>/g, "\n")}\n`;
+            
+            if (q.options && q.options.length > 0) {
+                text += `Question options:\n`;
+                q.options.forEach(opt => {
+                    text += `  ${opt.isCorrect ? '*' : ''}${opt.text}\n`;
+                });
+            }
+            
+            if (q.explanation) text += `Question explanation: ${q.explanation}\n`;
+            text += `</div>`;
+            return text;
+        }).join("\n");
+    },
+
+    openSessionCreator(folderId = null, targetQuestionId = null) {
         this.state.sessionCreatorVisible = true;
-        this.el.emptyState.style.display = "none";
+        this.el.emptyState.classList.add("hidden");
         this.el.editor.classList.add("hidden");
         this.el.sessionCreator.classList.remove("hidden");
         
-        // If empty, add one template to start
-        if (!this.el.sessionInput.value.trim()) {
-            this.addSessionQuestionTemplate();
+        // Update Header -> CREATOR
+        this.updateHeaderUI('CREATOR');
+        
+        // Reset state
+        this.state.editingFolderId = folderId;
+        this.state.editingQuestionId = (folderId) ? null : targetQuestionId;
+        
+        if (folderId) {
+             // Folder Mode: Load all questions in folder
+             const folder = this.state.folders.find(f => f.id === folderId);
+             const questions = this.state.questions.filter(q => q.folderId === folderId);
+             
+             if (folder) {
+                  this.el.sessionInput.innerHTML = this.generateSessionText(questions);
+                  if (targetQuestionId) {
+                      setTimeout(() => this.scrollToQuestion(targetQuestionId), 50);
+                  }
+             }
+        } else if (targetQuestionId) {
+             // Standalone Question Mode
+             const q = this.state.questions.find(q => q.id === targetQuestionId);
+             if (q) {
+                 this.el.sessionInput.innerHTML = this.generateSessionText([q]);
+             }
+        } else {
+             // New/Empty Mode
+             if (!this.el.sessionInput.textContent.trim()) {
+                this.addSessionQuestionTemplate();
+             }
         }
+        
+        this.el.sessionInput.focus();
+    },
+
+    saveTextEditorChanges() {
+        const text = this.el.sessionInput.innerText || this.el.sessionInput.textContent;
+        const parsedQuestions = this.parseSessionText(text);
+
+        if (this.state.editingFolderId) {
+            // Update all questions in folder
+            const folderId = this.state.editingFolderId;
+            // 1. Remove old questions for this folder
+            this.state.questions = this.state.questions.filter(q => q.folderId !== folderId);
+            // 2. Add parsed questions with folderId
+            parsedQuestions.forEach(q => {
+                q.folderId = folderId;
+                this.state.questions.push(q);
+            });
+        } else if (this.state.editingQuestionId) {
+            // Update single standalone question
+            const qId = this.state.editingQuestionId;
+            const index = this.state.questions.findIndex(q => q.id === qId);
+            if (index !== -1 && parsedQuestions.length > 0) {
+                // Update properties but preserve certain metadata if needed
+                const updatedQ = parsedQuestions[0];
+                updatedQ.id = qId;
+                updatedQ.folderId = null;
+                this.state.questions[index] = updatedQ;
+            }
+        }
+
+        // Permanent Backend Save
+        this.saveData();
+        this.renderSidebar();
+
+        // Optional: Visual feedback
+        const saveBtn = document.getElementById('saveSessionBtn');
+        if (saveBtn) {
+            const originalHTML = saveBtn.innerHTML;
+            saveBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                   <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            `;
+            setTimeout(() => saveBtn.innerHTML = originalHTML, 1000);
+        }
+    },
+
+    async handlePaste(e) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (const item of items) {
+            if (item.type.indexOf("image") !== -1) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                
+                // Convert to base64
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const base64Data = event.target.result;
+                    const tempName = `img_${Date.now()}.png`;
+                    
+                    try {
+                        const result = await window.Storage.uploadImageToServer(tempName, base64Data);
+                        if (result && result.success) {
+                            // Insert placeholder [img:filename]
+                            this.insertTextAtCursor(`[img:${result.filename}]`);
+                        }
+                    } catch (err) {
+                        console.error("Paste upload failed:", err);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    },
+
+    insertTextAtCursor(text) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+        
+        selection.deleteFromDocument();
+        const range = selection.getRangeAt(0);
+        range.insertNode(document.createTextNode(text));
+        
+        // Move cursor to end of inserted text
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    },
+
+    syncEditorDeletion(qIds = [], folderIds = []) {
+        if (!this.state.sessionCreatorVisible) return;
+
+        // 1. Folder deletion
+        if (this.state.editingFolderId && folderIds.includes(this.state.editingFolderId)) {
+            this.closeSessionCreator();
+            return;
+        }
+
+        // 2. Single question deletion
+        if (this.state.editingQuestionId && qIds.includes(this.state.editingQuestionId)) {
+            this.closeSessionCreator();
+            return;
+        }
+
+        // 3. Question inside currently editing folder deletion
+        if (this.state.editingFolderId) {
+            // Refresh current folder content
+            this.openSessionCreator(this.state.editingFolderId);
+        }
+    },
+
+    scrollToQuestion(id) {
+        if (!id) return;
+        
+        console.log(`[QuestionBase] Attempting to scroll to question: ${id}`);
+        
+        // ULTIMATE CLEAR: Remove highlight from EVERY element in the DOM to be sure
+        document.querySelectorAll('.highlight-yellow, .highlight-yellow-flash').forEach(el => {
+            el.classList.remove('highlight-yellow');
+            el.classList.remove('highlight-yellow-flash');
+        });
+
+        const editor = this.el.sessionInput;
+        if (!editor) return;
+
+        // Reset sidebar selection visual (Sync)
+        this.renderSidebar();
+
+        // Slightly longer timeout to ensure contenteditable has rendered the innerHTML
+        setTimeout(() => {
+            const block = editor.querySelector(`[data-q-id="${id}"]`);
+            if (block) {
+                console.log(`[QuestionBase] ✅ Found block for ${id}, highlighting and scrolling...`);
+                block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                block.classList.add('highlight-yellow');
+                block.classList.add('highlight-yellow-flash');
+            } else {
+                console.warn(`[QuestionBase] ❌ Could NOT find block for question ID: ${id}`);
+                // Attempt global search as fallback
+                const fallback = document.querySelector(`[data-q-id="${id}"]`);
+                if (fallback) {
+                    console.log(`[QuestionBase] Found block via global search for ${id}`);
+                    fallback.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    fallback.classList.add('highlight-yellow');
+                }
+            }
+        }, 200);
     },
 
     closeSessionCreator() {
@@ -1634,8 +1908,11 @@ const QuestionBase = {
         this.el.sessionCreator.classList.add("hidden");
         if (this.activeQuestionId) {
             this.el.editor.classList.remove("hidden");
+            this.toggleSessionControls(false); // Hide controls when editor is open
         } else {
-            this.el.emptyState.style.display = "flex";
+            this.el.emptyState.classList.remove("hidden"); // valid as it's the parent
+            // Re-evaluate what to show inside (empty msg or sessions)
+            this.renderRecentSessions();
         }
     },
 
@@ -1716,10 +1993,12 @@ Question explanation:
                 else if (explIdx !== -1) contextEnd = Math.min(contextEnd, explIdx);
                 
                 let contextText = chunk.substring(contextIdx + "Question context:".length, contextEnd).trim();
-                q.text = contextText; // Use raw text, maybe convert newlines to <br>? 
-                // For now, simple text. The renderer in Dungeon might need HTML. 
-                // Let's wrap in paragraphs or leave as is. User said "text format div", likely plain text input.
-                // Dungeon renderer usually expects HTML in q.text.
+                
+                // Handle Images: Convert [img:filename.png] to <img src="...">
+                contextText = contextText.replace(/\[img:([^\]]+)\]/g, (match, filename) => {
+                    return `<div class="question-image-container"><img src="/api/images/${filename}" class="question-image" alt="Question Image"></div>`;
+                });
+
                 q.text = contextText.replace(/\n/g, "<br>");
             }
             
@@ -1770,7 +2049,7 @@ Question explanation:
     },
 
     async startSession() {
-        const text = this.el.sessionInput.value;
+        const text = this.el.sessionInput.innerText || this.el.sessionInput.textContent;
         if (!text.trim()) {
             alert("Please add some questions first.");
             return;
@@ -1789,6 +2068,46 @@ Question explanation:
             }
         }
         
+        // Check if updating existing session
+        if (this.state.editingFolderId) {
+            // Updating existing folder
+            const folderIndex = this.state.folders.findIndex(f => f.id === this.state.editingFolderId);
+            if (folderIndex !== -1) {
+                // Keep folder ID, maybe update title if we parse it differently? 
+                // For now keep title or update date?
+                // Let's keep it simple: clear old questions from this folder, add new ones
+                const folderId = this.state.editingFolderId;
+                
+                // Remove old questions linked to this folder
+                this.state.questions = this.state.questions.filter(q => q.folderId !== folderId);
+                
+                // Add new questions
+                questions.forEach(q => q.folderId = folderId);
+                this.state.questions.push(...questions);
+                
+                // Update Recent Session Entry if exists
+                const sessionIndex = this.state.recentSessions.findIndex(s => s.folderId === folderId);
+                if (sessionIndex !== -1) {
+                     this.state.recentSessions[sessionIndex].date = new Date().toISOString();
+                     this.state.recentSessions[sessionIndex].count = questions.length;
+                     // Move to top
+                     const s = this.state.recentSessions.splice(sessionIndex, 1)[0];
+                     this.state.recentSessions.unshift(s);
+                     this.saveRecentSessions();
+                }
+                
+                await this.saveData();
+                this.renderRecentSessions();
+                
+                // Open Dungeon
+                if (typeof window.DungeonBase !== 'undefined') {
+                    window.DungeonBase.open(questions);
+                }
+                return;
+            }
+        }
+
+        // New Session Creation
         // Create a new folder for this session
         const folderName = "Session " + new Date().toLocaleString();
         
@@ -1799,7 +2118,6 @@ Question explanation:
             parentId: null
         };
         
-        // Link questions to this folder
         // Link questions to this folder
         questions.forEach(q => q.folderId = newFolder.id);
         
@@ -1842,13 +2160,29 @@ Question explanation:
         if (!this.el.recentSessionsContainer || !this.el.recentSessionsList) return;
         
         const sessions = this.state.recentSessions;
+        const emptyStateContent = this.el.emptyState.querySelector('.empty-state-content');
         
         if (sessions.length === 0) {
-            this.el.recentSessionsContainer.classList.add('hidden');
+            // Show custom empty message for sessions
+            this.el.recentSessionsList.innerHTML = `
+                <div class="sessions-empty-msg" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--muted); text-align: center;">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 16px; opacity: 0.5;">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 1 1-6.219-8.56"></path>
+                  </svg>
+                  <div style="font-size: 1.1em; font-weight: 500; color: var(--text);">No recent sessions created</div>
+                  <div style="margin-top: 8px; font-size: 0.9em; opacity: 0.7;">Click <strong style="color: var(--accent);">+ Create Session</strong> in the header above to start.</div>
+                </div>
+            `;
+            if (emptyStateContent) emptyStateContent.classList.add('hidden');
+            this.el.recentSessionsContainer.classList.remove('hidden');
             return;
         }
         
+        // Has sessions: Render list
+        if (emptyStateContent) emptyStateContent.classList.add('hidden');
         this.el.recentSessionsContainer.classList.remove('hidden');
+        
+        // Sort
         
         // Sort
         const sorted = [...sessions].sort((a, b) => {
@@ -1899,6 +2233,25 @@ Question explanation:
     
     toggleRecentSessionsView() {
         this.state.recentSessionsView = this.state.recentSessionsView === 'grid' ? 'list' : 'grid';
+        this.renderRecentSessions();
+    },
+    
+    openRecentSessionsView() {
+        // Clear active question/session
+        this.activeQuestionId = null;
+        this.state.sessionCreatorVisible = false;
+        
+        // Hide specific views
+        if (this.el.editor) this.el.editor.classList.add("hidden");
+        if (this.el.sessionCreator) this.el.sessionCreator.classList.add("hidden");
+        
+        // Show base empty state container (which holds the recent sessions list)
+        if (this.el.emptyState) this.el.emptyState.classList.remove("hidden");
+        
+        // Update Header
+        this.updateHeaderUI('SESSIONS');
+
+        // Force render recent sessions
         this.renderRecentSessions();
     },
     
@@ -1975,6 +2328,9 @@ Question explanation:
              this.el.editor.classList.add("hidden");
              this.state.activeQuestionId = null;
         }
+
+        // Sync editor
+        this.syncEditorDeletion([], [id]);
     },
 
     renameFolder(id) {
@@ -2051,6 +2407,66 @@ Question explanation:
         }).join("\n\n" + "-".repeat(20) + "\n\n"); // Separator optional but good for reading
     },
 
+    // Unified Header State Management
+    updateHeaderUI(state) {
+        // States: 'HOME', 'SESSIONS', 'EDITOR', 'CREATOR'
+        
+        // Default Defaults
+        let showBack = false;
+        let showRecentBtn = true;
+        let showControls = false;
+        let titleText = "";
+        let isTitleDisabled = true;
+        let titlePlaceholder = "Select a question or create new";
+
+        switch (state) {
+            case 'HOME':
+                showBack = false;
+                showRecentBtn = true;
+                showControls = false;
+                titleText = "";
+                titlePlaceholder = "Select a question or create new";
+                break;
+            case 'SESSIONS':
+                showBack = true;
+                showRecentBtn = false; // Hidden when in sessions view
+                showControls = true;
+                titleText = "Recent Sessions";
+                titlePlaceholder = "";
+                break;
+            case 'EDITOR':
+                showBack = true; // Returns to Home
+                showRecentBtn = true;
+                showControls = false;
+                // Title is handled by editor logic usually, but we ensure controls are off
+                isTitleDisabled = false;
+                titlePlaceholder = "Question Title";
+                break;
+            case 'CREATOR':
+                showBack = true;
+                showRecentBtn = true;
+                showControls = false;
+                titleText = "Create Session";
+                titlePlaceholder = "";
+                break;
+        }
+
+        // Apply
+        if (this.el.backToEmptyStateBtn) this.el.backToEmptyStateBtn.style.display = showBack ? 'flex' : 'none';
+        if (this.el.openRecentSessionsBtn) this.el.openRecentSessionsBtn.style.display = showRecentBtn ? 'flex' : 'none';
+        this.toggleSessionControls(showControls);
+
+        if (state !== 'EDITOR') {
+             // For editor, title is managed specifically with data
+             if (this.el.titleInput) {
+                 this.el.titleInput.value = titleText;
+                 this.el.titleInput.disabled = isTitleDisabled;
+                 this.el.titleInput.placeholder = titlePlaceholder;
+             }
+        }
+    },
+
+    // End of Object
 };
 
 window.QuestionBase = QuestionBase;

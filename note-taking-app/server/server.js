@@ -27,6 +27,10 @@ fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'folders'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'trash'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'settings'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'questions'));
+fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'images'));
+
+// Serve images statically
+app.use('/api/images', express.static(path.join(NOTES_BASE_DIR, 'images')));
 
 // Helper function to get safe file path
 function getSafeFilePath(basePath, filename) {
@@ -782,6 +786,47 @@ app.post('/api/questions', async (req, res) => {
   } catch (error) {
     console.error('Error saving questions:', error);
     res.status(500).json({ error: 'Failed to save questions' });
+  }
+});
+
+// IMAGE UPLOAD ENDPOINT
+app.post('/api/upload', async (req, res) => {
+  try {
+    const { image, name } = req.body; // Expecting base64 string and filename
+    if (!image || !name) {
+      return res.status(400).json({ error: 'Missing image data or name' });
+    }
+
+    // Strip header if present (e.g., "data:image/png;base64,")
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const imagesDir = path.join(NOTES_BASE_DIR, 'images');
+    await fs.ensureDir(imagesDir);
+
+    // Generate unique name if needed to avoid overwriting
+    const ext = path.extname(name) || '.png';
+    const baseName = path.basename(name, ext);
+    let finalName = name;
+    let counter = 1;
+
+    while (await fs.pathExists(path.join(imagesDir, finalName))) {
+      finalName = `${baseName}_${counter++}${ext}`;
+    }
+
+    const filePath = path.join(imagesDir, finalName);
+    await fs.writeFile(filePath, buffer);
+
+    console.log(`[SERVER] Uploaded image: ${finalName}`);
+
+    res.json({ 
+      success: true, 
+      url: `/api/images/${finalName}`,
+      filename: finalName
+    });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
   }
 });
 

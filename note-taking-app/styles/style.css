@@ -3916,7 +3916,7 @@ body.debug-borders div {
 
 .btn {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--borderX);
   color: var(--text);
   padding: 6px 10px;
   border-radius: 8px;

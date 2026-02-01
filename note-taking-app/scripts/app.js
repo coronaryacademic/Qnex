@@ -367,6 +367,14 @@ const Storage = {
     );
     return await Promise.all(promises);
   },
+
+  // SERVER-SIDE UPLOAD (For Questions/Dungeon)
+  async uploadImageToServer(imageName, base64Data) {
+    if (this.useFileSystem) {
+      return await fileSystemService.uploadImage(imageName, base64Data);
+    }
+    throw new Error("File system service not available for server upload");
+  },
 };
 
 // Expose Storage globally for other modules
