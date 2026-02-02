@@ -12,19 +12,33 @@ export default class DungeonBase {
       unsavedChanges: false
     };
     this.labData = {
-      "Blood": [
-          { name: "Hemoglobin (Hb)", normal: "M: 13.5-17.5, F: 12.0-15.5 g/dL" },
-          { name: "White Blood Cells (WBC)", normal: "4.5 - 11.0 k/µL" },
-          { name: "Platelets", normal: "150 - 450 k/µL" },
-          { name: "Hematocrit", normal: "M: 41-50%, F: 36-48%" },
-          { name: "Neutrophils", normal: "40 - 60%" },
-          { name: "Lymphocytes", normal: "20 - 40%" },
-          { name: "Monocytes", normal: "2 - 8%" },
-          { name: "Eosinophils", normal: "1 - 4%" },
-          { name: "Basophils", normal: "0.5 - 1%" },
-          { name: "Reticulocytes", normal: "0.5 - 1.5%" },
-          { name: "Erythrocyte Sedimentation Rate (ESR)", normal: "M: 0-15, F: 0-20 mm/hr" }
-      ],
+        "Blood": [
+            { name: "Hemoglobin (Hb)", normal: "M: 13.5-17.5, F: 12.0-15.5 g/dL" },
+            { name: "Hematocrit (Hct)", normal: "M: 41-50%, F: 36-44%" },
+            { name: "RBC Count", normal: "M: 4.5-5.9, F: 4.1-5.1 million/uL" },
+            { name: "MCV", normal: "80-100 fL" },
+            { name: "MCHC", normal: "32-36 g/dL" },
+            { name: "WBC Count", normal: "4,500-11,000/uL" },
+            { name: "Platelet Count", normal: "150,000-450,000/uL" },
+            { name: "EPO (Erythropoietin)", normal: "4-24 mU/mL" },
+            { name: "Ferritin", normal: "M: 20-250, F: 10-120 ng/mL" },
+            { name: "Serum Iron", normal: "60-170 ug/dL" },
+            { name: "TIBC", normal: "240-450 ug/dL" },
+            { name: "Transferrin Sat.", normal: "20-50%" },
+            { name: "Vitamin B12", normal: "200-900 pg/mL" },
+            { name: "Folate (B9)", normal: "2-20 ng/mL" },
+            { name: "Vitamin B6", normal: "5-50 ug/L" },
+            { name: "Reticulocyte Count", normal: "0.5-1.5% of RBCs" },
+            { name: "Haptoglobin", normal: "30-200 mg/dL" },
+            { name: "LDH", normal: "140-280 U/L" },
+            { name: "Indirect Bilirubin", normal: "0.2-0.8 mg/dL" },
+            { name: "Neutrophils", normal: "40 - 60%" },
+            { name: "Lymphocytes", normal: "20 - 40%" },
+            { name: "Monocytes", normal: "2 - 8%" },
+            { name: "Eosinophils", normal: "1 - 4%" },
+            { name: "Basophils", normal: "0.5 - 1%" },
+            { name: "Erythrocyte Sedimentation Rate (ESR)", normal: "M: 0-15, F: 0-20 mm/hr" }
+        ],
       "Electrolytes": [
           { name: "Sodium (Na+)", normal: "135 - 145 mEq/L" },
           { name: "Potassium (K+)", normal: "3.5 - 5.0 mEq/L" },

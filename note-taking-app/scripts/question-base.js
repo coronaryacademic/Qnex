@@ -2329,13 +2329,16 @@ Question explanation:
         const session = this.state.recentSessions.find(s => s.id === id);
         if (!session) return;
         
-        // If we stored questions in session object, use them
-        // Otherwise try to find by folder
-        
-        let questionsToOpen = session.questions || [];
-        
-        if (!questionsToOpen.length && session.folderId) {
+        // PRIORITIZE MASTER STATE: Load questions from the folderId first
+        // This ensures answers saved to the backend are loaded correctly.
+        let questionsToOpen = [];
+        if (session.folderId) {
              questionsToOpen = this.state.questions.filter(q => q.folderId === session.folderId);
+        }
+        
+        // Fallback to cached session questions if folder search failed
+        if (!questionsToOpen.length) {
+             questionsToOpen = session.questions || [];
         }
         
         if (questionsToOpen.length === 0) {
