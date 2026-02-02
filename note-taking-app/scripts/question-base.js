@@ -600,9 +600,8 @@ const QuestionBase = {
                     this.state.questions = data.questions || [];
                     this.state.folders = data.folders || [];
                 }
-                console.log('[QuestionBase] Questions loaded:', this.state.questions.length, 'Folders:', this.state.folders.length);
-            } catch (e) {
-                console.error("[QuestionBase] Failed to load questions from Storage", e);
+            } catch (error) {
+                console.warn('[QuestionBase] Failed to load questions:', error);
                 this.state.questions = [];
                 this.state.folders = [];
             }

@@ -47,17 +47,22 @@ const Storage = {
   useFileSystem: true, // Set to true to use File System API
 
   async loadNotes() {
-    if (this.isElectron) {
-      if (typeof window.electronAPI.readNotes === "function") {
-        return await window.electronAPI.readNotes();
+    try {
+      if (this.isElectron) {
+        if (typeof window.electronAPI.readNotes === "function") {
+          return await window.electronAPI.readNotes();
+        }
+        console.warn("Electron detected but readNotes missing - falling back");
       }
-      console.warn("Electron detected but readNotes missing - falling back");
-    }
 
-    if (this.useFileSystem) {
-      return await fileSystemService.loadNotes();
-    } else {
-      console.warn("File system not available - no notes loaded");
+      if (this.useFileSystem) {
+        return await fileSystemService.loadNotes();
+      } else {
+        console.warn("File system not available - no notes loaded");
+        return [];
+      }
+    } catch (error) {
+      console.warn("Failed to load notes, using empty array:", error);
       return [];
     }
   },
@@ -86,17 +91,22 @@ const Storage = {
   },
 
   async loadFolders() {
-    if (this.isElectron) {
-      if (typeof window.electronAPI.readFolders === "function") {
-        return await window.electronAPI.readFolders();
+    try {
+      if (this.isElectron) {
+        if (typeof window.electronAPI.readFolders === "function") {
+          return await window.electronAPI.readFolders();
+        }
+        console.warn("Electron detected but readFolders missing - falling back");
       }
-      console.warn("Electron detected but readFolders missing - falling back");
-    }
 
-    if (this.useFileSystem) {
-      return await fileSystemService.loadFolders();
-    } else {
-      console.warn("File system not available - no folders loaded");
+      if (this.useFileSystem) {
+        return await fileSystemService.loadFolders();
+      } else {
+        console.warn("File system not available - no folders loaded");
+        return [];
+      }
+    } catch (error) {
+      console.warn("Failed to load folders, using empty array:", error);
       return [];
     }
   },
@@ -184,28 +194,33 @@ const Storage = {
   },
 
   async loadQuestions() {
-    // Try Electron first
-    if (this.isElectron) {
-      if (typeof window.electronAPI.readQuestions === "function") {
-        return await window.electronAPI.readQuestions();
+    try {
+      // Try Electron first
+      if (this.isElectron) {
+        if (typeof window.electronAPI.readQuestions === "function") {
+          return await window.electronAPI.readQuestions();
+        }
+        console.warn("Electron detected but readQuestions missing - falling back");
       }
-      console.warn("Electron detected but readQuestions missing - falling back");
-    }
 
-    // Try file system service
-    if (this.useFileSystem) {
-      return await fileSystemService.loadQuestions();
-    }
-
-    // Fallback to localStorage
-    const stored = localStorage.getItem("app-questions");
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error("Failed to parse questions:", e);
-        return { questions: [], folders: [] };
+      // Try file system service
+      if (this.useFileSystem) {
+        return await fileSystemService.loadQuestions();
       }
+
+      // Fallback to localStorage
+      const stored = localStorage.getItem("app-questions");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          console.error("Failed to parse questions:", e);
+          return { questions: [], folders: [] };
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to load questions, using empty state:", error);
+      return { questions: [], folders: [] };
     }
     return { questions: [], folders: [] };
   },
@@ -231,12 +246,17 @@ const Storage = {
   },
 
   async loadTrash() {
-    if (this.useFileSystem) {
-      return await fileSystemService.loadTrash();
-    } else if (this.isElectron) {
-      return await window.electronAPI.readTrash();
-    } else {
-      return []; // trash not persisted in browser version
+    try {
+      if (this.useFileSystem) {
+        return await fileSystemService.loadTrash();
+      } else if (this.isElectron && typeof window.electronAPI.readTrash === "function") {
+        return await window.electronAPI.readTrash();
+      } else {
+        return []; // trash not persisted in browser version
+      }
+    } catch (error) {
+      console.warn("Failed to load trash, using empty array:", error);
+      return [];
     }
   },
 
