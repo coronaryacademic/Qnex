@@ -2286,9 +2286,19 @@ export default class DungeonBase {
     document.addEventListener("keydown", (e) => {
       if (this.el.container.classList.contains("hidden")) return;
       
+      const searchWrapper = document.getElementById('dungeonSearchWrapper');
+      const calculator = document.getElementById('dungeonCalculator');
+      const isSearchActive = searchWrapper && searchWrapper.classList.contains('active');
+      const isCalcActive = calculator && !calculator.classList.contains('hidden');
+
       if (e.key === "ArrowRight") this.navNext();
       if (e.key === "ArrowLeft") this.navPrev();
       if (e.key === "Escape") this.close();
+      
+      // Enter to Submit (Prevent if search or calculator active)
+      if (e.key === "Enter" && !isSearchActive && !isCalcActive) {
+          this.handleSubmit();
+      }
     });
   }
 

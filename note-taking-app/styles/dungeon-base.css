@@ -490,10 +490,10 @@
 
 /* Active State always overrides alternating colors */
 .dungeon-q-box.active {
-  border-color: var(--accent);
+  border: 1px solid var(--accent) !important;
   color: var(--accent);
   box-shadow: 0 0 10px var(--accent-transparent);
-  z-index: 2;
+  z-index: 10;
   font-weight: bold;
 }
 
@@ -504,15 +504,15 @@
 }
 
 .dungeon-q-box.correct {
-  color: #ffffff;
-  background: var(--success);
-  border-color: var(--success);
+  color: var(--text);
+  background: rgba(34, 197, 94, 0.2) !important; /* Desaturated Soft Green */
+  border-color: rgba(34, 197, 94, 0.3);
 }
 
 .dungeon-q-box.wrong {
-  color: #ffffff;
-  background: var(--danger);
-  border-color: var(--danger);
+  color: var(--text);
+  background: rgba(239, 68, 68, 0.2) !important; /* Desaturated Soft Red */
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 
