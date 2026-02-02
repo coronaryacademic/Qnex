@@ -117,20 +117,25 @@
   <!-- Connection Status Indicator -->
   <div id="connectionStatus" style="
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 12px 16px;
+        bottom: 9px;
+        right: 628px;
+        padding: 10px 14px;
         background: #fee2e2;
         border: 1px solid #fecaca;
         color: #dc2626;
         border-radius: 8px;
         font-size: 13px;
-        display: none;
         z-index: 9999;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        max-width: 300px;
+        max-width: 320px;
+        transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.3s ease;
+        transform: translateY(100px);
+        opacity: 0;
+        pointer-events: none;
+        cursor: pointer;
+        user-select: none;
       ">
-    <div style="display: flex; align-items: center; gap: 8px">
+    <div style="display: flex; align-items: center; gap: 8px; position: relative;">
       <svg id="statusIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         stroke-width="2">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -1617,17 +1622,52 @@
       // Check if file system server is running
       const serverStatus = await fileSystemService.checkHealth();
 
-      if (!serverStatus) {
-        console.warn("Server not running - starting in offline/limited mode");
-        // Show connection warning but continue loading
-        const statusEl = document.getElementById("connectionStatus");
-        if (statusEl) {
-          statusEl.style.display = "block";
-          document.getElementById("statusIcon").innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>';
-          document.getElementById("connectionStatusText").textContent = "Server offline - changes won't persist to disk";
+      const statusEl = document.getElementById("connectionStatus");
+      const statusIcon = document.getElementById("statusIcon");
+      const statusText = document.getElementById("connectionStatusText");
+
+      if (statusEl) {
+        // Prepare state
+        if (!serverStatus) {
+          console.warn("Server not running - starting in offline/limited mode");
+          statusEl.style.background = "#fee2e2";
+          statusEl.style.borderColor = "#fecaca";
+          statusEl.style.color = "#dc2626";
+          statusIcon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>';
+          statusText.textContent = "Offline Mode - Server disconnected";
+        } else {
+          console.log("File system service connected successfully");
+          statusEl.style.background = "#d1fae5";
+          statusEl.style.borderColor = "#a7f3d0";
+          statusEl.style.color = "#065f46";
+          statusIcon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22,4 12,14.01 9,11.01"></polyline>';
+          statusText.textContent = "Synced - Services and notes connected";
         }
-      } else {
-        console.log("File system service connected successfully");
+
+        // Show smoothly
+        setTimeout(() => {
+          statusEl.style.opacity = "1";
+          statusEl.style.transform = "translateY(0)";
+          statusEl.style.pointerEvents = "auto";
+        }, 500);
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          if (statusEl.style.opacity !== "0") {
+             statusEl.style.transform = "translateY(100px)";
+             statusEl.style.opacity = "0";
+             statusEl.style.pointerEvents = "none";
+          }
+        }, 3500); // 3 seconds visible + 500ms delay
+      }
+
+      // Initialize click-to-close for status dialog
+      if (statusEl) {
+        statusEl.onclick = () => {
+          statusEl.style.transform = "translateY(100px)";
+          statusEl.style.opacity = "0";
+          statusEl.style.pointerEvents = "none";
+        };
       }
 
       // Setup backup button

@@ -1090,22 +1090,37 @@ const QuestionBase = {
         const header = folderEl.querySelector(".q-folder-header");
         const content = folderEl.querySelector(".q-folder-content");
 
-        // Click Handling: Distinguish between Toggle (Chevron) and Edit (Title/Header)
+        // Click Handling: Single Click (Editor) vs Double Click (Toggle)
         header.onclick = (e) => {
             e.stopPropagation();
-            // Check if clicked element is the chevron or within it
-            if (e.target.closest('svg') || e.target.closest('.section-chevron')) {
-                 if (isExpanded) {
-                    this.state.expandedFolders.delete(folder.id);
-                } else {
-                    this.state.expandedFolders.add(folder.id);
-                }
-                this.saveExpandedFolders();
-                this.renderSidebar();
-            } else {
-                // Clicked title or background -> Open Session Editor
-                this.openSessionCreator(folder.id);
+            
+            // Increment click count or use timer to distinguish
+            // We use e.detail to see how many clicks happened in quick succession
+            if (e.detail === 1) {
+                // Single click - open session editor after a short delay
+                // This delay allows a double click to cancel this action
+                header._clickTimer = setTimeout(() => {
+                    this.openSessionCreator(folder.id);
+                }, 200);
             }
+        };
+
+        header.ondblclick = (e) => {
+            e.stopPropagation();
+            // Cancel the single click action
+            if (header._clickTimer) {
+                clearTimeout(header._clickTimer);
+                header._clickTimer = null;
+            }
+
+            // Toggle Expand/Collapse
+            if (isExpanded) {
+                this.state.expandedFolders.delete(folder.id);
+            } else {
+                this.state.expandedFolders.add(folder.id);
+            }
+            this.saveExpandedFolders();
+            this.renderSidebar();
         };
 
         if (isExpanded) {
