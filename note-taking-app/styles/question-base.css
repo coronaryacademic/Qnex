@@ -603,6 +603,10 @@ body.theme-classic #addOptionBtn {
   display: block;
 }
 
+.question-block {
+  transition: background-color 0.8s ease, color 0.5s ease;
+}
+
 .highlight-yellow {
   background-color: var(--nav-highlight, rgba(234, 179, 8, 0.4)) !important;
   border-radius: 2px;

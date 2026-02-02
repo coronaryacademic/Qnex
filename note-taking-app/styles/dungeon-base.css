@@ -464,7 +464,7 @@
 }
 
 .dungeon-q-box::before {
-  content: "•"; /* Bullet point */
+  content: "\2022"; /* Bullet point */
   position: absolute;
   left: 8px; /* Closer to edge */
   top: 50%;

@@ -17,6 +17,7 @@ const QuestionBase = {
         recentSessions: [],
         recentSessionsView: 'grid', // 'grid' or 'list'
         recentSessionsSort: 'date', // 'date' or 'name'
+        deletedSessionBlocks: [], // Stack for restoring deleted questions in session creator
     },
 
     el: {
@@ -144,6 +145,7 @@ const QuestionBase = {
         this.el.createSessionBtn = document.getElementById("createSessionBtn");
         this.el.addSessionQBtn = document.getElementById("addSessionQBtn");
         this.el.clearSessionBtn = document.getElementById("clearSessionBtn");
+        this.el.restoreSessionQBtn = document.getElementById("restoreSessionQBtn");
         this.el.cancelSessionBtn = document.getElementById("cancelSessionBtn");
         this.el.startSessionBtn = document.getElementById("startSessionBtn");
         
@@ -443,9 +445,12 @@ const QuestionBase = {
         }
         if (this.el.clearSessionBtn) {
             this.el.clearSessionBtn.addEventListener("click", () => {
-                if (confirm("Clear all session text?")) {
-                    this.el.sessionInput.value = "";
-                }
+                this.removeLastSessionQuestion();
+            });
+        }
+        if (this.el.restoreSessionQBtn) {
+            this.el.restoreSessionQBtn.addEventListener("click", () => {
+                this.restoreLastSessionQuestion();
             });
         }
         if (this.el.startSessionBtn) {
@@ -1702,16 +1707,18 @@ const QuestionBase = {
         return questions.map(q => {
             let text = `<div class="question-block" data-q-id="${q.id}">`;
             text += `Question title: ${q.title}\n`;
-            if (q.text) text += `Question context: ${q.text.replace(/<br>/g, "\n")}\n`;
+            text += `Question context: ${q.text ? q.text.replace(/<br>/g, "\n") : ""}\n`;
             
-            if (q.options && q.options.length > 0) {
-                text += `Question options:\n`;
-                q.options.forEach(opt => {
-                    text += `  ${opt.isCorrect ? '*' : ''}${opt.text}\n`;
-                });
-            }
+            text += `Question options:\n`;
+            const options = q.options || [];
+            // Ensure at least 4 placeholders if none exist? Or just map what exists.
+            // Let's map what exists and ensure they have letters.
+            options.forEach((opt, idx) => {
+                const letter = String.fromCharCode(65 + idx); // A, B, C, D...
+                text += `  ${opt.isCorrect ? '*' : ''}(${letter}) ${opt.text}\n`;
+            });
             
-            if (q.explanation) text += `Question explanation: ${q.explanation}\n`;
+            text += `Question explanation: ${q.explanation || ""}\n`;
             text += `</div>`;
             return text;
         }).join("\n");
@@ -1890,6 +1897,12 @@ const QuestionBase = {
                 block.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 block.classList.add('highlight-yellow');
                 block.classList.add('highlight-yellow-flash');
+
+                // Make highlight temporary
+                setTimeout(() => {
+                    block.classList.remove('highlight-yellow');
+                    block.classList.remove('highlight-yellow-flash');
+                }, 3000);
             } else {
                 console.warn(`[QuestionBase] ❌ Could NOT find block for question ID: ${id}`);
                 // Attempt global search as fallback
@@ -1917,22 +1930,61 @@ const QuestionBase = {
     },
 
     addSessionQuestionTemplate() {
-const template = `Question title: 
+        const template = `Question title: Untitled Question
 Question context: 
 Question options:
   (A) 
-  *(B) 
+  (B) 
   (C) 
   (D) 
 Question explanation: 
 
 `;
         const input = this.el.sessionInput;
-        const currentVal = input.value;
+        const currentVal = input.innerText || "";
         // Add newline if needed
-        const prefix = (currentVal && !currentVal.endsWith("\n\n")) ? "\n\n" : "";
+        const prefix = (currentVal.trim() && !currentVal.endsWith("\n\n")) ? "\n\n" : "";
         
-        input.value += prefix + template;
+        input.innerText += prefix + template;
+        
+        // Scroll to bottom
+        input.scrollTop = input.scrollHeight;
+        input.focus();
+    },
+
+    removeLastSessionQuestion() {
+        const input = this.el.sessionInput;
+        const text = input.innerText;
+        const lastIdx = text.lastIndexOf("Question title:");
+        
+        if (lastIdx !== -1) {
+            // Save the block to history before removing
+            const removedBlock = text.substring(lastIdx);
+            this.state.deletedSessionBlocks.push(removedBlock);
+
+            // Remove everything from the last "Question title:" onwards
+            input.innerText = text.substring(0, lastIdx).trimEnd() + "\n\n";
+            input.scrollTop = input.scrollHeight;
+        } else {
+            // If none found, just clear all (but save if not empty)
+            if (text.trim()) {
+                this.state.deletedSessionBlocks.push(text);
+            }
+            input.innerText = "";
+        }
+    },
+
+    restoreLastSessionQuestion() {
+        if (this.state.deletedSessionBlocks.length === 0) return;
+        
+        const lastBlock = this.state.deletedSessionBlocks.pop();
+        const input = this.el.sessionInput;
+        const currentVal = input.innerText || "";
+        
+        // Add newline if needed
+        const prefix = (currentVal.trim() && !currentVal.endsWith("\n\n")) ? "\n\n" : "";
+        
+        input.innerText = currentVal.trimEnd() + prefix + lastBlock;
         
         // Scroll to bottom
         input.scrollTop = input.scrollHeight;
