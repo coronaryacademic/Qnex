@@ -490,7 +490,7 @@
 
 /* Active State always overrides alternating colors */
 .dungeon-q-box.active {
-  border: 1px solid var(--accent) !important;
+  border-right: 1px solid var(--accent) !important;
   color: var(--accent);
   box-shadow: 0 0 10px var(--accent-transparent);
   z-index: 10;
