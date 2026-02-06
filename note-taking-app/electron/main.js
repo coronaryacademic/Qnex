@@ -26,7 +26,7 @@ const SERVER_PORT = 3002; // Use different port to avoid conflicts
 const NOTES_BASE_DIR = 'D:\\MyNotes';
 const UNCATEGORIZED_DIR_NAME = 'Uncategorized';
 const META_FILE = '.folder-meta.json';
-const SYSTEM_DIRS = ['trash', 'settings', 'backups', '.git', 'node_modules', 'tasks', 'questions'];
+const SYSTEM_DIRS = ['trash', 'settings', 'backups', '.git', 'node_modules', 'tasks', 'questions', 'notes', 'folders', 'images'];
 
 // Ensure base directory exists
 fs.ensureDirSync(NOTES_BASE_DIR);
@@ -183,90 +183,7 @@ function createServer() {
   expressApp.use(express.json({ limit: '50mb' }));
   expressApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  // --- MIGRATION LOGIC ---
-  async function performMigration() {
-    const oldNotesDir = path.join(NOTES_BASE_DIR, 'notes');
-    const oldFoldersDir = path.join(NOTES_BASE_DIR, 'folders');
-    const uncategorizedDir = path.join(NOTES_BASE_DIR, UNCATEGORIZED_DIR_NAME);
-
-    const hasOldNotes = await fs.pathExists(oldNotesDir);
-    const hasOldFolders = await fs.pathExists(oldFoldersDir);
-
-    if (!hasOldNotes && !hasOldFolders) return;
-
-    log('[MIGRATION] converting flat file structure to physical folders...');
-
-    // 1. Uncategorized dir
-    await fs.ensureDir(uncategorizedDir);
-
-    // 2. Load old folders to build tree
-    let foldersMap = new Map();
-    if (hasOldFolders) {
-      const files = await fs.readdir(oldFoldersDir);
-      for (const file of files) {
-        if (file.endsWith('.json')) {
-          try {
-            const data = await fs.readJson(path.join(oldFoldersDir, file));
-            foldersMap.set(data.id, data);
-          } catch (e) { }
-        }
-      }
-    }
-
-    // 3. Create physical folders
-    const getFolderPath = (folderId) => {
-      const parts = [];
-      let currentId = folderId;
-      const seen = new Set();
-      while (currentId && foldersMap.has(currentId) && !seen.has(currentId)) {
-        seen.add(currentId);
-        const f = foldersMap.get(currentId);
-        parts.unshift(sanitizeFilename(f.name));
-        currentId = f.parentId;
-      }
-      return path.join(NOTES_BASE_DIR, ...parts);
-    };
-
-    for (const [id, folder] of foldersMap) {
-      const dirPath = getFolderPath(id);
-      await fs.ensureDir(dirPath);
-      await fs.writeJson(path.join(dirPath, META_FILE), {
-        id: folder.id, icon: folder.icon, color: folder.color, createdAt: folder.createdAt
-      }, { spaces: 2 });
-      log(`[MIGRATION] Created folder: ${dirPath}`);
-    }
-
-    // 4. Move notes
-    if (hasOldNotes) {
-      const noteFiles = await fs.readdir(oldNotesDir);
-      for (const file of noteFiles) {
-        if (!file.endsWith('.md')) continue;
-        const oldPath = path.join(oldNotesDir, file);
-        try {
-          const content = await fs.readFile(oldPath, 'utf8');
-          const parsed = matter(content);
-          const folderId = parsed.data.folderId;
-
-          let targetDir = uncategorizedDir;
-          if (folderId && foldersMap.has(folderId)) {
-            targetDir = getFolderPath(folderId);
-          }
-          await fs.copy(oldPath, path.join(targetDir, file));
-        } catch (e) {
-          console.error(`[MIGRATION] Failed note: ${file}`, e);
-          await fs.copy(oldPath, path.join(uncategorizedDir, file)).catch(() => { });
-        }
-      }
-    }
-
-    // 5. Cleanup
-    if (hasOldNotes) await fs.rename(oldNotesDir, path.join(NOTES_BASE_DIR, 'notes_old_backup'));
-    if (hasOldFolders) await fs.rename(oldFoldersDir, path.join(NOTES_BASE_DIR, 'folders_old_backup'));
-
-    log('[MIGRATION] Complete. Backups created.');
-  }
-
-  performMigration().catch(e => console.error(e));
+  // --- MIGRATION LOGIC REMOVED ---
 
   // --- ENDPOINTS ---
 
@@ -512,7 +429,7 @@ function createServer() {
     res.json({ success: true });
   });
 
-  expressApp.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'Physical FS Server v2' }));
+  expressApp.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'Physical FS Server v3.0 AI mode integration' }));
 
   return expressApp;
 }
@@ -526,7 +443,7 @@ function startServer() {
     server = expressApp.listen(SERVER_PORT, () => {
       log(`Embedded server running on http://localhost:${SERVER_PORT}`);
       log(`Base directory: ${NOTES_BASE_DIR}`);
-      log(`VERSION: Physical Folders v2.0`);
+      log(`VERSION: v3.0 AI mode integration`);
     });
 
     server.on('error', (err) => {

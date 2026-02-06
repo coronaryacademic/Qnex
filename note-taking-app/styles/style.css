@@ -745,6 +745,12 @@ textarea {
   /* Explicit value for smooth animation */
   overflow-y: auto;
   transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-section-content::-webkit-scrollbar {
+  display: none;
 }
 
 .section-empty-text {

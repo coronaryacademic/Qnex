@@ -23,16 +23,24 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const NOTES_BASE_DIR = 'D:\\MyNotes';
 
 // Ensure base directory exists
-fs.ensureDirSync(NOTES_BASE_DIR);
-fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'notes'));
-fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'folders'));
+// system folders to ensure
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'trash'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'settings'));
 fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'questions'));
-fs.ensureDirSync(path.join(NOTES_BASE_DIR, 'images'));
+// notes, folders, images will be created on demand if needed, but not forced here
 
 // Serve images statically
 app.use('/api/images', express.static(path.join(NOTES_BASE_DIR, 'images')));
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    version: '3.0 AI mode integration',
+    storage: NOTES_BASE_DIR
+  });
+});
 
 // Helper function to get safe file path
 function getSafeFilePath(basePath, filename) {
@@ -874,12 +882,18 @@ app.post('/api/upload', async (req, res) => {
 // Start server
 const serverInstance = app.listen(PORT, () => {
   console.log('==================================================');
-  console.log(`[${new Date().toLocaleTimeString()}] NOTES SERVER UPDATED (v1.1)`);
+  console.log(`[${new Date().toLocaleTimeString()}] NOTES SERVER UPDATED (v3.0 AI mode integration)`);
   console.log(`Running on http://localhost:${PORT}`);
   console.log(`Storage: ${NOTES_BASE_DIR}`);
+  if (process.env.OPENROUTER_API_KEY) {
+      console.log(`[OK] AI PROXY CONNECTED (Key: ${process.env.OPENROUTER_API_KEY.substring(0, 8)}...)`);
+  } else {
+      console.warn(`[WARNING] AI PROXY DISABLED (OPENROUTER_API_KEY missing in .env)`);
+  }
   console.log('==================================================');
   console.log('Available endpoints:');
   console.log('  GET  /api/health - Health check');
+  console.log('  POST /api/ai/chat - AI Chat Proxy (OpenRouter)');
   console.log('  GET  /api/notes - Get all notes (MD supported)');
   console.log('  POST /api/notes/:noteId - Save a note (as MD)');
   console.log('  DELETE /api/notes/:noteId - Delete a note');

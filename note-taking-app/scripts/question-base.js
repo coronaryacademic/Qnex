@@ -18,6 +18,7 @@ const QuestionBase = {
         recentSessionsView: 'grid', // 'grid' or 'list'
         recentSessionsSort: 'date', // 'date' or 'name'
         deletedSessionBlocks: [], // Stack for restoring deleted questions in session creator
+        aiMode: false,
     },
 
     el: {
@@ -148,6 +149,10 @@ const QuestionBase = {
         this.el.restoreSessionQBtn = document.getElementById("restoreSessionQBtn");
         this.el.cancelSessionBtn = document.getElementById("cancelSessionBtn");
         this.el.startSessionBtn = document.getElementById("startSessionBtn");
+        this.el.toggleAiModeBtn = document.getElementById("toggleAiModeBtn");
+        this.el.fillAiBtn = document.getElementById("fillAiBtn");
+        this.el.viewAiPromptBtn = document.getElementById("viewAiPromptBtn");
+        this.el.aiPromptModal = document.getElementById("aiPromptModal");
         
         // Recent Sessions Elements
         this.el.recentSessionsContainer = document.getElementById("recentSessionsContainer");
@@ -300,9 +305,25 @@ const QuestionBase = {
                     this.createNewQuestion();
                 }
             });
-            // Add tooltip about shift-click
-            this.el.newBtn.title = "New Question (Shift+Click for New Folder)";
+        this.el.newBtn.title = "New Question (Shift+Click for New Folder)";
         }
+
+        if (this.el.toggleAiModeBtn) {
+            this.el.toggleAiModeBtn.onclick = () => this.toggleAiMode();
+        }
+        if (this.el.fillAiBtn) {
+            this.el.fillAiBtn.onclick = () => this.fillWithAI();
+        }
+        if (this.el.viewAiPromptBtn) {
+            this.el.viewAiPromptBtn.onclick = () => this.viewAiPrompt();
+        }
+        
+        // Modal close listeners
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.onclick = () => {
+                if (this.el.aiPromptModal) this.el.aiPromptModal.style.display = 'none';
+            };
+        });
 
         if (this.el.saveBtn) this.el.saveBtn.addEventListener("click", () => this.saveCurrentQuestion());
 
@@ -2535,12 +2556,168 @@ Question explanation:
         }
     },
 
-    // End of Object
+    toggleAiMode() {
+        this.state.aiMode = !this.state.aiMode;
+        
+        // Update Buttons
+        if (this.el.toggleAiModeBtn) {
+            this.el.toggleAiModeBtn.classList.toggle('active', this.state.aiMode);
+        }
+        if (this.el.sessionCreator) {
+            this.el.sessionCreator.classList.toggle('ai-mode', this.state.aiMode);
+        }
+        if (this.el.fillAiBtn) {
+            this.el.fillAiBtn.style.display = this.state.aiMode ? 'flex' : 'none';
+        }
+        if (this.el.viewAiPromptBtn) {
+            this.el.viewAiPromptBtn.style.display = this.state.aiMode ? 'flex' : 'none';
+        }
+
+        if (this.state.aiMode) {
+            // Inject user's specific hard-coded prompt template
+            const currentText = this.el.sessionInput.innerText.trim();
+            if (!currentText || currentText.includes("Click '+ Add Question'") || currentText === "Untitled Question") {
+                this.el.sessionInput.innerText = `Question title: 
+Question context: 
+Question options:
+(A) 
+(B) 
+(C) 
+(D) 
+Question explanation:`;
+            }
+            
+            // Focus and interactivity fix
+            if (this.el.sessionInput) {
+                this.el.sessionInput.focus();
+                this.el.sessionInput.style.pointerEvents = "auto";
+                this.el.sessionInput.style.zIndex = "10";
+            }
+        }
+    },
+
+    viewAiPrompt() {
+        if (!this.el.aiPromptModal) return;
+        const promptArea = document.getElementById("promptTextArea");
+        if (promptArea) {
+            promptArea.innerText = this.getSystemPrompt();
+        }
+        this.el.aiPromptModal.style.display = 'flex';
+    },
+
+    getSystemPrompt() {
+        return `You are an MCQ generator for a medical education app. Output ONLY questions in the exact template format shown below. Do not add commentary, headings, explanations outside the template, or extra text. Do not use markdown. Do not number questions unless instructed. Follow the structure exactly and keep spacing identical.
+
+Each question must test high-yield medical knowledge suitable for USMLE Step 1 or Step 2 CK level. Focus on mechanism, pathophysiology, diagnosis, and management. Avoid trivial recall. Use realistic clinical vignettes.
+
+CRITICAL REQUIREMENTS:
+1. The "Question context" field MUST end with a clear question (lead-in question). NEVER end it with a period.
+2. You MUST mark the correct answer with an asterisk (*) placed IMMEDIATELY BEFORE the option label (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK.
+
+Formatting rules are strict:
+Use exactly these field labels: Question title, Question context, Question options, Question explanation.
+The "Question context" MUST contain the clinical vignette AND the lead-in question.
+Provide exactly four options labeled (A), (B), (C), (D).
+Mark ONLY ONE correct answer with an asterisk like *(B).
+Randomize which letter is correct.
+The explanation must justify why the correct option is correct and briefly explain why the others are wrong.
+No extra blank lines inside a question.
+Separate multiple questions with one blank line only.
+
+Template to follow exactly:
+Question title: <brief title>
+Question context: <clinical vignette ending with a ? lead-in question>
+Question options:
+(A) <option>
+(B) <option>
+(C) <option>
+(D) <option>
+Question explanation:
+<explanation>
+
+Example of correct formatting:
+
+Question title: Epigastric Pain
+Question context: A 45-year-old man presents with burning epigastric pain that is relieved by meals. He has been taking ibuprofen for chronic back pain. Which of the following is the most likely diagnosis?
+Question options:
+(A) Acute pancreatitis
+(B) Cholecystitis
+*(C) Duodenal ulcer
+(D) GERD
+Question explanation:
+Duodenal ulcers often present with pain that improves with food, whereas gastric ulcers worsen with food. Ibuprofen (NSAID) use is a major risk factor. Option (A) presents with radiating back pain. Option (B) has RUQ pain. Option (D) has retrosternal burning.`;
+    },
+
+    showAiHint() {
+        console.log("[QuestionBase] AI Mode Active: Follow the template to generate high-yield medical MCQs.");
+    },
+
+    async fillWithAI() {
+        if (!this.state.aiMode) return;
+        
+        const text = this.el.sessionInput.innerText;
+        // Check if user actually provided some input
+        const hasContent = text.replace(/Question (title|context|options|explanation):/g, "").trim().length > 5;
+        
+        if (!hasContent) {
+            alert("Please provide at least a title or some context for the AI to generate the question.");
+            return;
+        }
+
+        // Show loading state
+        if (this.el.toggleAiModeBtn) this.el.toggleAiModeBtn.classList.add('loading');
+        const overlay = document.getElementById('aiLoadingOverlay');
+        if (overlay) overlay.classList.remove('hidden');
+        
+        try {
+            const systemPrompt = this.getSystemPrompt();
+            const userPrompt = `Fill this frame:\n${text}`;
+            
+            const endpoints = ['http://localhost:3001/api/ai/chat', 'http://127.0.0.1:3001/api/ai/chat'];
+            let lastError = null;
+
+            for (const url of endpoints) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            max_tokens: 1500
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.choices && data.choices[0] && data.choices[0].message) {
+                            this.el.sessionInput.innerText = data.choices[0].message.content;
+                            return; 
+                        }
+                    }
+                } catch (e) {
+                    lastError = e;
+                }
+            }
+
+            if (lastError) throw lastError;
+
+        } catch (error) {
+            console.error("[QuestionBase] AI Fill failed:", error);
+            alert("AI generation failed. Please ensure your local server is running on port 3001.");
+        } finally {
+            if (this.el.toggleAiModeBtn) this.el.toggleAiModeBtn.classList.remove('loading');
+            if (overlay) overlay.classList.add('hidden');
+        }
+    },
+
+    // ... existing methods ...
 };
 
 window.QuestionBase = QuestionBase;
 document.addEventListener("DOMContentLoaded", () => {
-    // Check if we are on a page where we should init (index.html usually)
     if (document.getElementById("questionBase")) {
         QuestionBase.init();
     }
