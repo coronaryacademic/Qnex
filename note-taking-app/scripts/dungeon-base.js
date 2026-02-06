@@ -3034,6 +3034,13 @@ export default class DungeonBase {
           q.revealed = false;
       }
 
+      // Sync with global stats
+      fetch('http://localhost:3001/api/stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isCorrect })
+      }).catch(err => console.error("Failed to sync stats:", err));
+
       this.updateSaveStatus('unsaved');
       this.saveQuestionsToBackend();
       this.stopTimer();

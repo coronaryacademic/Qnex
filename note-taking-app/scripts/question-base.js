@@ -2605,14 +2605,52 @@ Question explanation:`;
         this.el.aiPromptModal.style.display = 'flex';
     },
 
-    getSystemPrompt() {
+    getSystemPrompt(learningData = null) {
+        let statsPrompt = "";
+        let examplesPrompt = "";
+
+        if (learningData) {
+            const { stats, examples } = learningData;
+            
+            // 1. Adaptive Difficulty based on stats
+            const successRate = stats.total > 0 ? (stats.correct / stats.total) * 100 : 50;
+            if (successRate > 80 && stats.total > 10) {
+                statsPrompt = "\nUSER PERFORMANCE: EXCELLENT. Generate challenging 3rd-order reasoning questions (Step 2 CK style) requiring multi-step diagnosis and management. Include subtle distractors.";
+                console.log("%c[AI Learning] Performance: EXCELLENT (>80%). Difficulty: 3rd-Order Reasoning (Hard)", "color: #10b981; font-weight: bold;");
+            } else if (successRate < 40 && stats.total > 5) {
+                statsPrompt = "\nUSER PERFORMANCE: STRUGGLING. Focus on high-yield fundamental concepts and clear clinical presentations to help build core knowledge.";
+                console.log("%c[AI Learning] Performance: STRUGGLING (<40%). Difficulty: Fundamentals (Basic)", "color: #f59e0b; font-weight: bold;");
+            } else {
+                statsPrompt = "\nUSER PERFORMANCE: STEADY. Maintain standard USMLE Step 1/2 difficulty with high-yield clinical vignettes.";
+                console.log("%c[AI Learning] Performance: STEADY. Difficulty: Standard", "color: #6366f1; font-weight: bold;");
+            }
+
+            // 2. Few-Shot Learning from user's own questions
+            if (examples && examples.length > 0) {
+                console.log(`%c[AI Learning] Style Mimicry: Loaded ${examples.length} your saved questions as examples.`, "color: #6366f1;");
+                examplesPrompt = "\nGOLD STANDARD EXAMPLES (Follow this user's specific medical focus and writing style):\n\n";
+                examples.forEach(ex => {
+                    examplesPrompt += `Question title: ${ex.title || "Untitled"}\n`;
+                    examplesPrompt += `Question context: ${ex.text || ""}\n`;
+                    examplesPrompt += `Question options:\n`;
+                    (ex.options || []).forEach((opt, idx) => {
+                        const letter = String.fromCharCode(65 + idx);
+                        examplesPrompt += `${opt.isCorrect ? '*' : ''}(${letter}) ${opt.text}\n`;
+                    });
+                    examplesPrompt += `Question explanation:\n${ex.explanation || ""}\n\n`;
+                });
+            }
+        }
+
         return `You are an MCQ generator for a medical education app. Output ONLY questions in the exact template format shown below. Do not add commentary, headings, explanations outside the template, or extra text. Do not use markdown. Do not number questions unless instructed. Follow the structure exactly and keep spacing identical.
 
 Each question must test high-yield medical knowledge suitable for USMLE Step 1 or Step 2 CK level. Focus on mechanism, pathophysiology, diagnosis, and management. Avoid trivial recall. Use realistic clinical vignettes.
+${statsPrompt}
 
 CRITICAL REQUIREMENTS:
 1. The "Question context" field MUST end with a clear question (lead-in question). NEVER end it with a period.
 2. You MUST mark the correct answer with an asterisk (*) placed IMMEDIATELY BEFORE the option label (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK.
+${examplesPrompt}
 
 Formatting rules are strict:
 Use exactly these field labels: Question title, Question context, Question options, Question explanation.
@@ -2635,7 +2673,7 @@ Question options:
 Question explanation:
 <explanation>
 
-Example of correct formatting:
+Example of correct formatting (Use this as the fallback formatting guide):
 
 Question title: Epigastric Pain
 Question context: A 45-year-old man presents with burning epigastric pain that is relieved by meals. He has been taking ibuprofen for chronic back pain. Which of the following is the most likely diagnosis?
@@ -2670,7 +2708,17 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
         if (overlay) overlay.classList.remove('hidden');
         
         try {
-            const systemPrompt = this.getSystemPrompt();
+            // NEW: Fetch Learning Data (Stats + Examples)
+            let learningData = null;
+            try {
+                const res = await fetch('http://localhost:3001/api/ai/learning-data');
+                if (res.ok) {
+                    learningData = await res.json();
+                    console.log("[AI Learning] Data retrieved successfully:", learningData);
+                }
+            } catch (e) { console.warn("Failed to fetch learning data, proceeding with defaults."); }
+
+            const systemPrompt = this.getSystemPrompt(learningData);
             const userPrompt = `Fill this frame:\n${text}`;
             
             const endpoints = ['http://localhost:3001/api/ai/chat', 'http://127.0.0.1:3001/api/ai/chat'];
