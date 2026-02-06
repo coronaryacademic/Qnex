@@ -4,6 +4,8 @@ const fs = require('fs-extra');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const matter = require('gray-matter');
+const axios = require('axios');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = 3001;
@@ -786,6 +788,43 @@ app.post('/api/questions', async (req, res) => {
   } catch (error) {
     console.error('Error saving questions:', error);
     res.status(500).json({ error: 'Failed to save questions' });
+  }
+});
+
+// AI CHAT ENDPOINT (OpenRouter Proxy)
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const { messages, max_tokens = 200 } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid messages format' });
+    }
+
+    const API_KEY = process.env.OPENROUTER_API_KEY;
+    if (!API_KEY) {
+      return res.status(500).json({ error: 'AI API key not configured' });
+    }
+
+    const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+      model: 'arcee-ai/trinity-large-preview:free',
+      messages: messages,
+      max_tokens: max_tokens
+    }, {
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+        "HTTP-Referer": "http://localhost:3001",
+        "X-Title": "Notes App Local"
+      }
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('AI Proxy Error:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      error: 'Failed to get response from AI',
+      details: error.response?.data || error.message
+    });
   }
 });
 

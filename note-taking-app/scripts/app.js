@@ -395,6 +395,13 @@ const Storage = {
     }
     throw new Error("File system service not available for server upload");
   },
+
+  async chatWithAI(messages, maxTokens = 200) {
+    if (this.useFileSystem) {
+      return await fileSystemService.chatWithAI(messages, maxTokens);
+    }
+    throw new Error("File system service not available for AI chat");
+  },
 };
 
 // Expose Storage globally for other modules

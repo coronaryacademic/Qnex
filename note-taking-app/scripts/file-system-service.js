@@ -424,6 +424,23 @@ class FileSystemService {
       throw error;
     }
   }
+
+  // AI OPERATIONS
+  async chatWithAI(messages, maxTokens = 200) {
+    try {
+      const response = await this.makeRequest("/ai/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          messages: messages,
+          max_tokens: maxTokens
+        }),
+      });
+      return response;
+    } catch (error) {
+      console.error("AI Chat Error:", error);
+      throw error;
+    }
+  }
 }
 
 // Create and export a singleton instance
