@@ -16,24 +16,24 @@ Else
     WScript.Quit
 End If
 
-' Verification Loop for AI Learning Engine
+' Verification Loop for AI Learning Engine - DISABLED FOR FASTER LAUNCH
 ' This provides a "Premium" confirmation that the intelligence loop is connected
-Set xmlHttp = CreateObject("MSXML2.XMLHTTP")
-On Error Resume Next
-ready = False
-For i = 1 To 15
-    WScript.Sleep 1000 ' Wait 1 second
-    xmlHttp.Open "GET", "http://localhost:3001/api/ai/learning-data", False
-    xmlHttp.Send
-    If xmlHttp.Status = 200 Then
-        ready = True
-        Exit For
-    End If
-Next
-
-If ready Then
-    MsgBox "Intelligence Loop Connected!" & vbCrLf & "AI Learning Engine: ONLINE" & vbCrLf & "Adaptive Difficulty: ACTIVE", vbInformation, "AI Evolution"
-End If
+' Set xmlHttp = CreateObject("MSXML2.XMLHTTP")
+' On Error Resume Next
+' ready = False
+' For i = 1 To 15
+'     WScript.Sleep 1000 ' Wait 1 second
+'     xmlHttp.Open "GET", "http://localhost:3001/api/ai/learning-data", False
+'     xmlHttp.Send
+'     If xmlHttp.Status = 200 Then
+'         ready = True
+'         Exit For
+'     End If
+' Next
+' 
+' If ready Then
+'     MsgBox "Intelligence Loop Connected!" & vbCrLf & "AI Learning Engine: ONLINE" & vbCrLf & "Adaptive Difficulty: ACTIVE", vbInformation, "AI Evolution"
+' End If
 
 Set fso = Nothing
 Set WshShell = Nothing 
