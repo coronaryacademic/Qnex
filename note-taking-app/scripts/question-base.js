@@ -19,6 +19,7 @@ const QuestionBase = {
         recentSessionsSort: 'date', // 'date' or 'name'
         deletedSessionBlocks: [], // Stack for restoring deleted questions in session creator
         aiMode: false,
+        uploadedMediaContent: null, // Store uploaded PDF/media content for AI context
     },
 
     el: {
@@ -151,6 +152,9 @@ const QuestionBase = {
         this.el.startSessionBtn = document.getElementById("startSessionBtn");
         this.el.toggleAiModeBtn = document.getElementById("toggleAiModeBtn");
         this.el.fillAiBtn = document.getElementById("fillAiBtn");
+        this.el.uploadMediaBtn = document.getElementById("uploadMediaBtn");
+        this.el.uploadedFileStatus = document.getElementById("uploadedFileStatus");
+        this.el.uploadedFileName = document.getElementById("uploadedFileName");
         this.el.viewAiPromptBtn = document.getElementById("viewAiPromptBtn");
         this.el.aiPromptModal = document.getElementById("aiPromptModal");
         
@@ -313,6 +317,9 @@ const QuestionBase = {
         }
         if (this.el.fillAiBtn) {
             this.el.fillAiBtn.onclick = () => this.fillWithAI();
+        }
+        if (this.el.uploadMediaBtn) {
+            this.el.uploadMediaBtn.onclick = () => this.uploadMedia();
         }
         if (this.el.viewAiPromptBtn) {
             this.el.viewAiPromptBtn.onclick = () => this.viewAiPrompt();
@@ -2569,6 +2576,13 @@ Question explanation:
         if (this.el.fillAiBtn) {
             this.el.fillAiBtn.style.display = this.state.aiMode ? 'flex' : 'none';
         }
+        if (this.el.uploadMediaBtn) {
+            this.el.uploadMediaBtn.style.display = this.state.aiMode ? 'flex' : 'none';
+        }
+        if (this.el.uploadedFileStatus) {
+            // Only show if AI mode is on AND a file is uploaded
+            this.el.uploadedFileStatus.style.display = (this.state.aiMode && this.state.uploadedMediaContent) ? 'flex' : 'none';
+        }
         if (this.el.viewAiPromptBtn) {
             this.el.viewAiPromptBtn.style.display = this.state.aiMode ? 'flex' : 'none';
         }
@@ -2719,7 +2733,26 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             } catch (e) { console.warn("Failed to fetch learning data, proceeding with defaults."); }
 
             const systemPrompt = this.getSystemPrompt(learningData);
-            const userPrompt = `Fill this frame:\n${text}`;
+            
+        // Include uploaded media content if available
+        let userPrompt = '';
+        if (this.state.uploadedMediaContent) {
+            // Truncate content to fit context window
+            // 131k context limit - 10k output = 121k for input
+            // Conservatively assume dense tokenization (e.g. 1.25 chars/token) -> 121k * 1.25 ~= 150k chars
+            const MAX_CHARS = 150000;
+            let content = this.state.uploadedMediaContent;
+            
+            if (content.length > MAX_CHARS) {
+                console.warn(`[AI] Uploaded content too large (${content.length} chars). Truncating to ${MAX_CHARS} chars to fit context window.`);
+                content = content.substring(0, MAX_CHARS) + "\n\n[CONTENT TRUNCATED TO FIT CONTEXT WINDOW]";
+                // Non-blocking notification via console
+            }
+            
+            userPrompt = `Based on this document:\n${content}\n\nFill this frame:\n${text}`;
+        } else {
+            userPrompt = `Fill this frame:\n${text}`;
+        }
             
             const endpoints = ['http://localhost:3001/api/ai/chat', 'http://127.0.0.1:3001/api/ai/chat'];
             let lastError = null;
@@ -2734,7 +2767,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                                 { role: 'system', content: systemPrompt },
                                 { role: 'user', content: userPrompt }
                             ],
-                            max_tokens: 1500
+                            max_tokens: 10000
                         })
                     });
 
@@ -2759,6 +2792,145 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             if (this.el.toggleAiModeBtn) this.el.toggleAiModeBtn.classList.remove('loading');
             if (overlay) overlay.classList.add('hidden');
         }
+    },
+
+    uploadMedia() {
+        // Create a file input element
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.pdf,.txt,.md';
+        fileInput.style.display = 'none';
+        
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                // Clean up if no file selected
+                if (fileInput.parentNode) {
+                    document.body.removeChild(fileInput);
+                }
+                return;
+            }
+            
+            // Show loading state on upload button
+            if (this.el.uploadMediaBtn) {
+                this.el.uploadMediaBtn.classList.add('loading');
+                this.el.uploadMediaBtn.disabled = true;
+            }
+            
+            // Read file content
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const content = event.target.result;
+                
+                if (file.name.endsWith('.pdf')) {
+                    // Simple PDF text extraction (you may want to use a library like pdf.js for better extraction)
+                    this.state.uploadedMediaContent = `[PDF Content from ${file.name}]\n${content}`;
+                    console.log(`PDF "${file.name}" loaded successfully.`);
+                } else {
+                    // For text files, use content directly
+                    this.state.uploadedMediaContent = content;
+                    console.log(`File "${file.name}" loaded successfully.`);
+                }
+                
+                // Update file status indicator
+                if (this.el.uploadedFileStatus && this.el.uploadedFileName) {
+                    this.el.uploadedFileName.textContent = file.name;
+                    this.el.uploadedFileStatus.style.display = 'flex';
+                }
+                
+                // Update button to show media is loaded
+                if (this.el.uploadMediaBtn) {
+                    this.el.uploadMediaBtn.style.background = 'var(--success)';
+                    this.el.uploadMediaBtn.style.color = 'white';
+                    this.el.uploadMediaBtn.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        Media Loaded
+                    `;
+                    
+                    // Reset after 3 seconds
+                    setTimeout(() => {
+                        if (this.el.uploadMediaBtn) {
+                            this.el.uploadMediaBtn.style.background = '';
+                            this.el.uploadMediaBtn.style.color = '';
+                            this.el.uploadMediaBtn.innerHTML = `
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                  <polyline points="14 2 14 8 20 8"></polyline>
+                                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                                </svg>
+                                Add Media
+                            `;
+                        }
+                    }, 3000);
+                }
+                
+                // Remove loading state
+                if (this.el.uploadMediaBtn) {
+                    this.el.uploadMediaBtn.classList.remove('loading');
+                    this.el.uploadMediaBtn.disabled = false;
+                }
+                
+                // Clean up file input
+                if (fileInput.parentNode) {
+                    document.body.removeChild(fileInput);
+                }
+                
+                // Refocus on session input to allow typing without delay needed for alert
+                if (this.el.sessionInput) {
+                    this.el.sessionInput.contentEditable = 'true';
+                    this.el.sessionInput.focus();
+                    // Place cursor at the end
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    range.selectNodeContents(this.el.sessionInput);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            };
+            
+            reader.onerror = () => {
+                alert('Failed to read file. Please try again.');
+                
+                // Remove loading state on error
+                if (this.el.uploadMediaBtn) {
+                    this.el.uploadMediaBtn.classList.remove('loading');
+                    this.el.uploadMediaBtn.disabled = false;
+                }
+                
+                // Clean up file input
+                if (fileInput.parentNode) {
+                    document.body.removeChild(fileInput);
+                }
+            };
+            
+            // Read as text
+            try {
+                reader.readAsText(file);
+            } catch (error) {
+                console.error('[QuestionBase] Media upload failed:', error);
+                alert('Failed to upload media. Please try again.');
+                
+                // Remove loading state on error
+                if (this.el.uploadMediaBtn) {
+                    this.el.uploadMediaBtn.classList.remove('loading');
+                    this.el.uploadMediaBtn.disabled = false;
+                }
+                
+                // Clean up file input
+                if (fileInput.parentNode) {
+                    document.body.removeChild(fileInput);
+                }
+            }
+        };
+        
+        // Trigger file selection
+        document.body.appendChild(fileInput);
+        fileInput.click();
     },
 
     // ... existing methods ...
