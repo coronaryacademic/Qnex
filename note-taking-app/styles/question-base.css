@@ -73,7 +73,6 @@ body.theme-classic .question-empty-state h3 {
 .question-sidebar {
   /* Inherits .sidebar styles */
   background: var(--panel);
-  border-right: 1px solid var(--border);
   z-index: 1001;
   pointer-events: auto;
   min-width: 230px;
@@ -98,7 +97,6 @@ body.theme-classic .question-empty-state h3 {
 
 .question-sidebar .sidebar-header {
   padding: 12.5px 16px;
-  border-bottom: 1px solid var(--border);
   display: flex !important;
   justify-content: flex-start !important;
   /* Override main sidebar's flex-end */
@@ -139,8 +137,6 @@ body.theme-classic .question-empty-state h3 {
   align-items: center;
   justify-content: space-between;
   padding: 12.5px 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
 }
 
 /* ... existing styles ... */

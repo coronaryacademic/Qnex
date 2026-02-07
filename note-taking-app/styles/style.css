@@ -436,7 +436,6 @@ textarea {
 .sidebar {
   width: 230px;
   background: var(--panel);
-  border-right: 1px solid var(--border);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -455,7 +454,6 @@ textarea {
   justify-content: flex-end;
   align-items: center;
   padding: 9.5px 16px;
-  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
@@ -2028,8 +2026,6 @@ body.fullscreen .sidebar-resizer {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 2;
