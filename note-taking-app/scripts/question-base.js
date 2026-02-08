@@ -158,6 +158,18 @@ const QuestionBase = {
         this.el.viewAiPromptBtn = document.getElementById("viewAiPromptBtn");
         this.el.aiPromptModal = document.getElementById("aiPromptModal");
         
+        // Model Selector
+        this.el.aiModelSelector = document.getElementById("aiModelSelector");
+        if (this.el.aiModelSelector) {
+            const savedModel = localStorage.getItem('notesApp_aiModel');
+            if (savedModel) {
+                this.el.aiModelSelector.value = savedModel;
+            }
+            this.el.aiModelSelector.addEventListener('change', (e) => {
+                localStorage.setItem('notesApp_aiModel', e.target.value);
+            });
+        }
+        
         // Recent Sessions Elements
         this.el.recentSessionsContainer = document.getElementById("recentSessionsContainer");
         this.el.recentSessionsList = document.getElementById("recentSessionsList");
@@ -2579,6 +2591,9 @@ Question explanation:
         if (this.el.uploadMediaBtn) {
             this.el.uploadMediaBtn.style.display = this.state.aiMode ? 'flex' : 'none';
         }
+        if (this.el.aiModelSelector) {
+            this.el.aiModelSelector.style.display = this.state.aiMode ? 'block' : 'none';
+        }
         if (this.el.uploadedFileStatus) {
             // Only show if AI mode is on AND a file is uploaded
             this.el.uploadedFileStatus.style.display = (this.state.aiMode && this.state.uploadedMediaContent) ? 'flex' : 'none';
@@ -2719,7 +2734,16 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
         // Show loading state
         if (this.el.toggleAiModeBtn) this.el.toggleAiModeBtn.classList.add('loading');
         const overlay = document.getElementById('aiLoadingOverlay');
-        if (overlay) overlay.classList.remove('hidden');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            // Update loading text to show model
+            const loadingText = overlay.querySelector('.ai-loading-text');
+            const selectedModel = this.el.aiModelSelector ? this.el.aiModelSelector.value : null;
+            const modelName = selectedModel ? selectedModel.split('/')[1].split(':')[0] : 'AI';
+            if (loadingText) {
+                loadingText.textContent = `${modelName} is thinking...`;
+            }
+        }
         
         try {
             // NEW: Fetch Learning Data (Stats + Examples)
@@ -2756,6 +2780,9 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             
             const endpoints = ['http://localhost:3001/api/ai/chat', 'http://127.0.0.1:3001/api/ai/chat'];
             let lastError = null;
+            
+            // Get selected model
+            const selectedModel = this.el.aiModelSelector ? this.el.aiModelSelector.value : null;
 
             for (const url of endpoints) {
                 try {
@@ -2767,7 +2794,8 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                                 { role: 'system', content: systemPrompt },
                                 { role: 'user', content: userPrompt }
                             ],
-                            max_tokens: 10000
+                            max_tokens: 10000,
+                            model: selectedModel
                         })
                     });
 
@@ -2787,7 +2815,24 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
 
         } catch (error) {
             console.error("[QuestionBase] AI Fill failed:", error);
-            alert("AI generation failed. Please ensure your local server is running on port 3001.");
+            
+            // Try to parse error details
+            let errorMessage = "AI generation failed. Please ensure your local server is running on port 3001.";
+            
+            try {
+                const errorData = await error.json?.() || error;
+                if (errorData.details) {
+                    const details = typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details);
+                    errorMessage = `AI Error (${errorData.model || 'unknown model'}): ${details}`;
+                }
+                if (errorData.errorType === 'ECONNABORTED') {
+                    errorMessage = `Model timeout: ${errorData.model || 'selected model'} took too long to respond. Try a faster model like Trinity or Step 3.5 Flash.`;
+                }
+            } catch (e) {
+                // Use default message
+            }
+            
+            alert(errorMessage);
         } finally {
             if (this.el.toggleAiModeBtn) this.el.toggleAiModeBtn.classList.remove('loading');
             if (overlay) overlay.classList.add('hidden');
@@ -2816,29 +2861,57 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                 this.el.uploadMediaBtn.classList.add('loading');
                 this.el.uploadMediaBtn.disabled = true;
             }
-            
-            // Read file content
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const content = event.target.result;
+            try {
+                let content = '';
                 
+                // Read based on file type
                 if (file.name.endsWith('.pdf')) {
-                    // Simple PDF text extraction (you may want to use a library like pdf.js for better extraction)
-                    this.state.uploadedMediaContent = `[PDF Content from ${file.name}]\n${content}`;
-                    console.log(`PDF "${file.name}" loaded successfully.`);
+                    // PDF Processing using pdf.js
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+                        const pdf = await loadingTask.promise;
+                        
+                        // Show progress if many pages
+                        if (this.el.uploadMediaBtn) {
+                            this.el.uploadMediaBtn.innerHTML = `Scanning ${pdf.numPages} pages...`;
+                        }
+
+                        let fullText = '';
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += `[Page ${i}]\n${pageText}\n\n`;
+                        }
+                        
+                        content = `[PDF Content from ${file.name}]\n${fullText}`;
+                        console.log(`PDF "${file.name}" loaded successfully. Extracted ${fullText.length} characters from ${pdf.numPages} pages.`);
+                        
+                    } catch (error) {
+                        console.error("PDF reading failed:", error);
+                        throw new Error("Failed to read PDF. ensuring it's not password protected/corrupted.");
+                    }
                 } else {
-                    // For text files, use content directly
-                    this.state.uploadedMediaContent = content;
+                    // Text/Markdown Processing
+                    content = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = (e) => reject(new Error("File read error"));
+                        reader.readAsText(file);
+                    });
                     console.log(`File "${file.name}" loaded successfully.`);
                 }
-                
-                // Update file status indicator
+
+                // Update State
+                this.state.uploadedMediaContent = content;
+
+                // Update UI - Success State
                 if (this.el.uploadedFileStatus && this.el.uploadedFileName) {
                     this.el.uploadedFileName.textContent = file.name;
                     this.el.uploadedFileStatus.style.display = 'flex';
                 }
                 
-                // Update button to show media is loaded
                 if (this.el.uploadMediaBtn) {
                     this.el.uploadMediaBtn.style.background = 'var(--success)';
                     this.el.uploadMediaBtn.style.color = 'white';
@@ -2850,7 +2923,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                         Media Loaded
                     `;
                     
-                    // Reset after 3 seconds
+                    // Reset button after 3 seconds
                     setTimeout(() => {
                         if (this.el.uploadMediaBtn) {
                             this.el.uploadMediaBtn.style.background = '';
@@ -2867,23 +2940,11 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                         }
                     }, 3000);
                 }
-                
-                // Remove loading state
-                if (this.el.uploadMediaBtn) {
-                    this.el.uploadMediaBtn.classList.remove('loading');
-                    this.el.uploadMediaBtn.disabled = false;
-                }
-                
-                // Clean up file input
-                if (fileInput.parentNode) {
-                    document.body.removeChild(fileInput);
-                }
-                
-                // Refocus on session input to allow typing without delay needed for alert
+
+                // Refocus on session input
                 if (this.el.sessionInput) {
                     this.el.sessionInput.contentEditable = 'true';
                     this.el.sessionInput.focus();
-                    // Place cursor at the end
                     const range = document.createRange();
                     const sel = window.getSelection();
                     range.selectNodeContents(this.el.sessionInput);
@@ -2891,36 +2952,17 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                     sel.removeAllRanges();
                     sel.addRange(range);
                 }
-            };
-            
-            reader.onerror = () => {
-                alert('Failed to read file. Please try again.');
-                
-                // Remove loading state on error
-                if (this.el.uploadMediaBtn) {
-                    this.el.uploadMediaBtn.classList.remove('loading');
-                    this.el.uploadMediaBtn.disabled = false;
-                }
-                
-                // Clean up file input
-                if (fileInput.parentNode) {
-                    document.body.removeChild(fileInput);
-                }
-            };
-            
-            // Read as text
-            try {
-                reader.readAsText(file);
+
             } catch (error) {
                 console.error('[QuestionBase] Media upload failed:', error);
-                alert('Failed to upload media. Please try again.');
-                
-                // Remove loading state on error
+                alert(error.message || 'Failed to upload media. Please try again.');
+                this.state.uploadedMediaContent = null;
+            } finally {
+                // Remove loading state
                 if (this.el.uploadMediaBtn) {
                     this.el.uploadMediaBtn.classList.remove('loading');
                     this.el.uploadMediaBtn.disabled = false;
                 }
-                
                 // Clean up file input
                 if (fileInput.parentNode) {
                     document.body.removeChild(fileInput);

@@ -874,7 +874,7 @@ app.get('/api/ai/learning-data', async (req, res) => {
 // AI CHAT ENDPOINT (OpenRouter Proxy)
 app.post('/api/ai/chat', async (req, res) => {
   try {
-    const { messages, max_tokens = 200 } = req.body;
+    const { messages, max_tokens = 200, model } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Invalid messages format' });
@@ -885,8 +885,13 @@ app.post('/api/ai/chat', async (req, res) => {
       return res.status(500).json({ error: 'AI API key not configured' });
     }
 
+    // Default to Trinity if no model specified
+    const modelToUse = model || 'arcee-ai/trinity-large-preview:free';
+    console.log(`[AI] Using model: ${modelToUse}`);
+    console.log(`[AI] Request size: ${JSON.stringify(messages).length} chars, max_tokens: ${max_tokens}`);
+
     const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-      model: 'arcee-ai/trinity-large-preview:free',
+      model: modelToUse,
       messages: messages,
       max_tokens: max_tokens
     }, {
@@ -895,15 +900,28 @@ app.post('/api/ai/chat', async (req, res) => {
         'Content-Type': 'application/json',
         "HTTP-Referer": "http://localhost:3001",
         "X-Title": "Notes App Local"
-      }
+      },
+      timeout: 120000 // 2 minute timeout for slow models
     });
 
+    console.log(`[AI] Response received from ${modelToUse}`);
     res.json(response.data);
   } catch (error) {
-    console.error('AI Proxy Error:', error.response?.data || error.message);
+    console.error('AI Proxy Error:', {
+      model: req.body.model,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code
+    });
+    
+    // Return detailed error to frontend
     res.status(error.response?.status || 500).json({
       error: 'Failed to get response from AI',
-      details: error.response?.data || error.message
+      details: error.response?.data || error.message,
+      model: req.body.model,
+      errorType: error.code // ECONNABORTED = timeout, etc.
     });
   }
 });
