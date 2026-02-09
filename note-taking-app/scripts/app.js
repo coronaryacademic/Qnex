@@ -6626,6 +6626,13 @@ window.startImportProcess = function () {
   await initializeData();
   renderSidebar();
 
+  // Auto-open Question Layer as default view (after settings are loaded)
+  if (typeof window.QuestionBase !== 'undefined' && typeof window.QuestionBase.open === 'function') {
+    setTimeout(() => {
+      window.QuestionBase.open();
+    }, 100); // Small delay to ensure DOM is fully ready
+  }
+
   // Play startup or reload sound
   setTimeout(() => {
     if (sessionStorage.getItem("appReloaded")) {

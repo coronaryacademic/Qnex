@@ -725,11 +725,12 @@ const QuestionBase = {
             this.el.floatBtn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
         }
 
-        // Sync FROM main sidebar
+        // Sync FROM main sidebar - but respect saved settings
         const mainSidebar = document.getElementById("sidebar");
-        // const mainToggle = document.getElementById("toggleSidebarBtn"); // Not needed for read
         if (mainSidebar) {
             const mainCollapsed = mainSidebar.classList.contains("collapsed");
+            
+            // Apply the main sidebar's state to question sidebar
             if (mainCollapsed) {
                 this.el.sidebar.classList.add("collapsed");
             } else {
@@ -764,6 +765,14 @@ const QuestionBase = {
             // Only click if states differ to align them
             if (mainCollapsed !== isCollapsed) {
                 mainToggle.click();
+            }
+        }
+
+        // Save sidebar state to backend settings
+        if (typeof window.state !== 'undefined' && window.state.settings) {
+            window.state.settings.sidebarCollapsed = isCollapsed;
+            if (typeof window.Storage !== 'undefined' && typeof window.Storage.saveSettings === 'function') {
+                window.Storage.saveSettings(window.state.settings);
             }
         }
     },
@@ -2982,5 +2991,6 @@ window.QuestionBase = QuestionBase;
 document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("questionBase")) {
         QuestionBase.init();
+        // Auto-open moved to app.js after settings are loaded
     }
 });

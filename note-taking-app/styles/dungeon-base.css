@@ -360,9 +360,7 @@
   background: var(--bg-hover);
 }
 
-.dungeon-toolbar-menu button .dungeon-menu-toggle {
-  /* Inherits base button styles */
-}
+
 
 .dungeon-toolbar-menu button:hover {
   background: var(--bg-secondary);
@@ -564,24 +562,39 @@
   font-size: 0.95rem;
 }
 
-.dungeon-question-container.font-small .dungeon-radio-text {
+.dungeon-question-container.font-small .dungeon-radio-option {
   font-size: 0.85rem;
+}
+
+.dungeon-question-container.font-small .dungeon-explanation p,
+.dungeon-question-container.font-small .dungeon-explanation li {
+  font-size: 0.95rem;
 }
 
 .dungeon-question-container.font-medium .dungeon-context-box {
   font-size: 1.15rem;
 }
 
-.dungeon-question-container.font-medium .dungeon-radio-text {
-  font-size: 1rem;
+.dungeon-question-container.font-medium .dungeon-radio-option {
+  font-size: 1.0rem;
+}
+
+.dungeon-question-container.font-medium .dungeon-explanation p,
+.dungeon-question-container.font-medium .dungeon-explanation li {
+  font-size: 1.15rem;
 }
 
 .dungeon-question-container.font-large .dungeon-context-box {
   font-size: 1.35rem;
 }
 
-.dungeon-question-container.font-large .dungeon-radio-text {
+.dungeon-question-container.font-large .dungeon-radio-option {
   font-size: 1.15rem;
+}
+
+.dungeon-question-container.font-large .dungeon-explanation p,
+.dungeon-question-container.font-large .dungeon-explanation li {
+  font-size: 1.35rem;
 }
 
 /* Question Header - Removed, now in topbar */
@@ -650,13 +663,13 @@
 
 
 .dungeon-radio-circle {
-  width: 20px; /* Slightly smaller for elegance */
-  height: 20px;
+  width: 1.25em; 
+  height: 1.25em;
   border: 2px solid var(--text); /* High contrast border */
   border-radius: 50%;
   background: var(--bg);
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 0.15em; /* Aligns with text x-height */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -675,8 +688,8 @@
 
 .dungeon-radio-option.selected .dungeon-radio-circle::after {
   content: '';
-  width: 8px;
-  height: 8px;
+  width: 0.6em;
+  height: 0.6em;
   background: var(--bg); /* Dot color */
   border-radius: 50%;
   display: block; /* Ensure visibility */
@@ -684,7 +697,7 @@
 
 /* Text Styling */
 .dungeon-radio-text {
-  font-size: 1rem; /* Reduced from 1.1rem */
+  font-size: inherit; /* Inherit from .dungeon-radio-option */
   color: var(--text);
   line-height: 1.5;
   font-weight: 500;
@@ -713,8 +726,8 @@
 .dungeon-radio-option.correct-answer .dungeon-radio-circle::after {
     content: '';
     display: block;
-    width: 8px; 
-    height: 8px; 
+    width: 0.6em; 
+    height: 0.6em; 
     background: var(--bg); /* Dot color */
     border-radius: 50%;
 }
@@ -726,8 +739,8 @@
 .dungeon-radio-option.wrong-answer .dungeon-radio-circle::after {
     content: ''; 
     display: block;
-    width: 8px; 
-    height: 8px; 
+    width: 0.6em; 
+    height: 0.6em; 
     background: var(--bg); 
     border-radius: 50%;
 }

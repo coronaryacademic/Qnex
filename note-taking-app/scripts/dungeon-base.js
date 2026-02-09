@@ -2881,7 +2881,7 @@ export default class DungeonBase {
   const currentSel = this.state.selectedOption; // Valid only if not submitted
   const submittedSel = isSubmitted ? answer.selectedId : null;
 
-  options.forEach(opt => {
+  options.forEach((opt, idx) => {
       let classes = "dungeon-radio-option";
       // Logic for styling
       if (isSubmitted) {
@@ -2909,10 +2909,14 @@ export default class DungeonBase {
           classes += " crossed-out";
       }
 
+      const letter = String.fromCharCode(65 + idx); // 65 is 'A'
+
       html += `
         <div class="${classes}">
             <div class="dungeon-radio-circle" onclick="window.DungeonBase.handleSelectOption('${opt.id}')"></div>
-            <div class="dungeon-radio-text" onclick="window.DungeonBase.handleStrikeOption(event, this)" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')">${opt.text || "Option"}</div>
+            <div class="dungeon-radio-text" onclick="window.DungeonBase.handleStrikeOption(event, this)" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')">
+                <span style="margin-right: 8px;">(${letter})</span>${opt.text || "Option"}
+            </div>
         </div>
       `;
   });
