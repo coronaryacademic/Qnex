@@ -2030,10 +2030,18 @@ export default class DungeonBase {
 
   startTimer() {
       this.stopTimer(); // Clear existing
-      this.timerStart = Date.now();
+      const q = this.state.questions[this.state.currentIndex];
       const timerEl = document.getElementById('dungeonTimer');
       if (!timerEl) return;
       
+      // If question has been answered, display saved timer but don't run
+      if (q && q.submittedAnswer && q.timerElapsed !== undefined) {
+          this.updateTimerDisplay(q.timerElapsed);
+          return; // Don't start interval for answered questions
+      }
+      
+      // Start fresh timer for unanswered questions
+      this.timerStart = Date.now();
       this.updateTimerDisplay(0);
       
       this.timerInterval = setInterval(() => {
@@ -2096,6 +2104,9 @@ export default class DungeonBase {
       
       // Remove from question object
       delete q.submittedAnswer;
+      
+      // Reset timer
+      delete q.timerElapsed;
       
       // Clear revealed state too
       if (q.revealed) {
@@ -2408,6 +2419,10 @@ export default class DungeonBase {
   }
 
   renderSidebar() {
+    // Save current scroll position
+    const questionsContainer = this.el.sidebar.querySelector('.dungeon-sidebar-questions');
+    const savedScrollTop = questionsContainer ? questionsContainer.scrollTop : 0;
+    
     // Clear sidebar but preserve resizer handle
     const handle = this.el.sidebar.querySelector('.dungeon-resizer-handle');
     
@@ -2416,8 +2431,8 @@ export default class DungeonBase {
     this.el.sidebar.innerHTML = "";
 
     // Create scrollable container for questions
-    const questionsContainer = document.createElement('div');
-    questionsContainer.className = 'dungeon-sidebar-questions';
+    const newQuestionsContainer = document.createElement('div');
+    newQuestionsContainer.className = 'dungeon-sidebar-questions';
 
     this.state.questions.forEach((q, index) => {
       let isHidden = false;
@@ -2475,11 +2490,14 @@ export default class DungeonBase {
         this.render();
       };
       
-      questionsContainer.appendChild(box);
+      newQuestionsContainer.appendChild(box);
     });
 
     // Add questions container to sidebar
-    this.el.sidebar.appendChild(questionsContainer);
+    this.el.sidebar.appendChild(newQuestionsContainer);
+    
+    // Restore scroll position
+    newQuestionsContainer.scrollTop = savedScrollTop;
 
     // Re-append handle at the end so it's on top
     if (handle) {
@@ -3028,6 +3046,11 @@ export default class DungeonBase {
       
       // Persist to question object
       q.submittedAnswer = answerData;
+      
+      // Save timer value before stopping
+      if (this.timerStart) {
+          q.timerElapsed = Date.now() - this.timerStart;
+      }
       
       // Clear revealed state when submitting
       if (q.revealed) {
