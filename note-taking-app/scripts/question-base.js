@@ -17,6 +17,7 @@ const QuestionBase = {
         recentSessions: [],
         recentSessionsView: 'grid', // 'grid' or 'list'
         recentSessionsSort: 'date', // 'date' or 'name'
+        lastActiveTab: 'main', // Track last active tab for back navigation
         deletedSessionBlocks: [], // Stack for restoring deleted questions in session creator
         aiMode: false,
         uploadedMediaContent: null, // Store uploaded PDF/media content for AI context
@@ -68,9 +69,8 @@ const QuestionBase = {
         this.loadSidebarWidth();
         this.loadCollapsedSections(); // Load BEFORE data so state is ready for renderSidebar
         this.loadExpandedFolders();
-        this.loadExpandedFolders();
         this.loadRecentSessions();
-        this.loadData();
+        this.loadData(true); // Suppress warning on initial load while waiting for Storage
 
         // If Storage wasn't ready initially, reload once it becomes available
         if (typeof window.Storage === 'undefined' || typeof window.Storage.loadQuestions !== 'function') {
@@ -478,7 +478,7 @@ const QuestionBase = {
             this.el.createSessionBtn.addEventListener("click", () => this.openSessionCreator());
         }
         if (this.el.cancelSessionBtn) {
-            this.el.cancelSessionBtn.addEventListener("click", () => this.closeSessionCreator());
+            this.el.cancelSessionBtn.addEventListener("click", () => this.closeSessionCreator(true));
         }
         if (this.el.addSessionQBtn) {
             this.el.addSessionQBtn.addEventListener("click", () => this.addSessionQuestionTemplate());
@@ -643,7 +643,7 @@ const QuestionBase = {
         localStorage.setItem("active-recall-recent-sessions", JSON.stringify(this.state.recentSessions));
     },
 
-    async loadData() {
+    async loadData(suppressWarning = false) {
         console.log('[QuestionBase] loadData() called');
         console.log('[QuestionBase] Storage available?', typeof window.Storage, 'loadQuestions?', typeof window.Storage?.loadQuestions);
 
@@ -665,7 +665,11 @@ const QuestionBase = {
                 this.state.folders = [];
             }
         } else {
-            console.warn('[QuestionBase] Storage not available yet, using localStorage fallback');
+            if (suppressWarning) {
+                console.log('[QuestionBase] Storage not available yet, using localStorage fallback');
+            } else {
+                console.warn('[QuestionBase] Storage not available yet, using localStorage fallback');
+            }
             // Direct localStorage fallback
             try {
                 const stored = localStorage.getItem("app-questions");
@@ -773,6 +777,13 @@ const QuestionBase = {
     },
 
     switchTab(tabName) {
+        // If Manual Session is active, close it (don't restore old tab as we are switching)
+        if (this.state.sessionCreatorVisible) {
+            this.closeSessionCreator(false);
+        }
+
+        this.state.lastActiveTab = tabName;
+
         // Update tab button states
         document.querySelectorAll('.qbank-tab').forEach(btn => {
             if (btn.dataset.tab === tabName) {
@@ -877,6 +888,11 @@ const QuestionBase = {
     },
 
     closeQuestion() {
+        if (this.state.sessionCreatorVisible) {
+            this.closeSessionCreator(true);
+            return;
+        }
+
         this.activeQuestionId = null;
         this.el.editor.classList.add("hidden");
         this.el.emptyState.classList.remove("hidden");
@@ -1837,10 +1853,15 @@ const QuestionBase = {
     },
 
     openSessionCreator(folderId = null, targetQuestionId = null) {
+        // Deselect all tabs
+        document.querySelectorAll('.qbank-tab').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
         this.state.sessionCreatorVisible = true;
         this.el.emptyState.classList.add("hidden");
         this.el.editor.classList.add("hidden");
         this.el.sessionCreator.classList.remove("hidden");
+        if (this.el.createSessionBtn) this.el.createSessionBtn.classList.add('active'); // Active state UI
         
         // Update Header -> CREATOR
         this.updateHeaderUI('CREATOR');
@@ -2028,16 +2049,28 @@ const QuestionBase = {
         }, 200);
     },
 
-    closeSessionCreator() {
+    closeSessionCreator(restoreTab = false) {
         this.state.sessionCreatorVisible = false;
         this.el.sessionCreator.classList.add("hidden");
+        if (this.el.createSessionBtn) this.el.createSessionBtn.classList.remove('active');
+
+        if (restoreTab) {
+            const tab = this.state.lastActiveTab || 'main';
+            this.switchTab(tab);
+            this.el.emptyState.classList.remove("hidden");
+            this.updateHeaderUI('HOME');
+            return;
+        }
+
         if (this.activeQuestionId) {
             this.el.editor.classList.remove("hidden");
             this.toggleSessionControls(false); // Hide controls when editor is open
+            this.updateHeaderUI('EDITOR');
         } else {
             this.el.emptyState.classList.remove("hidden"); // valid as it's the parent
             // Re-evaluate what to show inside (empty msg or sessions)
-            this.renderRecentSessions();
+            // this.renderRecentSessions(); // Handled by switchTab logic or default view
+            this.updateHeaderUI('HOME');
         }
     },
 

@@ -2079,6 +2079,16 @@ body.fullscreen .sidebar-resizer {
   height: 18px;
 }
 
+/* Topbar Button Hover Effects */
+.topbar .icon-btn:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.topbar .icon-btn:hover svg {
+  transform: scale(1.05);
+}
+
 /* Panel hover is now defined in each theme */
 .menu {
   position: relative;

@@ -139,6 +139,35 @@ body.theme-classic .question-empty-state h3 {
   padding: 12.5px 1rem;
 }
 
+/* Question Header Button Hover Effects */
+.question-header .icon-btn {
+  transition: all 0.2s ease;
+}
+
+.question-header .icon-btn:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.question-header .icon-btn:hover svg {
+  transform: scale(1.05);
+}
+
+/* Manual Session Button Specific Hover */
+#createSessionBtn:hover {
+  background: var(--panel-hover);
+  color: var(--accent);
+}
+
+#createSessionBtn:hover svg {
+  transform: scale(1.05);
+}
+
+#createSessionBtn.active {
+  background: var(--panel-hover);
+  color: var(--muted);
+}
+
 /* ... existing styles ... */
 
 body.theme-classic .question-editor-container .form-group label,
@@ -1098,8 +1127,7 @@ body.theme-classic .breadcrumb-actions .icon-btn:hover {
   pointer-events: none;
 }
 
- 
- 
+
 /* Tab Content Styles */
 .tab-content {
   display: none;

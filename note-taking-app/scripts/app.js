@@ -135,13 +135,16 @@ const Storage = {
     if (this.isElectron) {
       if (typeof window.electronAPI.readSettings === "function") {
         const settings = await window.electronAPI.readSettings();
-        return {
+        console.log("[DEBUG] Read settings from Electron:", settings);
+        const merged = {
           theme: "dark",
           foldersOpen: [],
           autoSave: false,
           autoSplitMode: true,
           ...settings,
         };
+        console.log("[DEBUG] Merged settings:", merged);
+        return merged;
       }
     }
 
@@ -152,7 +155,8 @@ const Storage = {
           theme: "dark",
           foldersOpen: [],
           autoSave: false,
-          autoSplitMode: true,
+          autoSplitMode: true, village: true, // village for future persistence
+
           ...settings,
         };
       } catch (error) {
@@ -5102,6 +5106,8 @@ window.startImportProcess = function () {
                       <span class="slider"></span>
                     </label>
                   </div>
+                  
+                  </div>
                 </div>
 
                 <div class="setting-group">
@@ -5269,6 +5275,8 @@ window.startImportProcess = function () {
         }
       });
     }
+
+
 
     // Theme Cards Logic
     const currentTheme = state.settings.theme || "dark";
