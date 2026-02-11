@@ -518,6 +518,25 @@ const QuestionBase = {
         if (this.el.sessionInput) {
             this.el.sessionInput.addEventListener("paste", (e) => this.handlePaste(e));
         }
+
+        // Tab Navigation
+        const tabButtons = document.querySelectorAll('.qbank-tab');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = btn.dataset.tab;
+                this.switchTab(tabName);
+            });
+        });
+
+        // Mode buttons in Create Test tab
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.mode-btn')) {
+                const modeBtn = e.target.closest('.mode-btn');
+                const parent = modeBtn.parentElement;
+                parent.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                modeBtn.classList.add('active');
+            }
+        });
     },
 
     initResizer() {
@@ -750,6 +769,36 @@ const QuestionBase = {
             if (this.state.originalFloatBtnHtml) {
                 this.el.floatBtn.innerHTML = this.state.originalFloatBtnHtml;
             }
+        }
+    },
+
+    switchTab(tabName) {
+        // Update tab button states
+        document.querySelectorAll('.qbank-tab').forEach(btn => {
+            if (btn.dataset.tab === tabName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // Update tab content visibility
+        document.querySelectorAll('.tab-content').forEach(content => {
+            if (content.dataset.tabContent === tabName) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
+        });
+
+        // Hide question title input when on tabs
+        if (this.el.titleInput) {
+            this.el.titleInput.style.display = 'none';
+        }
+
+        // Special handling for recent sessions tab
+        if (tabName === 'recent-sessions') {
+            this.renderRecentSessions();
         }
     },
 
