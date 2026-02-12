@@ -1,4 +1,4 @@
-import fileSystemService from "./file-system-service.js";
+﻿import fileSystemService from "./file-system-service.js";
 import { medicalIcons, getIcon } from "./medical-icons.js";
 import { BlockEditor } from "./editor-core.js";
 
