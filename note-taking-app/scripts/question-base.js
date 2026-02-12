@@ -92,7 +92,7 @@ const QuestionBase = {
             if (this.el.ctxMenu && !this.el.ctxMenu.classList.contains("hidden")) {
                 // Ignore if clicking inside menu
                 if (this.el.ctxMenu.contains(e.target)) return;
-                
+
                 // Only close on left-click elsewhere
                 if (e.button === 0) {
                     console.log("[QuestionBase] Closing context menu due to outside mousedown on:", e.target);
@@ -157,7 +157,7 @@ const QuestionBase = {
         this.el.uploadedFileName = document.getElementById("uploadedFileName");
         this.el.viewAiPromptBtn = document.getElementById("viewAiPromptBtn");
         this.el.aiPromptModal = document.getElementById("aiPromptModal");
-        
+
         // Model Selector
         this.el.aiModelSelector = document.getElementById("aiModelSelector");
         if (this.el.aiModelSelector) {
@@ -169,7 +169,7 @@ const QuestionBase = {
                 localStorage.setItem('notesApp_aiModel', e.target.value);
             });
         }
-        
+
         // Recent Sessions Elements
         this.el.recentSessionsContainer = document.getElementById("recentSessionsContainer");
         this.el.recentSessionsList = document.getElementById("recentSessionsList");
@@ -321,7 +321,7 @@ const QuestionBase = {
                     this.createNewQuestion();
                 }
             });
-        this.el.newBtn.title = "New Question (Shift+Click for New Folder)";
+            this.el.newBtn.title = "New Question (Shift+Click for New Folder)";
         }
 
         if (this.el.toggleAiModeBtn) {
@@ -336,7 +336,7 @@ const QuestionBase = {
         if (this.el.viewAiPromptBtn) {
             this.el.viewAiPromptBtn.onclick = () => this.viewAiPrompt();
         }
-        
+
         // Modal close listeners
         document.querySelectorAll('.close-modal').forEach(btn => {
             btn.onclick = () => {
@@ -392,41 +392,41 @@ const QuestionBase = {
         }
 
         // Context Menu for Sidebar (Handles list items + empty space)
-            this.el.sidebar.addEventListener("contextmenu", (e) => {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent main app context menu
+        this.el.sidebar.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Prevent main app context menu
 
-                const item = e.target.closest(".question-item, .q-folder-header");
-                const targetId = item ? item.dataset.id : null;
+            const item = e.target.closest(".question-item, .q-folder-header");
+            const targetId = item ? item.dataset.id : null;
 
-                console.log("[QuestionBase] Sidebar ContextMenu Triggered on:", e.target, "Item:", item);
+            console.log("[QuestionBase] Sidebar ContextMenu Triggered on:", e.target, "Item:", item);
 
-                // Visual Highlight Synchronization
-                document.querySelectorAll(".question-item.context-active, .q-folder-header.context-active").forEach(el => el.classList.remove("context-active"));
-                if (item) {
-                    item.classList.add("context-active");
-                    
-                    // If it's a question, also ensure it's selected in state
-                    if (item.classList.contains("question-item")) {
-                        this.state.selectedItems.clear();
-                        this.state.selectedItems.add(targetId);
-                        item.classList.add("selected");
-                    }
+            // Visual Highlight Synchronization
+            document.querySelectorAll(".question-item.context-active, .q-folder-header.context-active").forEach(el => el.classList.remove("context-active"));
+            if (item) {
+                item.classList.add("context-active");
+
+                // If it's a question, also ensure it's selected in state
+                if (item.classList.contains("question-item")) {
+                    this.state.selectedItems.clear();
+                    this.state.selectedItems.add(targetId);
+                    item.classList.add("selected");
                 }
+            }
 
-                // Check if clicking specific item type
-                let type = 'empty';
-                let context = null;
-                if (item) {
-                    if (item.classList.contains("q-folder-header")) type = 'folder';
-                    else {
-                        type = 'question';
-                        context = item.getAttribute("data-context");
-                    }
+            // Check if clicking specific item type
+            let type = 'empty';
+            let context = null;
+            if (item) {
+                if (item.classList.contains("q-folder-header")) type = 'folder';
+                else {
+                    type = 'question';
+                    context = item.getAttribute("data-context");
                 }
+            }
 
-                this.showContextMenu(e.clientX, e.clientY, targetId, type, context);
-            });
+            this.showContextMenu(e.clientX, e.clientY, targetId, type, context);
+        });
 
         // Context Menu for Empty State
         if (this.el.emptyState) {
@@ -472,7 +472,7 @@ const QuestionBase = {
             }
         });
 
-        
+
         // Session Creator Events
         if (this.el.createSessionBtn) {
             this.el.createSessionBtn.addEventListener("click", () => this.openSessionCreator());
@@ -498,20 +498,20 @@ const QuestionBase = {
         }
 
 
-        
+
         if (this.el.openRecentSessionsBtn) {
             this.el.openRecentSessionsBtn.addEventListener("click", () => this.openRecentSessionsView());
         }
 
-        
+
         if (this.el.backToEmptyStateBtn) {
             this.el.backToEmptyStateBtn.addEventListener("click", () => this.closeQuestion());
         }
-        
+
         if (this.el.sortSessionsBtn) {
             this.el.sortSessionsBtn.addEventListener("click", () => this.toggleRecentSessionsSort());
         }
-        
+
         if (this.el.toggleViewBtn) {
             this.el.toggleViewBtn.addEventListener("click", () => this.toggleRecentSessionsView());
         }
@@ -729,16 +729,16 @@ const QuestionBase = {
 
     open() {
         this.el.base.classList.remove("hidden");
-        
+
         // Ensure correct view state
         if (this.activeQuestionId) {
-             // If we have an active question (e.g. from persistence if implemented later), make sure editor is shown
-             const q = this.state.questions.find(q => q.id === this.activeQuestionId);
-             if (q) this.loadQuestionIntoEditor(q);
-             else this.closeQuestion(); 
+            // If we have an active question (e.g. from persistence if implemented later), make sure editor is shown
+            const q = this.state.questions.find(q => q.id === this.activeQuestionId);
+            if (q) this.loadQuestionIntoEditor(q);
+            else this.closeQuestion();
         } else {
-             // Default to Home/Empty State
-             this.closeQuestion();
+            // Default to Home/Empty State
+            this.closeQuestion();
         }
 
         // Update Floating Button to "Back to Notes"
@@ -752,7 +752,7 @@ const QuestionBase = {
         const mainSidebar = document.getElementById("sidebar");
         if (mainSidebar) {
             const mainCollapsed = mainSidebar.classList.contains("collapsed");
-            
+
             // Apply the main sidebar's state to question sidebar
             if (mainCollapsed) {
                 this.el.sidebar.classList.add("collapsed");
@@ -873,7 +873,7 @@ const QuestionBase = {
         this.state.questions.push(newQ);
         this.saveData();
         this.renderSidebar();
-        
+
         // Open directly in text editor
         this.openSessionCreator(null, id);
     },
@@ -896,18 +896,18 @@ const QuestionBase = {
         this.activeQuestionId = null;
         this.el.editor.classList.add("hidden");
         this.el.emptyState.classList.remove("hidden");
-        
+
         // Hide session-specific UI
         this.state.sessionCreatorVisible = false;
         if (this.el.sessionCreator) this.el.sessionCreator.classList.add("hidden");
         if (this.el.recentSessionsContainer) this.el.recentSessionsContainer.classList.add("hidden");
-        
+
         const emptyStateContent = this.el.emptyState.querySelector('.empty-state-content');
         if (emptyStateContent) emptyStateContent.classList.remove('hidden'); // Show default empty msg
-        
+
         // Reset Header -> HOME
         this.updateHeaderUI('HOME');
-        
+
         this.el.saveBtn.disabled = true;
         this.el.saveBtn.style.display = "none";
 
@@ -964,12 +964,12 @@ const QuestionBase = {
         this.activeQuestionId = q.id;
         this.el.emptyState.style.display = "none";
         this.el.editor.classList.remove("hidden");
-        
+
         // Update Header -> EDITOR
         this.updateHeaderUI('EDITOR');
 
         if (this.el.titleInput) {
-             this.el.titleInput.value = q.title || ""; // Ensure value is set
+            this.el.titleInput.value = q.title || ""; // Ensure value is set
         }
         this.el.textInput.innerHTML = q.text || "";
         this.el.explanationInput.value = q.explanation || "";
@@ -1082,14 +1082,14 @@ const QuestionBase = {
         header.onclick = () => {
             section.classList.toggle("collapsed");
             const isCollapsed = section.classList.contains("collapsed");
-            
+
             if (isCollapsed) {
                 this.state.collapsedSections.add("Folders");
             } else {
                 this.state.collapsedSections.delete("Folders");
             }
             this.saveCollapsedSections();
-            
+
             console.log(`[QuestionBase] Syncing 'Folders' to collapsed=${isCollapsed}`);
             // Sync with TwoBase
             if (window.TwoBase && typeof window.TwoBase.setSectionCollapsed === "function") {
@@ -1148,7 +1148,7 @@ const QuestionBase = {
             e.stopPropagation();
             section.classList.toggle("collapsed");
             const isCollapsed = section.classList.contains("collapsed");
-            
+
             // Save collapsed state
             if (isCollapsed) {
                 this.state.collapsedSections.add(title);
@@ -1156,9 +1156,9 @@ const QuestionBase = {
                 this.state.collapsedSections.delete(title);
             }
             this.saveCollapsedSections();
-            
+
             console.log(`[QuestionBase] Syncing '${title}' to collapsed=${isCollapsed}`);
-            
+
             // Sync with TwoBase (Delegate mapping to TwoBase)
             if (window.TwoBase && typeof window.TwoBase.setSectionCollapsed === "function") {
                 // Add small delay to ensure UI threads are clear
@@ -1206,7 +1206,7 @@ const QuestionBase = {
         // Click Handling: Single Click (Editor) vs Double Click (Toggle)
         header.onclick = (e) => {
             e.stopPropagation();
-            
+
             // Increment click count or use timer to distinguish
             // We use e.detail to see how many clicks happened in quick succession
             if (e.detail === 1) {
@@ -1291,9 +1291,9 @@ const QuestionBase = {
         el.onclick = (e) => {
             // Single click - clear selection and open
             this.state.selectedItems.clear();
-            this.state.selectedItems.add(q.id); 
+            this.state.selectedItems.add(q.id);
             this.state.activeContext = context;
-            
+
             // Universal Text Editor: Always open session editor
             this.openSessionCreator(q.folderId, q.id);
             this.renderSidebar();
@@ -1483,7 +1483,7 @@ const QuestionBase = {
         this.el.ctxMenu.style.left = `${x}px`;
         this.el.ctxMenu.style.zIndex = "100000"; // Ensure it's above everything else
         this.el.ctxMenu.style.display = "grid"; // Explicit display
-        
+
         // Ensure menu is visible and correctly positioned
         this.el.ctxMenu.classList.remove("hidden");
         console.log(`[QuestionBase] Attempting to show menu at X:${x}, Y:${y}. Type:${type}, ID:${id}`);
@@ -1492,7 +1492,7 @@ const QuestionBase = {
         requestAnimationFrame(() => {
             const rect = this.el.ctxMenu.getBoundingClientRect();
             console.log(`[QuestionBase] Menu rendered rect:`, rect);
-            
+
             if (rect.right > window.innerWidth) {
                 this.el.ctxMenu.style.left = `${window.innerWidth - rect.width - 15}px`;
             }
@@ -1568,8 +1568,9 @@ const QuestionBase = {
             return this.createNewFolder();
         }
         if (action === 'refresh') {
-            console.log("Refreshing Question Data...");
-            return this.loadData();
+            console.log("Reloading App...");
+            window.location.reload();
+            return;
         }
 
         if (type === 'question') {
@@ -1643,7 +1644,7 @@ const QuestionBase = {
                     } catch (e) {
                         console.warn("Failed to sync to trash", e);
                     }
-                    
+
                     this.deleteFolder(id); // Call the new robust deleteFolder method
                     if (typeof window.updateTrashButton === "function") window.updateTrashButton();
                 };
@@ -1836,7 +1837,7 @@ const QuestionBase = {
             let text = `<div class="question-block" data-q-id="${q.id}">`;
             text += `Question title: ${q.title}\n`;
             text += `Question context: ${q.text ? q.text.replace(/<br>/g, "\n") : ""}\n`;
-            
+
             text += `Question options:\n`;
             const options = q.options || [];
             // Ensure at least 4 placeholders if none exist? Or just map what exists.
@@ -1845,7 +1846,7 @@ const QuestionBase = {
                 const letter = String.fromCharCode(65 + idx); // A, B, C, D...
                 text += `  ${opt.isCorrect ? '*' : ''}(${letter}) ${opt.text}\n`;
             });
-            
+
             text += `Question explanation: ${q.explanation || ""}\n`;
             text += `</div>`;
             return text;
@@ -1862,38 +1863,38 @@ const QuestionBase = {
         this.el.editor.classList.add("hidden");
         this.el.sessionCreator.classList.remove("hidden");
         if (this.el.createSessionBtn) this.el.createSessionBtn.classList.add('active'); // Active state UI
-        
+
         // Update Header -> CREATOR
         this.updateHeaderUI('CREATOR');
-        
+
         // Reset state
         this.state.editingFolderId = folderId;
         this.state.editingQuestionId = (folderId) ? null : targetQuestionId;
-        
+
         if (folderId) {
-             // Folder Mode: Load all questions in folder
-             const folder = this.state.folders.find(f => f.id === folderId);
-             const questions = this.state.questions.filter(q => q.folderId === folderId);
-             
-             if (folder) {
-                  this.el.sessionInput.innerHTML = this.generateSessionText(questions);
-                  if (targetQuestionId) {
-                      setTimeout(() => this.scrollToQuestion(targetQuestionId), 50);
-                  }
-             }
+            // Folder Mode: Load all questions in folder
+            const folder = this.state.folders.find(f => f.id === folderId);
+            const questions = this.state.questions.filter(q => q.folderId === folderId);
+
+            if (folder) {
+                this.el.sessionInput.innerHTML = this.generateSessionText(questions);
+                if (targetQuestionId) {
+                    setTimeout(() => this.scrollToQuestion(targetQuestionId), 50);
+                }
+            }
         } else if (targetQuestionId) {
-             // Standalone Question Mode
-             const q = this.state.questions.find(q => q.id === targetQuestionId);
-             if (q) {
-                 this.el.sessionInput.innerHTML = this.generateSessionText([q]);
-             }
+            // Standalone Question Mode
+            const q = this.state.questions.find(q => q.id === targetQuestionId);
+            if (q) {
+                this.el.sessionInput.innerHTML = this.generateSessionText([q]);
+            }
         } else {
-             // New/Empty Mode
-             if (!this.el.sessionInput.textContent.trim()) {
+            // New/Empty Mode
+            if (!this.el.sessionInput.textContent.trim()) {
                 this.addSessionQuestionTemplate();
-             }
+            }
         }
-        
+
         this.el.sessionInput.focus();
     },
 
@@ -1947,13 +1948,13 @@ const QuestionBase = {
             if (item.type.indexOf("image") !== -1) {
                 e.preventDefault();
                 const file = item.getAsFile();
-                
+
                 // Convert to base64
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     const base64Data = event.target.result;
                     const tempName = `img_${Date.now()}.png`;
-                    
+
                     try {
                         const result = await window.Storage.uploadImageToServer(tempName, base64Data);
                         if (result && result.success) {
@@ -1972,11 +1973,11 @@ const QuestionBase = {
     insertTextAtCursor(text) {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
-        
+
         selection.deleteFromDocument();
         const range = selection.getRangeAt(0);
         range.insertNode(document.createTextNode(text));
-        
+
         // Move cursor to end of inserted text
         range.collapse(false);
         selection.removeAllRanges();
@@ -2007,9 +2008,9 @@ const QuestionBase = {
 
     scrollToQuestion(id) {
         if (!id) return;
-        
+
         console.log(`[QuestionBase] Attempting to scroll to question: ${id}`);
-        
+
         // ULTIMATE CLEAR: Remove highlight from EVERY element in the DOM to be sure
         document.querySelectorAll('.highlight-yellow, .highlight-yellow-flash').forEach(el => {
             el.classList.remove('highlight-yellow');
@@ -2089,9 +2090,9 @@ Question explanation:
         const currentVal = input.innerText || "";
         // Add newline if needed
         const prefix = (currentVal.trim() && !currentVal.endsWith("\n\n")) ? "\n\n" : "";
-        
+
         input.innerText += prefix + template;
-        
+
         // Scroll to bottom
         input.scrollTop = input.scrollHeight;
         input.focus();
@@ -2101,7 +2102,7 @@ Question explanation:
         const input = this.el.sessionInput;
         const text = input.innerText;
         const lastIdx = text.lastIndexOf("Question title:");
-        
+
         if (lastIdx !== -1) {
             // Save the block to history before removing
             const removedBlock = text.substring(lastIdx);
@@ -2121,16 +2122,16 @@ Question explanation:
 
     restoreLastSessionQuestion() {
         if (this.state.deletedSessionBlocks.length === 0) return;
-        
+
         const lastBlock = this.state.deletedSessionBlocks.pop();
         const input = this.el.sessionInput;
         const currentVal = input.innerText || "";
-        
+
         // Add newline if needed
         const prefix = (currentVal.trim() && !currentVal.endsWith("\n\n")) ? "\n\n" : "";
-        
+
         input.innerText = currentVal.trimEnd() + prefix + lastBlock;
-        
+
         // Scroll to bottom
         input.scrollTop = input.scrollHeight;
         input.focus();
@@ -2139,25 +2140,25 @@ Question explanation:
     parseSessionText(text) {
         // Simple parser based on user format
         // Split by "Question title:" but keep it (lookahead? or just simple split and map)
-        
+
         // Normalize line endings
         text = text.replace(/\r\n/g, "\n");
-        
+
         const chunks = text.split(/Question title:/g);
         const questions = [];
-        
+
         // Skip first empty chunk if text starts with "Question title:"
         for (let i = 0; i < chunks.length; i++) {
             let chunk = chunks[i].trim();
             if (!chunk) continue;
-            
+
             // Re-add the title label effectively by processing the chunk
             // Structure expected:
             // [Title Text]
             // Question context: [Context Text]
             // Question options: [Options Text]
             // Question explanation: [Explanation Text]
-            
+
             const q = {
                 id: Date.now().toString() + "-" + Math.random().toString(36).substr(2, 5),
                 title: "Untitled",
@@ -2167,30 +2168,30 @@ Question explanation:
                 starred: false,
                 createdAt: new Date().toISOString()
             };
-            
+
             // Parse Title (First line(s) until "Question context:" or end)
             // But wait, the split removed "Question title:". So the start of chunk is the title.
-            
+
             // Regex to find parts
             // This is loose parsing
             const contextIdx = chunk.indexOf("Question context:");
             const optionsIdx = chunk.indexOf("Question options:");
             const explIdx = chunk.indexOf("Question explanation:");
-            
+
             let titleEnd = chunk.length;
             if (contextIdx !== -1) titleEnd = Math.min(titleEnd, contextIdx);
             else if (optionsIdx !== -1) titleEnd = Math.min(titleEnd, optionsIdx); // Fallback if context missing
-            
+
             q.title = chunk.substring(0, titleEnd).trim() || "Untitled Question";
-            
+
             // Context
             if (contextIdx !== -1) {
                 let contextEnd = chunk.length;
                 if (optionsIdx !== -1) contextEnd = Math.min(contextEnd, optionsIdx);
                 else if (explIdx !== -1) contextEnd = Math.min(contextEnd, explIdx);
-                
+
                 let contextText = chunk.substring(contextIdx + "Question context:".length, contextEnd).trim();
-                
+
                 // Handle Images: Convert [img:filename.png] to <img src="...">
                 contextText = contextText.replace(/\[img:([^\]]+)\]/g, (match, filename) => {
                     return `<div class="question-image-container"><img src="/api/images/${filename}" class="question-image" alt="Question Image"></div>`;
@@ -2198,50 +2199,50 @@ Question explanation:
 
                 q.text = contextText.replace(/\n/g, "<br>");
             }
-            
+
             // Options
             if (optionsIdx !== -1) {
                 let optionsEnd = chunk.length;
                 if (explIdx !== -1) optionsEnd = Math.min(optionsEnd, explIdx);
-                
+
                 const optionsBlock = chunk.substring(optionsIdx + "Question options:".length, optionsEnd).trim();
                 const optionLines = optionsBlock.split("\n");
-                
+
                 optionLines.forEach((line, idx) => {
                     line = line.trim();
                     if (!line) return;
-                    
+
                     const isCorrect = line.startsWith("*");
                     if (isCorrect) line = line.substring(1).trim();
-                    
+
                     // Strip prefixes like "(A)", "A.", "1.", "(1)"
                     line = line.replace(/^(\([A-Za-z0-9]+\)|[A-Za-z0-9]+\.)\s*/, "");
- 
+
                     // Let's keep the text as is but maybe strip leading "A. " if user wants?
                     // User prompt: "A.", "*B." etc. So we should strip standard prefixes if we want clean text, 
                     // or just keep them. Let's keep them active for now, but `isCorrect` logic is handled.
-                    
+
                     q.options.push({
-                        id: (Date.now() + idx).toString() + Math.random().toString().substr(2,4),
+                        id: (Date.now() + idx).toString() + Math.random().toString().substr(2, 4),
                         text: line,
                         isCorrect: isCorrect
                     });
                 });
             }
-            
+
             // Explanation
             if (explIdx !== -1) {
                 q.explanation = chunk.substring(explIdx + "Question explanation:".length).trim();
             }
-            
+
             // Validation
             if (q.options.length > 0) {
-                 questions.push(q);
+                questions.push(q);
             }
-            
+
             if (questions.length >= 100) break;
         }
-        
+
         return questions;
     },
 
@@ -2251,20 +2252,20 @@ Question explanation:
             alert("Please add some questions first.");
             return;
         }
-        
+
         const questions = this.parseSessionText(text);
         if (questions.length === 0) {
             alert("No valid questions found. Please check the format.");
             return;
         }
-        
+
         const hasCorrect = questions.every(q => q.options.some(o => o.isCorrect));
         if (!hasCorrect) {
             if (!confirm("Some questions do not have a correct answer marked (with *). Continue anyway?")) {
                 return;
             }
         }
-        
+
         // Check if updating existing session
         if (this.state.editingFolderId) {
             // Updating existing folder
@@ -2274,28 +2275,28 @@ Question explanation:
                 // For now keep title or update date?
                 // Let's keep it simple: clear old questions from this folder, add new ones
                 const folderId = this.state.editingFolderId;
-                
+
                 // Remove old questions linked to this folder
                 this.state.questions = this.state.questions.filter(q => q.folderId !== folderId);
-                
+
                 // Add new questions
                 questions.forEach(q => q.folderId = folderId);
                 this.state.questions.push(...questions);
-                
+
                 // Update Recent Session Entry if exists
                 const sessionIndex = this.state.recentSessions.findIndex(s => s.folderId === folderId);
                 if (sessionIndex !== -1) {
-                     this.state.recentSessions[sessionIndex].date = new Date().toISOString();
-                     this.state.recentSessions[sessionIndex].count = questions.length;
-                     // Move to top
-                     const s = this.state.recentSessions.splice(sessionIndex, 1)[0];
-                     this.state.recentSessions.unshift(s);
-                     this.saveRecentSessions();
+                    this.state.recentSessions[sessionIndex].date = new Date().toISOString();
+                    this.state.recentSessions[sessionIndex].count = questions.length;
+                    // Move to top
+                    const s = this.state.recentSessions.splice(sessionIndex, 1)[0];
+                    this.state.recentSessions.unshift(s);
+                    this.saveRecentSessions();
                 }
-                
+
                 await this.saveData();
                 this.renderRecentSessions();
-                
+
                 // Open Dungeon
                 if (typeof window.DungeonBase !== 'undefined') {
                     window.DungeonBase.open(questions);
@@ -2307,23 +2308,23 @@ Question explanation:
         // New Session Creation
         // Create a new folder for this session
         const folderName = "Session " + new Date().toLocaleString();
-        
+
         // logic from createNewFolder but returning the object
         const newFolder = {
             id: "fq-" + Date.now(),
             title: folderName,
             parentId: null
         };
-        
+
         // Link questions to this folder
         questions.forEach(q => q.folderId = newFolder.id);
-        
+
         // Save to state
         this.state.folders.push(newFolder);
         this.state.questions.push(...questions);
-        
+
         await this.saveData();
-        
+
         // Save session locally
         const session = {
             id: newFolder.id, // Use folder ID as session ID
@@ -2336,17 +2337,17 @@ Question explanation:
         this.state.recentSessions.unshift(session); // Add to the beginning
         this.saveRecentSessions();
         this.renderRecentSessions();
-        
+
         // Switch to Dungeon (Play) Mode with these questions
         if (typeof window.DungeonBase !== 'undefined') {
             window.DungeonBase.open(questions);
         } else {
-             alert("Dungeon Mode is not loaded.");
+            alert("Dungeon Mode is not loaded.");
         }
-        
+
         // Hide session creator
         this.closeSessionCreator();
-        
+
         // Also expand the new folder in sidebar so user sees it when they return
         this.state.expandedFolders.add(newFolder.id);
         this.saveExpandedFolders();
@@ -2355,10 +2356,10 @@ Question explanation:
 
     renderRecentSessions() {
         if (!this.el.recentSessionsContainer || !this.el.recentSessionsList) return;
-        
+
         const sessions = this.state.recentSessions;
         const emptyStateContent = this.el.emptyState.querySelector('.empty-state-content');
-        
+
         if (sessions.length === 0) {
             // Show custom empty message for sessions
             this.el.recentSessionsList.innerHTML = `
@@ -2374,13 +2375,13 @@ Question explanation:
             this.el.recentSessionsContainer.classList.remove('hidden');
             return;
         }
-        
+
         // Has sessions: Render list
         if (emptyStateContent) emptyStateContent.classList.add('hidden');
         this.el.recentSessionsContainer.classList.remove('hidden');
-        
+
         // Sort
-        
+
         // Sort
         const sorted = [...sessions].sort((a, b) => {
             if (this.state.recentSessionsSort === 'name') {
@@ -2389,10 +2390,10 @@ Question explanation:
                 return new Date(b.date) - new Date(a.date);
             }
         });
-        
+
         // View Class
         this.el.recentSessionsList.className = `recent-sessions-list ${this.state.recentSessionsView}-view`;
-        
+
         this.el.recentSessionsList.innerHTML = sorted.map(s => `
             <div class="session-card">
                <div class="session-card-header">
@@ -2422,111 +2423,111 @@ Question explanation:
             </div>
         `).join('');
     },
-    
+
     toggleRecentSessionsSort() {
         this.state.recentSessionsSort = this.state.recentSessionsSort === 'date' ? 'name' : 'date';
         this.renderRecentSessions();
     },
-    
+
     toggleRecentSessionsView() {
         this.state.recentSessionsView = this.state.recentSessionsView === 'grid' ? 'list' : 'grid';
         this.renderRecentSessions();
     },
-    
+
     openRecentSessionsView() {
         // Clear active question/session
         this.activeQuestionId = null;
         this.state.sessionCreatorVisible = false;
-        
+
         // Hide specific views
         if (this.el.editor) this.el.editor.classList.add("hidden");
         if (this.el.sessionCreator) this.el.sessionCreator.classList.add("hidden");
-        
+
         // Show base empty state container (which holds the recent sessions list)
         if (this.el.emptyState) this.el.emptyState.classList.remove("hidden");
-        
+
         // Update Header
         this.updateHeaderUI('SESSIONS');
 
         // Force render recent sessions
         this.renderRecentSessions();
     },
-    
+
     deleteSession(id, event) {
         if (event) event.stopPropagation();
-        
+
         if (confirm("Delete this session record and its folder?")) {
             const session = this.state.recentSessions.find(s => s.id === id);
-            
+
             // Delete from recent sessions list
             this.state.recentSessions = this.state.recentSessions.filter(s => s.id !== id);
             this.saveRecentSessions();
             this.renderRecentSessions();
-            
+
             // Delete associated folder if it exists
             if (session && session.folderId) {
                 this.deleteFolder(session.folderId);
             }
         }
     },
-    
+
     resumeSession(id) {
         const session = this.state.recentSessions.find(s => s.id === id);
         if (!session) return;
-        
+
         // PRIORITIZE MASTER STATE: Load questions from the folderId first
         // This ensures answers saved to the backend are loaded correctly.
         let questionsToOpen = [];
         if (session.folderId) {
-             questionsToOpen = this.state.questions.filter(q => q.folderId === session.folderId);
+            questionsToOpen = this.state.questions.filter(q => q.folderId === session.folderId);
         }
-        
+
         // Fallback to cached session questions if folder search failed
         if (!questionsToOpen.length) {
-             questionsToOpen = session.questions || [];
+            questionsToOpen = session.questions || [];
         }
-        
+
         if (questionsToOpen.length === 0) {
             alert("No questions found for this session.");
             return;
         }
-        
+
         if (typeof window.DungeonBase !== 'undefined') {
             window.DungeonBase.open(questionsToOpen);
         }
     },
-        
+
 
 
     deleteFolder(id) {
         if (!id) return;
-        
+
         // Find folder
         const folderIndex = this.state.folders.findIndex(f => f.id === id);
         if (folderIndex === -1) return;
-        
+
         // Find all questions in this folder
         const questionsToDelete = this.state.questions.filter(q => q.folderId === id);
-        
+
         // Remove questions
         this.state.questions = this.state.questions.filter(q => q.folderId !== id);
-        
+
         // Remove folder
         this.state.folders.splice(folderIndex, 1);
-        
+
         // Also remove from recent sessions if exists
         this.state.recentSessions = this.state.recentSessions.filter(s => s.folderId !== id);
         this.saveRecentSessions();
         this.renderRecentSessions();
-        
+
         this.saveData();
         this.renderSidebar();
-        
+
         // If active question was in this folder, clear main view
         if (this.state.activeQuestionId && questionsToDelete.find(q => q.id === this.state.activeQuestionId)) {
-             this.el.emptyState.classList.remove("hidden");
-             this.el.editor.classList.add("hidden");
-             this.state.activeQuestionId = null;
+            this.el.emptyState.classList.remove("hidden");
+            this.el.editor.classList.add("hidden");
+            this.state.activeQuestionId = null;
         }
 
         // Sync editor
@@ -2536,13 +2537,13 @@ Question explanation:
     renameFolder(id) {
         const folder = this.state.folders.find(f => f.id === id);
         if (!folder) return;
-        
+
         const newName = prompt("Enter new folder name:", folder.title);
         if (newName && newName.trim() !== "") {
             folder.title = newName.trim();
             this.saveData();
             this.renderSidebar();
-            
+
             // Update session name if linked
             const session = this.state.recentSessions.find(s => s.folderId === id);
             if (session) {
@@ -2556,13 +2557,13 @@ Question explanation:
     editSessionFromFolder(folderId) {
         const folder = this.state.folders.find(f => f.id === folderId);
         if (!folder) return;
-        
+
         const questions = this.state.questions.filter(q => q.folderId === folderId);
         if (questions.length === 0) {
             alert("No questions in this folder to edit.");
             return;
         }
-        
+
         if (confirm("This will overwrite current text in Session Creator. Continue?")) {
             const text = this.reverseParseQuestions(questions);
             this.el.sessionInput.value = text;
@@ -2573,7 +2574,7 @@ Question explanation:
     reverseParseQuestions(questions) {
         return questions.map(q => {
             let block = `Question title:\n${q.title}\n\n`;
-            
+
             // Context (convert <br> back to newlines if needed, though usually regex handles it)
             // Stored text might have <br> or be plain.
             let context = q.text || "";
@@ -2581,7 +2582,7 @@ Question explanation:
             if (context) {
                 block += `Question context:\n${context}\n\n`;
             }
-            
+
             block += `Question options:\n`;
             ['A', 'B', 'C', 'D'].forEach((letter, i) => {
                 const opt = q.options[i];
@@ -2593,16 +2594,16 @@ Question explanation:
             // Handle if more options than 4?
             if (q.options.length > 4) {
                 for (let i = 4; i < q.options.length; i++) {
-                     const opt = q.options[i];
-                     const prefix = opt.isCorrect ? "*" : "";
-                     block += `  ${prefix}(${i+1}) ${opt.text}\n`;
+                    const opt = q.options[i];
+                    const prefix = opt.isCorrect ? "*" : "";
+                    block += `  ${prefix}(${i + 1}) ${opt.text}\n`;
                 }
             }
-            
+
             if (q.explanation) {
                 block += `\nQuestion explanation:\n${q.explanation}\n`;
             }
-            
+
             return block;
         }).join("\n\n" + "-".repeat(20) + "\n\n"); // Separator optional but good for reading
     },
@@ -2610,7 +2611,7 @@ Question explanation:
     // Unified Header State Management
     updateHeaderUI(state) {
         // States: 'HOME', 'SESSIONS', 'EDITOR', 'CREATOR'
-        
+
         // Default Defaults
         let showBack = false;
         let showRecentBtn = true;
@@ -2657,18 +2658,18 @@ Question explanation:
         this.toggleSessionControls(showControls);
 
         if (state !== 'EDITOR') {
-             // For editor, title is managed specifically with data
-             if (this.el.titleInput) {
-                 this.el.titleInput.value = titleText;
-                 this.el.titleInput.disabled = isTitleDisabled;
-                 this.el.titleInput.placeholder = titlePlaceholder;
-             }
+            // For editor, title is managed specifically with data
+            if (this.el.titleInput) {
+                this.el.titleInput.value = titleText;
+                this.el.titleInput.disabled = isTitleDisabled;
+                this.el.titleInput.placeholder = titlePlaceholder;
+            }
         }
     },
 
     toggleAiMode() {
         this.state.aiMode = !this.state.aiMode;
-        
+
         // Update Buttons
         if (this.el.toggleAiModeBtn) {
             this.el.toggleAiModeBtn.classList.toggle('active', this.state.aiMode);
@@ -2706,7 +2707,7 @@ Question options:
 (D) 
 Question explanation:`;
             }
-            
+
             // Focus and interactivity fix
             if (this.el.sessionInput) {
                 this.el.sessionInput.focus();
@@ -2731,7 +2732,7 @@ Question explanation:`;
 
         if (learningData) {
             const { stats, examples } = learningData;
-            
+
             // 1. Adaptive Difficulty based on stats
             const successRate = stats.total > 0 ? (stats.correct / stats.total) * 100 : 50;
             if (successRate > 80 && stats.total > 10) {
@@ -2812,11 +2813,11 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
 
     async fillWithAI() {
         if (!this.state.aiMode) return;
-        
+
         const text = this.el.sessionInput.innerText;
         // Check if user actually provided some input
         const hasContent = text.replace(/Question (title|context|options|explanation):/g, "").trim().length > 5;
-        
+
         if (!hasContent) {
             alert("Please provide at least a title or some context for the AI to generate the question.");
             return;
@@ -2835,7 +2836,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                 loadingText.textContent = `${modelName} is thinking...`;
             }
         }
-        
+
         try {
             // NEW: Fetch Learning Data (Stats + Examples)
             let learningData = null;
@@ -2848,30 +2849,30 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             } catch (e) { console.warn("Failed to fetch learning data, proceeding with defaults."); }
 
             const systemPrompt = this.getSystemPrompt(learningData);
-            
-        // Include uploaded media content if available
-        let userPrompt = '';
-        if (this.state.uploadedMediaContent) {
-            // Truncate content to fit context window
-            // 131k context limit - 10k output = 121k for input
-            // Conservatively assume dense tokenization (e.g. 1.25 chars/token) -> 121k * 1.25 ~= 150k chars
-            const MAX_CHARS = 150000;
-            let content = this.state.uploadedMediaContent;
-            
-            if (content.length > MAX_CHARS) {
-                console.warn(`[AI] Uploaded content too large (${content.length} chars). Truncating to ${MAX_CHARS} chars to fit context window.`);
-                content = content.substring(0, MAX_CHARS) + "\n\n[CONTENT TRUNCATED TO FIT CONTEXT WINDOW]";
-                // Non-blocking notification via console
+
+            // Include uploaded media content if available
+            let userPrompt = '';
+            if (this.state.uploadedMediaContent) {
+                // Truncate content to fit context window
+                // 131k context limit - 10k output = 121k for input
+                // Conservatively assume dense tokenization (e.g. 1.25 chars/token) -> 121k * 1.25 ~= 150k chars
+                const MAX_CHARS = 150000;
+                let content = this.state.uploadedMediaContent;
+
+                if (content.length > MAX_CHARS) {
+                    console.warn(`[AI] Uploaded content too large (${content.length} chars). Truncating to ${MAX_CHARS} chars to fit context window.`);
+                    content = content.substring(0, MAX_CHARS) + "\n\n[CONTENT TRUNCATED TO FIT CONTEXT WINDOW]";
+                    // Non-blocking notification via console
+                }
+
+                userPrompt = `Based on this document:\n${content}\n\nFill this frame:\n${text}`;
+            } else {
+                userPrompt = `Fill this frame:\n${text}`;
             }
-            
-            userPrompt = `Based on this document:\n${content}\n\nFill this frame:\n${text}`;
-        } else {
-            userPrompt = `Fill this frame:\n${text}`;
-        }
-            
+
             const endpoints = ['http://localhost:3001/api/ai/chat', 'http://127.0.0.1:3001/api/ai/chat'];
             let lastError = null;
-            
+
             // Get selected model
             const selectedModel = this.el.aiModelSelector ? this.el.aiModelSelector.value : null;
 
@@ -2894,7 +2895,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                         const data = await response.json();
                         if (data.choices && data.choices[0] && data.choices[0].message) {
                             this.el.sessionInput.innerText = data.choices[0].message.content;
-                            return; 
+                            return;
                         }
                     }
                 } catch (e) {
@@ -2906,10 +2907,10 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
 
         } catch (error) {
             console.error("[QuestionBase] AI Fill failed:", error);
-            
+
             // Try to parse error details
             let errorMessage = "AI generation failed. Please ensure your local server is running on port 3001.";
-            
+
             try {
                 const errorData = await error.json?.() || error;
                 if (errorData.details) {
@@ -2922,7 +2923,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             } catch (e) {
                 // Use default message
             }
-            
+
             alert(errorMessage);
         } finally {
             if (this.el.toggleAiModeBtn) this.el.toggleAiModeBtn.classList.remove('loading');
@@ -2936,7 +2937,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
         fileInput.type = 'file';
         fileInput.accept = '.pdf,.txt,.md';
         fileInput.style.display = 'none';
-        
+
         fileInput.onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) {
@@ -2946,7 +2947,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                 }
                 return;
             }
-            
+
             // Show loading state on upload button
             if (this.el.uploadMediaBtn) {
                 this.el.uploadMediaBtn.classList.add('loading');
@@ -2954,7 +2955,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             }
             try {
                 let content = '';
-                
+
                 // Read based on file type
                 if (file.name.endsWith('.pdf')) {
                     // PDF Processing using pdf.js
@@ -2962,7 +2963,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                         const arrayBuffer = await file.arrayBuffer();
                         const loadingTask = pdfjsLib.getDocument(arrayBuffer);
                         const pdf = await loadingTask.promise;
-                        
+
                         // Show progress if many pages
                         if (this.el.uploadMediaBtn) {
                             this.el.uploadMediaBtn.innerHTML = `Scanning ${pdf.numPages} pages...`;
@@ -2975,10 +2976,10 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                             const pageText = textContent.items.map(item => item.str).join(' ');
                             fullText += `[Page ${i}]\n${pageText}\n\n`;
                         }
-                        
+
                         content = `[PDF Content from ${file.name}]\n${fullText}`;
                         console.log(`PDF "${file.name}" loaded successfully. Extracted ${fullText.length} characters from ${pdf.numPages} pages.`);
-                        
+
                     } catch (error) {
                         console.error("PDF reading failed:", error);
                         throw new Error("Failed to read PDF. ensuring it's not password protected/corrupted.");
@@ -3002,7 +3003,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                     this.el.uploadedFileName.textContent = file.name;
                     this.el.uploadedFileStatus.style.display = 'flex';
                 }
-                
+
                 if (this.el.uploadMediaBtn) {
                     this.el.uploadMediaBtn.style.background = 'var(--success)';
                     this.el.uploadMediaBtn.style.color = 'white';
@@ -3013,7 +3014,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                         </svg>
                         Media Loaded
                     `;
-                    
+
                     // Reset button after 3 seconds
                     setTimeout(() => {
                         if (this.el.uploadMediaBtn) {
@@ -3060,7 +3061,7 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                 }
             }
         };
-        
+
         // Trigger file selection
         document.body.appendChild(fileInput);
         fileInput.click();

@@ -237,7 +237,14 @@ function createServer() {
 
           const filePath = path.join(targetDir, `${metadata.id}.md`);
           const md = htmlToMarkdown(contentHtml || content || '');
-          const fileContent = matter.stringify(md, metadata);
+
+          // Clean metadata to remove undefined values which cause js-yaml to crash
+          const cleanMetadata = {};
+          Object.keys(metadata).forEach(key => {
+            if (metadata[key] !== undefined) cleanMetadata[key] = metadata[key];
+          });
+
+          const fileContent = matter.stringify(md, cleanMetadata);
 
           await fs.writeFile(filePath, fileContent, 'utf8');
 
@@ -280,7 +287,14 @@ function createServer() {
 
       const filePath = path.join(targetDir, `${noteId}.md`);
       const md = htmlToMarkdown(contentHtml || content || '');
-      const fileContent = matter.stringify(md, metadata);
+
+      // Clean metadata to remove undefined values which cause js-yaml to crash
+      const cleanMetadata = {};
+      Object.keys(metadata).forEach(key => {
+        if (metadata[key] !== undefined) cleanMetadata[key] = metadata[key];
+      });
+
+      const fileContent = matter.stringify(md, cleanMetadata);
 
       await fs.writeFile(filePath, fileContent, 'utf8');
 

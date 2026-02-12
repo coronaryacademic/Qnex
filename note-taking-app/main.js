@@ -308,7 +308,14 @@ ipcMain.handle("write-notes", async (event, data) => {
 
       const { contentHtml, content, ...meta } = note;
       const body = contentHtml || content || '';
-      const fileContent = matter.stringify(body, meta);
+
+      // Clean meta to remove undefined values which cause js-yaml to crash
+      const cleanMeta = {};
+      Object.keys(meta).forEach(key => {
+        if (meta[key] !== undefined) cleanMeta[key] = meta[key];
+      });
+
+      const fileContent = matter.stringify(body, cleanMeta);
 
       await fs.writeFile(filePath, fileContent, 'utf8');
     }

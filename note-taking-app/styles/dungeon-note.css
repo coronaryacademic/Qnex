@@ -1,0 +1,253 @@
+/* Dungeon Sticky Note Styles */
+.dungeon-note-window {
+    position: fixed;
+    width: 320px;
+    background: rgba(30, 30, 35, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 200px;
+    min-height: 150px;
+    animation: dungeonNoteAppear 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+
+.dungeon-note-window.dragging {
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+    transform: scale(1.02);
+}
+
+@keyframes dungeonNoteAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.dungeon-note-header {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: grab;
+    user-select: none;
+}
+
+.dungeon-note-header:active {
+    cursor: grabbing;
+}
+
+.dungeon-note-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dungeon-note-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.dungeon-note-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dungeon-note-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.dungeon-note-btn.close:hover {
+    background: #ef4444;
+}
+
+.dungeon-note-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 150px;
+}
+
+.dungeon-note-textarea {
+    width: 100%;
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 14px;
+    color: #fff;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.dungeon-note-toolbar {
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dungeon-note-toolbar-left,
+.dungeon-note-toolbar-right {
+    display: flex;
+    gap: 6px;
+}
+
+.dungeon-note-tool {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dungeon-note-tool:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.dungeon-note-tool:active {
+    transform: translateY(0);
+}
+
+.dungeon-note-tool.bulb:hover {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.4);
+}
+
+.dungeon-note-tool.save:hover {
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.dungeon-note-tool.link:hover {
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.dungeon-note-footer {
+    padding: 8px 14px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-top: 1px dotted rgba(255, 255, 255, 0.1);
+}
+
+.dungeon-note-q-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.dungeon-note-q-link:hover {
+    text-decoration: underline;
+}
+
+.dungeon-note-resizer {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.dungeon-note-resizer::after {
+    content: '';
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    box-shadow: -4px 0 rgba(255, 255, 255, 0.3), 0 -4px rgba(255, 255, 255, 0.3);
+}
+
+/* Loading Overlay */
+.dungeon-note-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(30, 30, 35, 0.8);
+    backdrop-filter: blur(4px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 10;
+    border-radius: 0 0 12px 12px;
+}
+
+.dungeon-note-loading.active {
+    display: flex;
+}
+
+.dungeon-note-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: dungeonNoteSpin 0.8s linear infinite;
+}
+
+@keyframes dungeonNoteSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.dungeon-note-loading span {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}

@@ -5,12 +5,15 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: var(--bg); /* Use theme background */
+  background: var(--bg);
+  /* Use theme background */
   z-index: 2000;
   display: flex;
-  flex-direction: row; /* Horizontal layout: Sidebar | Content | RightPanel */
+  flex-direction: row;
+  /* Horizontal layout: Sidebar | Content | RightPanel */
   overflow: hidden;
-  color: var(--text); /* Use theme text color */
+  color: var(--text);
+  /* Use theme text color */
   font-family: 'Inter', sans-serif;
 }
 
@@ -66,17 +69,20 @@
 
 .dungeon-topbar-left,
 .dungeon-topbar-right {
-  position: relative; /* Ensure z-index works to keep above center */
+  position: relative;
+  /* Ensure z-index works to keep above center */
   display: flex;
   align-items: center;
   gap: 12px;
   z-index: 2;
-  pointer-events: none; /* Allow clicks to pass through empty space */
+  pointer-events: none;
+  /* Allow clicks to pass through empty space */
 }
 
-.dungeon-topbar-left > *,
-.dungeon-topbar-right > * {
-  pointer-events: auto; /* Re-enable clicks for actual buttons/content */
+.dungeon-topbar-left>*,
+.dungeon-topbar-right>* {
+  pointer-events: auto;
+  /* Re-enable clicks for actual buttons/content */
 }
 
 /* 
@@ -98,7 +104,8 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px; /* Gap between all left-side items */
+  gap: 8px;
+  /* Gap between all left-side items */
 }
 
 .dungeon-topbar-right {
@@ -106,7 +113,8 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px; /* Gap between all right-side items */
+  gap: 8px;
+  /* Gap between all right-side items */
 }
 
 .dungeon-topbar-btn {
@@ -131,7 +139,8 @@
 
 .dungeon-topbar-btn.active {
   color: var(--accent);
-  background: var(--bg-secondary); /* Optional: distinct background */
+  background: var(--bg-secondary);
+  /* Optional: distinct background */
 }
 
 .dungeon-search-wrapper {
@@ -143,7 +152,8 @@
   border-radius: 6px;
   padding: 0 8px;
   height: 32px;
-  margin-right: -4px; /* Slight visual adjustment */
+  margin-right: -4px;
+  /* Slight visual adjustment */
   transform-origin: right center;
   animation: slideInSearch 0.2s ease-out;
 }
@@ -153,25 +163,32 @@
 }
 
 @keyframes slideInSearch {
-  from { opacity: 0; transform: scaleX(0.8); }
-  to { opacity: 1; transform: scaleX(1); }
+  from {
+    opacity: 0;
+    transform: scaleX(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
 }
 
 .dungeon-search-container {
-    display: flex;
-    align-items: center;
-    width: 200px;
+  display: flex;
+  align-items: center;
+  width: 200px;
 }
 
 /* Ensure font group doesn't break layout if present */
 .dungeon-font-group {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    background: var(--bg-secondary);
-    padding: 2px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-secondary);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
 }
 
 .dungeon-topbar-btn:active {
@@ -180,48 +197,57 @@
 
 /* Font Resizer Group */
 .dungeon-font-group {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    background: var(--bg-secondary);
-    padding: 3px;
-    border-radius: 6px;
-    margin: 0 4px;
-    border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-secondary);
+  padding: 3px;
+  border-radius: 6px;
+  margin: 0 4px;
+  border: 1px solid var(--border);
 }
 
 .dungeon-font-btn {
-    width: 32px; /* Match topbar button size */
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: 4px;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: inherit;
-    line-height: 1;
+  width: 32px;
+  /* Match topbar button size */
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  line-height: 1;
 }
 
 .dungeon-font-btn:hover {
-    background: var(--panel-hover);
-    color: var(--text);
+  background: var(--panel-hover);
+  color: var(--text);
 }
 
 .dungeon-font-btn.active {
-    background: var(--bg);
-    color: var(--accent);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    font-weight: 600;
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
 }
 
 /* Font sizes for the buttons themselves */
-.dungeon-font-btn.small { font-size: 0.75rem; }
-.dungeon-font-btn.medium { font-size: 0.9rem; }
-.dungeon-font-btn.large { font-size: 1.1rem; }
+.dungeon-font-btn.small {
+  font-size: 0.75rem;
+}
+
+.dungeon-font-btn.medium {
+  font-size: 0.9rem;
+}
+
+.dungeon-font-btn.large {
+  font-size: 1.1rem;
+}
 
 .dungeon-question-title {
   font-size: 1.1rem;
@@ -231,7 +257,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  margin-right: 24px; /* Separate from buttons if docked left */
+  margin-right: 24px;
+  /* Separate from buttons if docked left */
 }
 
 .dungeon-topbar-separator {
@@ -249,7 +276,8 @@
   padding: 2px 8px;
   border-radius: 4px;
   transition: all 0.3s;
-  display: none; /* Hidden by default to prevent gap */
+  display: none;
+  /* Hidden by default to prevent gap */
 }
 
 .dungeon-save-status.saved {
@@ -269,8 +297,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Toolbar Options Menu */
@@ -373,7 +408,8 @@
 
 /* LEFT SIDEBAR (Question Strip) */
 .dungeon-sidebar {
-  width: 80px; /* Default start width */
+  width: 80px;
+  /* Default start width */
   min-width: 50px;
   max-width: 300px;
   height: 100%;
@@ -382,15 +418,19 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  overflow-x: hidden; /* Prevent horizontal scrollbar */
-  align-items: stretch; /* Align items to stretch to full width */
+  overflow-x: hidden;
+  /* Prevent horizontal scrollbar */
+  align-items: stretch;
+  /* Align items to stretch to full width */
   flex-shrink: 0;
   position: fixed;
   left: 0;
-  top: 60px; /* Below topbar */
+  top: 60px;
+  /* Below topbar */
   bottom: 0;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), top 0.3s cubic-bezier(0.4, 0, 0.2, 1), bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1999; /* Below toolbar when docked */
+  z-index: 1999;
+  /* Below toolbar when docked */
 }
 
 .dungeon-sidebar.collapsed {
@@ -415,7 +455,8 @@
   flex-shrink: 0;
   gap: 8px;
   position: relative;
-  z-index: 10; /* Above resizer handle */
+  z-index: 10;
+  /* Above resizer handle */
 }
 
 .dungeon-sidebar-stat {
@@ -446,7 +487,8 @@
 
 /* Q-Box Items */
 .dungeon-q-box {
-  width: 100%; /* Fill sidebar width */
+  width: 100%;
+  /* Fill sidebar width */
   height: 30px;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
@@ -458,18 +500,20 @@
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
-  line-height: 0; 
+  line-height: 0;
 }
 
 .dungeon-q-box::before {
-  content: "\2022"; /* Bullet point */
+  content: "\2022";
+  /* Bullet point */
   position: absolute;
-  left: 8px; /* Closer to edge */
+  left: 8px;
+  /* Closer to edge */
   top: 50%;
   transform: translateY(-50%);
   font-size: 1.4rem;
   line-height: 1;
-  opacity: 0.6; 
+  opacity: 0.6;
 }
 
 /* Alternating Backgrounds (Zebra Formatting) */
@@ -482,7 +526,8 @@
 }
 
 .dungeon-q-box:hover {
-  background: var(--panel-hover); /* Uniform hover color */
+  background: var(--panel-hover);
+  /* Uniform hover color */
   border-color: var(--accent);
 }
 
@@ -503,13 +548,15 @@
 
 .dungeon-q-box.correct {
   color: var(--text);
-  background: rgba(34, 197, 94, 0.2) !important; /* Desaturated Soft Green */
+  background: rgba(34, 197, 94, 0.2) !important;
+  /* Desaturated Soft Green */
   border-color: rgba(34, 197, 94, 0.3);
 }
 
 .dungeon-q-box.wrong {
   color: var(--text);
-  background: rgba(239, 68, 68, 0.2) !important; /* Desaturated Soft Red */
+  background: rgba(239, 68, 68, 0.2) !important;
+  /* Desaturated Soft Red */
   border-color: rgba(239, 68, 68, 0.3);
 }
 
@@ -519,16 +566,20 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* No scroll on main container */
+  overflow: hidden;
+  /* No scroll on main container */
   padding: 0;
   position: fixed;
-  left: 80px; /* Default sidebar width */
-  top: 60px; /* Below topbar */
+  left: 80px;
+  /* Default sidebar width */
+  top: 60px;
+  /* Below topbar */
   right: 0;
   bottom: 0;
   background: var(--bg);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), top 0.3s cubic-bezier(0.4, 0, 0.2, 1), bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1998; /* Below sidebar and toolbar */
+  z-index: 1998;
+  /* Below sidebar and toolbar */
 }
 
 .dungeon-main.sidebar-collapsed {
@@ -540,7 +591,8 @@
 
 .dungeon-scroll-wrapper {
   flex: 1;
-  overflow-y: auto; /* Scroll mainly checks here */
+  overflow-y: auto;
+  /* Scroll mainly checks here */
   padding: 85px 65px 160px 117px;
   display: flex;
   flex-direction: column;
@@ -554,7 +606,8 @@
   display: flex;
   flex-direction: column;
   gap: 30px;
-  margin-left: 0; /* Align to left */
+  margin-left: 0;
+  /* Align to left */
 }
 
 /* Font Size Modifiers */
@@ -605,16 +658,17 @@
   min-height: auto;
   display: block;
   color: var(--text);
-  font-size: 1.15rem; /* Reduced from 20px, but larger than options */
+  font-size: 1.15rem;
+  /* Reduced from 20px, but larger than options */
   line-height: 1.6;
   margin-bottom: 30px;
   position: relative;
 }
 
 .dungeon-context-box img {
-    display: block;
-    max-width: 100%;
-    margin: 10px auto;
+  display: block;
+  max-width: 100%;
+  margin: 10px auto;
 }
 
 .highlight {
@@ -627,11 +681,11 @@
 
 
 .dungeon-context-box img {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    margin: 10px auto;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  margin: 10px auto;
 }
 
 
@@ -639,10 +693,12 @@
 .dungeon-options-list {
   display: flex;
   flex-direction: column;
-  gap: 0; /* Remove gap */
+  gap: 0;
+  /* Remove gap */
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden; /* Clip corners */
+  overflow: hidden;
+  /* Clip corners */
   margin-top: 10px;
 }
 
@@ -651,8 +707,10 @@
   align-items: flex-start;
   gap: 16px;
   cursor: pointer;
-  padding: 18px 20px; /* Comfortable hit area */
-  border-radius: 0; /* Reset box radius */
+  padding: 18px 20px;
+  /* Comfortable hit area */
+  border-radius: 0;
+  /* Reset box radius */
   background: transparent;
   border: none;
   /* Removed border-bottom separator */
@@ -663,13 +721,15 @@
 
 
 .dungeon-radio-circle {
-  width: 1.25em; 
+  width: 1.25em;
   height: 1.25em;
-  border: 2px solid var(--text); /* High contrast border */
+  border: 2px solid var(--text);
+  /* High contrast border */
   border-radius: 50%;
   background: var(--bg);
   flex-shrink: 0;
-  margin-top: 0.15em; /* Aligns with text x-height */
+  margin-top: 0.15em;
+  /* Aligns with text x-height */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -690,14 +750,17 @@
   content: '';
   width: 0.6em;
   height: 0.6em;
-  background: var(--bg); /* Dot color */
+  background: var(--bg);
+  /* Dot color */
   border-radius: 50%;
-  display: block; /* Ensure visibility */
+  display: block;
+  /* Ensure visibility */
 }
 
 /* Text Styling */
 .dungeon-radio-text {
-  font-size: inherit; /* Inherit from .dungeon-radio-option */
+  font-size: inherit;
+  /* Inherit from .dungeon-radio-option */
   color: var(--text);
   line-height: 1.5;
   font-weight: 500;
@@ -707,12 +770,15 @@
 .dungeon-radio-option.correct-answer {
   background: rgba(var(--success-rgb, 34, 197, 94), 0.1);
 }
+
 .dungeon-radio-option.correct-answer .dungeon-radio-text {
-  color: var(--text); 
+  color: var(--text);
 }
+
 .dungeon-radio-option.wrong-answer {
   background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
 }
+
 .dungeon-radio-option.wrong-answer .dungeon-radio-text {
   color: var(--text);
 }
@@ -720,29 +786,32 @@
 /* Feedback Circles */
 /* Feedback Circles */
 .dungeon-radio-option.correct-answer .dungeon-radio-circle {
-    border-color: var(--success);
-    background: var(--success);
+  border-color: var(--success);
+  background: var(--success);
 }
+
 .dungeon-radio-option.correct-answer .dungeon-radio-circle::after {
-    content: '';
-    display: block;
-    width: 0.6em; 
-    height: 0.6em; 
-    background: var(--bg); /* Dot color */
-    border-radius: 50%;
+  content: '';
+  display: block;
+  width: 0.6em;
+  height: 0.6em;
+  background: var(--bg);
+  /* Dot color */
+  border-radius: 50%;
 }
 
 .dungeon-radio-option.wrong-answer .dungeon-radio-circle {
-    border-color: var(--danger);
-    background: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger);
 }
+
 .dungeon-radio-option.wrong-answer .dungeon-radio-circle::after {
-    content: ''; 
-    display: block;
-    width: 0.6em; 
-    height: 0.6em; 
-    background: var(--bg); 
-    border-radius: 50%;
+  content: '';
+  display: block;
+  width: 0.6em;
+  height: 0.6em;
+  background: var(--bg);
+  border-radius: 50%;
 }
 
 /* Submit Button */
@@ -751,11 +820,13 @@
   padding: 12px 40px;
   background: var(--accent);
   border: none;
-  color: var(--bg); /* Contrast text */
+  color: var(--bg);
+  /* Contrast text */
   font-family: inherit;
   font-size: 1.1rem;
   font-weight: 600;
-  border-radius: 8px; /* Modern rounded corners */
+  border-radius: 8px;
+  /* Modern rounded corners */
   cursor: pointer;
   margin-top: 30px;
   transition: all 0.2s ease;
@@ -793,7 +864,11 @@
   line-height: 1.6;
 }
 
-@keyframes fadeIn { to { opacity: 1; } }
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
 
 /* RIGHT SIDEBAR (Tools + Nav) */
 /* RIGHT SIDEBAR Removed */
@@ -801,7 +876,8 @@
 
 /* Floating Toolbar */
 .dungeon-toolbar {
-  position: fixed; /* Fixed to viewport for free movement */
+  position: fixed;
+  /* Fixed to viewport for free movement */
   top: 40px;
   left: 50%;
   /* transform managed by JS for dragging now, dragging logic overrides centering */
@@ -809,21 +885,25 @@
   min-width: auto;
   height: 50px;
   border-radius: 25px;
-  
-  background: var(--panel); /* Exact panel color as requested */
+
+  background: var(--panel);
+  /* Exact panel color as requested */
   /* Remove color-mix/backdrop if strict panel requested, but blur looks nice. Keeping purely panel per request? "use bakcground var --panel". */
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
-  
+
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 0 24px;
   gap: 16px;
-  
-  z-index: 9999; /* Highest z-index */
-  cursor: grab; /* Movable cursor */
-  transition: box-shadow 0.2s, border-radius 0.2s, background 0.2s, opacity 0.3s, transform 0.3s; /* Added opacity and transform for animations */
+
+  z-index: 9999;
+  /* Highest z-index */
+  cursor: grab;
+  /* Movable cursor */
+  transition: box-shadow 0.2s, border-radius 0.2s, background 0.2s, opacity 0.3s, transform 0.3s;
+  /* Added opacity and transform for animations */
   user-select: none;
   opacity: 0;
   transform: scale(0.9);
@@ -841,7 +921,7 @@
 
 .dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.docked-left):not(.docked-right):active {
   cursor: grabbing;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
 }
 
 .dungeon-toolbar.vertical {
@@ -855,13 +935,16 @@
 .dungeon-toolbar.docked-top,
 .dungeon-toolbar.docked-bottom {
   position: fixed;
-  left: 0; /* Full width from left edge */
+  left: 0;
+  /* Full width from left edge */
   right: 0;
   width: 100%;
   border-radius: 0;
   justify-content: center;
-  cursor: default !important; /* Force non-draggable cursor */
-  z-index: 2000; /* Above sidebar */
+  cursor: default !important;
+  /* Force non-draggable cursor */
+  z-index: 2000;
+  /* Above sidebar */
 }
 
 .dungeon-toolbar.docked-left,
@@ -869,8 +952,10 @@
   position: fixed;
   height: auto;
   border-radius: 0;
-  cursor: default !important; /* Force non-draggable cursor */
-  z-index: 2000; /* Above sidebar */
+  cursor: default !important;
+  /* Force non-draggable cursor */
+  z-index: 2000;
+  /* Above sidebar */
 }
 
 .dungeon-toolbar.docked-top {
@@ -904,7 +989,7 @@
 
 /* Horizontal Divider (default) */
 .dungeon-toolbar:not(.vertical) .dungeon-toolbar-divider {
-  width: 1px; 
+  width: 1px;
   height: 24px;
 }
 
@@ -918,10 +1003,12 @@
   background: var(--border);
   opacity: 0.5;
 }
+
 .dungeon-toolbar.vertical .dungeon-toolbar-divider {
   width: 24px;
   height: 1px;
 }
+
 .dungeon-toolbar.horizontal .dungeon-toolbar-divider {
   width: 1px;
   height: 24px;
@@ -962,7 +1049,8 @@
 
 .dungeon-drop-zone.left {
   top: 50%;
-  left: 10px; /* Will be adjusted by JS based on sidebar */
+  left: 10px;
+  /* Will be adjusted by JS based on sidebar */
   transform: translateY(-50%);
   width: 60px;
   height: 80%;
@@ -990,46 +1078,52 @@
   border-radius: 6px;
   transition: all 0.2s;
 }
-.dungeon-tool-btn:hover { 
-    background: var(--panel-hover);
-    color: var(--accent);
+
+.dungeon-tool-btn:hover {
+  background: var(--panel-hover);
+  color: var(--accent);
 }
+
 .dungeon-tool-btn.active {
-    background: var(--accent);
-    color: var(--bg);
+  background: var(--accent);
+  color: var(--bg);
 }
 
 .dungeon-tool-btn[data-tool="star"].active {
-    color: #fbbf24; /* yellow-400 */
-    background: transparent; /* No bg for star, just fill? or button active style? */
-    background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  /* yellow-400 */
+  background: transparent;
+  /* No bg for star, just fill? or button active style? */
+  background: rgba(251, 191, 36, 0.1);
 }
+
 .dungeon-tool-btn[data-tool="star"].active svg {
-    fill: #fbbf24;
+  fill: #fbbf24;
 }
 
 .dungeon-tool-btn[data-tool="submit"]:hover {
-    color: var(--success);
-    background: rgba(var(--success-rgb, 34, 197, 94), 0.1);
+  color: var(--success);
+  background: rgba(var(--success-rgb, 34, 197, 94), 0.1);
 }
 
 /* Highlighted Text */
 .dungeon-context-box .highlight {
-    background-color: #fde047; /* yellow-300 */
-    color: #000;
-    padding: 0 2px;
-    border-radius: 2px;
+  background-color: #fde047;
+  /* yellow-300 */
+  color: #000;
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
 /* Sidebar Star Indicator */
 .dungeon-starred-indicator {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    width: 6px;
-    height: 6px;
-    background: #fbbf24;
-    border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  background: #fbbf24;
+  border-radius: 50%;
 }
 
 /* Actions Row (Footer) */
@@ -1080,22 +1174,24 @@
 .dungeon-sidebar-questions::-webkit-scrollbar {
   width: 4px;
 }
+
 .dungeon-sidebar::-webkit-scrollbar-track,
 .dungeon-sidebar-questions::-webkit-scrollbar-track {
   background: var(--bg);
 }
+
 .dungeon-sidebar::-webkit-scrollbar-thumb,
 .dungeon-sidebar-questions::-webkit-scrollbar-thumb {
   background: var(--border);
 }
 
 /* Responsive adjustments for docked toolbars when sidebar collapses */
-.dungeon-main.sidebar-collapsed ~ .dungeon-toolbar.docked-top,
-.dungeon-main.sidebar-collapsed ~ .dungeon-toolbar.docked-bottom {
+.dungeon-main.sidebar-collapsed~.dungeon-toolbar.docked-top,
+.dungeon-main.sidebar-collapsed~.dungeon-toolbar.docked-bottom {
   left: 0;
 }
 
-.dungeon-main.sidebar-collapsed ~ .dungeon-toolbar.docked-left {
+.dungeon-main.sidebar-collapsed~.dungeon-toolbar.docked-left {
   left: 0;
 }
 
@@ -1145,10 +1241,10 @@
 .dungeon-search-wrapper.active .dungeon-search-input {
   width: 220px;
   opacity: 1;
-  padding: 0 12px 0 12px; 
+  padding: 0 12px 0 12px;
   border-color: var(--border);
   pointer-events: auto;
-  margin-left: 4px; 
+  margin-left: 4px;
 }
 
 /* When active, button acts as toggle? 
@@ -1158,8 +1254,8 @@
    Simple flex logic handles this if order is Button, Input.
 */
 .dungeon-topbar-center {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 /* Save Status */
@@ -1388,9 +1484,12 @@
 }
 
 @keyframes pulse-text {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }
@@ -1400,17 +1499,19 @@
 .dungeon-calculator {
   position: fixed;
   top: 80px;
-  right: 20px; /* Default position */
+  right: 20px;
+  /* Default position */
   width: 280px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   z-index: 88888;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: opacity 0.2s; /* Removed transform transition for smooth dragging */
+  transition: opacity 0.2s;
+  /* Removed transform transition for smooth dragging */
   user-select: none;
 }
 
@@ -1555,7 +1656,8 @@
   width: 0;
   height: 32px;
   background: var(--bg-secondary);
-  border: 1px solid transparent; /* Hidden initially */
+  border: 1px solid transparent;
+  /* Hidden initially */
   border-radius: 6px;
   overflow: hidden;
   display: flex;
@@ -1581,12 +1683,13 @@
   width: 100%;
   height: 100%;
   gap: 6px;
-  min-width: 250px; /* Prevent content squishing */
+  min-width: 250px;
+  /* Prevent content squishing */
 }
 
 /* Hide duplicate icon */
 .dungeon-search-wrapper .search-icon {
-    display: none;
+  display: none;
 }
 
 #dungeonSearchInput {
@@ -1670,7 +1773,8 @@
   bottom: 40px;
   height: auto;
   right: 0;
-  width: 430px; /* Default larger width as requested implicitly by resizing request/screenshot? No, user said min 310 max 550. Start 430 is fine. */
+  width: 430px;
+  /* Default larger width as requested implicitly by resizing request/screenshot? No, user said min 310 max 550. Start 430 is fine. */
   background: var(--bg-secondary);
   border-left: 1px solid var(--border);
   z-index: 9999 !important;
@@ -1693,17 +1797,20 @@
 
 .lab-resizer {
   position: absolute;
-  left: -4px; /* Slightly outside to grab */
+  left: -4px;
+  /* Slightly outside to grab */
   top: 0;
   bottom: 0;
-  width: 8px; /* Hit target */
+  width: 8px;
+  /* Hit target */
   cursor: ew-resize;
   z-index: 20;
   background: transparent;
   transition: background 0.2s;
 }
 
-.lab-resizer:hover, .dungeon-lab-sidebar.resizing .lab-resizer {
+.lab-resizer:hover,
+.dungeon-lab-sidebar.resizing .lab-resizer {
   background: var(--accent);
   opacity: 0.5;
 }
@@ -1716,13 +1823,16 @@
 .lab-content::-webkit-scrollbar {
   width: 6px;
 }
+
 .lab-content::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .lab-content::-webkit-scrollbar-thumb {
   background-color: var(--border);
   border-radius: 3px;
 }
+
 .lab-content::-webkit-scrollbar-thumb:hover {
   background-color: var(--text-muted);
 }
@@ -1733,7 +1843,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  cursor: pointer; /* Indication it can be clicked to close */
+  cursor: pointer;
+  /* Indication it can be clicked to close */
 }
 
 .lab-sidebar-header:hover {
@@ -1811,7 +1922,7 @@
 .lab-filter-chip.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: white; 
+  color: white;
 }
 
 .lab-content {
@@ -1843,7 +1954,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  border-bottom: 1px solid var(--border-subtle, rgba(128,128,128,0.1));
+  border-bottom: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.1));
 }
 
 .lab-item:last-child {
@@ -1875,8 +1986,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  display: none; /* Hide if header redundant/clunky, but requested */
-  display: flex; 
+  display: none;
+  /* Hide if header redundant/clunky, but requested */
+  display: flex;
 }
 
 .lab-sidebar-header h3 {
@@ -1961,7 +2073,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  border-bottom: 1px solid var(--border-subtle, rgba(128,128,128,0.1));
+  border-bottom: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.1));
 }
 
 .lab-item:last-child {
@@ -1982,6 +2094,7 @@
   text-align: right;
   flex-shrink: 0;
 }
+
 /* Vertical Toolbar State */
 .dungeon-toolbar.vertical {
   flex-direction: column;
@@ -1996,7 +2109,8 @@
   right: 4px;
   width: 10px;
   height: 10px;
-  background-color: #fbbf24; /* Amber-400 */
+  background-color: #fbbf24;
+  /* Amber-400 */
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
   pointer-events: none;
   z-index: 10;
@@ -2014,8 +2128,8 @@
 
 /* Logical Fix: Hide highlights when option is crossed out (suppressed) */
 .dungeon-radio-option.crossed-out .highlight {
-    background-color: transparent;
-    color: inherit;
+  background-color: transparent;
+  color: inherit;
 }
 
 .dungeon-radio-option.crossed-out .dungeon-radio-circle {
@@ -2023,7 +2137,7 @@
   background: var(--bg-hover);
   cursor: not-allowed;
   position: relative;
-  overflow: hidden; 
+  overflow: hidden;
 }
 
 /* Diagonal line through circle */
@@ -2033,78 +2147,93 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 120%; 
+  width: 120%;
   height: 2px;
   background-color: var(--text-muted);
-  transform: translate(-50%, -50%); /* Horizontal */
+  transform: translate(-50%, -50%);
+  /* Horizontal */
 }
 
 /* Fix User Selection for Highlighting */
 .dungeon-context-box,
 .dungeon-radio-text {
-    user-select: text !important;
-    cursor: text;
+  user-select: text !important;
+  cursor: text;
 }
+
 .dungeon-radio-option {
-    cursor: default; /* Container is default, circle is pointer, text is text */
+  cursor: default;
+  /* Container is default, circle is pointer, text is text */
 }
+
 .dungeon-radio-circle {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 /* Dungeon Notification (Toast) */
 .dungeon-notification {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 12px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--danger); /* RED */
-    background: rgba(var(--danger-rgb, 239, 68, 68), 0.1); /* RED bg */
-    border-radius: 4px;
-    margin-right: 12px; /* Space between notification and save status */
-    opacity: 0;
-    transform: translateY(10px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    pointer-events: none;
-    white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  /* Neutral by default */
+  background: rgba(var(--text-rgb, 128, 128, 128), 0.1);
+  border-radius: 4px;
+  margin-right: 12px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.dungeon-notification.success {
+  color: #10b981;
+  /* Green */
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.dungeon-notification.error {
+  color: var(--danger);
+  /* Red */
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
 }
 
 .dungeon-notification.show {
-    opacity: 1;
-    transform: translateY(0);
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Clear Answer Button */
 .dungeon-clear-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: var(--text-muted);
-    padding: 0;
-    margin-left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+  padding: 0;
+  margin-left: 0;
 }
 
 .dungeon-clear-btn:hover {
-    background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
-    border-color: var(--danger);
-    color: var(--danger);
-    transform: translateY(-1px);
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+  transform: translateY(-1px);
 }
 
 .dungeon-clear-btn:active {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
 .dungeon-clear-btn svg {
-    flex-shrink: 0;
+  flex-shrink: 0;
 }
-
-

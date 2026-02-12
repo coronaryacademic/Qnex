@@ -211,6 +211,7 @@ app.post('/api/notes/:noteId', async (req, res) => {
     if (!metadata.id) metadata.id = noteId;
 
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
+    await fs.ensureDir(notesDir);
 
     // Check if this note already exists (find by ID in frontmatter)
     let existingFilePath = null;
@@ -240,7 +241,13 @@ app.post('/api/notes/:noteId', async (req, res) => {
     const markdownContent = htmlToMarkdown(contentHtml || content || '');
 
     // Create Markdown content with Frontmatter
-    const fileContent = matter.stringify(markdownContent, metadata);
+    // Clean metadata to remove undefined values which cause js-yaml to crash
+    const cleanMetadata = {};
+    Object.keys(metadata).forEach(key => {
+      if (metadata[key] !== undefined) cleanMetadata[key] = metadata[key];
+    });
+
+    const fileContent = matter.stringify(markdownContent, cleanMetadata);
 
     await fs.writeFile(filePath, fileContent, 'utf8');
 
@@ -264,6 +271,7 @@ app.post('/api/notes', async (req, res) => {
     }
 
     const notesDir = path.join(NOTES_BASE_DIR, 'notes');
+    await fs.ensureDir(notesDir);
     let savedCount = 0;
     let errors = [];
 
@@ -284,7 +292,13 @@ app.post('/api/notes', async (req, res) => {
         const markdownContent = htmlToMarkdown(contentHtml || content || '');
 
         // Create Markdown content with Frontmatter
-        const fileContent = matter.stringify(markdownContent, metadata);
+        // Clean metadata to remove undefined values which cause js-yaml to crash
+        const cleanMetadata = {};
+        Object.keys(metadata).forEach(key => {
+          if (metadata[key] !== undefined) cleanMetadata[key] = metadata[key];
+        });
+
+        const fileContent = matter.stringify(markdownContent, cleanMetadata);
 
         await fs.writeFile(filePath, fileContent, 'utf8');
         savedCount++;

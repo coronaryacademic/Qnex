@@ -5,7 +5,7 @@ class FileSystemService {
   constructor() {
     this.ports = [3001, 3002];
     // Auto-detect host (works for localhost and network IP)
-    const currentHost = window.location.hostname;
+    const currentHost = window.location.hostname || "localhost";
     this.baseUrl = `http://${currentHost}:3001/api`;
     this.fallbackUrl = `http://${currentHost}:3002/api`;
     this.retryAttempts = 3;
@@ -38,7 +38,7 @@ class FileSystemService {
             const data = await res.json();
             if (data && data.status === 'OK') {
               console.log(`[FileSystemService] ✅ Verified active server at port ${port}`);
-              const currentHost = window.location.hostname;
+              const currentHost = window.location.hostname || "localhost";
               this.baseUrl = url;
               this.fallbackUrl = `http://${currentHost}:${port === 3001 ? 3002 : 3001}/api`;
               this.isOffline = false;
