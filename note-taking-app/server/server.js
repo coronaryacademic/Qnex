@@ -10,9 +10,9 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const app = express();
 const PORT = 3001;
 
-// Configure CORS to allow requests from your frontend
+// Configure CORS to allow requests from any device on your local network
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:8080', 'http://127.0.0.1:5500', 'http://localhost:5500', 'http://127.0.0.1:8080'],
+  origin: true, // Echoes the request origin, allowing credentials to work with dynamic IPs
   credentials: true
 }));
 
@@ -34,8 +34,8 @@ app.use('/api/images', express.static(path.join(NOTES_BASE_DIR, 'images')));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     version: '3.0 AI mode integration',
     storage: NOTES_BASE_DIR
@@ -801,74 +801,74 @@ app.post('/api/questions', async (req, res) => {
 
 // STATISTICS ENDPOINTS
 app.get('/api/stats', async (req, res) => {
-    try {
-        const statsFile = path.join(NOTES_BASE_DIR, 'settings', 'stats.json');
-        if (await fs.pathExists(statsFile)) {
-            const stats = await fs.readJson(statsFile);
-            res.json(stats);
-        } else {
-            res.json({ correct: 0, incorrect: 0, total: 0 });
-        }
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to load stats' });
+  try {
+    const statsFile = path.join(NOTES_BASE_DIR, 'settings', 'stats.json');
+    if (await fs.pathExists(statsFile)) {
+      const stats = await fs.readJson(statsFile);
+      res.json(stats);
+    } else {
+      res.json({ correct: 0, incorrect: 0, total: 0 });
     }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load stats' });
+  }
 });
 
 app.post('/api/stats', async (req, res) => {
-    try {
-        const { isCorrect } = req.body;
-        const statsDir = path.join(NOTES_BASE_DIR, 'settings');
-        const statsFile = path.join(statsDir, 'stats.json');
-        
-        await fs.ensureDir(statsDir);
-        let stats = { correct: 0, incorrect: 0, total: 0 };
-        
-        if (await fs.pathExists(statsFile)) {
-            stats = await fs.readJson(statsFile);
-        }
-        
-        stats.total++;
-        if (isCorrect) stats.correct++;
-        else stats.incorrect++;
-        
-        await fs.writeJson(statsFile, stats, { spaces: 2 });
-        res.json({ success: true, stats });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update stats' });
+  try {
+    const { isCorrect } = req.body;
+    const statsDir = path.join(NOTES_BASE_DIR, 'settings');
+    const statsFile = path.join(statsDir, 'stats.json');
+
+    await fs.ensureDir(statsDir);
+    let stats = { correct: 0, incorrect: 0, total: 0 };
+
+    if (await fs.pathExists(statsFile)) {
+      stats = await fs.readJson(statsFile);
     }
+
+    stats.total++;
+    if (isCorrect) stats.correct++;
+    else stats.incorrect++;
+
+    await fs.writeJson(statsFile, stats, { spaces: 2 });
+    res.json({ success: true, stats });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update stats' });
+  }
 });
 
 // AI LEARNING DATA ENDPOINT
 app.get('/api/ai/learning-data', async (req, res) => {
-    try {
-        const questionsFile = path.join(NOTES_BASE_DIR, 'questions', 'questions.json');
-        const statsFile = path.join(NOTES_BASE_DIR, 'settings', 'stats.json');
-        
-        let examples = [];
-        let stats = { correct: 0, incorrect: 0, total: 0 };
+  try {
+    const questionsFile = path.join(NOTES_BASE_DIR, 'questions', 'questions.json');
+    const statsFile = path.join(NOTES_BASE_DIR, 'settings', 'stats.json');
 
-        // 1. Get high-quality examples from saved questions
-        if (await fs.pathExists(questionsFile)) {
-            const data = await fs.readJson(questionsFile);
-            if (data.questions && Array.isArray(data.questions)) {
-                // Pick 3 random complete questions
-                examples = data.questions
-                    .filter(q => q.text && q.options && q.options.length >= 2)
-                    .sort(() => 0.5 - Math.random())
-                    .slice(0, 3);
-            }
-        }
+    let examples = [];
+    let stats = { correct: 0, incorrect: 0, total: 0 };
 
-        // 2. Get user performance stats
-        if (await fs.pathExists(statsFile)) {
-            stats = await fs.readJson(statsFile);
-        }
-
-        res.json({ examples, stats });
-    } catch (error) {
-        console.error('Error fetching learning data:', error);
-        res.status(500).json({ error: 'Failed to load learning data' });
+    // 1. Get high-quality examples from saved questions
+    if (await fs.pathExists(questionsFile)) {
+      const data = await fs.readJson(questionsFile);
+      if (data.questions && Array.isArray(data.questions)) {
+        // Pick 3 random complete questions
+        examples = data.questions
+          .filter(q => q.text && q.options && q.options.length >= 2)
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 3);
+      }
     }
+
+    // 2. Get user performance stats
+    if (await fs.pathExists(statsFile)) {
+      stats = await fs.readJson(statsFile);
+    }
+
+    res.json({ examples, stats });
+  } catch (error) {
+    console.error('Error fetching learning data:', error);
+    res.status(500).json({ error: 'Failed to load learning data' });
+  }
 });
 
 // AI CHAT ENDPOINT (OpenRouter Proxy)
@@ -882,7 +882,11 @@ app.post('/api/ai/chat', async (req, res) => {
 
     const API_KEY = process.env.OPENROUTER_API_KEY;
     if (!API_KEY) {
-      return res.status(500).json({ error: 'AI API key not configured' });
+      console.error('[AI] ERROR: OPENROUTER_API_KEY missing in .env');
+      return res.status(500).json({
+        error: 'AI API key not configured',
+        details: 'The server is missing the OPENROUTER_API_KEY in the .env file. Please check server/.env'
+      });
     }
 
     // Default to Trinity if no model specified
@@ -915,7 +919,7 @@ app.post('/api/ai/chat', async (req, res) => {
       message: error.message,
       code: error.code
     });
-    
+
     // Return detailed error to frontend
     res.status(error.response?.status || 500).json({
       error: 'Failed to get response from AI',
@@ -956,8 +960,8 @@ app.post('/api/upload', async (req, res) => {
 
     console.log(`[SERVER] Uploaded image: ${finalName}`);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       url: `/api/images/${finalName}`,
       filename: finalName
     });
@@ -970,15 +974,15 @@ app.post('/api/upload', async (req, res) => {
 
 // Start server
 // Start server
-const serverInstance = app.listen(PORT, () => {
+const serverInstance = app.listen(PORT, '0.0.0.0', () => {
   console.log('==================================================');
   console.log(`[${new Date().toLocaleTimeString()}] NOTES SERVER UPDATED (v3.0 AI mode integration)`);
-  console.log(`Running on http://localhost:${PORT}`);
+  console.log(`Running on http://0.0.0.0:${PORT} (Accessible on your local network)`);
   console.log(`Storage: ${NOTES_BASE_DIR}`);
   if (process.env.OPENROUTER_API_KEY) {
-      console.log(`[OK] AI PROXY CONNECTED (Key: ${process.env.OPENROUTER_API_KEY.substring(0, 8)}...)`);
+    console.log(`[OK] AI PROXY CONNECTED (Key: ${process.env.OPENROUTER_API_KEY.substring(0, 8)}...)`);
   } else {
-      console.warn(`[WARNING] AI PROXY DISABLED (OPENROUTER_API_KEY missing in .env)`);
+    console.warn(`[WARNING] AI PROXY DISABLED (OPENROUTER_API_KEY missing in .env)`);
   }
   console.log('==================================================');
   console.log('Available endpoints:');

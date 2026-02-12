@@ -3,7 +3,7 @@ import NoteForm from './components/NoteForm';
 import NoteList from './components/NoteList';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3001/notes';
+const API_URL = `http://${window.location.hostname}:3001/notes`;
 
 function App() {
   const [notes, setNotes] = useState([]);
@@ -65,18 +65,18 @@ function App() {
       <main className="container mx-auto p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">
-            <NoteForm 
-              addNote={addNote} 
-              updateNote={updateNote} 
+            <NoteForm
+              addNote={addNote}
+              updateNote={updateNote}
               editingNote={editingNote}
               setEditingNote={setEditingNote}
             />
           </div>
           <div className="md:col-span-2">
-            <NoteList 
-              notes={notes} 
-              onDelete={deleteNote} 
-              onEdit={handleEdit} 
+            <NoteList
+              notes={notes}
+              onDelete={deleteNote}
+              onEdit={handleEdit}
             />
           </div>
         </div>

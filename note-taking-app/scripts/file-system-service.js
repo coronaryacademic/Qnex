@@ -3,10 +3,11 @@
 // Version 1.2 - Dual-port auto-discovery
 class FileSystemService {
   constructor() {
-    // Candidates to check
     this.ports = [3001, 3002];
-    this.baseUrl = "http://localhost:3001/api"; // Default start
-    this.fallbackUrl = "http://localhost:3002/api";
+    // Auto-detect host (works for localhost and network IP)
+    const currentHost = window.location.hostname;
+    this.baseUrl = `http://${currentHost}:3001/api`;
+    this.fallbackUrl = `http://${currentHost}:3002/api`;
     this.retryAttempts = 3;
     this.retryDelay = 1000;
     this.isOffline = false; // Track connectivity state to prevent console spam
@@ -21,11 +22,14 @@ class FileSystemService {
 
   async init() {
     console.log("[FileSystemService] Probing for active server...");
+    const currentHost = window.location.hostname || 'localhost';
+    console.log(`[FileSystemService] Detected hostname: "${currentHost}"`);
     for (const port of this.ports) {
-      const url = `http://localhost:${port}/api`;
+      const url = `http://${currentHost}:${port}/api`;
       try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 200); // Reduced timeout for faster offline detection
+        const id = setTimeout(() => controller.abort(), 5000); // Increased timeout to 5s for local network stability
+        console.log(`[FileSystemService] Probing: ${url}...`);
         const res = await fetch(`${url}/health`, { signal: controller.signal });
         clearTimeout(id);
 
@@ -34,8 +38,9 @@ class FileSystemService {
             const data = await res.json();
             if (data && data.status === 'OK') {
               console.log(`[FileSystemService] ✅ Verified active server at port ${port}`);
+              const currentHost = window.location.hostname;
               this.baseUrl = url;
-              this.fallbackUrl = `http://localhost:${port === 3001 ? 3002 : 3001}/api`;
+              this.fallbackUrl = `http://${currentHost}:${port === 3001 ? 3002 : 3001}/api`;
               this.isOffline = false;
               return;
             }
@@ -125,7 +130,7 @@ class FileSystemService {
   async checkHealth() {
     await this.waitForReady();
     if (this.isOffline) return false;
-    
+
     try {
       const response = await this.makeRequest("/health");
       return response.status === "OK";
