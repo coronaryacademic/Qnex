@@ -1,4 +1,4 @@
-﻿import fileSystemService from "./file-system-service.js";
+import fileSystemService from "./file-system-service.js";
 import { medicalIcons, getIcon } from "./medical-icons.js";
 import { BlockEditor } from "./editor-core.js";
 
@@ -5106,8 +5106,6 @@ window.startImportProcess = function () {
                       <span class="slider"></span>
                     </label>
                   </div>
-                  
-                  </div>
                 </div>
 
                 <div class="setting-group">
@@ -5321,6 +5319,26 @@ window.startImportProcess = function () {
       });
     }
 
+    const closeAppBtn = document.getElementById("closeAppBtn");
+    if (closeAppBtn) {
+      closeAppBtn.addEventListener("click", () => {
+        console.log("[Settings] Quit App clicked");
+        if (typeof handleCloseApp === "function") {
+          handleCloseApp();
+        } else if (
+          Storage.isElectron &&
+          window.electronAPI &&
+          window.electronAPI.confirmAppClose
+        ) {
+          window.electronAPI.confirmAppClose();
+        } else if (window.electronAPI && window.electronAPI.closeApp) {
+          window.electronAPI.closeApp();
+        } else {
+          window.close();
+        }
+      });
+    }
+
     // Action Buttons
     const safeRefreshBtn = document.getElementById("safeRefreshBtn");
     if (safeRefreshBtn)
@@ -5518,22 +5536,6 @@ window.startImportProcess = function () {
       aboutAppBtn.addEventListener("click", showAboutModal);
     }
 
-    const closeAppBtn = document.getElementById("closeAppBtn");
-    if (closeAppBtn) {
-      closeAppBtn.addEventListener("click", () => {
-        console.log("[Settings] Quit App clicked");
-        // Force quit via IPC to bypass minimize-to-tray
-        if (
-          Storage.isElectron &&
-          window.electronAPI &&
-          window.electronAPI.confirmAppClose
-        ) {
-          window.electronAPI.confirmAppClose();
-        } else {
-          window.close();
-        }
-      });
-    }
 
     // Close other menus
     if (el.toolsMenu) el.toolsMenu.classList.remove("open");
