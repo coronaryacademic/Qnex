@@ -2967,17 +2967,53 @@
                     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                 </svg>
             `;
-            jumpBtn.onclick = () => {
+            jumpBtn.onclick = async () => {
                 const noteBase = document.getElementById("noteBase");
-                const dungeonBase = document.getElementById("dungeonBase");
-
+                
                 if (window.DungeonBase) {
-                    // Switch views
+                    // Check if DungeonBase needs initialization (no questions loaded)
+                    if (!window.DungeonBase.state.questions || window.DungeonBase.state.questions.length === 0) {
+                        let questions = [];
+
+                        // 1. Try fetching from QuestionBase global state
+                        if (window.QuestionBase && window.QuestionBase.state.questions && window.QuestionBase.state.questions.length > 0) {
+                            questions = window.QuestionBase.state.questions;
+                        } 
+                        // 2. Fallback to storage load if needed
+                        else if (window.Storage && typeof window.Storage.loadQuestions === 'function') {
+                            try {
+                                const data = await window.Storage.loadQuestions();
+                                questions = Array.isArray(data) ? data : (data.questions || []);
+                            } catch (e) {
+                                console.error("Failed to load questions for jump:", e);
+                            }
+                        }
+
+                        if (questions.length > 0) {
+                            // Hide note base
+                            if (noteBase) noteBase.classList.add("hidden");
+                            
+                            // Initialize DungeonBase with questions
+                            window.DungeonBase.open(questions);
+                            
+                            // Wait for open() animation/setup (approx 400ms) then jump
+                            setTimeout(() => {
+                                const qIndex = parseInt(note.questionIndex); 
+                                if (!isNaN(qIndex)) window.DungeonBase.jumpToQuestion(qIndex);
+                            }, 450);
+                            return;
+                        } else {
+                            alert("Could not load questions to jump to.");
+                            return;
+                        }
+                    }
+
+                    // If questions already loaded, just switch and jump
+                    const dungeonBase = document.getElementById("dungeonBase");
+
                     if (noteBase) noteBase.classList.add("hidden");
                     if (dungeonBase) dungeonBase.classList.remove("hidden");
                     
-                    // Call jump
-                    // Parse integer just in case
                     const qIndex = parseInt(note.questionIndex); 
                     if (!isNaN(qIndex)) {
                         window.DungeonBase.jumpToQuestion(qIndex);
