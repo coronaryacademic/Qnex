@@ -2948,6 +2948,56 @@
     if (typeof window.buildEditor === "function") {
       const editorNode = window.buildEditor(note);
 
+      // Inject "Jump to Question" link for Dungeon Notes
+      if (note.questionId) {
+        const actionsDiv = editorNode.querySelector(".editor-header .actions");
+        
+        // If strict .actions container doesn't exist, try to find where to put it
+        // But buildEditor likely creates it.
+        
+        if (actionsDiv) {
+            const jumpBtn = document.createElement("button");
+            jumpBtn.className = "icon-btn";
+            jumpBtn.title = "Jump to Question";
+            jumpBtn.style.marginRight = "8px";
+            jumpBtn.style.color = "var(--accent)";
+            jumpBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+            `;
+            jumpBtn.onclick = () => {
+                const noteBase = document.getElementById("noteBase");
+                const dungeonBase = document.getElementById("dungeonBase");
+
+                if (window.DungeonBase) {
+                    // Switch views
+                    if (noteBase) noteBase.classList.add("hidden");
+                    if (dungeonBase) dungeonBase.classList.remove("hidden");
+                    
+                    // Call jump
+                    // Parse integer just in case
+                    const qIndex = parseInt(note.questionIndex); 
+                    if (!isNaN(qIndex)) {
+                        window.DungeonBase.jumpToQuestion(qIndex);
+                    } else {
+                        console.error("Invalid question index:", note.questionIndex);
+                    }
+                } else {
+                    console.error("DungeonBase not initialized");
+                }
+            };
+            
+            // Insert at the beginning of actions to be prominent
+            if (actionsDiv.firstChild) {
+                actionsDiv.insertBefore(jumpBtn, actionsDiv.firstChild);
+            } else {
+                actionsDiv.appendChild(jumpBtn);
+            }
+        }
+      }
+
       // Inject Split Controls into Editor Header if in Split View
       if (TwoBaseState.splitView) {
         const header = editorNode.querySelector(".editor-header");

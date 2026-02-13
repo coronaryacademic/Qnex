@@ -846,6 +846,21 @@ export default class DungeonBase {
                     }
                 });
             }
+
+            // Close Button Logic
+            const closeBtn = document.getElementById('dungeonCloseBtn');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    // Hide Dungeon Base
+                    if (this.el.container) this.el.container.classList.add('hidden');
+                    
+                    // Show Note Base if it exists
+                    const noteBase = document.getElementById('noteBase');
+                    if (noteBase) {
+                        noteBase.classList.remove('hidden');
+                    }
+                };
+            }
         }
 
         // Font Resize Buttons
@@ -3128,6 +3143,16 @@ export default class DungeonBase {
 
         // Re-render to show/hide the answer
         this.renderQuestion();
+    }
+
+    jumpToQuestion(index) {
+        if (index >= 0 && index < this.state.questions.length) {
+            this.state.currentIndex = index;
+            this.state.selectedOption = null;
+            this.render();
+            // Ensure we are in view
+            if (this.el.main) this.el.main.scrollTop = 0;
+        }
     }
 
     navNext() {

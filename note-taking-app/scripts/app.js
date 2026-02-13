@@ -340,9 +340,46 @@ const Storage = {
   },
 
   // Individual note save method for file system
+  // Individual note save method for file system
   async saveNote(noteId, noteData) {
     if (this.useFileSystem) {
       await fileSystemService.saveNote(noteId, noteData);
+
+      // CRITICAL FIX: Manually update window.state.notes so the UI sees the new note immediately
+      // without needing a full reload.
+      if (window.state && window.state.notes) {
+        const existingIndex = window.state.notes.findIndex((n) => n.id === noteId);
+        if (existingIndex !== -1) {
+          // Update existing note (merge with new data)
+          window.state.notes[existingIndex] = {
+            ...window.state.notes[existingIndex],
+            ...noteData,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          // Add new note
+          window.state.notes.push({
+            ...noteData,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            folderId: noteData.folderId || null // Ensure folderId is handled
+          });
+        }
+
+        // Refresh Sidebar if available
+        if (typeof window.populateNotebooksSection === 'function') {
+           window.populateNotebooksSection();
+        } else if (window.TwoBase && typeof window.TwoBase.refreshSidebar === 'function') {
+           window.TwoBase.refreshSidebar();
+        } else if (typeof window.renderSidebar === 'function') {
+           window.renderSidebar();
+        }
+        
+        // Refresh Workspace if in relevant view
+        if (window.TwoBase && typeof window.TwoBase.refreshWorkspace === 'function') {
+            window.TwoBase.refreshWorkspace();
+        }
+      }
     }
   },
 
