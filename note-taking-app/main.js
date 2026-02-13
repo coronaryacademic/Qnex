@@ -181,31 +181,100 @@ function createWindow() {
 const matter = require('gray-matter');
 
 // IPC Handlers for file operations
+// Helper to recursively read notes
+async function readNotesRecursive(dir) {
+  let results = [];
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const subResults = await readNotesRecursive(fullPath);
+      results = results.concat(subResults);
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      try {
+        const content = await fs.readFile(fullPath, 'utf8');
+        const parsed = matter(content);
+        results.push({
+          ...parsed.data,
+          contentHtml: parsed.content,
+          id: parsed.data.id || path.basename(entry.name, '.md')
+        });
+      } catch (e) {
+        console.error(`Error parsing note ${entry.name}:`, e);
+      }
+    }
+  }
+  return results;
+}
+
 ipcMain.handle("read-notes", async () => {
   const notesDir = path.join(dataDir, 'notes');
   try {
-    const files = await fs.readdir(notesDir);
-    const notes = [];
-    for (const file of files) {
-      if (file.endsWith('.md')) {
-        try {
-          const content = await fs.readFile(path.join(notesDir, file), 'utf8');
-          const parsed = matter(content);
-          notes.push({
-            ...parsed.data,
-            contentHtml: parsed.content, // Map content back to contentHtml
-            id: parsed.data.id || path.basename(file, '.md')
-          });
-        } catch (e) {
-          console.error(`Error parsing note ${file}:`, e);
-        }
-      }
-    }
-    return notes;
+    // Ensure directory exists
+    await fs.mkdir(notesDir, { recursive: true });
+    return await readNotesRecursive(notesDir);
   } catch (err) {
     if (err.code === 'ENOENT') return [];
     console.error("Error reading notes directory:", err);
     return [];
+  }
+});
+
+ipcMain.handle("write-note", async (event, data) => {
+  const notesDir = path.join(dataDir, 'notes');
+  console.log(`[IPC] write-note requested for ID: ${data.id}`);
+  
+  try {
+    await fs.mkdir(notesDir, { recursive: true });
+    
+    // Determine path based on folderId if available
+    let dirPath = notesDir;
+    if (data.folderId) {
+       // Need to reconstruct path from folders.json if we want to support nested folders
+       // For now, if we match write-notes logic, we need to read folders
+       try {
+         const folders = await readFile(FILES.folders, []);
+         const folderMap = new Map(folders.map(f => [f.id, f]));
+         
+         const getFolderPath = (folderId) => {
+            const pathSegments = [];
+            let currentId = folderId;
+            while (currentId) {
+                const folder = folderMap.get(currentId);
+                if (folder) {
+                    const safeName = (folder.name || 'Untitled').replace(/[<>:"/\\|?*]/g, '_');
+                    pathSegments.unshift(safeName);
+                    currentId = folder.parentId;
+                } else break;
+            }
+            return path.join(notesDir, ...pathSegments);
+         };
+         dirPath = getFolderPath(data.folderId);
+       } catch(e) {
+         console.warn("[IPC] Failed to resolve folder path for write-note, using root:", e);
+       }
+    }
+    
+    await fs.mkdir(dirPath, { recursive: true });
+    const filePath = path.join(dirPath, `${data.id}.md`);
+    
+    const { contentHtml, content, ...meta } = data;
+    const body = contentHtml || content || '';
+    
+    const cleanMeta = {};
+    Object.keys(meta).forEach(key => {
+        if (meta[key] !== undefined) cleanMeta[key] = meta[key];
+    });
+    
+    const fileContent = matter.stringify(body, cleanMeta);
+    await fs.writeFile(filePath, fileContent, 'utf8');
+    
+    console.log(`[IPC] ✅ Saved note: ${filePath}`);
+    return { success: true };
+  } catch (err) {
+    console.error(`[IPC] 🔴 Error writing note ${data.id}:`, err);
+    return { success: false, error: err.message };
   }
 });
 

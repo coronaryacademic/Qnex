@@ -50,13 +50,22 @@ const Storage = {
     try {
       if (this.isElectron) {
         if (typeof window.electronAPI.readNotes === "function") {
-          return await window.electronAPI.readNotes();
+          console.log("[Storage] Loading notes via Electron API...");
+          const notes = await window.electronAPI.readNotes();
+          console.log(`[Storage] Loaded ${notes.length} notes via Electron.`);
+          // Debug: Check for dungeon notes
+          const dungeonNotes = notes.filter(n => n.id.startsWith('dungeon_note_'));
+          console.log(`[Storage] Dungeon notes found: ${dungeonNotes.length}`, dungeonNotes.map(n => n.id));
+          return notes;
         }
         console.warn("Electron detected but readNotes missing - falling back");
       }
 
       if (this.useFileSystem) {
-        return await fileSystemService.loadNotes();
+        console.log("[Storage] Loading notes via FileSystem Service...");
+        const notes = await fileSystemService.loadNotes();
+        console.log(`[Storage] Loaded ${notes.length} notes via FileSystem.`);
+        return notes;
       } else {
         console.warn("File system not available - no notes loaded");
         return [];
@@ -342,15 +351,49 @@ const Storage = {
   // Individual note save method for file system
   // Individual note save method for file system
   async saveNote(noteId, noteData) {
-    if (this.useFileSystem) {
-      await fileSystemService.saveNote(noteId, noteData);
+    console.log(`[Storage.saveNote] Starting save for ${noteId}`, {
+      isElectron: this.isElectron,
+      hasWriteNote: typeof window.electronAPI?.writeNote === 'function',
+      useFileSystem: this.useFileSystem
+    });
+    
+    let saved = false;
 
+    // Try Electron first if available
+    if (this.isElectron) {
+      if (typeof window.electronAPI.writeNote === 'function') {
+        try {
+          console.log(`[Storage.saveNote] Calling electronAPI.writeNote for ${noteId}...`);
+          // Electron expects object, not ID + object
+          // ID is inside noteData
+          const result = await window.electronAPI.writeNote(noteData);
+          saved = true;
+          console.log(`[Storage.saveNote] ✅ Saved note ${noteId} via Electron`, result);
+        } catch (e) {
+          console.error(`[Storage.saveNote] ❌ Electron writeNote failed for ${noteId}:`, e);
+        }
+      } else {
+        console.warn(`[Storage.saveNote] writeNote not available on electronAPI`);
+      }
+    }
+
+    // Fallback to FileSystem (or if Electron failed/missing)
+    if (!saved && this.useFileSystem) {
+      console.log(`[Storage.saveNote] Falling back to fileSystemService for ${noteId}...`);
+      await fileSystemService.saveNote(noteId, noteData);
+      saved = true;
+      console.log(`[Storage.saveNote] ✅ Saved note ${noteId} via FileSystem`);
+    }
+
+    if (saved) {
       // CRITICAL FIX: Manually update window.state.notes so the UI sees the new note immediately
       // without needing a full reload.
       if (window.state && window.state.notes) {
+        console.log(`[Storage.saveNote] Updating window.state.notes for ${noteId}...`);
         const existingIndex = window.state.notes.findIndex((n) => n.id === noteId);
         if (existingIndex !== -1) {
           // Update existing note (merge with new data)
+          console.log(`[Storage.saveNote] Updating existing note at index ${existingIndex}`);
           window.state.notes[existingIndex] = {
             ...window.state.notes[existingIndex],
             ...noteData,
@@ -358,6 +401,7 @@ const Storage = {
           };
         } else {
           // Add new note
+          console.log(`[Storage.saveNote] Adding new note to state (total: ${window.state.notes.length + 1})`);
           window.state.notes.push({
             ...noteData,
             createdAt: new Date().toISOString(),
@@ -366,22 +410,47 @@ const Storage = {
           });
         }
 
+        console.log(`[Storage.saveNote] State updated. Refreshing UI...`);
+        console.log(`[Storage.saveNote] Available refresh functions:`, {
+          populateNotebooksSection: typeof window.populateNotebooksSection,
+          'TwoBase.refreshSidebar': typeof window.TwoBase?.refreshSidebar,
+          renderSidebar: typeof window.renderSidebar,
+          'TwoBase.refreshWorkspace': typeof window.TwoBase?.refreshWorkspace
+        });
+
         // Refresh Sidebar if available
         if (typeof window.populateNotebooksSection === 'function') {
+           console.log(`[Storage.saveNote] Calling populateNotebooksSection()`);
            window.populateNotebooksSection();
         } else if (window.TwoBase && typeof window.TwoBase.refreshSidebar === 'function') {
+           console.log(`[Storage.saveNote] Calling TwoBase.refreshSidebar()`);
            window.TwoBase.refreshSidebar();
         } else if (typeof window.renderSidebar === 'function') {
+           console.log(`[Storage.saveNote] Calling renderSidebar()`);
            window.renderSidebar();
         }
         
         // Refresh Workspace if in relevant view
         if (window.TwoBase && typeof window.TwoBase.refreshWorkspace === 'function') {
+            console.log(`[Storage.saveNote] Calling TwoBase.refreshWorkspace()`);
             window.TwoBase.refreshWorkspace();
         }
+        
+        // FORCE workspace re-render by calling renderWorkspaceSplit directly
+        if (typeof window.renderWorkspaceSplit === 'function') {
+            console.log(`[Storage.saveNote] Force calling renderWorkspaceSplit(null) for root view`);
+            window.renderWorkspaceSplit(null);
+        }
+        
+        // Dispatch custom event to notify any listeners that notes have changed
+        console.log(`[Storage.saveNote] Dispatching 'notes-updated' event`);
+        window.dispatchEvent(new CustomEvent('notes-updated', { detail: { noteId, noteData } }));
+      } else {
+        console.warn(`[Storage.saveNote] window.state or window.state.notes not available!`);
       }
     }
   },
+
 
   // Delete all notes method for file system
   async deleteAllNotes() {

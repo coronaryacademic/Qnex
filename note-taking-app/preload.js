@@ -8,6 +8,7 @@ try {
     // Notes
     readNotes: () => ipcRenderer.invoke('read-notes'),
     writeNotes: (data) => ipcRenderer.invoke('write-notes', data),
+    writeNote: (data) => ipcRenderer.invoke('write-note', data),
     deleteNote: (id) => ipcRenderer.invoke('delete-note', id),
 
     // Folders

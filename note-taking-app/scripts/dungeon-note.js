@@ -226,6 +226,15 @@ class DungeonNote {
         try {
             // Use global Storage exposed by app.js
             if (window.Storage && window.Storage.saveNote) {
+                // Get current timestamp
+                const now = new Date().toISOString();
+                
+                // Check if note already exists to preserve createdAt and order
+                let existingNote = null;
+                if (window.state && window.state.notes) {
+                    existingNote = window.state.notes.find(n => n.id === noteId);
+                }
+                
                 // Send as object to match server expectations
                 const noteData = {
                     id: noteId,
@@ -235,10 +244,18 @@ class DungeonNote {
                     type: 'dungeon-note',
                     questionId: this.questionId,
                     questionIndex: this.questionIndex,
-                    date: new Date().toISOString()
+                    folderId: null, // Uncategorized notes have null folderId
+                    order: existingNote ? existingNote.order : (window.state?.notes?.length || 0), // Preserve order or append to end
+                    createdAt: existingNote ? existingNote.createdAt : now, // Preserve original creation date
+                    updatedAt: now, // Always update modification date
+                    date: now // Keep for backward compatibility
                 };
 
                 await window.Storage.saveNote(noteId, noteData);
+                
+                // Debug helper - log to console for user verification
+                console.log(`[DungeonNote] Save completed for ${noteId}. Check console for Storage logs.`);
+                console.log(`[DungeonNote] To verify electronAPI: window.electronAPI?.writeNote =`, typeof window.electronAPI?.writeNote);
 
                 // Refresh main app UI if available
                 if (window.TwoBase) {
