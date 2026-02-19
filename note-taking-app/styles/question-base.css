@@ -566,6 +566,46 @@ body.theme-classic #addOptionBtn {
   color: #2c3e50 !important;
 }
 
+body.theme-classic .session-creator-toolbar .icon-btn,
+body.theme-classic .session-creator-toolbar .model-selector,
+body.theme-classic #uploadedFileStatus {
+  color: #2c3e50 !important;
+  border-color: #2c3e50 !important;
+}
+
+body.theme-classic .session-creator-toolbar .icon-btn svg {
+  stroke: #2c3e50 !important;
+}
+
+/* Ensure danger buttons keep their red color even in classic */
+body.theme-classic .session-creator-toolbar .icon-btn.danger {
+  color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+body.theme-classic .session-creator-toolbar .icon-btn.danger svg {
+  stroke: #dc2626 !important;
+}
+
+/* Question Header Buttons for Classic Theme */
+body.theme-classic .question-header .icon-btn {
+  color: #2c3e50 !important;
+}
+
+body.theme-classic .question-header .icon-btn svg {
+  stroke: #2c3e50 !important;
+}
+
+/* Manual Session Button in Header */
+body.theme-classic #createSessionBtn {
+  color: #2c3e50 !important;
+  border-color: #2c3e50 !important;
+}
+
+body.theme-classic #createSessionBtn svg text {
+  fill: #2c3e50 !important;
+}
+
 /* Session Creator Styles */
 .session-creator {
   flex: 1;
@@ -772,7 +812,7 @@ body.theme-classic #addOptionBtn {
   height: 32px;
   border: none;
   background: transparent;
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 0.9rem;
   font-weight: 500;
   border-radius: 6px;
@@ -790,7 +830,6 @@ body.theme-classic #addOptionBtn {
 
 .qbank-tab:hover {
   background: var(--panel-hover);
-  color: var(--text);
 }
 
 .qbank-tab.active {

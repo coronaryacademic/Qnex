@@ -94,6 +94,8 @@ body {
   --bg-secondary: #1a1a1a;
   --success: #10b981;
   --danger: #ef4444;
+  --defualt: white; 
+
 }
 
 /* Light Theme - Clean white/light gray */
@@ -111,10 +113,12 @@ body.theme-light {
   --panel-hover: rgba(0, 0, 0, 0.05);
   --borderX: #c4c4c4;
   --boot: black;
-  --settingsborder: #c2c1c1;
+  --settingsborder: #938e8e;
    --bg-secondary: #ffffff;
    --success: #059669;
    --danger: #dc2626;
+  --defualt: black; 
+
 }
 
 /* Classic Theme - Light professional theme with dark panels */
@@ -129,12 +133,13 @@ body.theme-classic {
   --border: rgba(106, 106, 106, 0.449);
   --chip: #4a4d51;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  --panel-hover: rgb(39 39 39);
+  --panel-hover: rgba(173, 173, 173, 0.277);
   --boot: black;
-  --settingsborder: #ccc;
+  --settingsborder: #938e8e;
    --bg-secondary: white;
    --success: #059669;
    --danger: #dc2626;
+  --defualt: black; 
 }
 
 /* Classic Theme - Specific overrides */
@@ -251,6 +256,11 @@ body.theme-classic #multiSelectBtn svg,
 body.theme-classic #sortBtn svg,
 body.theme-classic #viewToggleBtn svg {
   stroke: #2c3e50 !important;
+}
+
+/* Helper for topbar buttons in Classic Theme */
+body.theme-classic .topbar .icon-btn {
+  color: #2c3e50 !important;
 }
 
 /* Breadcrumb navigation buttons hover */

@@ -4,6 +4,7 @@ export default class DungeonBase {
         this.state = {
             questions: [],
             currentIndex: 0,
+            sessionId: this.generateSessionId(), // Unique ID for this question session
             answers: new Map(), // id -> { isCorrect: boolean, selectedId: string, submitted: boolean }
             selectedOption: null, // Temporary selection before submit
             sidebarCollapsed: false,
@@ -148,6 +149,10 @@ export default class DungeonBase {
                 { name: "Protein", normal: "15 - 45 mg/dL" }
             ]
         };
+    }
+
+    generateSessionId() {
+        return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     }
 
     init() {

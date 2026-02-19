@@ -185,10 +185,10 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--bg-secondary);
+  background: var(--panel);
   padding: 2px;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--settingsborder);
 }
 
 .dungeon-topbar-btn:active {
@@ -200,11 +200,11 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--bg-secondary);
+  background: var(--panel);
   padding: 3px;
   border-radius: 6px;
   margin: 0 4px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--settingsborder);
 }
 
 .dungeon-font-btn {
@@ -605,7 +605,7 @@
   max-width: 800px;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 0px;
   margin-left: 0;
   /* Align to left */
 }
@@ -657,7 +657,7 @@
   width: 100%;
   min-height: auto;
   display: block;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 1.15rem;
   /* Reduced from 20px, but larger than options */
   line-height: 1.6;
@@ -695,12 +695,14 @@
   flex-direction: column;
   gap: 0;
   /* Remove gap */
-  border: 1px solid var(--border);
+  border: 1px solid var(--settingsborder);
   border-radius: 8px;
   overflow: hidden;
   /* Clip corners */
   margin-top: 10px;
 }
+
+
 
 .dungeon-radio-option {
   display: flex;
@@ -723,7 +725,7 @@
 .dungeon-radio-circle {
   width: 1.25em;
   height: 1.25em;
-  border: 2px solid var(--text);
+  border: 2px solid var(--defualt);
   /* High contrast border */
   border-radius: 50%;
   background: var(--bg);
@@ -737,7 +739,7 @@
 }
 
 .dungeon-radio-option:hover .dungeon-radio-circle {
-  border-color: var(--text);
+  border-color: var(--defualt);
 }
 
 .dungeon-radio-option.selected .dungeon-radio-circle {
@@ -761,7 +763,7 @@
 .dungeon-radio-text {
   font-size: inherit;
   /* Inherit from .dungeon-radio-option */
-  color: var(--text);
+  color: var(--defualt);
   line-height: 1.5;
   font-weight: 500;
 }
@@ -772,7 +774,7 @@
 }
 
 .dungeon-radio-option.correct-answer .dungeon-radio-text {
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .dungeon-radio-option.wrong-answer {
@@ -780,7 +782,7 @@
 }
 
 .dungeon-radio-option.wrong-answer .dungeon-radio-text {
-  color: var(--text);
+  color: var(--defualt);
 }
 
 /* Feedback Circles */
@@ -846,8 +848,8 @@
 
 /* Explanation */
 .dungeon-explanation {
-  margin-top: 40px;
-  border-top: 1px solid var(--border);
+  margin-top: 50px;
+  border-top: 1px solid var(--settingsborder);
   padding-top: 20px;
   opacity: 0;
   animation: fadeIn 0.5s forwards;
@@ -860,7 +862,7 @@
 }
 
 .dungeon-explanation p {
-  color: var(--text-muted);
+  color: var(--defualt);
   line-height: 1.6;
 }
 
@@ -2133,7 +2135,7 @@
 }
 
 .dungeon-radio-option.crossed-out .dungeon-radio-circle {
-  border-color: var(--text-muted);
+  border-color: var(--defualt);
   background: var(--bg-hover);
   cursor: not-allowed;
   position: relative;
