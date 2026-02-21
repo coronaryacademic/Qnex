@@ -144,7 +144,7 @@ let workspaces = [];
 let currentWorkspaceId = null;
 let currentLayout = "centered"; // or "full"
 
-// Electron-based file saving (saves directly to D:\MyNotes folder)
+// Electron-based file saving (saves directly to data directory)
 let isElectronApp = false;
 let dataDirectory = null;
 
@@ -209,7 +209,9 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("✓ Running in Electron - using backend file system");
 
     // Set data directory for display
-    dataDirectory = "D:\\MyNotes";
+    dataDirectory = (window.electronAPI && typeof window.electronAPI.getDataDir === 'function') 
+      ? await window.electronAPI.getDataDir() 
+      : (navigator.platform.indexOf('Win') !== -1 ? "D:\\MyNotes" : "/media/momen/New Volume/MyNotes");
     console.log("✓ Data directory:", dataDirectory);
     updateFileNameDisplay("Save location: " + dataDirectory);
 

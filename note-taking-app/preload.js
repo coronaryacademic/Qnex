@@ -29,10 +29,11 @@ try {
     writeQuestions: (data) => ipcRenderer.invoke('write-questions', data),
 
     // Utility
-    getDataDir: () => ipcRenderer.invoke('get-data-dir'),
-    openDataDirectory: () => ipcRenderer.invoke('open-data-directory'),
-    showInExplorer: (id) => ipcRenderer.invoke('show-in-explorer', id),
-    showFolderInExplorer: (id) => ipcRenderer.invoke('show-folder-in-explorer', id),
+    getDataDir: () => ipcRenderer.invoke('app:getDataDir'),
+    openPath: (path) => ipcRenderer.invoke('app:openPath', path),
+    openDataDirectory: () => ipcRenderer.invoke('app:openDataDirectory'),
+    showInExplorer: (id) => ipcRenderer.invoke('app:showInExplorer', id),
+    showFolderInExplorer: (id) => ipcRenderer.invoke('app:showFolderInExplorer', id),
 
     // Window close handling
     onAppCloseRequested: (callback) => ipcRenderer.on('app-close-requested', callback),
@@ -40,6 +41,10 @@ try {
 
     // Check if running in Electron
     isElectron: true,
+
+    // Startup Logs
+    getStartupLogs: () => ipcRenderer.invoke('app:getStartupLogs'),
+    onStartupLog: (callback) => ipcRenderer.on('startup-log', (_event, value) => callback(value)),
   });
   console.log("[PRELOAD] electronAPI exposed successfully");
 } catch (error) {

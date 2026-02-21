@@ -5278,7 +5278,7 @@ window.startImportProcess = function () {
                      <div class="setting-info">
                       <h4>Local Folder</h4>
                       <p>Your notes are stored locally on your device.</p>
-                      <code style="display:block; margin-top:4px; font-size: 12px; background:var(--bg-primary); padding:4px; border-radius:4px;">D:\\MyNotes</code>
+                      <code id="data-dir-display" style="display:block; margin-top:4px; font-size: 12px; background:var(--bg-primary); padding:4px; border-radius:4px;">Loading path...</code>
                     </div>
                     <button id="openFileLocationBtn" class="settings-btn">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
@@ -5490,7 +5490,8 @@ window.startImportProcess = function () {
         if (window.electronAPI && window.electronAPI.openPath) {
           try {
             console.log("Attempting to open path via electronAPI.openPath...");
-            const result = await window.electronAPI.openPath("D:\\MyNotes");
+            const dataDir = (window.electronAPI && typeof window.electronAPI.getDataDir === 'function') ? await window.electronAPI.getDataDir() : "D:\\MyNotes";
+            const result = await window.electronAPI.openPath(dataDir);
             console.log("electronAPI.openPath result:", result);
             if (result !== "") { // shell.openPath returns error string if failed, empty string if success
               console.error("Open path failed with:", result);
@@ -5503,7 +5504,7 @@ window.startImportProcess = function () {
         } else {
           // Fallback only if API is completely missing
           console.warn("electronAPI.openPath is missing!");
-          const dataPath = "D:\\MyNotes";
+          const dataPath = (window.electronAPI && typeof window.electronAPI.getDataDir === 'function') ? await window.electronAPI.getDataDir() : "D:\\MyNotes";
           navigator.clipboard
             .writeText(dataPath)
             .then(() => {
@@ -8811,4 +8812,11 @@ window.startImportProcess = function () {
   }
 
 
+  // Update data directory display in UI
+  if (window.electronAPI && typeof window.electronAPI.getDataDir === 'function') {
+    window.electronAPI.getDataDir().then(path => {
+      const display = document.getElementById("data-dir-display");
+      if (display) display.textContent = path;
+    });
+  }
 })();

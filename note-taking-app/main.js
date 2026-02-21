@@ -9,8 +9,22 @@ let mainWindow = null;
 let tray = null;
 let currentSettings = {};
 
-// Define data directory on D: drive
-const dataDir = path.join("D:", "MyNotes");
+// Internal logging for "Debug Log" feature
+const startupLogs = [];
+function log(message) {
+  const timestamp = new Date().toISOString();
+  const logEntry = `[${timestamp}] ${message}`;
+  console.log(logEntry);
+  startupLogs.push(logEntry);
+  if (mainWindow) {
+    mainWindow.webContents.send('startup-log', logEntry);
+  }
+}
+
+// Define data directory
+const dataDir = process.platform === 'win32' 
+  ? path.join("D:", "MyNotes")
+  : "/home/momen/WindowsDrive/MyNotes";
 
 // Ensure data directory exists
 async function ensureDataDir() {
@@ -60,7 +74,13 @@ function createTray() {
   if (tray) return;
 
   const iconPath = path.join(__dirname, "icon.png");
-  tray = new Tray(iconPath);
+  try {
+    tray = new Tray(iconPath);
+  } catch (err) {
+    console.warn("Failed to create tray icon (image missing?):", err);
+    // On Linux, we might want to continue without a tray if the icon is missing
+    return;
+  }
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -119,7 +139,10 @@ function createWindow() {
       allowRunningInsecureContent: false,
     },
     icon: path.join(__dirname, "icon.png"), // optional: add app icon
+    autoHideMenuBar: true,
   });
+
+  win.setMenuBarVisibility(false);
 
   // Allow opening external URLs (for Firebase auth)
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -522,16 +545,24 @@ ipcMain.handle("write-questions", async (event, data) => {
   return await writeFile(FILES.questions, data);
 });
 
-ipcMain.handle("get-data-dir", async () => {
+ipcMain.handle("app:getDataDir", async () => {
   return dataDir;
 });
 
-ipcMain.handle("open-data-directory", async () => {
-  await shell.openPath(dataDir);
-  return true;
+ipcMain.handle("app:openDataDirectory", async () => {
+  return await shell.openPath(dataDir);
 });
 
-ipcMain.handle("show-in-explorer", async (event, id) => {
+ipcMain.handle("app:openPath", async (event, path) => {
+  try {
+    return await shell.openPath(path);
+  } catch (err) {
+    console.error(`[IPC] openPath error for ${path}:`, err);
+    return err.message;
+  }
+});
+
+ipcMain.handle("app:showInExplorer", async (event, id) => {
   const notesDir = path.join(dataDir, 'notes');
   console.log(`[IPC] show-in-explorer requested for ID: ${id}`);
 
@@ -575,7 +606,7 @@ ipcMain.handle("show-in-explorer", async (event, id) => {
   }
 });
 
-ipcMain.handle("show-folder-in-explorer", async (event, id) => {
+ipcMain.handle("app:showFolderInExplorer", async (event, id) => {
   const notesDir = path.join(dataDir, 'notes');
   console.log(`[IPC] show-folder-in-explorer requested for: ${id}`);
 
@@ -636,13 +667,80 @@ function startLocalServer() {
     });
 
     server.listen(8080, () => {
-      console.log("[SERVER] Running at http://localhost:8080");
+      log("[SERVER] Running at http://localhost:8080");
       resolve();
     });
   });
 }
 
-// App lifecycle
+// Start second server on port 3002 for health checks and logic
+let server3002;
+function startServer3002() {
+  try {
+    const expressApp = require('express')();
+    const cors = require('cors');
+    expressApp.use(cors());
+    
+    expressApp.get('/api/health', (req, res) => {
+      res.json({
+        status: 'OK',
+        message: 'Embedded FS Server v3.0 (Linux Port)',
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Mirroring main server endpoints for fallback/health redundancy
+    expressApp.get('/api/settings', async (req, res) => {
+      const data = await readFile(FILES.settings, {});
+      res.json(data);
+    });
+
+    expressApp.get('/api/notes', async (req, res) => {
+      // For simplicity in the companion server, we could just return a success
+      // or implement the same fs logic. Since frontend uses this for health, 
+      // a simple 200 OK with empty array or basic data is often enough to stop 404s.
+      const notesDir = path.join(dataDir, 'notes');
+      try {
+        const files = await fs.readdir(notesDir);
+        res.json({ count: files.length });
+      } catch (e) {
+        res.json([]);
+      }
+    });
+
+    expressApp.get('/api/folders', async (req, res) => {
+      const data = await readFile(FILES.folders, []);
+      res.json(data);
+    });
+
+    expressApp.get('/api/trash', async (req, res) => {
+      const data = await readFile(FILES.trash, []);
+      res.json(data);
+    });
+
+    expressApp.get('/api/questions', async (req, res) => {
+      const data = await readFile(FILES.questions, []);
+      res.json(data);
+    });
+
+    expressApp.get('/api/tasks', async (req, res) => {
+      const tasksPath = path.join(dataDir, 'tasks', 'tasks.json');
+      const data = await readFile(tasksPath, []);
+      res.json(data);
+    });
+
+    server3002 = expressApp.listen(3002, () => {
+      log("[SERVER] Health check server running on http://localhost:3002");
+    });
+  } catch (err) {
+    log("[ERROR] Failed to start server 3002: " + err.message);
+  }
+}
+
+// IPC Handlers for additional features
+ipcMain.handle('app:getStartupLogs', () => {
+  return startupLogs;
+});
 app.whenReady().then(async () => {
   console.log("\n");
 
@@ -651,8 +749,9 @@ app.whenReady().then(async () => {
   currentSettings = await readFile(FILES.settings, {});
 
   await startLocalServer();
-  console.log("[OK] Ready! Starting application...");
-  console.log("Notes saved to:", dataDir);
+  startServer3002();
+  log("[OK] Ready! Starting application...");
+  log("Notes saved to: " + dataDir);
   console.log("");
   mainWindow = createWindow();
   createTray(); // Initialize tray

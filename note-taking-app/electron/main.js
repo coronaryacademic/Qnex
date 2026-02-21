@@ -23,7 +23,10 @@ let server;
 const SERVER_PORT = 3002; // Use different port to avoid conflicts
 
 // Base directory for notes on D drive
-const NOTES_BASE_DIR = 'D:\\MyNotes';
+// Base directory for notes
+const NOTES_BASE_DIR = process.platform === 'win32' 
+  ? 'D:\\MyNotes' 
+  : '/media/momen/New Volume/MyNotes';
 const UNCATEGORIZED_DIR_NAME = 'Uncategorized';
 const META_FILE = '.folder-meta.json';
 const SYSTEM_DIRS = ['trash', 'settings', 'backups', '.git', 'node_modules', 'tasks', 'questions', 'notes', 'folders', 'images'];
