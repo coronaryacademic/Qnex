@@ -3096,7 +3096,10 @@ export default class DungeonBase {
         fetch('http://localhost:3001/api/stats', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ isCorrect })
+            body: JSON.stringify({ 
+                type: isCorrect ? 'correct' : 'incorrect',
+                timeSpent: Math.floor((q.timerElapsed || 0) / 1000) // seconds
+            })
         }).catch(err => console.error("Failed to sync stats:", err));
 
         this.updateSaveStatus('unsaved');
@@ -3113,7 +3116,20 @@ export default class DungeonBase {
         const answer = this.state.answers.get(q.id);
 
         // Toggle reveal state
+        const wasRevealed = q.revealed;
         q.revealed = !q.revealed;
+
+        // If newly revealed and not already answered, count as omitted
+        if (q.revealed && !wasRevealed && !answer?.submitted) {
+            fetch('http://localhost:3001/api/stats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    type: 'omitted',
+                    timeSpent: Math.floor((Date.now() - (this.timerStart || Date.now())) / 1000)
+                })
+            }).catch(err => console.error("Failed to sync omitted stat:", err));
+        }
 
         // Update button visual state
         if (revealBtn) {

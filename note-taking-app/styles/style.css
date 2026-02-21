@@ -1,4 +1,4 @@
-/* Hide global scrollbar */
+/* Hide global scrollbar on body but allow on inner containers */
 body::-webkit-scrollbar {
   display: none;
 }
@@ -8,6 +8,32 @@ body {
   scrollbar-width: none;
   overflow: hidden;
   background: var(--bg-primary);
+}
+
+/* Modern Global Scrollbar Structure */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Firefox Support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 
@@ -95,7 +121,8 @@ body {
   --success: #10b981;
   --danger: #ef4444;
   --defualt: white; 
-
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: var(--accent);
 }
 
 /* Light Theme - Clean white/light gray */
@@ -118,7 +145,8 @@ body.theme-light {
    --success: #059669;
    --danger: #dc2626;
   --defualt: black; 
-
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: var(--accent);
 }
 
 /* Classic Theme - Light professional theme with dark panels */
@@ -140,6 +168,8 @@ body.theme-classic {
    --success: #059669;
    --danger: #dc2626;
   --defualt: black; 
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: var(--accent);
 }
 
 /* Classic Theme - Specific overrides */

@@ -15,8 +15,9 @@ const QuestionBase = {
         collapsedSections: new Set(), // Set of collapsed section names
         sessionCreatorVisible: false,
         recentSessions: [],
-        recentSessionsView: 'grid', // 'grid' or 'list'
-        recentSessionsSort: 'date', // 'date' or 'name'
+        recentSessionsView: 'list', // 'grid' or 'list'
+        recentSessionsSort: 'newest', // 'newest', 'oldest', 'name', 'questions'
+        recentSessionsSearch: '', // Real-time search query
         lastActiveTab: 'main', // Track last active tab for back navigation
         deletedSessionBlocks: [], // Stack for restoring deleted questions in session creator
         aiMode: false,
@@ -170,15 +171,25 @@ const QuestionBase = {
             });
         }
 
-        // Recent Sessions Elements
-        this.el.recentSessionsContainer = document.getElementById("recentSessionsContainer");
+        // Recent Sessions Toolbar
+        this.el.sessionsSearchInput = document.getElementById("sessionsSearchInput");
+        this.el.sessionsSortSelect = document.getElementById("sessionsSortSelect");
+        this.el.viewListBtn = document.getElementById("viewListBtn");
+        this.el.viewGridBtn = document.getElementById("viewGridBtn");
         this.el.recentSessionsList = document.getElementById("recentSessionsList");
         this.el.openRecentSessionsBtn = document.getElementById("openRecentSessionsBtn");
-        this.el.backToEmptyStateBtn = document.getElementById("backToEmptyStateBtn");
-        this.el.sortSessionsBtn = document.getElementById("sortSessionsBtn");
-        this.el.toggleViewBtn = document.getElementById("toggleViewBtn");
-        // Select all session control buttons (sort + view toggle)
-        this.el.sessionControls = document.querySelectorAll('.session-control-btn');
+
+        // Statistics Elements
+        this.el.statTotalQuestions = document.getElementById("stat-total-questions");
+        this.el.statTotalFolders = document.getElementById("stat-total-folders");
+        this.el.statTotalSessions = document.getElementById("stat-total-sessions");
+        this.el.statCorrect = document.getElementById("stat-correct");
+        this.el.statIncorrect = document.getElementById("stat-incorrect");
+        this.el.statOmitted = document.getElementById("stat-omitted");
+        this.el.statAccuracy = document.getElementById("stat-accuracy");
+        this.el.statAvgTime = document.getElementById("stat-avg-time");
+        this.el.statTotalTime = document.getElementById("stat-total-time");
+
         this.toggleSessionControls(false); // Ensure hidden on init
     },
 
@@ -499,21 +510,32 @@ const QuestionBase = {
 
 
 
-        if (this.el.openRecentSessionsBtn) {
-            this.el.openRecentSessionsBtn.addEventListener("click", () => this.openRecentSessionsView());
+        // Recent Sessions Toolbar Events
+        if (this.el.sessionsSearchInput) {
+            this.el.sessionsSearchInput.addEventListener("input", (e) => {
+                this.state.recentSessionsSearch = e.target.value;
+                this.renderRecentSessions();
+            });
         }
-
-
-        if (this.el.backToEmptyStateBtn) {
-            this.el.backToEmptyStateBtn.addEventListener("click", () => this.closeQuestion());
+        if (this.el.sessionsSortSelect) {
+            this.el.sessionsSortSelect.addEventListener("change", (e) => {
+                this.state.recentSessionsSort = e.target.value;
+                this.renderRecentSessions();
+            });
         }
-
-        if (this.el.sortSessionsBtn) {
-            this.el.sortSessionsBtn.addEventListener("click", () => this.toggleRecentSessionsSort());
+        if (this.el.viewListBtn) {
+            this.el.viewListBtn.addEventListener("click", () => {
+                this.state.recentSessionsView = 'list';
+                this.updateViewToggleUI();
+                this.renderRecentSessions();
+            });
         }
-
-        if (this.el.toggleViewBtn) {
-            this.el.toggleViewBtn.addEventListener("click", () => this.toggleRecentSessionsView());
+        if (this.el.viewGridBtn) {
+            this.el.viewGridBtn.addEventListener("click", () => {
+                this.state.recentSessionsView = 'grid';
+                this.updateViewToggleUI();
+                this.renderRecentSessions();
+            });
         }
         if (this.el.sessionInput) {
             this.el.sessionInput.addEventListener("paste", (e) => this.handlePaste(e));
@@ -807,9 +829,23 @@ const QuestionBase = {
             this.el.titleInput.style.display = 'none';
         }
 
+        // Toggle dashboard-active class on emptyState for proper scrolling/layout
+        if (this.el.emptyState) {
+            if (tabName === 'statistics' || tabName === 'recent-sessions') {
+                this.el.emptyState.classList.add('dashboard-active');
+            } else {
+                this.el.emptyState.classList.remove('dashboard-active');
+            }
+        }
+
         // Special handling for recent sessions tab
         if (tabName === 'recent-sessions') {
             this.renderRecentSessions();
+        }
+
+        // Special handling for statistics tab
+        if (tabName === 'statistics') {
+            this.renderStatistics();
         }
     },
 
@@ -2355,83 +2391,147 @@ Question explanation:
     },
 
     renderRecentSessions() {
-        if (!this.el.recentSessionsContainer || !this.el.recentSessionsList) return;
+        const list = this.el.recentSessionsList;
+        if (!list) return;
 
-        const sessions = this.state.recentSessions;
-        const emptyStateContent = this.el.emptyState.querySelector('.empty-state-content');
+        list.innerHTML = "";
+        
+        // Update View Class
+        if (this.state.recentSessionsView === 'grid') {
+            list.classList.add('grid-view');
+        } else {
+            list.classList.remove('grid-view');
+        }
 
-        if (sessions.length === 0) {
-            // Show custom empty message for sessions
-            this.el.recentSessionsList.innerHTML = `
-                <div class="sessions-empty-msg" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--muted); text-align: center;">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 16px; opacity: 0.5;">
-                    <path d="M12 8v4l3 3m6-3a9 9 0 1 1-6.219-8.56"></path>
-                  </svg>
-                  <div style="font-size: 1.1em; font-weight: 500; color: var(--text);">No recent sessions created</div>
-                  <div style="margin-top: 8px; font-size: 0.9em; opacity: 0.7;">Click <strong style="color: var(--accent);">+ Create Session</strong> in the header above to start.</div>
+        // 1. Filter by Search
+        let filtered = [...this.state.recentSessions];
+        if (this.state.recentSessionsSearch) {
+            const query = this.state.recentSessionsSearch.toLowerCase();
+            filtered = filtered.filter(s => 
+                (s.title && s.title.toLowerCase().includes(query)) ||
+                (new Date(s.date).toLocaleDateString().includes(query))
+            );
+        }
+
+        if (filtered.length === 0) {
+            const msg = this.state.recentSessionsSearch ? "No sessions match your search." : "No recent sessions found. Start a new session to see it here!";
+            list.innerHTML = `
+                <div class="empty-state-content" style="grid-column: 1/-1; height: 100%; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; width: 100%;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1.5rem; opacity: 0.3;">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                    </svg>
+                    <p style="color: var(--muted); font-size: 1.1rem; max-width: 400px; margin: 0 auto; line-height: 1.6; text-align: center;">${msg}</p>
                 </div>
             `;
-            if (emptyStateContent) emptyStateContent.classList.add('hidden');
-            this.el.recentSessionsContainer.classList.remove('hidden');
             return;
         }
 
-        // Has sessions: Render list
-        if (emptyStateContent) emptyStateContent.classList.add('hidden');
-        this.el.recentSessionsContainer.classList.remove('hidden');
-
-        // Sort
-
-        // Sort
-        const sorted = [...sessions].sort((a, b) => {
-            if (this.state.recentSessionsSort === 'name') {
-                return a.title.localeCompare(b.title);
-            } else {
-                return new Date(b.date) - new Date(a.date);
-            }
+        // 2. Sort
+        const sorted = filtered.sort((a, b) => {
+            if (this.state.recentSessionsSort === "newest") return new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (this.state.recentSessionsSort === "oldest") return new Date(a.date).getTime() - new Date(b.date).getTime();
+            if (this.state.recentSessionsSort === "name") return (a.title || "").localeCompare(b.title || "");
+            if (this.state.recentSessionsSort === "questions") return (b.questions?.length || 0) - (a.questions?.length || 0);
+            return 0;
         });
 
-        // View Class
-        this.el.recentSessionsList.className = `recent-sessions-list ${this.state.recentSessionsView}-view`;
+        sorted.forEach(session => {
+            const card = document.createElement("div");
+            card.className = "session-row";
+            card.innerHTML = `
+                <div class="session-title" title="${session.title || "Untitled Session"}">${session.title || "Untitled Session"}</div>
+                
+                <div class="session-stats">
+                    ${new Date(session.date).toLocaleDateString()} • ${session.questions?.length || 0} Questions
+                </div>
 
-        this.el.recentSessionsList.innerHTML = sorted.map(s => `
-            <div class="session-card">
-               <div class="session-card-header">
-                  <div class="session-icon">
-                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                        <polyline points="10 9 9 9 8 9"></polyline>
-                     </svg>
-                  </div>
-                  <div class="session-info">
-                     <span class="session-title">${s.title}</span>
-                     <span class="session-meta">${new Date(s.date).toLocaleDateString()} • ${s.count} Qs</span>
-                  </div>
-                  <button class="icon-btn danger delete-session-btn" onclick="QuestionBase.deleteSession('${s.id}', event)" title="Delete Session">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                           <line x1="18" y1="6" x2="6" y2="18"></line>
-                           <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                  </button>
-               </div>
-               <div class="session-actions">
-                  <button class="btn primary small full-width" onclick="QuestionBase.resumeSession('${s.id}')">Resume</button>
-               </div>
-            </div>
-        `).join('');
+                <div class="session-actions">
+                    <button class="resume-session-btn" title="Resume Session">Resume</button>
+                    <button class="standard-tool-btn edit-btn" title="Edit Session">Edit</button>
+                    <button class="standard-tool-btn delete-btn danger" title="Delete Session">Delete</button>
+                </div>
+            `;
+
+            // Action Binding - Absolute Simplicity
+            card.querySelector(".resume-session-btn").onclick = () => this.resumeSession(session.id);
+            card.querySelector(".delete-btn").onclick = (e) => {
+                e.stopPropagation();
+                this.deleteSession(session.id, e);
+            };
+            card.querySelector(".edit-btn").onclick = (e) => {
+                e.stopPropagation();
+                if (session.folderId) {
+                    this.editSessionFromFolder(session.folderId);
+                } else {
+                    alert("No question data found.");
+                }
+            };
+
+            list.appendChild(card);
+        });
     },
 
-    toggleRecentSessionsSort() {
-        this.state.recentSessionsSort = this.state.recentSessionsSort === 'date' ? 'name' : 'date';
-        this.renderRecentSessions();
+    async renderStatistics() {
+        if (!this.el.statTotalQuestions) return;
+
+        // Update local data counts
+        this.el.statTotalQuestions.textContent = this.state.questions.length;
+        this.el.statTotalFolders.textContent = this.state.folders.length;
+        this.el.statTotalSessions.textContent = this.state.recentSessions.length;
+
+        try {
+            // Fetch performance stats from server
+            const response = await fetch('http://localhost:3001/api/stats');
+            if (response.ok) {
+                const stats = await response.json();
+                
+                this.el.statCorrect.textContent = stats.correct || 0;
+                this.el.statIncorrect.textContent = stats.incorrect || 0;
+                if (this.el.statOmitted) this.el.statOmitted.textContent = stats.omitted || 0;
+                
+                // Accuracy calculation
+                const totalAnswers = (stats.correct || 0) + (stats.incorrect || 0);
+                const accuracy = totalAnswers > 0 
+                    ? Math.round((stats.correct / totalAnswers) * 100) 
+                    : 0;
+                
+                this.el.statAccuracy.textContent = `${accuracy}%`;
+                
+                // Color coding accuracy
+                if (accuracy >= 80) this.el.statAccuracy.style.color = '#10b981';
+                else if (accuracy >= 50) this.el.statAccuracy.style.color = '#f59e0b';
+                else if (totalAnswers > 0) this.el.statAccuracy.style.color = '#ef4444';
+                else this.el.statAccuracy.style.color = 'var(--text)';
+
+                // Time stats
+                if (this.el.statTotalTime) {
+                    const totalSec = stats.totalTime || 0;
+                    const hours = Math.floor(totalSec / 3600);
+                    const minutes = Math.floor((totalSec % 3600) / 60);
+                    this.el.statTotalTime.textContent = `${hours}h ${minutes}m`;
+                }
+
+                if (this.el.statAvgTime) {
+                    const totalAttempts = (stats.correct || 0) + (stats.incorrect || 0) + (stats.omitted || 0);
+                    const avgSec = totalAttempts > 0 ? Math.round(stats.totalTime / totalAttempts) : 0;
+                    this.el.statAvgTime.textContent = `${avgSec}s`;
+                }
+            }
+        } catch (error) {
+            console.error('[QuestionBase] Failed to fetch statistics:', error);
+        }
     },
 
-    toggleRecentSessionsView() {
-        this.state.recentSessionsView = this.state.recentSessionsView === 'grid' ? 'list' : 'grid';
-        this.renderRecentSessions();
+    updateViewToggleUI() {
+        if (!this.el.viewListBtn || !this.el.viewGridBtn) return;
+        
+        if (this.state.recentSessionsView === 'grid') {
+            this.el.viewGridBtn.classList.add('active');
+            this.el.viewListBtn.classList.remove('active');
+        } else {
+            this.el.viewListBtn.classList.add('active');
+            this.el.viewGridBtn.classList.remove('active');
+        }
     },
 
     openRecentSessionsView() {
@@ -2566,7 +2666,7 @@ Question explanation:
 
         if (confirm("This will overwrite current text in Session Creator. Continue?")) {
             const text = this.reverseParseQuestions(questions);
-            this.el.sessionInput.value = text;
+            this.el.sessionInput.innerText = text;
             this.openSessionCreator();
         }
     },

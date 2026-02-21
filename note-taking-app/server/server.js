@@ -821,7 +821,7 @@ app.get('/api/stats', async (req, res) => {
       const stats = await fs.readJson(statsFile);
       res.json(stats);
     } else {
-      res.json({ correct: 0, incorrect: 0, total: 0 });
+      res.json({ correct: 0, incorrect: 0, omitted: 0, total: 0, totalTime: 0 });
     }
   } catch (error) {
     res.status(500).json({ error: 'Failed to load stats' });
@@ -830,24 +830,35 @@ app.get('/api/stats', async (req, res) => {
 
 app.post('/api/stats', async (req, res) => {
   try {
-    const { isCorrect } = req.body;
+    const { type, timeSpent = 0 } = req.body; // type: 'correct', 'incorrect', 'omitted'
     const statsDir = path.join(NOTES_BASE_DIR, 'settings');
     const statsFile = path.join(statsDir, 'stats.json');
 
     await fs.ensureDir(statsDir);
-    let stats = { correct: 0, incorrect: 0, total: 0 };
+    let stats = { correct: 0, incorrect: 0, omitted: 0, total: 0, totalTime: 0 };
 
     if (await fs.pathExists(statsFile)) {
       stats = await fs.readJson(statsFile);
     }
 
+    // Initialize missing fields if loading old stats
+    if (stats.omitted === undefined) stats.omitted = 0;
+    if (stats.totalTime === undefined) stats.totalTime = 0;
+
     stats.total++;
-    if (isCorrect) stats.correct++;
-    else stats.incorrect++;
+    stats.totalTime += timeSpent;
+
+    if (type === 'correct') stats.correct++;
+    else if (type === 'incorrect') stats.incorrect++;
+    else if (type === 'omitted') stats.omitted++;
+    // Legacy support for boolean isCorrect
+    else if (req.body.isCorrect === true) stats.correct++;
+    else if (req.body.isCorrect === false) stats.incorrect++;
 
     await fs.writeJson(statsFile, stats, { spaces: 2 });
     res.json({ success: true, stats });
   } catch (error) {
+    console.error('Error updating stats:', error);
     res.status(500).json({ error: 'Failed to update stats' });
   }
 });
