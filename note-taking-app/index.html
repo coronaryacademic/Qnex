@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml"
     href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect rx="12" ry="12" width="64" height="64" fill="%23fbbf24"/><path d="M18 20h28v4H18zm0 10h28v4H18zm0 10h18v4H18z" fill="%231f2937"/></svg>' />
-  <link rel="stylesheet" href="./styles/style.css" />
-  <link rel="stylesheet" href="./styles/two-base.css" />
-  <link rel="stylesheet" href="./styles/toolbar-highlight.css" />
-  <link rel="stylesheet" href="./styles/settings.css" />
-  <link rel="stylesheet" href="./styles/question-base.css" />
-  <link rel="stylesheet" href="./styles/dungeon-base.css" />
-  <link rel="stylesheet" href="./styles/dungeon-footer.css" />
-  <link rel="stylesheet" href="./styles/dungeon-note.css" />
+  <link rel="stylesheet" href="styles/style.css">
+  <link rel="stylesheet" href="styles/two-base.css">
+  <link rel="stylesheet" href="styles/toolbar-highlight.css">
+  <link rel="stylesheet" href="styles/settings.css">
+  <link rel="stylesheet" href="styles/question-base.css?v=3">
+  <link rel="stylesheet" href="styles/dungeon-base.css">
+  <link rel="stylesheet" href="styles/dungeon-footer.css">
+  <link rel="stylesheet" href="styles/dungeon-note.css">
   <!-- Startup and reload sounds removed -->
   <style>
     /* View Options Menu */
@@ -724,11 +724,19 @@
               <!-- Statistics Tab Content -->
               <div class="tab-content" data-tab-content="statistics">
                 <div class="statistics-container">
-                  <div class="stats-header">
+                  <div class="stats-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div class="stats-title-group">
                       <h2>Knowledge Dashboard</h2>
                       <p>System metrics and performance analysis</p>
                     </div>
+                    <button id="syncStatsBtn" class="icon-btn" title="Sync & Recalculate Statistics" style="background: var(--bg-accent); padding: 8px 16px; border-radius: 6px; font-size: 11px; display: flex; align-items: center; gap: 6px; margin-top: 18px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                      </svg>
+                      Sync
+                    </button>
                   </div>
                   
                   <div class="stats-grid">
@@ -2180,7 +2188,7 @@
   <script src="scripts/markdown.js"></script>
   <script src="scripts/two-base.js"></script>
   <script src="scripts/two-base-persistence.js"></script>
-  <script src="scripts/question-base.js"></script>
+  <script src="scripts/question-base.js?v=3"></script>
   <script src="scripts/custom-features.js"></script>
   <script src="scripts/note-font-handler.js"></script>
   <script src="scripts/dungeon-note.js"></script>

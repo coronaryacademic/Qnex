@@ -27,23 +27,73 @@ const dataDir = process.platform === 'win32'
   : "/home/momen/WindowsDrive/MyNotes";
 
 // Ensure data directory exists
+// File paths
+const FILES = {
+  folders: path.join(dataDir, "folders.json"),
+  settings: path.join(dataDir, "settings", "settings.json"),
+  trash: path.join(dataDir, "trash", "trash.json"),
+  questions: path.join(dataDir, "questions", "questions.json"),
+  sessions: path.join(dataDir, "settings", "sessions.json"),
+};
+
+// Ensure data directory and sub-directories exist
 async function ensureDataDir() {
   try {
     await fs.mkdir(dataDir, { recursive: true });
     await fs.mkdir(path.join(dataDir, 'notes'), { recursive: true });
+    await fs.mkdir(path.join(dataDir, 'settings'), { recursive: true });
+    await fs.mkdir(path.join(dataDir, 'questions'), { recursive: true });
+    await fs.mkdir(path.join(dataDir, 'trash'), { recursive: true });
+    await fs.mkdir(path.join(dataDir, 'folders'), { recursive: true });
+
+    // --- MIGRATION LOGIC ---
+    // Move questions.json from root to questions/questions.json if it exists
+    const oldQuestions = path.join(dataDir, "questions.json");
+    try {
+      if (await fs.stat(oldQuestions).catch(() => null)) {
+        log("[MIGRATE] Moving questions.json to questions/ subfolder...");
+        const data = await fs.readFile(oldQuestions, 'utf8');
+        await fs.writeFile(FILES.questions, data);
+        await fs.unlink(oldQuestions);
+      }
+    } catch (e) { log("[ERROR] Questions migration failed: " + e.message); }
+
+    // Move settings.json from root to settings/ subfolder if it exists
+    const oldSettings = path.join(dataDir, "settings.json");
+    try {
+      if (await fs.stat(oldSettings).catch(() => null)) {
+        log("[MIGRATE] Moving settings.json to settings/ subfolder...");
+        const data = await fs.readFile(oldSettings, 'utf8');
+        await fs.writeFile(FILES.settings, data);
+        await fs.unlink(oldSettings);
+      }
+    } catch (e) { log("[ERROR] Settings migration failed: " + e.message); }
+
+    // Move trash.json from root to trash/ subfolder if it exists
+    const oldTrash = path.join(dataDir, "trash.json");
+    try {
+      if (await fs.stat(oldTrash).catch(() => null)) {
+        log("[MIGRATE] Moving trash.json to trash/ subfolder...");
+        const data = await fs.readFile(oldTrash, 'utf8');
+        await fs.writeFile(FILES.trash, data);
+        await fs.unlink(oldTrash);
+      }
+    } catch (e) { log("[ERROR] Trash migration failed: " + e.message); }
+
+    // Move sessions.json from root to settings/ sessions.json if it exists
+    const oldSessions = path.join(dataDir, "sessions.json");
+    try {
+      if (await fs.stat(oldSessions).catch(() => null)) {
+        log("[MIGRATE] Moving sessions.json to settings/ subfolder...");
+        const data = await fs.readFile(oldSessions, 'utf8');
+        await fs.writeFile(FILES.sessions, data);
+        await fs.unlink(oldSessions);
+      }
+    } catch (e) { log("[ERROR] Sessions migration failed: " + e.message); }
   } catch (err) {
     console.error("Failed to create data directory:", err);
   }
 }
-
-// File paths
-const FILES = {
-  // notes: path.join(dataDir, "notes.json"), // Deprecated
-  folders: path.join(dataDir, "folders.json"),
-  settings: path.join(dataDir, "settings.json"),
-  trash: path.join(dataDir, "trash.json"),
-  questions: path.join(dataDir, "questions.json"),
-};
 
 // Read file with fallback
 async function readFile(filePath, defaultData = []) {
@@ -678,8 +728,10 @@ let server3002;
 function startServer3002() {
   try {
     const expressApp = require('express')();
+    const bodyParser = require('body-parser');
     const cors = require('cors');
     expressApp.use(cors());
+    expressApp.use(bodyParser.json({ limit: '50mb' }));
     
     expressApp.get('/api/health', (req, res) => {
       res.json({
@@ -695,10 +747,12 @@ function startServer3002() {
       res.json(data);
     });
 
+    expressApp.post('/api/settings', async (req, res) => {
+      const result = await writeFile(FILES.settings, req.body);
+      res.json(result);
+    });
+
     expressApp.get('/api/notes', async (req, res) => {
-      // For simplicity in the companion server, we could just return a success
-      // or implement the same fs logic. Since frontend uses this for health, 
-      // a simple 200 OK with empty array or basic data is often enough to stop 404s.
       const notesDir = path.join(dataDir, 'notes');
       try {
         const files = await fs.readdir(notesDir);
@@ -713,14 +767,44 @@ function startServer3002() {
       res.json(data);
     });
 
+    expressApp.post('/api/folders', async (req, res) => {
+      const result = await writeFile(FILES.folders, req.body);
+      res.json(result);
+    });
+
     expressApp.get('/api/trash', async (req, res) => {
       const data = await readFile(FILES.trash, []);
       res.json(data);
     });
 
+    expressApp.post('/api/trash', async (req, res) => {
+      const result = await writeFile(FILES.trash, req.body);
+      res.json(result);
+    });
+
+    expressApp.delete('/api/trash', async (req, res) => {
+      const result = await writeFile(FILES.trash, []);
+      res.json(result);
+    });
+
     expressApp.get('/api/questions', async (req, res) => {
       const data = await readFile(FILES.questions, []);
       res.json(data);
+    });
+
+    expressApp.post('/api/questions', async (req, res) => {
+      const result = await writeFile(FILES.questions, req.body);
+      res.json(result);
+    });
+
+    expressApp.get('/api/sessions', async (req, res) => {
+      const data = await readFile(FILES.sessions, []);
+      res.json(data);
+    });
+
+    expressApp.post('/api/sessions', async (req, res) => {
+      const result = await writeFile(FILES.sessions, req.body);
+      res.json(result);
     });
 
     expressApp.get('/api/tasks', async (req, res) => {

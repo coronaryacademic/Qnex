@@ -858,6 +858,39 @@ app.post("/api/questions", async (req, res) => {
   }
 });
 
+// SESSIONS ENDPOINTS
+
+// Get sessions
+app.get("/api/sessions", async (req, res) => {
+  try {
+    const sessionsFile = path.join(NOTES_BASE_DIR, "settings", "sessions.json");
+    if (await fs.pathExists(sessionsFile)) {
+      const sessions = await fs.readJson(sessionsFile);
+      res.json(sessions);
+    } else {
+      res.json([]);
+    }
+  } catch (error) {
+    console.error("Error loading sessions:", error);
+    res.status(500).json({ error: "Failed to load sessions" });
+  }
+});
+
+// Save sessions
+app.post("/api/sessions", async (req, res) => {
+  try {
+    const sessions = req.body;
+    const settingsDir = path.join(NOTES_BASE_DIR, "settings");
+    const sessionsFile = path.join(settingsDir, "sessions.json");
+    await fs.ensureDir(settingsDir);
+    await fs.writeJson(sessionsFile, sessions, { spaces: 2 });
+    res.json({ success: true, message: "Sessions saved successfully" });
+  } catch (error) {
+    console.error("Error saving sessions:", error);
+    res.status(500).json({ error: "Failed to save sessions" });
+  }
+});
+
 // STATISTICS ENDPOINTS
 app.get("/api/stats", async (req, res) => {
   try {
@@ -876,6 +909,50 @@ app.get("/api/stats", async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ error: "Failed to load stats" });
+  }
+});
+
+// Recalculate stats from questions.json
+app.get("/api/stats/sync", async (req, res) => {
+  try {
+    const questionsFile = path.join(NOTES_BASE_DIR, "questions", "questions.json");
+    const statsFile = path.join(NOTES_BASE_DIR, "settings", "stats.json");
+    
+    if (!(await fs.pathExists(questionsFile))) {
+      return res.json({ success: true, message: "No questions file found" });
+    }
+
+    const data = await fs.readJson(questionsFile);
+    const questions = data.questions || [];
+    
+    let stats = {
+      correct: 0,
+      incorrect: 0,
+      omitted: 0,
+      total: 0,
+      totalTime: 0
+    };
+
+    questions.forEach(q => {
+      if (q.submittedAnswer) {
+        stats.total++;
+        if (q.submittedAnswer.isCorrect) stats.correct++;
+        else stats.incorrect++;
+        
+        if (q.timerElapsed) {
+          stats.totalTime += Math.floor(q.timerElapsed / 1000);
+        }
+      }
+    });
+
+    // Also count omitted (revealed but not submitted)
+    // In our case we don't have a perfect record for omitted unless we store it on Q.
+
+    await fs.writeJson(statsFile, stats, { spaces: 2 });
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error("Error syncing stats:", error);
+    res.status(500).json({ error: "Failed to sync statistics" });
   }
 });
 
@@ -1094,6 +1171,10 @@ const serverInstance = app.listen(PORT, "0.0.0.0", () => {
   console.log("  GET  /api/folders - Get all folders");
   console.log("  POST /api/folders - Save folders");
   console.log("  DELETE /api/folders/:folderId - Delete a folder");
+  console.log("  GET  /api/sessions - Get sessions list");
+  console.log("  POST /api/sessions - Save sessions list");
+  console.log("  GET  /api/stats - Get performance statistics");
+  console.log("  GET  /api/stats/sync - Recalculate stats from questions.json");
   console.log("  GET  /api/trash - Get trash items");
   console.log("  POST /api/trash - Save trash items");
   console.log("  DELETE /api/trash - Clear all trash");

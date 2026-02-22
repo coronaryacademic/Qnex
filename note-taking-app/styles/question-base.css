@@ -47,7 +47,7 @@
 
 /* Ensure empty state SVG handles theming via currentColor */
 .question-empty-state svg {
-  margin-bottom: 1px;
+  margin-bottom: 30px !important;
   color: var(--muted);
   /* Default color */
   opacity: 0.3;
@@ -1616,6 +1616,9 @@ div[data-tab-content="recent-sessions"].active {
   margin-bottom: 1rem;
   padding: 0.5rem;
   border-radius: 8px;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .toolbar-search {
@@ -1629,10 +1632,16 @@ div[data-tab-content="recent-sessions"].active {
   padding: 0 0.75rem;
   height: 36px;
   min-width: 200px;
+  pointer-events: auto;
+  cursor: text;
 }
 
 .toolbar-search svg {
   color: var(--muted);
+  opacity: 1 !important;
+  pointer-events: none;
+  flex-shrink: 0;
+  margin-bottom: 0px !important;
 }
 
 .toolbar-search input {
@@ -1642,6 +1651,8 @@ div[data-tab-content="recent-sessions"].active {
   font-size: 0.9rem;
   width: 100%;
   outline: none;
+  pointer-events: auto;
+  cursor: text;
 }
 
 .toolbar-actions {

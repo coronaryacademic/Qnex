@@ -189,6 +189,11 @@ const QuestionBase = {
         this.el.statAccuracy = document.getElementById("stat-accuracy");
         this.el.statAvgTime = document.getElementById("stat-avg-time");
         this.el.statTotalTime = document.getElementById("stat-total-time");
+        this.el.syncStatsBtn = document.getElementById("syncStatsBtn");
+
+        if (this.el.syncStatsBtn) {
+            this.el.syncStatsBtn.onclick = () => this.renderStatistics(true);
+        }
 
         this.toggleSessionControls(false); // Ensure hidden on init
     },
@@ -649,11 +654,29 @@ const QuestionBase = {
     },
 
     async loadRecentSessions() {
-        const stored = localStorage.getItem("active-recall-recent-sessions");
-        if (stored) {
-            try {
-                this.state.recentSessions = JSON.parse(stored);
-            } catch (e) {
+        try {
+            // Primary: load from server backend (dynamic port)
+            const response = await fetch(this.getServerUrl('/sessions'));
+            if (response.ok) {
+                this.state.recentSessions = await response.json();
+                // Keep localStorage in sync
+                localStorage.setItem("active-recall-recent-sessions", JSON.stringify(this.state.recentSessions));
+            } else {
+                throw new Error('Server returned ' + response.status);
+            }
+        } catch (e) {
+            console.warn('[QuestionBase] Failed to load sessions from server, falling back to localStorage:', e);
+            // Fallback: localStorage
+            const stored = localStorage.getItem("active-recall-recent-sessions");
+            if (stored) {
+                try {
+                    this.state.recentSessions = JSON.parse(stored);
+                    // Migrate legacy localStorage data up to server
+                    this.saveRecentSessions();
+                } catch (parseErr) {
+                    this.state.recentSessions = [];
+                }
+            } else {
                 this.state.recentSessions = [];
             }
         }
@@ -661,62 +684,108 @@ const QuestionBase = {
     },
 
 
+    getServerUrl(endpoint) {
+        // Use the active discovered port from fileSystemService if available
+        let base = 'http://localhost:3001/api';
+        if (window.fileSystemService && window.fileSystemService.baseUrl) {
+            base = window.fileSystemService.baseUrl;
+        }
+        return `${base}${endpoint}`;
+    },
+
     saveRecentSessions() {
         localStorage.setItem("active-recall-recent-sessions", JSON.stringify(this.state.recentSessions));
+        
+        // Save to server as source of truth
+        fetch(this.getServerUrl('/sessions'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.state.recentSessions)
+        }).catch(err => console.warn('[QuestionBase] Failed to save sessions to server:', err));
     },
 
     async loadData(suppressWarning = false) {
         console.log('[QuestionBase] loadData() called');
-        console.log('[QuestionBase] Storage available?', typeof window.Storage, 'loadQuestions?', typeof window.Storage?.loadQuestions);
+        
+        let serverData = null;
+        let electronData = null;
+        let localData = null;
 
+        // 1. Try Live Server
+        try {
+            const response = await fetch(this.getServerUrl('/questions'));
+            if (response.ok) {
+                serverData = await response.json();
+                console.log('[QuestionBase] Server has', serverData.questions?.length || 0, 'questions');
+            }
+        } catch (e) {
+            console.log('[QuestionBase] Server questions unreachable:', e.message);
+        }
+
+        // 2. Try window.Storage (Electron)
         if (typeof window.Storage !== 'undefined' && typeof window.Storage.loadQuestions === 'function') {
             try {
-                console.log('[QuestionBase] Loading questions from Storage...');
-                const data = await window.Storage.loadQuestions();
-                console.log('[QuestionBase] Loaded data:', data);
-                if (Array.isArray(data)) {
-                    this.state.questions = data;
-                    this.state.folders = [];
-                } else {
-                    this.state.questions = data.questions || [];
-                    this.state.folders = data.folders || [];
-                }
+                electronData = await window.Storage.loadQuestions();
+                console.log('[QuestionBase] Electron Storage has', electronData.questions?.length || 0, 'questions');
             } catch (error) {
-                console.warn('[QuestionBase] Failed to load questions:', error);
-                this.state.questions = [];
-                this.state.folders = [];
-            }
-        } else {
-            if (suppressWarning) {
-                console.log('[QuestionBase] Storage not available yet, using localStorage fallback');
-            } else {
-                console.warn('[QuestionBase] Storage not available yet, using localStorage fallback');
-            }
-            // Direct localStorage fallback
-            try {
-                const stored = localStorage.getItem("app-questions");
-                if (stored) {
-                    const data = JSON.parse(stored);
-                    if (Array.isArray(data)) {
-                        this.state.questions = data;
-                        this.state.folders = [];
-                    } else {
-                        this.state.questions = data.questions || [];
-                        this.state.folders = data.folders || [];
-                    }
-                    console.log('[QuestionBase] Loaded from localStorage:', this.state.questions.length, 'questions');
-                } else {
-                    console.log('[QuestionBase] No data in localStorage');
-                    this.state.questions = [];
-                    this.state.folders = [];
-                }
-            } catch (e) {
-                console.error("[QuestionBase] Failed to load from localStorage", e);
-                this.state.questions = [];
-                this.state.folders = [];
+                console.warn('[QuestionBase] failed loadQuestions:', error);
             }
         }
-        console.log('[QuestionBase] Rendering sidebar after load');
+
+        // 3. Try localStorage (Browser)
+        try {
+            const stored = localStorage.getItem("app-questions");
+            if (stored) {
+                localData = JSON.parse(stored);
+                console.log('[QuestionBase] localStorage has', (Array.isArray(localData) ? localData.length : localData.questions?.length) || 0, 'questions');
+            }
+        } catch (e) {}
+
+        // --- INTELLIGENT MERGE / PICK ---
+        // We want to use the one with the MOST questions if we're in a "lost data" situation
+        let bestData = serverData;
+        
+        const getCount = (d) => {
+            if (!d) return -1;
+            if (Array.isArray(d)) return d.length;
+            return (d.questions || []).length;
+        };
+
+        const serverCount = getCount(serverData);
+        const electronCount = getCount(electronData);
+        const localCount = getCount(localData);
+
+        if (electronCount > serverCount) {
+            console.log('[QuestionBase] Electron data is more complete. Using Electron.');
+            bestData = electronData;
+        }
+        
+        const currentBestCount = getCount(bestData);
+        if (localCount > currentBestCount) {
+            console.log('[QuestionBase] localStorage is more complete. Using local.');
+            bestData = localData;
+        }
+
+        // Apply Data
+        if (bestData) {
+            if (Array.isArray(bestData)) {
+                this.state.questions = bestData;
+                this.state.folders = [];
+            } else {
+                this.state.questions = bestData.questions || [];
+                this.state.folders = bestData.folders || [];
+            }
+
+            // AUTO-MIGRATE: If we picked non-server data, push it to the server immediately
+            if (bestData !== serverData) {
+                console.log('[QuestionBase] 🚀 Migrating best data to server...');
+                this.saveData(); 
+            }
+        } else {
+            this.state.questions = [];
+            this.state.folders = [];
+        }
+
         this.renderSidebar();
     },
 
@@ -741,11 +810,21 @@ const QuestionBase = {
             folders: this.state.folders
         };
 
+        // 1. Local Persistence (Browser Cache)
+        localStorage.setItem("app-questions", JSON.stringify(data));
+
+        // 2. Electron Persistence (File System)
         if (typeof window.Storage !== 'undefined' && window.Storage.saveQuestions) {
             window.Storage.saveQuestions(data);
-        } else {
-            localStorage.setItem("app-questions", JSON.stringify(data));
         }
+
+        // 3. Server Persistence (Source of Truth)
+        fetch(this.getServerUrl('/questions'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).catch(err => console.warn('[QuestionBase] Server save failed:', err));
+
         this.renderSidebar();
     },
 
@@ -2471,16 +2550,45 @@ Question explanation:
         });
     },
 
-    async renderStatistics() {
+    async renderStatistics(forceSync = false) {
         if (!this.el.statTotalQuestions) return;
 
-        // Update local data counts
+        // Update local data counts first
         this.el.statTotalQuestions.textContent = this.state.questions.length;
         this.el.statTotalFolders.textContent = this.state.folders.length;
+
+        if (forceSync && this.el.syncStatsBtn) {
+            const originalHtml = this.el.syncStatsBtn.innerHTML;
+            this.el.syncStatsBtn.innerHTML = "Syncing...";
+            this.el.syncStatsBtn.disabled = true;
+            try {
+                // Force a reload of the questions state from the server first
+                await this.loadData();
+            } catch(e) {}
+            setTimeout(() => {
+                if (this.el.syncStatsBtn) {
+                    this.el.syncStatsBtn.innerHTML = originalHtml;
+                    this.el.syncStatsBtn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        // Get live session count from server
+        try {
+            // First trigger a sync to recalculate from questions.json
+            await fetch('http://localhost:3001/api/stats/sync');
+            
+            const sessRes = await fetch('http://localhost:3001/api/sessions');
+            if (sessRes.ok) {
+                const sessions = await sessRes.json();
+                this.state.recentSessions = sessions;
+                localStorage.setItem("active-recall-recent-sessions", JSON.stringify(sessions));
+            }
+        } catch (e) { /* use cached count if server unreachable */ }
         this.el.statTotalSessions.textContent = this.state.recentSessions.length;
 
         try {
-            // Fetch performance stats from server
+            // Fetch performance stats from server (after sync)
             const response = await fetch('http://localhost:3001/api/stats');
             if (response.ok) {
                 const stats = await response.json();
