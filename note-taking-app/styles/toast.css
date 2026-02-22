@@ -1,0 +1,54 @@
+/* Floating Toast Notifications */
+.status-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(40, 40, 45, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    pointer-events: none;
+}
+
+.status-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    visibility: visible;
+}
+
+.status-toast .toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+}
+
+.status-toast.success .toast-icon {
+    background: #10b981;
+    color: white;
+}
+
+.status-toast.error .toast-icon {
+    background: #ef4444;
+    color: white;
+}
+
+.status-toast.info .toast-icon {
+    background: var(--accent);
+    color: white;
+}

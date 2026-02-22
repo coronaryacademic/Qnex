@@ -1733,6 +1733,7 @@
 
   function switchToNoteBase() {
     TwoBaseState.currentBase = "note";
+    document.body.classList.add("note-open");
     console.log("[DEBUG] switchToNoteBase called");
 
     // Ensure elements exist
@@ -1759,10 +1760,8 @@
 
   function switchToMainBase() {
     console.log("[DEBUG] switchToMainBase called");
-    console.log("Current Base before switch:", TwoBaseState.currentBase);
-    console.log("Elements - Workspace:", el.workspaceSplit, "NoteBase:", el.noteBase);
-
     TwoBaseState.currentBase = "main";
+    document.body.classList.remove("note-open");
 
     if (el.workspaceSplit && el.noteBase) {
       switchViewWithAnimation(el.workspaceSplit, el.noteBase);

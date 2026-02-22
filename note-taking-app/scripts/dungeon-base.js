@@ -1159,51 +1159,19 @@ export default class DungeonBase {
     }
 
     updateSaveStatus(status = 'saved') {
-        const saveStatusEl = document.getElementById('dungeonSaveStatus');
-        if (!saveStatusEl) return;
-
-        if (this.saveStatusTimeout) {
-            clearTimeout(this.saveStatusTimeout);
-            this.saveStatusTimeout = null;
+        if (status === 'saved') {
+            showToast("Note saved", "success", 2000);
+            this.state.unsavedChanges = false;
+        } else if (status === 'unsaved') {
+            showToast("Unsaved changes", "info", 2000);
+            this.state.unsavedChanges = true;
         }
 
-        // Ensure visible and layout-occupying when active
-        saveStatusEl.style.display = 'inline-block';
-        // Trigger reflow if needed for transition, but display:none->block breaks transition usually.
-        // For smooth entry, we might accept instant appearance or simple opacity fade in.
-        // Since transparency is 0 -> 1, it should fade in if display was already block.
-        // If it was none, it appears instantly. That's usually fine.
-        requestAnimationFrame(() => {
-            saveStatusEl.style.opacity = '1';
-        });
-
-        saveStatusEl.className = 'dungeon-save-status ' + status;
-
-        switch (status) {
-            case 'saving':
-                saveStatusEl.textContent = 'Saving...';
-                break;
-            case 'unsaved':
-                saveStatusEl.textContent = 'Unsaved';
-                this.state.unsavedChanges = true;
-                break;
-            case 'saved':
-            default:
-                saveStatusEl.textContent = 'Saved';
-                this.state.unsavedChanges = false;
-                this.saveStatusTimeout = setTimeout(() => {
-                    saveStatusEl.style.opacity = '0';
-                    // Wait for transition to finish (300ms) before hiding layout
-                    setTimeout(() => {
-                        if (saveStatusEl.style.opacity === '0') { // Check if still hidden
-                            saveStatusEl.style.display = 'none';
-                        }
-                    }, 300);
-                }, 2000);
-                break;
+        const saveStatusEl = document.getElementById('dungeonSaveStatus');
+        if (saveStatusEl) {
+            saveStatusEl.style.display = 'none'; // Suppress local UI
         }
     }
-
     updateQuestionTitle() {
         const q = this.state.questions[this.state.currentIndex];
         const titleEl = document.getElementById('dungeonQuestionTitle');
@@ -2335,6 +2303,7 @@ export default class DungeonBase {
     }
 
     open(questions) {
+        document.body.classList.add("dungeon-open");
         if (!questions || questions.length === 0) {
             alert("No questions to play!");
             return;
@@ -2388,6 +2357,7 @@ export default class DungeonBase {
     }
 
     close() {
+        document.body.classList.remove("dungeon-open");
         this.el.container.classList.add("hidden");
         this.stopTimer();
 

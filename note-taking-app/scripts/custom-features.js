@@ -153,7 +153,7 @@ const AUTO_BACKUP_INTERVAL = 60000; // Backup every 60 seconds
 let autoBackupTimer = null;
 
 // Initialize custom features when DOM is ready
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   // Initialize theme carousel
   initializeThemeCarousel();
   // Initialize font size
@@ -236,15 +236,217 @@ document.addEventListener("DOMContentLoaded", () => {
   // Setup safe refresh button
   setupSafeRefresh();
 
-  // Setup workspace bar toggle
-  setupWorkspaceBarToggle();
+  // Initialize Notification Center early for system toasts
+  window.notifCenter = new NotificationCenter();
 
+  // Setup workspace-bar
+  setupWorkspaceBarToggle();
+  
   // Setup browser feature
   setupBrowserFeature();
-
+  
   // Setup browser drag-to-split
   setupBrowserDragToSplit();
+  
+  // Check for cache cleared flag in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('cacheCleared') === '1') {
+    // Delay slightly to ensure UI is ready and animation is visible
+    setTimeout(() => {
+      showToast("System cache purged successfully", "success", 4000);
+    }, 800);
+    // Clean up URL without reload
+    const newUrl = window.location.origin + window.location.pathname;
+    window.history.replaceState({}, document.title, newUrl);
+  }
 });
+
+/**
+ * Global Notification Center System
+ */
+class NotificationCenter {
+    constructor() {
+        this.notifications = JSON.parse(localStorage.getItem('app_notif_history') || '[]');
+        this.unreadCount = parseInt(localStorage.getItem('app_notif_unread') || '0');
+        this.isOpen = false;
+        
+        this.el = {
+            trigger: document.getElementById('notifCenter'),
+            count: document.getElementById('notifCount'),
+            pane: document.getElementById('notifPane'),
+            list: document.getElementById('notifList'),
+            clearBtn: document.getElementById('clearNotifsBtn')
+        };
+        
+        this.init();
+    }
+
+    init() {
+        if (!this.el.trigger) return;
+        
+        this.el.trigger.onclick = () => this.togglePane();
+        if (this.el.clearBtn) {
+            this.el.clearBtn.onclick = () => this.clearAll();
+        }
+        
+        // Close pane on click outside
+        document.addEventListener('mousedown', (e) => {
+            if (this.isOpen && !this.el.pane.contains(e.target) && !this.el.trigger.contains(e.target)) {
+                this.closePane();
+            }
+        });
+
+        this.updateBadge();
+        this.render();
+    }
+
+    add(message, type = 'info', skipAnimation = false) {
+        const notif = {
+            id: Date.now(),
+            message,
+            type,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: Date.now()
+        };
+        
+        this.notifications.unshift(notif);
+        if (this.notifications.length > 50) this.notifications.pop();
+        
+        if (!this.isOpen) {
+            this.unreadCount++;
+        }
+        
+        this.save();
+        this.updateBadge();
+        this.render();
+
+        if (!skipAnimation) {
+            this.triggerPing();
+        }
+    }
+
+    triggerPing() {
+        if (!this.el.trigger) return;
+        this.el.trigger.classList.remove('ping');
+        void this.el.trigger.offsetWidth; // Trigger reflow
+        this.el.trigger.classList.add('ping');
+        setTimeout(() => this.el.trigger.classList.remove('ping'), 600);
+    }
+
+    togglePane() {
+        if (this.isOpen) {
+            this.closePane();
+        } else {
+            this.openPane();
+        }
+    }
+
+    openPane() {
+        this.isOpen = true;
+        this.el.pane.classList.remove('hidden');
+        this.el.trigger.classList.add('active');
+        this.unreadCount = 0;
+        this.save();
+        this.updateBadge();
+    }
+
+    closePane() {
+        this.isOpen = false;
+        this.el.pane.classList.add('hidden');
+        this.el.trigger.classList.remove('active');
+    }
+
+    clearAll() {
+        this.notifications = [];
+        this.unreadCount = 0;
+        this.save();
+        this.updateBadge();
+        this.render();
+    }
+
+    updateBadge() {
+        if (this.unreadCount > 0) {
+            this.el.count.textContent = this.unreadCount > 9 ? '9+' : this.unreadCount;
+            this.el.count.classList.remove('hidden');
+        } else {
+            this.el.count.classList.add('hidden');
+        }
+    }
+
+    save() {
+        localStorage.setItem('app_notif_history', JSON.stringify(this.notifications));
+        localStorage.setItem('app_notif_unread', this.unreadCount.toString());
+    }
+
+    render() {
+        if (!this.el.list) return;
+        
+        if (this.notifications.length === 0) {
+            this.el.list.innerHTML = '<div class="notif-empty-state">No history</div>';
+            return;
+        }
+        
+        this.el.list.innerHTML = this.notifications.map(n => `
+            <div class="notif-item ${n.type}">
+                <div class="notif-item-icon">
+                    ${this.getIcon(n.type)}
+                </div>
+                <div class="notif-item-content">
+                    <div class="notif-item-message">${n.message}</div>
+                    <div class="notif-item-time">${n.time}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    getIcon(type) {
+        if (type === 'success') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        if (type === 'error') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+    }
+}
+
+/**
+ * Global Toast Notification System
+ * @param {string} message - Message to display
+ * @param {string} type - 'success' | 'error' | 'info'
+ * @param {number} duration - Duration in ms
+ */
+function showToast(message, type = 'info', duration = 4000) {
+    // Prevent duplicates by removing existing flyers
+    const existingFlyers = document.querySelectorAll('.flying-notif');
+    existingFlyers.forEach(f => f.remove());
+
+    // 1. Create flying badge for animation (holds for 3s then flies to bell)
+    const flyer = document.createElement('div');
+    flyer.className = `flying-notif active ${type}`;
+    flyer.innerHTML = `
+        <span class="flyer-icon">${getToastIconHtml(type)}</span>
+        <span class="flyer-text">${message}</span>
+    `;
+    document.body.appendChild(flyer);
+
+    // 2. Handle animation end (lands in bell)
+    flyer.addEventListener('animationend', (e) => {
+        // Only trigger when the 'flyToBell' animation finished (the 4s one)
+        if (e.animationName === 'flyToBell') {
+            if (window.notifCenter) {
+                // Log to notification center and trigger ping
+                window.notifCenter.add(message, type);
+            }
+            flyer.remove();
+        }
+    });
+}
+
+/**
+ * Helper to get SVG icon based on type
+ */
+function getToastIconHtml(type) {
+    if (type === 'success') return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    if (type === 'error') return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+}
 
 // Toggle fullscreen mode
 function toggleFullscreen() {

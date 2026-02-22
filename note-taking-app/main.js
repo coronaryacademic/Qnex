@@ -239,6 +239,21 @@ function createWindow() {
     }
   });
 
+  // Force hard refresh on Ctrl+R or Cmd+R to bypass cache
+  win.webContents.on('before-input-event', (event, input) => {
+    if ((input.control || input.meta) && input.key.toLowerCase() === 'r') {
+      log("[SYSTEM] Aggressive Hard Refresh triggered (Ctrl+R). Purging session cache...");
+      // 1. Clear session cache explicitly
+      win.webContents.session.clearCache().then(() => {
+        // 2. Reload with a flag so the renderer knows it was successful
+        const currentURL = new URL(win.webContents.getURL());
+        currentURL.searchParams.set('cacheCleared', '1');
+        win.loadURL(currentURL.toString());
+      });
+      event.preventDefault();
+    }
+  });
+
   // Load via localhost for Firebase auth
   win.loadURL('http://localhost:8080/index.html');
 
