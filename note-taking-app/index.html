@@ -930,8 +930,32 @@
                     <option value="tngtech/deepseek-r1t2-chimera:free">DeepSeek R1 - Free</option>
                     <option value="google/gemini-2.5-pro-exp-03-25:free">Gemini 2.5 Pro - Premium</option>
                   </select>
-                    </svg>
-                  </button>
+
+                  <!-- Tag Dropdowns: Subject / System / Major -->
+                  <div class="tag-drop-wrapper" id="tagWrapSubject">
+                    <button class="icon-btn tag-drop-btn" id="tagBtnSubject" title="Filter by Subject">
+                      Subject <span class="tag-badge" id="tagBadgeSubject"></span>
+                    </button>
+                    <div class="tag-drop-menu hidden" id="tagMenuSubject"></div>
+                  </div>
+                  <div class="tag-drop-wrapper" id="tagWrapSystem">
+                    <button class="icon-btn tag-drop-btn" id="tagBtnSystem" title="Filter by System">
+                      System <span class="tag-badge" id="tagBadgeSystem"></span>
+                    </button>
+                    <div class="tag-drop-menu hidden" id="tagMenuSystem"></div>
+                  </div>
+                  <div class="tag-drop-wrapper" id="tagWrapMajor">
+                    <button class="icon-btn tag-drop-btn" id="tagBtnMajor" title="Filter by Major">
+                      Major <span class="tag-badge" id="tagBadgeMajor"></span>
+                    </button>
+                    <div class="tag-drop-menu hidden" id="tagMenuMajor"></div>
+                  </div>
+                  <div class="tag-drop-wrapper" id="tagWrapMinor">
+                    <button class="icon-btn tag-drop-btn" id="tagBtnMinor" title="Filter by Minor">
+                      Minor <span class="tag-badge" id="tagBadgeMinor"></span>
+                    </button>
+                    <div class="tag-drop-menu hidden" id="tagMenuMinor"></div>
+                  </div>
                </div>
                <div class="session-creator-actions-right" style="gap: 8px;">
                   <button id="cancelSessionBtn" class="icon-btn" title="Cancel">

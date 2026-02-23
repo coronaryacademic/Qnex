@@ -22,6 +22,10 @@ const QuestionBase = {
         deletedSessionBlocks: [], // Stack for restoring deleted questions in session creator
         aiMode: false,
         uploadedMediaContent: null, // Store uploaded PDF/media content for AI context
+        selectedTagSubjects: [],
+        selectedTagSystems: [],
+        selectedTagMajors: [],
+        selectedTagMinors: [],
     },
 
     el: {
@@ -190,6 +194,21 @@ const QuestionBase = {
         this.el.statAvgTime = document.getElementById("stat-avg-time");
         this.el.statTotalTime = document.getElementById("stat-total-time");
         this.el.syncStatsBtn = document.getElementById("syncStatsBtn");
+
+        // Tag Dropdowns (Subject / System / Major)
+        this.el.tagBtnSubject  = document.getElementById('tagBtnSubject');
+        this.el.tagMenuSubject = document.getElementById('tagMenuSubject');
+        this.el.tagBadgeSubject = document.getElementById('tagBadgeSubject');
+        this.el.tagBtnSystem   = document.getElementById('tagBtnSystem');
+        this.el.tagMenuSystem  = document.getElementById('tagMenuSystem');
+        this.el.tagBadgeSystem = document.getElementById('tagBadgeSystem');
+        this.el.tagBtnMajor    = document.getElementById('tagBtnMajor');
+        this.el.tagMenuMajor   = document.getElementById('tagMenuMajor');
+        this.el.tagBadgeMajor  = document.getElementById('tagBadgeMajor');
+        this.el.tagBtnMinor   = document.getElementById('tagBtnMinor');
+        this.el.tagMenuMinor  = document.getElementById('tagMenuMinor');
+        this.el.tagBadgeMinor = document.getElementById('tagBadgeMinor');
+        this.initTagDropdowns();
 
         if (this.el.syncStatsBtn) {
             this.el.syncStatsBtn.onclick = () => this.renderStatistics(true);
@@ -926,6 +945,90 @@ const QuestionBase = {
         if (tabName === 'statistics') {
             this.renderStatistics();
         }
+    },
+
+
+    // ── Tag Dropdown System ───────────────────────────────────────────────────
+    initTagDropdowns() {
+        // Defer to ensure DOM is fully rendered before querying elements
+        setTimeout(() => {
+            const TAG_OPTIONS = {
+                subject: ['Pathology', 'Pharmacology', 'Anatomy', 'Physiology', 'Microbiology', 'Immunology', 'Biochemistry', 'Genetics', 'Epidemiology', 'Biostatistics', 'Embryology'],
+                system:  ['Cardiology', 'Pulmonology', 'Nephrology', 'Gastroenterology', 'Neurology', 'Hematology', 'Endocrinology', 'Rheumatology', 'Infectious Disease', 'Dermatology', 'Musculoskeletal', 'Reproductive', 'Renal'],
+                major:   ['Internal Medicine', 'Surgery', 'Pediatrics', 'OB/GYN', 'Psychiatry', 'Family Medicine', 'Emergency Medicine', 'Neurology', 'Dermatology', 'Ophthalmology'],
+                minor:   ['Orthopedics', 'Anesthesia', 'Neurosurgery', 'Neurology (Medicine)', 'Cardiothoracic Surgery', 'Vascular Surgery', 'Urology', 'ENT', 'Plastic Surgery', 'Intensive Care', 'Radiology', 'Palliative Care', 'Geriatrics'],
+            };
+
+            const configs = [
+                { key: 'subject', btnId: 'tagBtnSubject', badgeId: 'tagBadgeSubject', stateKey: 'selectedTagSubjects' },
+                { key: 'system',  btnId: 'tagBtnSystem',  badgeId: 'tagBadgeSystem',  stateKey: 'selectedTagSystems' },
+                { key: 'major',   btnId: 'tagBtnMajor',   badgeId: 'tagBadgeMajor',   stateKey: 'selectedTagMajors' },
+                { key: 'minor',   btnId: 'tagBtnMinor',   badgeId: 'tagBadgeMinor',   stateKey: 'selectedTagMinors' },
+            ];
+
+            // Menus appended to body to avoid overflow:hidden clipping
+            const menuMap = {};
+
+            configs.forEach(({ key, btnId, badgeId, stateKey }) => {
+                // Look up fresh from DOM — avoids stale this.el.* cache
+                const btn   = document.getElementById(btnId);
+                const badge = document.getElementById(badgeId);
+                if (!btn) {
+                    console.warn('[Tags] Button not found in DOM:', btnId);
+                    return;
+                }
+
+                // Create & attach menu to body
+                const menu = document.createElement('div');
+                menu.className = 'tag-drop-menu hidden';
+                menu.dataset.tagKey = key;
+                document.body.appendChild(menu);
+                menuMap[key] = menu;
+
+                // Build checkbox items
+                TAG_OPTIONS[key].forEach(option => {
+                    const item = document.createElement('label');
+                    item.className = 'tag-drop-item';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = option;
+                    cb.addEventListener('change', () => {
+                        if (cb.checked) {
+                            if (!this.state[stateKey].includes(option)) this.state[stateKey].push(option);
+                        } else {
+                            this.state[stateKey] = this.state[stateKey].filter(v => v !== option);
+                        }
+                        const count = this.state[stateKey].length;
+                        if (badge) badge.textContent = count > 0 ? count : '';
+                        btn.classList.toggle('has-selection', count > 0);
+                    });
+                    item.appendChild(cb);
+                    item.appendChild(document.createTextNode(' ' + option));
+                    menu.appendChild(item);
+                });
+
+                // Toggle on button click — position below button with fixed
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = !menu.classList.contains('hidden');
+                    Object.values(menuMap).forEach(m => m.classList.add('hidden'));
+                    if (!isOpen) {
+                        const rect = btn.getBoundingClientRect();
+                        menu.style.top  = (rect.bottom + 6) + 'px';
+                        menu.style.left = rect.left + 'px';
+                        menu.classList.remove('hidden');
+                    }
+                });
+
+                // Prevent outside-click from firing inside menu
+                menu.addEventListener('click', e => e.stopPropagation());
+            });
+
+            // Close all on any outside click
+            document.addEventListener('click', () => {
+                Object.values(menuMap).forEach(m => m.classList.add('hidden'));
+            });
+        }, 0);
     },
 
     async toggleSidebar() {
@@ -3060,6 +3163,16 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
 
             const systemPrompt = this.getSystemPrompt(learningData);
 
+            // Build tag context from Subject / System / Major / Minor state
+            const tagParts = [];
+            if (this.state.selectedTagSubjects.length) tagParts.push(`Subject: ${this.state.selectedTagSubjects.join(', ')}`);
+            if (this.state.selectedTagSystems.length)  tagParts.push(`System: ${this.state.selectedTagSystems.join(', ')}`);
+            if (this.state.selectedTagMajors.length)   tagParts.push(`Major: ${this.state.selectedTagMajors.join(', ')}`);
+            if (this.state.selectedTagMinors.length)   tagParts.push(`Minor: ${this.state.selectedTagMinors.join(', ')}`);
+            const tagsContext = tagParts.length > 0
+                ? `[TOPIC CONTEXT]\n${tagParts.join('\n')}\n\n`
+                : '';
+
             // Include uploaded media content if available
             let userPrompt = '';
             if (this.state.uploadedMediaContent) {
@@ -3075,9 +3188,9 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                     // Non-blocking notification via console
                 }
 
-                userPrompt = `Based on this document:\n${content}\n\nFill this frame:\n${text}`;
+                userPrompt = `${tagsContext}Based on this document:\n${content}\n\nFill this frame:\n${text}`;
             } else {
-                userPrompt = `Fill this frame:\n${text}`;
+                userPrompt = `${tagsContext}Fill this frame:\n${text}`;
             }
 
             const endpoints = ['http://localhost:3001/api/ai/chat', 'http://127.0.0.1:3001/api/ai/chat'];

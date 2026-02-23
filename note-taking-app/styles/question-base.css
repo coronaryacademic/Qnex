@@ -88,7 +88,9 @@ body.theme-classic .question-empty-state h3 {
   z-index: 1001;
   pointer-events: auto;
   min-width: 230px;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
@@ -561,7 +563,10 @@ textarea:focus {
 }
 
 /* Visible only when sidebar is collapsed */
-.question-sidebar.collapsed+.question-content .question-header #backToMainFromQuestionsHeader {
+.question-sidebar.collapsed
+  + .question-content
+  .question-header
+  #backToMainFromQuestionsHeader {
   display: inline-flex !important;
   margin-left: -7px;
 }
@@ -658,11 +663,15 @@ body.theme-classic #createSessionBtn svg text {
 #sessionInput {
   width: calc(100% - 32px); /* Spacing from right */
   height: calc(100% - 32px); /* Spacing from bottom */
-  margin: 10px 16px 20px 16px; 
+  margin: 10px 16px 20px 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 30px;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 15px;
   line-height: 1.8;
   color: var(--text);
@@ -720,12 +729,21 @@ body.theme-classic #createSessionBtn svg text {
 }
 
 @keyframes ai-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes ai-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(0.98); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
 }
 
 /* Model Selector Styles */
@@ -760,7 +778,9 @@ body.theme-classic #createSessionBtn svg text {
 
 #sessionInput:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-subtle), 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 1px var(--accent-subtle),
+    0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 #sessionInput:empty::before {
@@ -772,7 +792,9 @@ body.theme-classic #createSessionBtn svg text {
 }
 
 .question-block {
-  transition: background-color 0.8s ease, color 0.5s ease;
+  transition:
+    background-color 0.8s ease,
+    color 0.5s ease;
 }
 
 .highlight-yellow {
@@ -873,7 +895,7 @@ body.theme-classic .breadcrumb-actions .icon-btn {
 }
 
 body.theme-classic .breadcrumb-actions .icon-btn:hover {
-  background: rgba(0,0,0,0.05); /* Light hover */
+  background: rgba(0, 0, 0, 0.05); /* Light hover */
 }
 /* Recent Sessions - Empty State Enhancement */
 .empty-state-content {
@@ -950,7 +972,7 @@ div[data-tab-content="recent-sessions"].active {
 
 .session-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transform: translateY(-2px);
 }
 
@@ -1124,7 +1146,7 @@ div[data-tab-content="recent-sessions"].active {
   padding: 20px;
   border-radius: 8px;
   color: #e2e8f0;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -1160,7 +1182,6 @@ div[data-tab-content="recent-sessions"].active {
   pointer-events: none;
 }
 
-
 /* Tab Content Styles */
 .tab-content {
   display: none;
@@ -1177,14 +1198,22 @@ div[data-tab-content="recent-sessions"].active {
 
 /* If the tab content is meant to be a centered empty state, keep it. 
    Otherwise, dashboards should stretch. */
-.tab-content.active:not([data-tab-content="statistics"]):not([data-tab-content="recent-sessions"]) {
+.tab-content.active:not([data-tab-content="statistics"]):not(
+    [data-tab-content="recent-sessions"]
+  ) {
   align-items: center;
   justify-content: center;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Statistics Dashboard */
@@ -1199,8 +1228,14 @@ div[data-tab-content="recent-sessions"].active {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stats-header {
@@ -1278,7 +1313,8 @@ div[data-tab-content="recent-sessions"].active {
   border: 1px solid rgba(var(--accent-rgb), 0.2);
 }
 
-.graph-placeholder, .chart-placeholder {
+.graph-placeholder,
+.chart-placeholder {
   height: 150px;
   display: flex;
   flex-direction: column;
@@ -1402,12 +1438,19 @@ div[data-tab-content="recent-sessions"].active {
   color: var(--text);
 }
 
-.stat-value.correct { color: #10b981; }
-.stat-value.incorrect { color: #ef4444; }
-.stat-value.omitted { color: #3b82f6; }
+.stat-value.correct {
+  color: #10b981;
+}
+.stat-value.incorrect {
+  color: #ef4444;
+}
+.stat-value.omitted {
+  color: #3b82f6;
+}
 
 /* Remove old decorations */
-.stat-icon, .stat-card::before {
+.stat-icon,
+.stat-card::before {
   display: none !important;
 }
 
@@ -1547,7 +1590,6 @@ div[data-tab-content="recent-sessions"].active {
   margin-bottom: 2rem;
   color: var(--text);
 }
-
 
 /* Create Test Tab Styles */
 .create-test-container {
@@ -1818,12 +1860,12 @@ div[data-tab-content="recent-sessions"].active {
     gap: 0.75rem;
     padding: 1.25rem;
   }
-  
+
   .session-title {
     width: 100%;
     white-space: normal;
   }
-  
+
   .session-actions {
     width: 100%;
     justify-content: space-between;
@@ -1861,3 +1903,96 @@ div[data-tab-content="recent-sessions"].active {
   padding-top: 1rem;
 }
 
+/* ── Session Tag Dropdowns (Subject / System / Major) ── */
+.tag-drop-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.tag-drop-btn {
+  padding: 4px 10px !important;
+  width: auto !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tag-drop-btn.has-selection {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.2);
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 99px;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+.tag-badge:empty {
+  display: none;
+}
+
+.tag-drop-menu {
+  position: fixed;
+  min-width: 180px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  padding: 6px 4px;
+  z-index: 99999;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.tag-drop-menu.hidden {
+  display: none;
+}
+
+.tag-drop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.tag-drop-item:hover {
+  background: var(--panel-hover);
+}
+
+.tag-drop-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+body.theme-classic .tag-drop-menu {
+  background: #fff;
+  border-color: #c0ccd8;
+}
+
+body.theme-classic .tag-drop-item {
+  color: #2c3e50;
+}
