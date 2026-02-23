@@ -205,6 +205,9 @@ const QuestionBase = {
         this.el.statI2C = document.getElementById("stat-i2c");
         this.el.statI2I = document.getElementById("stat-i2i");
 
+        // Statistics Elements
+        this.el.statAvgTime = document.getElementById("stat-avg-time");
+
         // Tag Dropdowns (Subject / System / Major)
         this.el.tagBtnSubject  = document.getElementById('tagBtnSubject');
         this.el.tagMenuSubject = document.getElementById('tagMenuSubject');
@@ -2740,6 +2743,11 @@ Question explanation:
                 if (this.el.statC2I) this.el.statC2I.textContent = stats.changesC2I || "0";
                 if (this.el.statI2C) this.el.statI2C.textContent = stats.changesI2C || "0";
                 if (this.el.statI2I) this.el.statI2I.textContent = stats.changesI2I || "0";
+
+                // --- Performance ---
+                const totalTime = stats.totalTime || 0;
+                const avgTime = totalAttempted > 0 ? Math.round(totalTime / totalAttempted) : 0;
+                if (this.el.statAvgTime) this.el.statAvgTime.textContent = avgTime + "s";
             }
         } catch (error) {
             console.error('[QuestionBase] Failed to fetch statistics:', error);
