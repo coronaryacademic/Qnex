@@ -36,8 +36,6 @@ body {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-
-
 /* Adjust app layout */
 #app {
   height: 100vh;
@@ -48,8 +46,6 @@ body {
 .sidebar {
   height: 100vh;
 }
-
-
 
 .split-off .editor [data-action="open-right"] {
   display: none;
@@ -120,7 +116,7 @@ body {
   --bg-secondary: #1a1a1a;
   --success: #10b981;
   --danger: #ef4444;
-  --defualt: white; 
+  --defualt: white;
   --scrollbar-thumb: rgba(255, 255, 255, 0.15);
   --scrollbar-thumb-hover: var(--accent);
 }
@@ -141,10 +137,10 @@ body.theme-light {
   --borderX: #c4c4c4;
   --boot: black;
   --settingsborder: #938e8e;
-   --bg-secondary: #ffffff;
-   --success: #059669;
-   --danger: #dc2626;
-  --defualt: black; 
+  --bg-secondary: #ffffff;
+  --success: #059669;
+  --danger: #dc2626;
+  --defualt: black;
   --scrollbar-thumb: rgba(0, 0, 0, 0.15);
   --scrollbar-thumb-hover: var(--accent);
 }
@@ -164,10 +160,10 @@ body.theme-classic {
   --panel-hover: rgba(173, 173, 173, 0.277);
   --boot: black;
   --settingsborder: #938e8e;
-   --bg-secondary: white;
-   --success: #059669;
-   --danger: #dc2626;
-  --defualt: black; 
+  --bg-secondary: white;
+  --success: #059669;
+  --danger: #dc2626;
+  --defualt: black;
   --scrollbar-thumb: rgba(0, 0, 0, 0.15);
   --scrollbar-thumb-hover: var(--accent);
 }
@@ -176,7 +172,6 @@ body.theme-classic {
 body.theme-classic .breadcrumb-path {
   color: #2c3e50 !important;
 }
-
 
 /* Classic Theme - Specific overrides */
 body.theme-classic .workspace-empty-hint {
@@ -481,7 +476,8 @@ textarea {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -710,7 +706,9 @@ body.theme-light .sidebar-action-menu-content::after {
   stroke: var(--muted);
   width: 16px;
   height: 16px;
-  transition: stroke 0.15s ease, transform 0.15s ease;
+  transition:
+    stroke 0.15s ease,
+    transform 0.15s ease;
 }
 
 .menu-item:hover {
@@ -838,7 +836,10 @@ body.theme-light .menu-item + .menu-item::before {
   max-height: 1000px;
   /* Explicit value for smooth animation */
   overflow-y: auto;
-  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  transition:
+    max-height 0.3s ease,
+    opacity 0.3s ease,
+    padding 0.3s ease;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -1102,7 +1103,7 @@ body.theme-light .menu-item + .menu-item::before {
   transition: transform 0.2s ease;
 }
 
-.folder-tree-item.expanded>.folder-header .folder-chevron svg {
+.folder-tree-item.expanded > .folder-header .folder-chevron svg {
   transform: rotate(0deg) !important;
   /* Expanded: point down, only for direct child */
 }
@@ -1139,11 +1140,14 @@ body.theme-light .menu-item + .menu-item::before {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  transition:
+    max-height 0.3s ease,
+    opacity 0.3s ease,
+    padding 0.3s ease;
   padding: 0;
 }
 
-.folder-tree-item.expanded>.folder-notes-list {
+.folder-tree-item.expanded > .folder-notes-list {
   max-height: 5000px;
   /* Increased to support deeply nested folders */
   opacity: 1;
@@ -1352,7 +1356,7 @@ body.theme-light .menu-item + .menu-item::before {
   height: 16px;
 }
 
-.sidebar .note-list button>div {
+.sidebar .note-list button > div {
   flex: 1;
   min-width: 0;
 }
@@ -1960,7 +1964,7 @@ body.theme-light .menu-item + .menu-item::before {
 }
 
 /* Style for note buttons inside folders */
-.folder-notes>button[data-note-id] {
+.folder-notes > button[data-note-id] {
   margin-left: 32px !important;
   /* Increased from 16px */
   padding: 8px 12px !important;
@@ -1973,7 +1977,7 @@ body.theme-light .menu-item + .menu-item::before {
 }
 
 /* Style for note buttons in nested subfolders */
-.folder-notes .folder-notes>button[data-note-id] {
+.folder-notes .folder-notes > button[data-note-id] {
   margin-left: 48px !important;
   /* Increased from 32px */
   padding: 8px 12px !important;
@@ -2166,9 +2170,8 @@ body.fullscreen .sidebar-resizer {
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  position: relative;
 }
-
-
 
 .icon-btn svg {
   width: 18px;
@@ -2324,7 +2327,6 @@ body.fullscreen .sidebar-resizer {
   min-width: 32px;
   min-height: 32px;
 }
-
 
 .editor-menu-list {
   display: none;
@@ -2697,7 +2699,9 @@ body.fullscreen .sidebar-resizer {
   grid-template-rows: auto 1fr;
   min-height: 0;
   max-height: 100%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2);
   width: 100%;
   overflow: hidden;
 }
@@ -3352,7 +3356,9 @@ body.theme-light .hl {
   cursor: pointer;
   vertical-align: middle;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .hl .hl-badge:hover {
@@ -3536,7 +3542,9 @@ body.theme-light .hl .hl-badge {
 
 /* Image Viewer Window */
 .image-viewer-window {
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.3) !important;
 }
 
 .image-viewer-window .window-body {
@@ -4493,7 +4501,9 @@ body.theme-classic .welcome-shortcuts-grid kbd:hover {
   height: 100%;
   background: linear-gradient(90deg, #22c55e, #16a34a);
   border-radius: 999px;
-  transition: width 0.6s ease, background 0.3s ease;
+  transition:
+    width 0.6s ease,
+    background 0.3s ease;
   position: relative;
 }
 
@@ -4504,10 +4514,12 @@ body.theme-classic .welcome-shortcuts-grid kbd:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   animation: shimmer 2s infinite;
 }
 
@@ -4536,7 +4548,9 @@ body.theme-classic .welcome-shortcuts-grid kbd:hover {
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .btn-add-task:hover {
@@ -5049,7 +5063,6 @@ body:not(.theme-light) .horizontal-rule {
 }
 
 @keyframes bounce {
-
   0%,
   100% {
     transform: translateY(0);
@@ -5578,7 +5591,9 @@ body[data-theme="dark"] .workspace-tab.pinned {
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
 }
 
 .app-loader.hidden {
@@ -5629,7 +5644,9 @@ body[data-theme="dark"] .workspace-tab.pinned {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
 }
 
 .refresh-loader.visible {
@@ -5933,30 +5950,48 @@ body.theme-aero .folder-item:hover {
 
 /* Block Editor Styles */
 .block-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: block;
   outline: none;
   padding-bottom: 50vh;
   width: 100%;
   max-width: 100%;
   overflow-wrap: break-word;
   word-wrap: break-word;
+  /* ol counter resets here */
+  counter-reset: ol-counter;
 }
 
 .editor-block {
-  min-height: 1.5em;
+  min-height: 1.4em;
   outline: none;
   padding: 1px 0;
+  margin: 0;
   position: relative;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--text);
   width: 100%;
   max-width: 100%;
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
-  white-space: pre-wrap;
+  /* Don't use pre-wrap – it forces every block to visually take extra height */
+  white-space: normal;
+}
+
+/* Underline must be visible inside contenteditable */
+.editor-block u,
+.editor-block [style*="text-decoration"] {
+  text-decoration: underline !important;
+}
+
+/* Highlighted text */
+.editor-block mark,
+.editor-block [style*="background-color: yellow"],
+.editor-block [style*="background-color:yellow"] {
+  background-color: #ffe066;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
 }
 
 /* Placeholders */
@@ -6001,17 +6036,30 @@ blockquote.editor-block {
   margin: 0.3em 0;
 }
 
-/* List items */
-div.editor-block.block-ul {
-  padding-left: 20px;
-  position: relative;
+/* ── List items ─────────────────────────────── */
+/* Bullet list */
+div.editor-block.block-ul,
+p.editor-block.block-ul {
+  display: list-item;
+  list-style-type: disc;
+  list-style-position: outside;
+  margin-left: 1.4em;
+  padding-left: 0.2em;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
-div.editor-block.block-ul::before {
-  content: "•";
-  position: absolute;
-  left: 4px;
-  color: var(--text);
+/* Ordered list — use CSS counter */
+div.editor-block.block-ol,
+p.editor-block.block-ol {
+  display: list-item;
+  list-style-type: decimal;
+  list-style-position: outside;
+  margin-left: 1.6em;
+  padding-left: 0.2em;
+  margin-top: 0;
+  margin-bottom: 0;
+  counter-increment: ol-counter;
 }
 
 ul.editor-block,
@@ -6162,7 +6210,9 @@ ol.editor-block {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+  transition:
+    opacity 0.5s ease-out,
+    visibility 0.5s ease-out;
 }
 
 .app-loader.hidden {
@@ -6259,7 +6309,7 @@ ol.editor-block {
   padding: 16px;
   height: 200px;
   overflow-y: auto;
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: "Consolas", "Monaco", monospace;
   font-size: 12px;
   color: var(--muted);
   display: flex;
@@ -6320,7 +6370,6 @@ ol.editor-block {
 }
 
 @keyframes blink {
-
   0%,
   100% {
     opacity: 1;
@@ -6371,7 +6420,10 @@ ol.editor-block {
   display: flex !important;
   /* Force flex to ensure animation works */
   align-items: center;
-  transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
   min-height: 36px;
   max-height: 36px;

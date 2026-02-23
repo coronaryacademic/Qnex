@@ -3220,8 +3220,8 @@
             const scope = hasSelection ? "editor-tools" : "editor-actions";
 
             const handlers = {
-              onUndo: () => blockEditor.applyInlineAction("undo"),
-              onRedo: () => blockEditor.applyInlineAction("redo"),
+              onUndo: () => blockEditor.undo(),
+              onRedo: () => blockEditor.redo(),
               onCut: () => {
                 const selection = window.getSelection().toString();
                 if (selection) {
@@ -3305,6 +3305,10 @@
         </button>
         <button class="icon-btn" data-action="strikethrough" title="Strikethrough" onmousedown="event.preventDefault()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="20" y2="12"></line></svg>
+        </button>
+        <button class="icon-btn" data-action="highlight" title="Highlight text" onmousedown="event.preventDefault()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-3"/><polygon points="16 2 22 8 11 19 5 19 5 13 16 2"/></svg>
+          <span style="position:absolute;bottom:3px;left:4px;right:4px;height:3px;background:#ffe066;border-radius:1px;"></span>
         </button>
       </div>
 
@@ -3430,9 +3434,9 @@
       }
 
       if (action === "undo") {
-        blockEditor.applyInlineAction("undo");
+        blockEditor.undo();
       } else if (action === "redo") {
-        blockEditor.applyInlineAction("redo");
+        blockEditor.redo();
       } else if (action === "bold") {
         blockEditor.applyInlineAction("bold");
       } else if (action === "italic") {
@@ -3456,16 +3460,18 @@
       } else if (action === "ul") {
         blockEditor.applyBlockAction("ul");
       } else if (action === "ol") {
-        // ol might need special handling in editor-core, for now toggle ul as list
-        blockEditor.applyBlockAction("ul");
+        blockEditor.applyBlockAction("ol");
+      } else if (action === "highlight") {
+        blockEditor.applyInlineAction("backColor", "#ffe066");
       } else if (action === "removeFormat") {
         blockEditor.applyInlineAction("removeFormat");
       } else if (action === "table") {
         if (typeof window.insertTablePlaceholder === "function") {
           window.insertTablePlaceholder();
         } else {
-          const tableHTML = `<table style="border-collapse: collapse; width: 100%; margin: 1rem 0;"><tr><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td></tr></table>`;
-          blockEditor.applyInlineAction("insertHTML", tableHTML);
+          const curBlock = blockEditor._blockForEl(blockEditor._blockElAtCursor());
+          const tableHTML = `<table class="note-table" style="border-collapse: collapse; width: 100%; margin: 1rem 0;"><tbody><tr><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td></tr><tr><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td></tr></tbody></table>`;
+          blockEditor.insertBlock("table", tableHTML, curBlock?.id ?? null);
         }
       } else if (action === "sketch") {
         blockEditor.insertSketch();
@@ -8359,73 +8365,40 @@
   function handleToolbarAction(action) {
     if (!action) return;
 
-    // Find active editor
-    let editorEl = TwoBaseState.currentEditorElement;
+    const blockEditor = TwoBaseState.currentEditor;
 
-    // Fallback if currentEditorElement not set (e.g. if focus was lost)
-    if (!editorEl && TwoBaseState.activeNote) {
-      // Try to find the editor in DOM
-      const activeId = TwoBaseState.activeNote;
-      // Note: in two-base, editor template usually has .note-editor class or implicit structure
-      // renderPane calls buildEditor which uses editor template.
-      // Let's assume editor content is inside a container we can find.
-      const activePane = ["left", "right"].find(side => state[side] && state[side].active === activeId);
-      if (activePane) {
-        const paneEl = activePane === "left" ? el.notePaneLeft : el.notePaneRight;
-        if (paneEl) {
-          // The editor content div usually has .content class and .editor-block children
-          editorEl = paneEl.querySelector(".content");
-        }
-      }
-    }
-
-    if (!editorEl) {
-      console.warn("No active editor found for action:", action);
+    if (!blockEditor) {
+      // Fallback: raw execCommand on the content element
+      const editorEl = TwoBaseState.currentEditorElement;
+      if (!editorEl) { console.warn("No active editor for action:", action); return; }
+      editorEl.focus();
+      document.execCommand(action, false, null);
       return;
     }
 
-    // Ensure focus is restored to editor
-    editorEl.focus();
-
-    if (['bold', 'italic', 'underline', 'strike'].includes(action)) {
-      document.execCommand(action, false, null);
-    } else if (['h1', 'h2', 'h3', 'ul', 'ol'].includes(action)) {
-      // Block Operations
-      let blockEditor = null;
-      // Traverse up to find _blockEditor (attached to .note-editor wrapper usually)
-      // The wrapper is the direct child of paneEl usually.
-      // buildEditor returns 'node' which has _blockEditor.
-      // 'node' contains 'content' div.
-      // So closest parent of proper type should have it.
-      // The clone of template usually doesn't have a specific class "note-editor" unless added.
-      // But it has data-note-id.
-      let curr = editorEl.parentElement;
-      while (curr && !blockEditor) {
-        if (curr._blockEditor) {
-          blockEditor = curr._blockEditor;
-          break;
-        }
-        curr = curr.parentElement;
-      }
-
-      if (blockEditor) {
-        const currentBlockEl = blockEditor.getBlockElementAtSelection();
-        if (currentBlockEl) {
-          const blockId = currentBlockEl.dataset.blockId;
-          const block = blockEditor.blocks.find(b => b.id === blockId);
-          if (block) {
-            let type = action;
-            if (action === 'ol') type = 'ul'; // BlockEditor currently maps lists to UL
-
-            // If toggling same type, switch back to 'p'
-            // Special case: switch from h1 to h1 -> p
-            if (block.type === type) {
-              type = 'p';
-            }
-            blockEditor.convertBlockType(block, currentBlockEl, type, 0);
-          }
-        }
-      }
+    // Dispatch to public BlockEditor API
+    if (action === "undo") {
+      blockEditor.undo();
+    } else if (action === "redo") {
+      blockEditor.redo();
+    } else if (["bold", "italic", "underline"].includes(action)) {
+      blockEditor.applyInlineAction(action);
+    } else if (action === "strike" || action === "strikethrough") {
+      blockEditor.applyInlineAction("strikeThrough");
+    } else if (action === "removeFormat") {
+      blockEditor.applyInlineAction("removeFormat");
+    } else if (["justifyLeft", "justifyCenter", "justifyRight"].includes(action)) {
+      blockEditor.applyInlineAction(action);
+    } else if (["h1", "h2", "h3", "ul", "ol"].includes(action)) {
+      blockEditor.applyBlockAction(action);
+    } else if (action === "highlight") {
+      blockEditor.applyInlineAction("backColor", "#ffe066");
+    } else if (action === "table") {
+      const curBlock = blockEditor._blockForEl(blockEditor._blockElAtCursor());
+      const tableHTML = `<table class="note-table" style="border-collapse: collapse; width: 100%; margin: 1rem 0;"><tbody><tr><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td></tr><tr><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td></tr></tbody></table>`;
+      blockEditor.insertBlock("table", tableHTML, curBlock?.id ?? null);
+    } else if (action === "sketch") {
+      blockEditor.insertSketch();
     }
   }
 
