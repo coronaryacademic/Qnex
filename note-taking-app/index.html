@@ -709,114 +709,113 @@
                     </button>
                   </div>
                   
-                  <div class="stats-grid">
-                    <!-- General Progress Card -->
-                    <div class="stat-card accent-card">
-                      <div class="stat-card-header">
-                        <h3>General Progress</h3>
+                  <div class="stats-dashboard">
+
+                    <!-- Row 1: Score -->
+                    <div class="stats-row">
+                      <!-- Donut: Correct % -->
+                      <div class="stats-donut-wrap">
+                        <svg class="stats-donut" viewBox="0 0 120 120">
+                          <circle class="donut-track" cx="60" cy="60" r="50"/>
+                          <circle class="donut-fill" id="donutCorrect" cx="60" cy="60" r="50" stroke-dasharray="0 314"/>
+                        </svg>
+                        <div class="donut-label">
+                          <span class="donut-pct" id="stat-accuracy">0%</span>
+                          <span class="donut-sub">Correct</span>
+                        </div>
                       </div>
-                      <div class="stat-items">
-                        <div class="stat-item">
-                          <span class="stat-label">Total Questions</span>
-                          <span class="stat-value" id="stat-total-questions">0</span>
+
+                      <!-- Your Score -->
+                      <div class="stats-group">
+                        <div class="stats-group-title">Your Score</div>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Total Correct</span>
+                          <span class="stats-row-badge green" id="stat-correct">0</span>
                         </div>
-                        <div class="stat-item">
-                          <span class="stat-label">Folders Created</span>
-                          <span class="stat-value" id="stat-total-folders">0</span>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Total Incorrect</span>
+                          <span class="stats-row-badge red" id="stat-incorrect">0</span>
                         </div>
-                        <div class="stat-item">
-                          <span class="stat-label">Sessions Completed</span>
-                          <span class="stat-value" id="stat-total-sessions">0</span>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Total Omitted</span>
+                          <span class="stats-row-badge" id="stat-omitted">0</span>
+                        </div>
+                      </div>
+
+                      <!-- Answer Changes -->
+                      <div class="stats-group">
+                        <div class="stats-group-title">Answer Changes</div>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Correct to Incorrect</span>
+                          <span class="stats-row-badge" id="stat-c2i">0</span>
+                        </div>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Incorrect to Correct</span>
+                          <span class="stats-row-badge" id="stat-i2c">0</span>
+                        </div>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Incorrect to Incorrect</span>
+                          <span class="stats-row-badge" id="stat-i2i">0</span>
                         </div>
                       </div>
                     </div>
 
-                    <!-- Performance Card -->
-                    <div class="stat-card performance-card">
-                      <div class="stat-card-header">
-                        <h3>Performance</h3>
-                      </div>
-                      <div class="stat-items">
-                        <div class="stat-item">
-                          <span class="stat-label">Correct</span>
-                          <span class="stat-value correct" id="stat-correct">0</span>
-                        </div>
-                        <div class="stat-item">
-                          <span class="stat-label">Incorrect</span>
-                          <span class="stat-value incorrect" id="stat-incorrect">0</span>
-                        </div>
-                        <div class="stat-item highlight-item">
-                          <span class="stat-label">Overall Accuracy</span>
-                          <span class="stat-value" id="stat-accuracy">0%</span>
-                        </div>
-                      </div>
-                    </div>
+                    <div class="stats-divider"></div>
 
-                    <!-- Engagement Card -->
-                    <div class="stat-card engagement-card">
-                      <div class="stat-card-header">
-                        <h3>Learning Insights</h3>
-                      </div>
-                      <div class="stat-items">
-                        <div class="stat-item">
-                          <span class="stat-label">Omitted Questions</span>
-                          <span class="stat-value omitted" id="stat-omitted">0</span>
-                        </div>
-                        <div class="stat-item">
-                          <span class="stat-label">Avg Time / Question</span>
-                          <span class="stat-value" id="stat-avg-time">0s</span>
-                        </div>
-                        <div class="stat-item highlight-item">
-                          <span class="stat-label">Total Time Spent</span>
-                          <span class="stat-value" id="stat-total-time">0h 0m</span>
+                    <!-- Row 2: QBank -->
+                    <div class="stats-row">
+                      <!-- Donut: Used % -->
+                      <div class="stats-donut-wrap">
+                        <svg class="stats-donut" viewBox="0 0 120 120">
+                          <circle class="donut-track" cx="60" cy="60" r="50"/>
+                          <circle class="donut-fill" id="donutUsed" cx="60" cy="60" r="50" stroke-dasharray="0 314"/>
+                        </svg>
+                        <div class="donut-label">
+                          <span class="donut-pct" id="stat-used-pct">0%</span>
+                          <span class="donut-sub">Used</span>
                         </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div class="stats-analytics">
-                    <div class="analytics-card">
-                      <div class="analytics-header">
-                        <h3>Performance Trends</h3>
-                        <span class="badge">Experimental</span>
-                      </div>
-                      <div class="analytics-body graph-placeholder" id="trend-graph">
-                        <div class="placeholder-graphic">
-                          <svg width="100%" height="100" viewBox="0 0 400 100" preserveAspectRatio="none">
-                            <path d="M0,80 L50,70 L100,85 L150,50 L200,60 L250,30 L300,45 L350,15 L400,25" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"></path>
-                            <circle cx="50" cy="70" r="3" fill="var(--accent)"></circle>
-                            <circle cx="150" cy="50" r="3" fill="var(--accent)"></circle>
-                            <circle cx="250" cy="30" r="3" fill="var(--accent)"></circle>
-                            <circle cx="350" cy="15" r="3" fill="var(--accent)"></circle>
-                          </svg>
+                      <!-- QBank Usage -->
+                      <div class="stats-group">
+                        <div class="stats-group-title">QBank Usage</div>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Used Questions</span>
+                          <span class="stats-row-badge" id="stat-used-q">0</span>
                         </div>
-                        <p class="placeholder-text">Historical data visualization in development</p>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Unused Questions</span>
+                          <span class="stats-row-badge" id="stat-unused-q">0</span>
+                        </div>
+                        <div class="stats-row-item">
+                          <span class="stats-row-label">Total Questions</span>
+                          <span class="stats-row-badge" id="stat-total-questions">0</span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div class="analytics-card">
-                      <div class="analytics-header">
-                        <h3>Category Focus</h3>
-                        <span class="badge">Beta</span>
-                      </div>
-                      <div class="analytics-body chart-placeholder" id="focus-chart">
-                        <div class="placeholder-graphic bar-chart">
-                          <div class="bar" style="height: 60%"></div>
-                          <div class="bar" style="height: 40%"></div>
-                          <div class="bar" style="height: 85%"></div>
-                          <div class="bar" style="height: 30%"></div>
-                          <div class="bar" style="height: 55%"></div>
+                        <div class="stats-group">
+                          <div class="stats-group-title">Test Activity</div>
+                          <div class="stats-row-item">
+                            <span class="stats-row-label">Tests Created</span>
+                            <span class="stats-row-badge" id="stat-total-folders">0</span>
+                          </div>
+                          <div class="stats-row-item">
+                            <span class="stats-row-label">Tests Completed</span>
+                            <span class="stats-row-badge" id="stat-total-sessions">0</span>
+                          </div>
+                          <div class="stats-row-item">
+                            <span class="stats-row-label">Tests Suspended</span>
+                            <span class="stats-row-badge" id="stat-suspended">0</span>
+                          </div>
                         </div>
-                        <p class="placeholder-text">Distribution analysis by folder/tag</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- Create Test Tab Content -->
-              <div class="tab-content" data-tab-content="create-test">
-                <h3>Create Test</h3>
+                <!-- Create Test Tab Content -->
+                <div class="tab-content" data-tab-content="create-test">
+                  <h3>Create Test</h3>
                 <p>Test configuration will go here</p>
               </div>
 

@@ -191,9 +191,19 @@ const QuestionBase = {
         this.el.statIncorrect = document.getElementById("stat-incorrect");
         this.el.statOmitted = document.getElementById("stat-omitted");
         this.el.statAccuracy = document.getElementById("stat-accuracy");
-        this.el.statAvgTime = document.getElementById("stat-avg-time");
+        this.el.statSuspended = document.getElementById("stat-suspended");
         this.el.statTotalTime = document.getElementById("stat-total-time");
         this.el.syncStatsBtn = document.getElementById("syncStatsBtn");
+        
+        // New Dashboard Elements
+        this.el.donutCorrect = document.getElementById("donutCorrect");
+        this.el.donutUsed = document.getElementById("donutUsed");
+        this.el.statUsedPct = document.getElementById("stat-used-pct");
+        this.el.statUsedQ = document.getElementById("stat-used-q");
+        this.el.statUnusedQ = document.getElementById("stat-unused-q");
+        this.el.statC2I = document.getElementById("stat-c2i");
+        this.el.statI2C = document.getElementById("stat-i2c");
+        this.el.statI2I = document.getElementById("stat-i2i");
 
         // Tag Dropdowns (Subject / System / Major)
         this.el.tagBtnSubject  = document.getElementById('tagBtnSubject');
@@ -2656,18 +2666,12 @@ Question explanation:
     async renderStatistics(forceSync = false) {
         if (!this.el.statTotalQuestions) return;
 
-        // Update local data counts first
-        this.el.statTotalQuestions.textContent = this.state.questions.length;
-        const sessionFolderIds = new Set(this.state.recentSessions.map(s => s.folderId));
-        const userCreatedFolders = this.state.folders.filter(f => !sessionFolderIds.has(f.id));
-        this.el.statTotalFolders.textContent = userCreatedFolders.length;
-
         if (forceSync && this.el.syncStatsBtn) {
             const originalHtml = this.el.syncStatsBtn.innerHTML;
             this.el.syncStatsBtn.innerHTML = "Syncing...";
             this.el.syncStatsBtn.disabled = true;
             try {
-                // Force a reload of the questions state from the server first
+                await fetch('http://localhost:3001/api/stats/sync');
                 await this.loadData();
             } catch(e) {}
             setTimeout(() => {
@@ -2678,57 +2682,70 @@ Question explanation:
             }, 1000);
         }
 
-        // Get live session count from server
         try {
-            // First trigger a sync to recalculate from questions.json
-            await fetch('http://localhost:3001/api/stats/sync');
-            
+            // 1. Get live session counts
             const sessRes = await fetch('http://localhost:3001/api/sessions');
             if (sessRes.ok) {
                 const sessions = await sessRes.json();
                 this.state.recentSessions = sessions;
                 localStorage.setItem("active-recall-recent-sessions", JSON.stringify(sessions));
             }
-        } catch (e) { /* use cached count if server unreachable */ }
-        this.el.statTotalSessions.textContent = this.state.recentSessions.length;
+        } catch (e) {}
 
         try {
-            // Fetch performance stats from server (after sync)
+            // 2. Fetch performance stats
             const response = await fetch('http://localhost:3001/api/stats');
             if (response.ok) {
                 const stats = await response.json();
                 
-                this.el.statCorrect.textContent = stats.correct || 0;
-                this.el.statIncorrect.textContent = stats.incorrect || 0;
-                if (this.el.statOmitted) this.el.statOmitted.textContent = stats.omitted || 0;
-                
-                // Accuracy calculation
-                const totalAnswers = (stats.correct || 0) + (stats.incorrect || 0);
-                const accuracy = totalAnswers > 0 
-                    ? Math.round((stats.correct / totalAnswers) * 100) 
-                    : 0;
-                
-                this.el.statAccuracy.textContent = `${accuracy}%`;
-                
-                // Color coding accuracy
-                if (accuracy >= 80) this.el.statAccuracy.style.color = '#10b981';
-                else if (accuracy >= 50) this.el.statAccuracy.style.color = '#f59e0b';
-                else if (totalAnswers > 0) this.el.statAccuracy.style.color = '#ef4444';
-                else this.el.statAccuracy.style.color = 'var(--text)';
+                // --- Your Score ---
+                const correct = stats.correct || 0;
+                const incorrect = stats.incorrect || 0;
+                const omitted = stats.omitted || 0;
+                const totalAttempted = correct + incorrect;
+                const accuracy = totalAttempted > 0 ? Math.round((correct / totalAttempted) * 100) : 0;
 
-                // Time stats
-                if (this.el.statTotalTime) {
-                    const totalSec = stats.totalTime || 0;
-                    const hours = Math.floor(totalSec / 3600);
-                    const minutes = Math.floor((totalSec % 3600) / 60);
-                    this.el.statTotalTime.textContent = `${hours}h ${minutes}m`;
+                if (this.el.statCorrect) this.el.statCorrect.textContent = correct;
+                if (this.el.statIncorrect) this.el.statIncorrect.textContent = incorrect;
+                if (this.el.statOmitted) this.el.statOmitted.textContent = omitted;
+                if (this.el.statAccuracy) this.el.statAccuracy.textContent = accuracy + "%";
+
+                // Donut 1: Accuracy
+                if (this.el.donutCorrect) {
+                  const circumference = 314; // 2 * PI * 50
+                  const offset = circumference - (accuracy / 100) * circumference;
+                  this.el.donutCorrect.style.strokeDasharray = `${(accuracy / 100) * circumference} ${circumference}`;
                 }
 
-                if (this.el.statAvgTime) {
-                    const totalAttempts = (stats.correct || 0) + (stats.incorrect || 0) + (stats.omitted || 0);
-                    const avgSec = totalAttempts > 0 ? Math.round(stats.totalTime / totalAttempts) : 0;
-                    this.el.statAvgTime.textContent = `${avgSec}s`;
+                // --- QBank Usage ---
+                const totalQ = this.state.questions.length;
+                const usedQ = correct + incorrect + omitted; // Simplified: anything with an attempt
+                const unusedQ = Math.max(0, totalQ - usedQ);
+                const usedPct = totalQ > 0 ? Math.round((usedQ / totalQ) * 100) : 0;
+
+                if (this.el.statTotalQuestions) this.el.statTotalQuestions.textContent = totalQ;
+                if (this.el.statUsedQ) this.el.statUsedQ.textContent = usedQ;
+                if (this.el.statUnusedQ) this.el.statUnusedQ.textContent = unusedQ;
+                if (this.el.statUsedPct) this.el.statUsedPct.textContent = usedPct + "%";
+
+                // Donut 2: Usage
+                if (this.el.donutUsed) {
+                  const circumference = 314;
+                  this.el.donutUsed.style.strokeDasharray = `${(usedPct / 100) * circumference} ${circumference}`;
                 }
+
+                // --- Test Activity ---
+                const sessionFolderIds = new Set(this.state.recentSessions.map(s => s.folderId));
+                const userFolders = this.state.folders.filter(f => !sessionFolderIds.has(f.id)).length;
+                
+                if (this.el.statTotalFolders) this.el.statTotalFolders.textContent = userFolders;
+                if (this.el.statTotalSessions) this.el.statTotalSessions.textContent = this.state.recentSessions.length;
+                if (this.el.statSuspended) this.el.statSuspended.textContent = "0";
+
+                // --- Answer Changes (Placeholders) ---
+                if (this.el.statC2I) this.el.statC2I.textContent = "0";
+                if (this.el.statI2C) this.el.statI2C.textContent = "0";
+                if (this.el.statI2I) this.el.statI2I.textContent = "0";
             }
         } catch (error) {
             console.error('[QuestionBase] Failed to fetch statistics:', error);
