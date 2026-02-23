@@ -2132,12 +2132,25 @@ const QuestionBase = {
         if (this.state.editingFolderId) {
             // Update all questions in folder
             const folderId = this.state.editingFolderId;
-            // 1. Remove old questions for this folder
+            const oldQuestions = this.state.questions.filter(q => q.folderId === folderId);
+            
+            // 1. Remove old questions for this folder from the master list
             this.state.questions = this.state.questions.filter(q => q.folderId !== folderId);
-            // 2. Add parsed questions with folderId
-            parsedQuestions.forEach(q => {
-                q.folderId = folderId;
-                this.state.questions.push(q);
+            
+            // 2. Add parsed questions with folderId, PRESERVING metadata if it matches
+            parsedQuestions.forEach((newQ, idx) => {
+                newQ.folderId = folderId;
+                
+                // Match by index or title if possible
+                const oldQ = oldQuestions[idx];
+                if (oldQ && (oldQ.title === newQ.title || oldQ.text === newQ.text)) {
+                    // Preserve metadata
+                    if (oldQ.submittedAnswer) newQ.submittedAnswer = oldQ.submittedAnswer;
+                    if (oldQ.timerElapsed) newQ.timerElapsed = oldQ.timerElapsed;
+                    if (oldQ.id) newQ.id = oldQ.id;
+                }
+                
+                this.state.questions.push(newQ);
             });
         } else if (this.state.editingQuestionId) {
             // Update single standalone question
@@ -2638,6 +2651,7 @@ Question explanation:
 
                 <div class="session-actions">
                     <button class="resume-session-btn" title="Resume Session">Resume</button>
+                    <button class="standard-tool-btn reset-btn" title="Reset Session Progress">Reset</button>
                     <button class="standard-tool-btn edit-btn" title="Edit Session">Edit</button>
                     <button class="standard-tool-btn delete-btn danger" title="Delete Session">Delete</button>
                 </div>
@@ -2645,6 +2659,10 @@ Question explanation:
 
             // Action Binding - Absolute Simplicity
             card.querySelector(".resume-session-btn").onclick = () => this.resumeSession(session.id);
+            card.querySelector(".reset-btn").onclick = (e) => {
+                e.stopPropagation();
+                this.resetSession(session.id);
+            };
             card.querySelector(".delete-btn").onclick = (e) => {
                 e.stopPropagation();
                 this.deleteSession(session.id, e);
@@ -2827,6 +2845,32 @@ Question explanation:
         if (typeof window.DungeonBase !== 'undefined') {
             window.DungeonBase.open(questionsToOpen);
         }
+    },
+
+    resetSession(id) {
+        const session = this.state.recentSessions.find(s => s.id === id);
+        if (!session) return;
+
+        if (!confirm(`Are you sure you want to reset all question statuses in "${session.title || 'this session'}"? This cannot be undone.`)) {
+            return;
+        }
+
+        // 1. Find folder
+        if (session.folderId) {
+            // Reset all questions in this folder
+            this.state.questions.forEach(q => {
+                if (q.folderId === session.folderId) {
+                    delete q.submittedAnswer;
+                    delete q.timerElapsed;
+                }
+            });
+        }
+
+        // 2. Persist
+        this.saveData();
+
+        // 3. Open session normally (now empty)
+        this.resumeSession(id);
     },
 
 
