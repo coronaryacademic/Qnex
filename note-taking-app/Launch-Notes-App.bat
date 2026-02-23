@@ -1,5 +1,5 @@
 @echo off
-title My Notes App Launcher
+title Qnex Launcher
 echo.
 echo Welcome Back Momen 
 echo.

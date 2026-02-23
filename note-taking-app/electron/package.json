@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.notes.app",
-    "productName": "My Notes App",
+    "productName": "Qnex App",
     "directories": {
       "output": "dist"
     },

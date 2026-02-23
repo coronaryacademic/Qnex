@@ -1,6 +1,6 @@
 {
   "name": "my-notes-app",
-  "productName": "My Notes",
+  "productName": "Qnex",
   "version": "1.0.0",
   "description": "Offline note-taking desktop application",
   "main": "main.js",
@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "com.mynotes.app",
-    "productName": "My Notes",
+    "productName": "Qnex",
     "directories": {
       "output": "dist"
     },

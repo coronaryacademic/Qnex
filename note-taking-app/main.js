@@ -134,7 +134,7 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open My Notes',
+      label: 'Open Qnex',
       click: () => {
         if (mainWindow) {
           mainWindow.show();
@@ -158,7 +158,7 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('My Notes');
+  tray.setToolTip('Qnex');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
@@ -795,6 +795,125 @@ function startServer3002() {
     expressApp.post('/api/trash', async (req, res) => {
       const result = await writeFile(FILES.trash, req.body);
       res.json(result);
+    });
+
+    expressApp.get('/api/stats', async (req, res) => {
+      const statsPath = path.join(dataDir, 'settings', 'stats.json');
+      const data = await readFile(statsPath, {
+        correct: 0,
+        incorrect: 0,
+        omitted: 0,
+        total: 0,
+        totalTime: 0,
+      });
+      res.json(data);
+    });
+
+    expressApp.post('/api/stats', async (req, res) => {
+      const statsPath = path.join(dataDir, 'settings', 'stats.json');
+      let stats = await readFile(statsPath, {
+        correct: 0,
+        incorrect: 0,
+        omitted: 0,
+        total: 0,
+        totalTime: 0,
+      });
+
+      // Initialize missing fields for new tracking features
+      if (stats.omitted === undefined) stats.omitted = 0;
+      if (stats.totalTime === undefined) stats.totalTime = 0;
+      if (stats.changesC2I === undefined) stats.changesC2I = 0;
+      if (stats.changesI2C === undefined) stats.changesI2C = 0;
+      if (stats.changesI2I === undefined) stats.changesI2I = 0;
+      if (stats.total === undefined) stats.total = 0;
+      if (stats.correct === undefined) stats.correct = 0;
+      if (stats.incorrect === undefined) stats.incorrect = 0;
+
+      const { 
+        type, 
+        timeSpent = 0, 
+        isNewSubmission = true, 
+        changeType = null, 
+        adjustment = null 
+      } = req.body;
+
+      stats.totalTime += timeSpent;
+
+      if (isNewSubmission) {
+        stats.total++;
+        if (type === "correct") stats.correct++;
+        else if (type === "incorrect") stats.incorrect++;
+        else if (type === "omitted") stats.omitted++;
+      } else {
+        if (changeType === 'C2I') stats.changesC2I++;
+        else if (changeType === 'I2C') stats.changesI2C++;
+        else if (changeType === 'I2I') stats.changesI2I++;
+
+        if (adjustment) {
+          if (adjustment.correct) stats.correct += adjustment.correct;
+          if (adjustment.incorrect) stats.incorrect += adjustment.incorrect;
+        }
+      }
+
+      await writeFile(statsPath, stats);
+      res.json({ success: true, stats });
+    });
+
+    expressApp.get('/api/stats/sync', async (req, res) => {
+      try {
+        const questions = await readFile(FILES.questions, []);
+        const statsPath = path.join(dataDir, 'settings', 'stats.json');
+        
+        let stats = {
+          correct: 0,
+          incorrect: 0,
+          omitted: 0,
+          total: 0,
+          totalTime: 0,
+          changesC2I: 0,
+          changesI2C: 0,
+          changesI2I: 0
+        };
+
+        const qList = Array.isArray(questions) ? questions : (questions.questions || []);
+        
+        qList.forEach(q => {
+          if (q.submittedAnswer) {
+            stats.total++;
+            if (q.submittedAnswer.isCorrect) stats.correct++;
+            else stats.incorrect++;
+            
+            if (q.timerElapsed) {
+              stats.totalTime += Math.floor(q.timerElapsed / 1000);
+            }
+          }
+        });
+
+        await writeFile(statsPath, stats);
+        res.json({ success: true, stats });
+      } catch (e) {
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    expressApp.get('/api/ai/learning-data', async (req, res) => {
+      try {
+        const statsPath = path.join(dataDir, 'settings', 'stats.json');
+        const questionsPath = FILES.questions;
+        
+        let stats = await readFile(statsPath, { correct: 0, incorrect: 0, total: 0 });
+        const questionData = await readFile(questionsPath, { questions: [] });
+        const allQuestions = Array.isArray(questionData) ? questionData : (questionData.questions || []);
+        
+        const examples = allQuestions
+          .filter(q => q.text && q.options && q.options.length >= 2)
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 3);
+          
+        res.json({ examples, stats });
+      } catch (e) {
+        res.status(500).json({ error: e.message });
+      }
     });
 
     expressApp.delete('/api/trash', async (req, res) => {

@@ -574,7 +574,7 @@ window.startExportProcess = async function () {
     settings: state.settings,
     trash: state.trash,
     exportedAt: new Date().toISOString(),
-    appName: "My Notes",
+    appName: "Qnex",
     version: "1.2"
   };
   zip.file("metadata.json", JSON.stringify(metaData, null, 2));
@@ -5302,7 +5302,7 @@ window.startImportProcess = function () {
                     <path d="M2 17l10 5 10-5"></path>
                     <path d="M2 12l10 5 10-5"></path>
                   </svg>
-                  <h3>My Notes</h3>
+                  <h3>Qnex</h3>
                   <p style="color: var(--boot); margin-bottom: 2rem;">Version Beta</p>
                   <p>Created by Momen</p>
                   <p style="font-size: 0.9rem; color: var(--boot); font-style: italic; max-width: 400px; margin: 1rem auto;">
@@ -5851,7 +5851,7 @@ window.startImportProcess = function () {
 
   function showAboutModal() {
     console.log("â„¹ï¸ showAboutModal called");
-    createModernModal("About My Notes", "", [
+    createModernModal("About Qnex", "", [
       {
         text: "Close",
         bg: "#3b82f6",
@@ -5877,7 +5877,7 @@ window.startImportProcess = function () {
                   <path d="M2 12l10 5 10-5"></path>
                 </svg>
               </div>
-              <h2 style="margin: 0 0 12px 0; color: var(--text);">My Notes</h2>
+              <h2 style="margin: 0 0 12px 0; color: var(--text);">Qnex</h2>
               <p style="margin: 0 0 12px 0; color: var(--text); font-size: 13px;">
                 <strong>Version:</strong> 1.12BL <br>
                 <strong>Created by:</strong> Momen

@@ -70,8 +70,8 @@ window.addEventListener("load", async () => {
         // Only advance progress here if we are below 90%
         if (progress < 90) updateProgress(progress + 2);
 
-        const response = await fetch('http://localhost:3002/api/health');
-        if (response.ok) {
+        const isAvailable = await window.fileSystemService.isAvailable();
+        if (isAvailable) {
           // Server is ready! 
           // But wait for logs to finish typing
           if (window.typingActive || (window.logQueueLength && window.logQueueLength > 0)) {

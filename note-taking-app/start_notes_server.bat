@@ -1,7 +1,7 @@
 @echo off
-title Notes Standalone Server
+title Qnex Standalone Server
 echo ==========================================
-echo   Starting Standalone Notes Server...
+echo   Starting Standalone Qnex Server...
 echo ==========================================
 echo.
 

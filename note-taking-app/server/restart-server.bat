@@ -1,5 +1,5 @@
 @echo off
-echo Restarting Notes Server...
+echo Restarting Qnex Server...
 echo.
 
 REM Kill any existing node processes running the server

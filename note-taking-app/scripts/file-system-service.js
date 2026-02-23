@@ -13,18 +13,26 @@ class FileSystemService {
     this.isOffline = false; // Track connectivity state to prevent console spam
 
     // Auto-discover which port is active
-    this.readyPromise = this.init();
+    this.readyPromise = null;
+    this.init();
   }
 
   async waitForReady() {
+    if (!this.readyPromise) {
+      this.readyPromise = this.init();
+    }
     return this.readyPromise;
   }
 
   async init() {
     console.log("[FileSystemService] Probing for active server...");
     const currentHost = window.location.hostname || 'localhost';
-    console.log(`[FileSystemService] Detected hostname: "${currentHost}"`);
-    for (const port of this.ports) {
+    
+    // In Electron, we expect 3002 to be the primary embedded server
+    const isElectron = window.electronAPI && window.electronAPI.isElectron;
+    const probePorts = isElectron ? [3002, 3001] : [3001, 3002];
+
+    for (const port of probePorts) {
       const url = `http://${currentHost}:${port}/api`;
       try {
         const controller = new AbortController();
@@ -128,6 +136,11 @@ class FileSystemService {
 
   // Check if server is running
   async checkHealth() {
+    // If we've already determined we are offline, try to re-initiate discovery
+    if (this.isOffline) {
+      this.readyPromise = null; // Reset promise to force re-discovery
+    }
+    
     await this.waitForReady();
     if (this.isOffline) return false;
 
@@ -135,7 +148,6 @@ class FileSystemService {
       const response = await this.makeRequest("/health");
       return response.status === "OK";
     } catch (error) {
-      // console.error("Health check failed:", error); // Suppress log
       return false;
     }
   }

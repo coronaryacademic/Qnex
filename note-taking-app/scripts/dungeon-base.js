@@ -1160,10 +1160,10 @@ export default class DungeonBase {
 
     updateSaveStatus(status = 'saved') {
         if (status === 'saved') {
-            showToast("Note saved", "success", 2000);
+            this.showNotification("Note saved", "success");
             this.state.unsavedChanges = false;
         } else if (status === 'unsaved') {
-            showToast("Unsaved changes", "info", 2000);
+            this.showNotification("Unsaved changes", "info");
             this.state.unsavedChanges = true;
         }
 
@@ -2989,28 +2989,35 @@ export default class DungeonBase {
     }
 
     showNotification(msg, type = 'info') {
-        // Find the save status element to position beside
-        const saveStatus = document.querySelector('.dungeon-save-status');
-        // Fallback container if save status hidden/missing
-        let parent = saveStatus ? saveStatus.parentElement : document.body;
-
+        const saveStatus = document.getElementById('dungeonSaveStatus');
+        const footerRight = saveStatus ? saveStatus.closest('.dungeon-footer-right') : null;
+        
         // Check for existing notification
         let notif = document.getElementById('dungeonNotification');
+        
         if (!notif) {
             notif = document.createElement('div');
             notif.id = 'dungeonNotification';
             notif.className = 'dungeon-notification';
+        }
 
-            if (saveStatus && parent) {
-                // Insert before save status (to its left)
-                parent.insertBefore(notif, saveStatus);
-            } else {
-                // Fallback fixed position
-                notif.style.position = 'fixed';
-                notif.style.bottom = '20px';
-                notif.style.right = '100px';
-                parent.appendChild(notif);
+        // Reset any inline styles that might have been set in fallback mode
+        notif.style.position = '';
+        notif.style.bottom = '';
+        notif.style.right = '';
+
+        // Always ensure it's in the correct container
+        if (footerRight && saveStatus) {
+            if (notif.parentElement !== footerRight) {
+                footerRight.insertBefore(notif, saveStatus);
             }
+        } else {
+            // Fallback fixed position if dungeon is closed/template missing
+            document.body.appendChild(notif);
+            notif.style.position = 'fixed';
+            notif.style.bottom = '20px';
+            notif.style.right = '20px';
+            notif.style.zIndex = '99999';
         }
 
         notif.textContent = msg;
@@ -3031,7 +3038,7 @@ export default class DungeonBase {
         }, 3000);
     }
 
-    handleSubmit() {
+    async handleSubmit() {
         const q = this.state.questions[this.state.currentIndex];
         if (!this.state.selectedOption) {
             this.showNotification("Please choose an option first");
@@ -3040,6 +3047,10 @@ export default class DungeonBase {
 
         const selectedOpt = q.options.find(o => String(o.id) === String(this.state.selectedOption));
         const isCorrect = selectedOpt && selectedOpt.isCorrect;
+        
+        // Detect if this is a re-submission
+        const previousAnswer = q.submittedAnswer;
+        const isNewSubmission = !previousAnswer;
 
         const answerData = {
             submitted: true,
@@ -3054,21 +3065,35 @@ export default class DungeonBase {
 
         // Save timer value before stopping
         if (this.timerStart) {
-            q.timerElapsed = Date.now() - this.timerStart;
+            q.timerElapsed = (q.timerElapsed || 0) + (Date.now() - this.timerStart);
         }
 
-        // Clear revealed state when submitting
-        if (q.revealed) {
-            q.revealed = false;
+        // Calculate transition for stats
+        let changeType = null;
+        let adjustment = null;
+
+        if (!isNewSubmission) {
+            if (previousAnswer.isCorrect && !isCorrect) {
+                changeType = 'C2I';
+                adjustment = { correct: -1, incorrect: 1 };
+            } else if (!previousAnswer.isCorrect && isCorrect) {
+                changeType = 'I2C';
+                adjustment = { correct: 1, incorrect: -1 };
+            } else if (!previousAnswer.isCorrect && !isCorrect) {
+                 changeType = 'I2I';
+                 // incorrect count stays same, but we track the change
+            }
         }
 
         // Sync with global stats
-        fetch('http://localhost:3001/api/stats', {
+        window.fileSystemService.makeRequest('/stats', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 type: isCorrect ? 'correct' : 'incorrect',
-                timeSpent: Math.floor((q.timerElapsed || 0) / 1000) // seconds
+                timeSpent: Math.floor((Date.now() - (this.timerStart || Date.now())) / 1000),
+                isNewSubmission: isNewSubmission,
+                changeType: changeType,
+                adjustment: adjustment
             })
         }).catch(err => console.error("Failed to sync stats:", err));
 
@@ -3078,7 +3103,7 @@ export default class DungeonBase {
         this.render(); // Update sidebar and content
     }
 
-    toggleReveal() {
+    async toggleReveal() {
         const q = this.state.questions[this.state.currentIndex];
         if (!q) return;
 
@@ -3091,9 +3116,8 @@ export default class DungeonBase {
 
         // If newly revealed and not already answered, count as omitted
         if (q.revealed && !wasRevealed && !answer?.submitted) {
-            fetch('http://localhost:3001/api/stats', {
+            window.fileSystemService.makeRequest('/stats', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     type: 'omitted',
                     timeSpent: Math.floor((Date.now() - (this.timerStart || Date.now())) / 1000)

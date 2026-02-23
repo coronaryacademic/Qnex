@@ -41,7 +41,7 @@ app.use("/api/images", express.static(path.join(NOTES_BASE_DIR, "images")));
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({
-    status: "ok",
+    status: "OK",
     timestamp: new Date().toISOString(),
     version: "3.0 AI mode integration",
     storage: NOTES_BASE_DIR,
@@ -975,19 +975,51 @@ app.post("/api/stats", async (req, res) => {
       stats = await fs.readJson(statsFile);
     }
 
-    // Initialize missing fields if loading old stats
+    // Initialize missing fields
     if (stats.omitted === undefined) stats.omitted = 0;
     if (stats.totalTime === undefined) stats.totalTime = 0;
+    if (stats.changesC2I === undefined) stats.changesC2I = 0;
+    if (stats.changesI2C === undefined) stats.changesI2C = 0;
+    if (stats.changesI2I === undefined) stats.changesI2I = 0;
+    if (stats.total === undefined) stats.total = 0;
+    if (stats.correct === undefined) stats.correct = 0;
+    if (stats.incorrect === undefined) stats.incorrect = 0;
 
-    stats.total++;
+    const { 
+      type, 
+      timeSpent = 0, 
+      isNewSubmission = true, 
+      changeType = null, // 'C2I', 'I2C', 'I2I'
+      adjustment = null   // { correct: -1, incorrect: 1 } etc.
+    } = req.body;
+
+    // 1. Handle total time
     stats.totalTime += timeSpent;
 
-    if (type === "correct") stats.correct++;
-    else if (type === "incorrect") stats.incorrect++;
-    else if (type === "omitted") stats.omitted++;
-    // Legacy support for boolean isCorrect
-    else if (req.body.isCorrect === true) stats.correct++;
-    else if (req.body.isCorrect === false) stats.incorrect++;
+    // 2. Handle new submission vs change
+    if (isNewSubmission) {
+      stats.total++;
+      if (type === "correct") stats.correct++;
+      else if (type === "incorrect") stats.incorrect++;
+      else if (type === "omitted") stats.omitted++;
+    } else {
+      // It's a re-submission / change
+      if (changeType === 'C2I') stats.changesC2I++;
+      else if (changeType === 'I2C') stats.changesI2C++;
+      else if (changeType === 'I2I') stats.changesI2I++;
+
+      // Adjust correct/incorrect counts if specified
+      if (adjustment) {
+        if (adjustment.correct) stats.correct += adjustment.correct;
+        if (adjustment.incorrect) stats.incorrect += adjustment.incorrect;
+      }
+    }
+
+    // Legacy support for boolean isCorrect (only if type not provided)
+    if (type === undefined && isNewSubmission) {
+       if (req.body.isCorrect === true) stats.correct++;
+       else if (req.body.isCorrect === false) stats.incorrect++;
+    }
 
     await fs.writeJson(statsFile, stats, { spaces: 2 });
     res.json({ success: true, stats });
@@ -1072,7 +1104,7 @@ app.post("/api/ai/chat", async (req, res) => {
           Authorization: `Bearer ${API_KEY}`,
           "Content-Type": "application/json",
           "HTTP-Referer": "http://localhost:3001",
-          "X-Title": "Notes App Local",
+          "X-Title": "Qnex Local",
         },
         timeout: 120000, // 2 minute timeout for slow models
       },

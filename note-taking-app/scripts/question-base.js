@@ -685,13 +685,11 @@ const QuestionBase = {
     async loadRecentSessions() {
         try {
             // Primary: load from server backend (dynamic port)
-            const response = await fetch(this.getServerUrl('/sessions'));
-            if (response.ok) {
-                this.state.recentSessions = await response.json();
+            const sessions = await window.fileSystemService.makeRequest('/sessions');
+            if (sessions) {
+                this.state.recentSessions = sessions;
                 // Keep localStorage in sync
                 localStorage.setItem("active-recall-recent-sessions", JSON.stringify(this.state.recentSessions));
-            } else {
-                throw new Error('Server returned ' + response.status);
             }
         } catch (e) {
             console.warn('[QuestionBase] Failed to load sessions from server, falling back to localStorage:', e);
@@ -726,9 +724,8 @@ const QuestionBase = {
         localStorage.setItem("active-recall-recent-sessions", JSON.stringify(this.state.recentSessions));
         
         // Save to server as source of truth
-        fetch(this.getServerUrl('/sessions'), {
+        window.fileSystemService.makeRequest('/sessions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(this.state.recentSessions)
         }).catch(err => console.warn('[QuestionBase] Failed to save sessions to server:', err));
     },
@@ -742,9 +739,9 @@ const QuestionBase = {
 
         // 1. Try Live Server
         try {
-            const response = await fetch(this.getServerUrl('/questions'));
-            if (response.ok) {
-                serverData = await response.json();
+            const data = await window.fileSystemService.makeRequest('/questions');
+            if (data) {
+                serverData = data;
                 console.log('[QuestionBase] Server has', serverData.questions?.length || 0, 'questions');
             }
         } catch (e) {
@@ -848,9 +845,8 @@ const QuestionBase = {
         }
 
         // 3. Server Persistence (Source of Truth)
-        fetch(this.getServerUrl('/questions'), {
+        window.fileSystemService.makeRequest('/questions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         }).catch(err => console.warn('[QuestionBase] Server save failed:', err));
 
@@ -2671,7 +2667,7 @@ Question explanation:
             this.el.syncStatsBtn.innerHTML = "Syncing...";
             this.el.syncStatsBtn.disabled = true;
             try {
-                await fetch('http://localhost:3001/api/stats/sync');
+                await window.fileSystemService.makeRequest('/stats/sync');
                 await this.loadData();
             } catch(e) {}
             setTimeout(() => {
@@ -2684,9 +2680,8 @@ Question explanation:
 
         try {
             // 1. Get live session counts
-            const sessRes = await fetch('http://localhost:3001/api/sessions');
-            if (sessRes.ok) {
-                const sessions = await sessRes.json();
+            const sessions = await window.fileSystemService.makeRequest('/sessions');
+            if (sessions) {
                 this.state.recentSessions = sessions;
                 localStorage.setItem("active-recall-recent-sessions", JSON.stringify(sessions));
             }
@@ -2694,16 +2689,14 @@ Question explanation:
 
         try {
             // 2. Fetch performance stats
-            const response = await fetch('http://localhost:3001/api/stats');
-            if (response.ok) {
-                const stats = await response.json();
-                
+            const stats = await window.fileSystemService.makeRequest('/stats');
+            if (stats) {
                 // --- Your Score ---
                 const correct = stats.correct || 0;
                 const incorrect = stats.incorrect || 0;
                 const omitted = stats.omitted || 0;
                 const totalAttempted = correct + incorrect;
-                const accuracy = totalAttempted > 0 ? Math.round((correct / totalAttempted) * 100) : 0;
+                const accuracy = totalAttempted > 0 ? Math.min(100, Math.round((correct / totalAttempted) * 100)) : 0;
 
                 if (this.el.statCorrect) this.el.statCorrect.textContent = correct;
                 if (this.el.statIncorrect) this.el.statIncorrect.textContent = incorrect;
@@ -2713,15 +2706,16 @@ Question explanation:
                 // Donut 1: Accuracy
                 if (this.el.donutCorrect) {
                   const circumference = 314; // 2 * PI * 50
-                  const offset = circumference - (accuracy / 100) * circumference;
                   this.el.donutCorrect.style.strokeDasharray = `${(accuracy / 100) * circumference} ${circumference}`;
                 }
 
                 // --- QBank Usage ---
                 const totalQ = this.state.questions.length;
-                const usedQ = correct + incorrect + omitted; // Simplified: anything with an attempt
+                let usedQ = correct + incorrect + omitted; // Simplified: anything with an attempt
+                if (usedQ > totalQ) usedQ = totalQ; // Clamp to real total
+                
                 const unusedQ = Math.max(0, totalQ - usedQ);
-                const usedPct = totalQ > 0 ? Math.round((usedQ / totalQ) * 100) : 0;
+                const usedPct = totalQ > 0 ? Math.min(100, Math.round((usedQ / totalQ) * 100)) : 0;
 
                 if (this.el.statTotalQuestions) this.el.statTotalQuestions.textContent = totalQ;
                 if (this.el.statUsedQ) this.el.statUsedQ.textContent = usedQ;
@@ -2742,10 +2736,10 @@ Question explanation:
                 if (this.el.statTotalSessions) this.el.statTotalSessions.textContent = this.state.recentSessions.length;
                 if (this.el.statSuspended) this.el.statSuspended.textContent = "0";
 
-                // --- Answer Changes (Placeholders) ---
-                if (this.el.statC2I) this.el.statC2I.textContent = "0";
-                if (this.el.statI2C) this.el.statI2C.textContent = "0";
-                if (this.el.statI2I) this.el.statI2I.textContent = "0";
+                // --- Answer Changes ---
+                if (this.el.statC2I) this.el.statC2I.textContent = stats.changesC2I || "0";
+                if (this.el.statI2C) this.el.statI2C.textContent = stats.changesI2C || "0";
+                if (this.el.statI2I) this.el.statI2I.textContent = stats.changesI2I || "0";
             }
         } catch (error) {
             console.error('[QuestionBase] Failed to fetch statistics:', error);
@@ -3171,9 +3165,9 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             // NEW: Fetch Learning Data (Stats + Examples)
             let learningData = null;
             try {
-                const res = await fetch('http://localhost:3001/api/ai/learning-data');
-                if (res.ok) {
-                    learningData = await res.json();
+                const data = await window.fileSystemService.makeRequest('/ai/learning-data');
+                if (data) {
+                    learningData = data;
                     console.log("[AI Learning] Data retrieved successfully:", learningData);
                 }
             } catch (e) { console.warn("Failed to fetch learning data, proceeding with defaults."); }
@@ -3210,40 +3204,30 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                 userPrompt = `${tagsContext}Fill this frame:\n${text}`;
             }
 
-            const endpoints = ['http://localhost:3001/api/ai/chat', 'http://127.0.0.1:3001/api/ai/chat'];
-            let lastError = null;
-
             // Get selected model
             const selectedModel = this.el.aiModelSelector ? this.el.aiModelSelector.value : null;
 
-            for (const url of endpoints) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            messages: [
-                                { role: 'system', content: systemPrompt },
-                                { role: 'user', content: userPrompt }
-                            ],
-                            max_tokens: 10000,
-                            model: selectedModel
-                        })
-                    });
+            try {
+                const data = await window.fileSystemService.makeRequest('/ai/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        max_tokens: 10000,
+                        model: selectedModel
+                    })
+                });
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.choices && data.choices[0] && data.choices[0].message) {
-                            this.el.sessionInput.innerText = data.choices[0].message.content;
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    lastError = e;
+                if (data && data.choices && data.choices[0] && data.choices[0].message) {
+                    this.el.sessionInput.innerText = data.choices[0].message.content;
+                    return;
                 }
+            } catch (error) {
+                console.error("[QuestionBase] AI Fill failed:", error);
+                throw error;
             }
-
-            if (lastError) throw lastError;
 
         } catch (error) {
             console.error("[QuestionBase] AI Fill failed:", error);
