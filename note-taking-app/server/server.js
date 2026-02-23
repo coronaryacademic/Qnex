@@ -985,9 +985,8 @@ app.post("/api/stats", async (req, res) => {
     if (stats.correct === undefined) stats.correct = 0;
     if (stats.incorrect === undefined) stats.incorrect = 0;
 
+    // Get remaining properties without redeclaring
     const { 
-      type, 
-      timeSpent = 0, 
       isNewSubmission = true, 
       changeType = null, // 'C2I', 'I2C', 'I2I'
       adjustment = null   // { correct: -1, incorrect: 1 } etc.
@@ -1122,8 +1121,11 @@ app.post("/api/ai/chat", async (req, res) => {
       code: error.code,
     });
 
+    // If OpenRouter returns 404 (e.g. invalid model), return 502 to prevent frontend port fallback loops
+    const statusCode = error.response?.status === 404 ? 502 : (error.response?.status || 500);
+
     // Return detailed error to frontend
-    res.status(error.response?.status || 500).json({
+    res.status(statusCode).json({
       error: "Failed to get response from AI",
       details: error.response?.data || error.message,
       model: req.body.model,

@@ -702,7 +702,7 @@ body.theme-classic #createSessionBtn svg text {
   z-index: 1000;
   border-radius: 8px;
   transition: opacity 0.2s ease;
-  pointer-events: all;
+  pointer-events: none; /* Changed from all to none to prevent blocking clicks */
 }
 
 .ai-loading-overlay.hidden {
