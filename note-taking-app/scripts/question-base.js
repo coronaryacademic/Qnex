@@ -2555,7 +2555,9 @@ Question explanation:
 
         // Update local data counts first
         this.el.statTotalQuestions.textContent = this.state.questions.length;
-        this.el.statTotalFolders.textContent = this.state.folders.length;
+        const sessionFolderIds = new Set(this.state.recentSessions.map(s => s.folderId));
+        const userCreatedFolders = this.state.folders.filter(f => !sessionFolderIds.has(f.id));
+        this.el.statTotalFolders.textContent = userCreatedFolders.length;
 
         if (forceSync && this.el.syncStatsBtn) {
             const originalHtml = this.el.syncStatsBtn.innerHTML;
