@@ -723,16 +723,39 @@ ipcMain.on('app-close-confirmed', () => {
 
 // Start local server for Firebase auth
 let server;
-function startLocalServer() {
+function freePort(port) {
   return new Promise((resolve) => {
+    const { exec } = require('child_process');
+    exec(`fuser -k ${port}/tcp 2>/dev/null || true`, () => {
+      // Wait briefly for the port to be released
+      setTimeout(resolve, 300);
+    });
+  });
+}
+
+function startLocalServer() {
+  return new Promise((resolve, reject) => {
     server = http.createServer((request, response) => {
       return handler(request, response, {
         public: __dirname
       });
     });
 
+    server.on('error', async (err) => {
+      if (err.code === 'EADDRINUSE') {
+        log('[SERVER] Port 8080 in use. Freeing port and retrying...');
+        await freePort(8080);
+        server.listen(8080, () => {
+          log('[SERVER] Running at http://localhost:8080 (after freeing port)');
+          resolve();
+        });
+      } else {
+        reject(err);
+      }
+    });
+
     server.listen(8080, () => {
-      log("[SERVER] Running at http://localhost:8080");
+      log('[SERVER] Running at http://localhost:8080');
       resolve();
     });
   });
@@ -948,10 +971,21 @@ function startServer3002() {
     });
 
     server3002 = expressApp.listen(3002, () => {
-      log("[SERVER] Health check server running on http://localhost:3002");
+      log('[SERVER] Health check server running on http://localhost:3002');
+    });
+    server3002.on('error', async (err) => {
+      if (err.code === 'EADDRINUSE') {
+        log('[SERVER] Port 3002 in use. Freeing port and retrying...');
+        await freePort(3002);
+        server3002 = expressApp.listen(3002, () => {
+          log('[SERVER] Health check server running on http://localhost:3002 (after freeing port)');
+        });
+      } else {
+        log('[ERROR] Server 3002 error: ' + err.message);
+      }
     });
   } catch (err) {
-    log("[ERROR] Failed to start server 3002: " + err.message);
+    log('[ERROR] Failed to start server 3002: ' + err.message);
   }
 }
 
