@@ -820,9 +820,169 @@
 
                 <!-- Create Test Tab Content -->
                 <div class="tab-content" data-tab-content="create-test">
-                  <h3>Create Test</h3>
-                <p>Test configuration will go here</p>
-              </div>
+                  <div class="statistics-container ct-page">
+
+                    <!-- Page Header -->
+                    <div class="stats-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+                      <div class="stats-title-group">
+                        <h2>Create Test</h2>
+                        <p>Filter by tags, configure your session, and launch</p>
+                      </div>
+                      <button id="ctAutoTagBtn" class="ct-autotag-btn" title="Auto-assign tags from question content">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"/></svg>
+                        Auto-Tag All
+                      </button>
+                    </div>
+
+                    <div class="ct-layout">
+
+                      <!-- LEFT: Filter Panel -->
+                      <div class="ct-left">
+
+                        <!-- Tag Filters -->
+                        <div class="ct-section">
+                          <div class="ct-section-title">
+                            Filter by Tags
+                          </div>
+                          <p class="ct-section-hint">Only questions with matching tags will be included</p>
+
+                          <div class="ct-category-row">
+                            <div class="ct-cat-wrap">
+                              <button class="ct-cat-btn" id="ctBtnSubject">
+                                <span>Subject</span>
+                                <span class="ct-cat-badge" id="ctBadgeSubject"></span>
+                              </button>
+                            </div>
+                            <div class="ct-cat-wrap">
+                              <button class="ct-cat-btn" id="ctBtnSystem">
+                                <span>System</span>
+                                <span class="ct-cat-badge" id="ctBadgeSystem"></span>
+                              </button>
+                            </div>
+                            <div class="ct-cat-wrap">
+                              <button class="ct-cat-btn" id="ctBtnMajor">
+                                <span>Major</span>
+                                <span class="ct-cat-badge" id="ctBadgeMajor"></span>
+                              </button>
+                            </div>
+                            <div class="ct-cat-wrap">
+                              <button class="ct-cat-btn" id="ctBtnMinor">
+                                <span>Minor</span>
+                                <span class="ct-cat-badge" id="ctBadgeMinor"></span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <button id="ctClearTags" class="ct-clear-btn" style="display:none;">
+                            Clear all filters
+                          </button>
+                        </div>
+
+                        <!-- Session Options -->
+                        <div class="ct-section">
+                          <div class="ct-section-title">
+                            Session Options
+                          </div>
+
+                          <!-- Number of Questions -->
+                          <div class="ct-option-row">
+                            <div class="ct-option-label">
+                              Number of Questions
+                            </div>
+                            <div class="ct-qcount-wrap">
+                              <input type="range" id="ctQcountRange" min="1" max="50" value="10" class="ct-range">
+                              <input type="number" id="ctQcount" min="1" max="200" value="10" class="ct-num-input">
+                            </div>
+                            <div class="ct-option-hint" id="ctQcountHint">10 of — available</div>
+                          </div>
+
+                          <!-- Timer -->
+                          <div class="ct-option-row">
+                            <div class="ct-option-label">
+                              Timer
+                            </div>
+                            <div class="ct-toggle-group" id="ctTimerGroup">
+                              <button class="ct-toggle-btn ct-toggle-active" data-val="none">Off</button>
+                              <button class="ct-toggle-btn" data-val="30">30s</button>
+                              <button class="ct-toggle-btn" data-val="60">1m</button>
+                              <button class="ct-toggle-btn" data-val="90">1.5m</button>
+                              <button class="ct-toggle-btn" data-val="120">2m</button>
+                            </div>
+                            <div class="ct-option-hint">Per question time limit</div>
+                          </div>
+
+                          <!-- Tutor Mode -->
+                          <div class="ct-option-row">
+                            <div class="ct-option-label">
+                              Tutor Mode
+                            </div>
+                            <div class="ct-toggle-group" id="ctTutorGroup">
+                              <button class="ct-toggle-btn ct-toggle-active" data-val="on">On</button>
+                              <button class="ct-toggle-btn" data-val="off">Off</button>
+                            </div>
+                            <div class="ct-option-hint">Show explanation after each answer</div>
+                          </div>
+
+                          <!-- Shuffle -->
+                          <div class="ct-option-row">
+                            <div class="ct-option-label">
+                              Shuffle Questions
+                            </div>
+                            <div class="ct-toggle-group" id="ctShuffleGroup">
+                              <button class="ct-toggle-btn" data-val="on">On</button>
+                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
+                            </div>
+                            <div class="ct-option-hint">Randomize question order</div>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      <!-- RIGHT: Preview Panel -->
+                      <div class="ct-right">
+                        <div class="ct-section ct-preview-section">
+                          <div class="ct-section-title">
+                            Matching Questions
+                          </div>
+
+                          <!-- Stats row -->
+                          <div class="ct-preview-stats">
+                            <div class="ct-stat-box">
+                              <span class="ct-stat-num" id="ctMatchTotal">—</span>
+                              <span class="ct-stat-label">Total Tagged</span>
+                            </div>
+                            <div class="ct-stat-box">
+                              <span class="ct-stat-num ct-stat-accent" id="ctMatchFiltered">—</span>
+                              <span class="ct-stat-label">Match Filters</span>
+                            </div>
+                            <div class="ct-stat-box">
+                              <span class="ct-stat-num" id="ctMatchSelected">10</span>
+                              <span class="ct-stat-label">Will Include</span>
+                            </div>
+                          </div>
+
+                          <!-- Question List -->
+                          <div class="ct-preview-list" id="ctPreviewList">
+                            <div class="ct-preview-empty" id="ctPreviewEmpty">
+                              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:0.25;margin-bottom:8px;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/></svg>
+                              <div>Select tags to preview matching questions</div>
+                            </div>
+                          </div>
+
+                          <!-- Start Bar -->
+                          <div class="ct-start-zone" id="ctStartZone" style="display:none;">
+                            <div class="ct-start-summary" id="ctStartSummary"></div>
+                            <button class="ct-start-btn" id="ctStartSessionBtn">
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                              Start Session
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
 
               <!-- Recent Sessions Tab Content -->
               <div class="tab-content" data-tab-content="recent-sessions">

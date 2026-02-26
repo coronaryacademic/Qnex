@@ -938,7 +938,7 @@ const QuestionBase = {
 
         // Toggle dashboard-active class on emptyState for proper scrolling/layout
         if (this.el.emptyState) {
-            if (tabName === 'statistics' || tabName === 'recent-sessions') {
+            if (tabName === 'statistics' || tabName === 'recent-sessions' || tabName === 'create-test') {
                 this.el.emptyState.classList.add('dashboard-active');
             } else {
                 this.el.emptyState.classList.remove('dashboard-active');
@@ -954,19 +954,378 @@ const QuestionBase = {
         if (tabName === 'statistics') {
             this.renderStatistics();
         }
+
+        // Special handling for create-test tab
+        if (tabName === 'create-test') {
+            if (!this._ctInitialized) {
+                this.initCreateTestDashboard();
+                this._ctInitialized = true;
+            } else {
+                this.renderCTPreview();
+            }
+        }
     },
 
+
+    // ── Create Test Dashboard ─────────────────────────────────────────────────
+
+    CT_TAG_OPTIONS: {
+        subject: ['Pathology', 'Pharmacology', 'Anatomy', 'Physiology', 'Microbiology', 'Immunology', 'Biochemistry', 'Genetics', 'Epidemiology', 'Biostatistics', 'Embryology'],
+        system:  ['Cardiology', 'Pulmonology', 'Nephrology', 'Gastroenterology', 'Neurology', 'Hematology', 'Endocrinology', 'Rheumatology', 'Infectious Disease', 'Dermatology', 'Musculoskeletal', 'Reproductive', 'Renal'],
+        major:   ['Internal Medicine', 'Surgery', 'Pediatrics', 'OB/GYN', 'Psychiatry', 'Family Medicine', 'Emergency Medicine'],
+        minor:   ['Orthopedics', 'Anesthesia', 'Neurosurgery', 'Cardiothoracic Surgery', 'Vascular Surgery', 'Urology', 'ENT', 'Plastic Surgery', 'Intensive Care', 'Radiology', 'Palliative Care'],
+    },
+
+    _ctSel: { subject: new Set(), system: new Set(), major: new Set(), minor: new Set() },
+
+    initCreateTestDashboard() {
+        const TAG_OPTIONS = this.CT_TAG_OPTIONS;
+        const categories = [
+            { key: 'subject', btnId: 'ctBtnSubject', badgeId: 'ctBadgeSubject' },
+            { key: 'system',  btnId: 'ctBtnSystem',  badgeId: 'ctBadgeSystem' },
+            { key: 'major',   btnId: 'ctBtnMajor',   badgeId: 'ctBadgeMajor' },
+            { key: 'minor',   btnId: 'ctBtnMinor',   badgeId: 'ctBadgeMinor' }
+        ];
+
+        const dropdownMap = {};
+
+        categories.forEach(({ key, btnId, badgeId }) => {
+            const btn = document.getElementById(btnId);
+            const badge = document.getElementById(badgeId);
+            if (!btn) return;
+
+            // Create floating dropdown element once per category
+            const menu = document.createElement('div');
+            menu.className = 'ct-dropdown hidden';
+            menu.dataset.cat = key;
+            document.body.appendChild(menu);
+            dropdownMap[key] = menu;
+
+            // Initial state sync (if re-initializing)
+            const count = this._ctSel[key].size;
+            if (badge) badge.textContent = count > 0 ? count : '';
+            btn.classList.toggle('ct-cat-active', count > 0);
+
+            // Update function for menu content
+            const updateMenu = () => {
+                menu.innerHTML = '';
+                TAG_OPTIONS[key].forEach(tag => {
+                    const count = this.state.questions.filter(q => (q.tags?.[key] || []).includes(tag)).length;
+                    const item = document.createElement('label');
+                    item.className = 'ct-dropdown-item' + (count === 0 ? ' count-zero' : '');
+                    
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = this._ctSel[key].has(tag);
+                    cb.addEventListener('change', () => {
+                        if (cb.checked) this._ctSel[key].add(tag);
+                        else this._ctSel[key].delete(tag);
+                        
+                        const selCount = this._ctSel[key].size;
+                        if (badge) badge.textContent = selCount > 0 ? selCount : '';
+                        btn.classList.toggle('ct-cat-active', selCount > 0);
+                        this._ctUpdateClearBtn();
+                        this.renderCTPreview();
+                    });
+
+                    const label = document.createElement('span');
+                    label.textContent = tag;
+
+                    const countBadge = document.createElement('span');
+                    countBadge.className = 'ct-dropdown-count';
+                    countBadge.textContent = count;
+
+                    item.appendChild(cb);
+                    item.appendChild(label);
+                    item.appendChild(countBadge);
+                    menu.appendChild(item);
+                });
+            };
+
+            // Toggle logic
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isHidden = menu.classList.contains('hidden');
+                
+                // Close all others
+                Object.values(dropdownMap).forEach(m => m.classList.add('hidden'));
+                document.querySelectorAll('.ct-cat-btn').forEach(b => b.classList.remove('ct-cat-open'));
+
+                if (isHidden) {
+                    updateMenu();
+                    const rect = btn.getBoundingClientRect();
+                    menu.style.top  = (rect.bottom + 8) + 'px';
+                    menu.style.left = rect.left + 'px';
+                    menu.classList.remove('hidden');
+                    btn.classList.add('ct-cat-open');
+                }
+            });
+
+            menu.addEventListener('click', e => e.stopPropagation());
+        });
+
+        // Close all menus on outside click
+        document.addEventListener('click', () => {
+            Object.values(dropdownMap).forEach(m => m.classList.add('hidden'));
+            document.querySelectorAll('.ct-cat-btn').forEach(b => b.classList.remove('ct-cat-open'));
+        });
+
+        // Clear button
+        document.getElementById('ctClearTags')?.addEventListener('click', () => {
+            Object.keys(this._ctSel).forEach(k => this._ctSel[k].clear());
+            document.querySelectorAll('.ct-cat-badge').forEach(b => b.textContent = '');
+            document.querySelectorAll('.ct-cat-btn').forEach(b => b.classList.remove('ct-cat-active'));
+            this._ctUpdateClearBtn();
+            this.renderCTPreview();
+        });
+
+        // Toggle groups (timer, tutor, shuffle)
+        document.querySelectorAll('.ct-toggle-group').forEach(group => {
+            group.querySelectorAll('.ct-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    group.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
+                    btn.classList.add('ct-toggle-active');
+                    this.renderCTPreview(); // update summary
+                });
+            });
+        });
+
+        // Range ↔ number input sync
+        const range = document.getElementById('ctQcountRange');
+        const numIn = document.getElementById('ctQcount');
+        if (range && numIn) {
+            range.addEventListener('input', () => { numIn.value = range.value; this.renderCTPreview(); });
+            numIn.addEventListener('input', () => {
+                const v = Math.max(1, Math.min(200, parseInt(numIn.value) || 1));
+                numIn.value = v;
+                range.value = Math.min(v, 50);
+                this.renderCTPreview();
+            });
+        }
+
+        // Start button
+        document.getElementById('ctStartSessionBtn')?.addEventListener('click', () => {
+            this.startTestFromTags();
+        });
+
+        // Auto-tag button
+        document.getElementById('ctAutoTagBtn')?.addEventListener('click', () => this.autoTagAll());
+
+        // Initial render
+        this.renderCTPreview();
+    },
+
+    _ctUpdateClearBtn() {
+        const anyActive = Object.values(this._ctSel).some(s => s.size > 0);
+        const btn = document.getElementById('ctClearTags');
+        if (btn) btn.style.display = anyActive ? 'inline-flex' : 'none';
+    },
+
+    _ctGetFiltered() {
+        const { subject, system, major, minor } = this._ctSel;
+        const noFilter = subject.size === 0 && system.size === 0 && major.size === 0 && minor.size === 0;
+        return this.state.questions.filter(q => {
+            const tags = q.tags || {};
+            // Only include questions that have at least one tag
+            const hasAnyTag = Object.values(tags).flat().length > 0;
+            if (!hasAnyTag) return false;
+            if (noFilter) return true; // all tagged questions when no filter active
+            const ok = (sel, key) => sel.size === 0 || (tags[key] || []).some(t => sel.has(t));
+            return ok(subject,'subject') && ok(system,'system') && ok(major,'major') && ok(minor,'minor');
+        });
+    },
+
+    renderCTPreview() {
+        const filtered = this._ctGetFiltered();
+        const totalTagged = this.state.questions.filter(q => Object.values(q.tags || {}).flat().length > 0).length;
+
+        // Desired count
+        const numIn = document.getElementById('ctQcount');
+        const desired = Math.min(filtered.length, Math.max(1, parseInt(numIn?.value) || 10));
+
+        // Stats
+        const elTotal    = document.getElementById('ctMatchTotal');
+        const elFiltered = document.getElementById('ctMatchFiltered');
+        const elSelected = document.getElementById('ctMatchSelected');
+        const elHint     = document.getElementById('ctQcountHint');
+        if (elTotal)    elTotal.textContent    = totalTagged || '—';
+        if (elFiltered) elFiltered.textContent = filtered.length;
+        if (elSelected) elSelected.textContent = desired;
+        if (elHint)     elHint.textContent     = `${desired} of ${filtered.length} available`;
+
+        // Preview list
+        const list = document.getElementById('ctPreviewList');
+        if (!list) return;
+        list.innerHTML = '';
+
+        if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'ct-preview-empty';
+            const noFilter = Object.values(this._ctSel).every(s => s.size === 0);
+            empty.innerHTML = noFilter
+                ? `<div>${totalTagged === 0 ? 'No questions have tags yet — use <strong>Auto-Tag All</strong>' : 'All tagged questions will be included'}</div>`
+                : `<div>No questions match your tag selection</div>`;
+            list.appendChild(empty);
+        } else {
+            const preview = filtered.slice(0, desired);
+            preview.forEach(q => {
+                const item = document.createElement('div');
+                item.className = 'ct-preview-item';
+                // Pick a display tag
+                const allTags = [...(q.tags?.system || []), ...(q.tags?.subject || [])];
+                const tagLabel = allTags[0] || '';
+                item.innerHTML = `
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.title || 'Untitled'}</span>
+                    ${tagLabel ? `<span class="ct-item-tag">${tagLabel}</span>` : ''}
+                `;
+                list.appendChild(item);
+            });
+            if (filtered.length > desired) {
+                const more = document.createElement('div');
+                more.className = 'ct-preview-more';
+                more.textContent = `+ ${filtered.length - desired} more not shown`;
+                list.appendChild(more);
+            }
+        }
+
+        // Show/hide start zone
+        const startZone = document.getElementById('ctStartZone');
+        const summary   = document.getElementById('ctStartSummary');
+        if (startZone) startZone.style.display = filtered.length > 0 ? 'flex' : 'none';
+        if (summary && filtered.length > 0) {
+            const timerBtn  = document.querySelector('#ctTimerGroup .ct-toggle-active');
+            const tutorBtn  = document.querySelector('#ctTutorGroup .ct-toggle-active');
+            const shuffleBtn= document.querySelector('#ctShuffleGroup .ct-toggle-active');
+            const timerVal  = timerBtn?.dataset.val || 'none';
+            const tutorVal  = tutorBtn?.dataset.val || 'on';
+            const shuffleVal= shuffleBtn?.dataset.val || 'off';
+            const timerStr  = timerVal === 'none' ? 'No timer' : `${timerVal}s per question`;
+            summary.innerHTML = `<strong>${desired}</strong> questions · ${timerStr} · Tutor mode ${tutorVal} · Shuffle ${shuffleVal}`;
+        }
+    },
+
+    async startTestFromTags() {
+        const filtered = this._ctGetFiltered();
+        if (filtered.length === 0) { alert('No questions match your selection.'); return; }
+
+        const desired   = Math.min(filtered.length, Math.max(1, parseInt(document.getElementById('ctQcount')?.value) || 10));
+        const shuffleEl = document.querySelector('#ctShuffleGroup .ct-toggle-active');
+        const tutorEl   = document.querySelector('#ctTutorGroup .ct-toggle-active');
+        const timerEl   = document.querySelector('#ctTimerGroup .ct-toggle-active');
+        const doShuffle = shuffleEl?.dataset.val === 'on';
+        const tutor     = tutorEl?.dataset.val !== 'off';
+        const timerSecs = parseInt(timerEl?.dataset.val) || 0;
+
+        let pool = [...filtered];
+        if (doShuffle) {
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+        }
+        const questions = pool.slice(0, desired).map(q => ({
+            ...q, submittedAnswer: undefined, revealed: false, crossedOutOptionIds: [],
+            _tutorMode: tutor, _timerSecs: timerSecs
+        }));
+
+        // Build title
+        const activeTags = [
+            ...this._ctSel.system, ...this._ctSel.major,
+            ...this._ctSel.subject, ...this._ctSel.minor
+        ].slice(0, 3);
+        const titlePart  = activeTags.length > 0 ? activeTags.join(' + ') : 'Tagged Questions';
+        const folderName = `${titlePart} — ${new Date().toLocaleDateString()}`;
+
+        // Save session record
+        const session = {
+            id: 'ct-' + Date.now(),
+            title: folderName,
+            date: new Date().toISOString(),
+            count: questions.length,
+            folderId: null,
+            questions
+        };
+        this.state.recentSessions.unshift(session);
+        this.saveRecentSessions();
+
+        if (typeof window.DungeonBase !== 'undefined') {
+            window.DungeonBase.open(questions);
+        } else {
+            alert('Dungeon mode is not loaded.');
+        }
+    },
+
+    autoTagAll() {
+        const KEYWORD_MAP = {
+            subject: {
+                'Cardiology':   ['heart','cardiac','myocardial','coronary','arrhythmia','ecg'],
+                'Pharmacology': ['drug','medication','dose','receptor','agonist','antibiotic','analgesic'],
+                'Pathology':    ['tumor','cancer','carcinoma','biopsy','necrosis','infarct','inflammation'],
+                'Anatomy':      ['nerve','artery','vein','muscle','bone','ligament','anatomical'],
+                'Physiology':   ['homeostasis','osmol','reflex','metabolism'],
+                'Microbiology': ['bacteria','viral','fungal','parasite','gram','infection'],
+                'Immunology':   ['antibody','antigen','immune','allergy','autoimmune'],
+                'Biochemistry': ['enzyme','substrate','atp','glucose','amino acid','dna','rna'],
+            },
+            system: {
+                'Cardiology':        ['heart','cardiac','stemi','heart failure','palpitation','chest pain','hypertension'],
+                'Pulmonology':       ['lung','asthma','copd','pneumonia','dyspnea','pulmonary'],
+                'Nephrology':        ['kidney','renal','creatinine','dialysis','proteinuria'],
+                'Gastroenterology':  ['stomach','intestin','liver','hepat','pancrea','gallbladder','diarrhea'],
+                'Neurology':         ['brain','stroke','seizure','headache','dementia','spinal'],
+                'Hematology':        ['anemia','platelet','coagulation','leukemia','hemoglobin'],
+                'Endocrinology':     ['diabetes','thyroid','insulin','cortisol','hormone'],
+                'Infectious Disease':['infection','sepsis','fever','hiv','tuberculosis'],
+                'Dermatology':       ['skin','rash','eczema','psoriasis','melanoma'],
+            },
+            major: {
+                'Internal Medicine': ['internal','chronic','management','outpatient'],
+                'Surgery':           ['surgery','surgical','operative','incision'],
+                'Pediatrics':        ['child','infant','neonat','pediatric'],
+                'Emergency Medicine':['emergency','trauma','acute','resuscitat','cpr'],
+                'OB/GYN':            ['obstet','pregnancy','fetus','uterus','menstrual'],
+            }
+        };
+
+        let count = 0;
+        this.state.questions.forEach(q => {
+            if (!q.tags) q.tags = { subject: [], system: [], major: [], minor: [] };
+            const text = `${q.title || ''} ${q.text || ''} ${q.explanation || ''}`.toLowerCase();
+            let changed = false;
+            Object.entries(KEYWORD_MAP).forEach(([dim, map]) => {
+                Object.entries(map).forEach(([tag, kws]) => {
+                    if (kws.some(kw => text.includes(kw))) {
+                        if (!(q.tags[dim] || []).includes(tag)) {
+                            if (!q.tags[dim]) q.tags[dim] = [];
+                            q.tags[dim].push(tag);
+                            changed = true;
+                        }
+                    }
+                });
+            });
+            if (changed) count++;
+        });
+
+        this.saveData();
+        // Rebuild chip counts
+        this.initCreateTestDashboard();
+
+        const btn = document.getElementById('ctAutoTagBtn');
+        if (btn) {
+            btn.textContent = `Tagged ${count} questions`;
+            btn.style.color = 'var(--accent)';
+            setTimeout(() => {
+                btn.innerHTML = `Auto-Tag All`;
+                btn.style.color = '';
+            }, 3000);
+        }
+    },
 
     // ── Tag Dropdown System ───────────────────────────────────────────────────
     initTagDropdowns() {
         // Defer to ensure DOM is fully rendered before querying elements
         setTimeout(() => {
-            const TAG_OPTIONS = {
-                subject: ['Pathology', 'Pharmacology', 'Anatomy', 'Physiology', 'Microbiology', 'Immunology', 'Biochemistry', 'Genetics', 'Epidemiology', 'Biostatistics', 'Embryology'],
-                system:  ['Cardiology', 'Pulmonology', 'Nephrology', 'Gastroenterology', 'Neurology', 'Hematology', 'Endocrinology', 'Rheumatology', 'Infectious Disease', 'Dermatology', 'Musculoskeletal', 'Reproductive', 'Renal'],
-                major:   ['Internal Medicine', 'Surgery', 'Pediatrics', 'OB/GYN', 'Psychiatry', 'Family Medicine', 'Emergency Medicine', 'Neurology', 'Dermatology', 'Ophthalmology'],
-                minor:   ['Orthopedics', 'Anesthesia', 'Neurosurgery', 'Neurology (Medicine)', 'Cardiothoracic Surgery', 'Vascular Surgery', 'Urology', 'ENT', 'Plastic Surgery', 'Intensive Care', 'Radiology', 'Palliative Care', 'Geriatrics'],
-            };
+            const TAG_OPTIONS = this.CT_TAG_OPTIONS;
 
             const configs = [
                 { key: 'subject', btnId: 'tagBtnSubject', badgeId: 'tagBadgeSubject', stateKey: 'selectedTagSubjects' },
@@ -1038,6 +1397,25 @@ const QuestionBase = {
                 Object.values(menuMap).forEach(m => m.classList.add('hidden'));
             });
         }, 0);
+    },
+
+    clearSessionTags() {
+        // Reset state
+        this.state.selectedTagSubjects = [];
+        this.state.selectedTagSystems  = [];
+        this.state.selectedTagMajors   = [];
+        this.state.selectedTagMinors   = [];
+
+        // Update UI
+        ['Subject', 'System', 'Major', 'Minor'].forEach(key => {
+            const badge = document.getElementById(`tagBadge${key}`);
+            const btn   = document.getElementById(`tagBtn${key}`);
+            if (badge) badge.textContent = '';
+            if (btn) btn.classList.remove('has-selection');
+        });
+
+        // Uncheck all checkboxes in session tag menus
+        document.querySelectorAll('.tag-drop-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
     },
 
     async toggleSidebar() {
@@ -2294,6 +2672,9 @@ const QuestionBase = {
         this.state.sessionCreatorVisible = false;
         this.el.sessionCreator.classList.add("hidden");
         if (this.el.createSessionBtn) this.el.createSessionBtn.classList.remove('active');
+        
+        // Clean up tags
+        this.clearSessionTags();
 
         if (restoreTab) {
             const tab = this.state.lastActiveTab || 'main';
@@ -2499,6 +2880,18 @@ Question explanation:
             return;
         }
 
+        // Apply selected Tags to these questions
+        const sessionTags = {
+            subject: [...this.state.selectedTagSubjects],
+            system:  [...this.state.selectedTagSystems],
+            major:   [...this.state.selectedTagMajors],
+            minor:   [...this.state.selectedTagMinors]
+        };
+
+        questions.forEach(q => {
+            q.tags = { ...sessionTags };
+        });
+
         const hasCorrect = questions.every(q => q.options.some(o => o.isCorrect));
         if (!hasCorrect) {
             if (!confirm("Some questions do not have a correct answer marked (with *). Continue anyway?")) {
@@ -2585,7 +2978,8 @@ Question explanation:
             alert("Dungeon Mode is not loaded.");
         }
 
-        // Hide session creator
+        // Hide session creator and clear tags
+        this.clearSessionTags();
         this.closeSessionCreator();
 
         // Also expand the new folder in sidebar so user sees it when they return
