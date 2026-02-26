@@ -1075,7 +1075,7 @@ Generate a professional title for this study session.`;
     // ── Create Test Dashboard ─────────────────────────────────────────────────
 
     CT_TAG_OPTIONS: {
-        subject: ['Pathology', 'Pharmacology', 'Anatomy', 'Physiology', 'Microbiology', 'Immunology', 'Biochemistry', 'Genetics', 'Epidemiology', 'Biostatistics', 'Embryology'],
+        subject: ['Pathology', 'Pharmacology', 'Anatomy', 'Physiology', 'Microbiology', 'Immunology', 'Biochemistry', 'Genetics', 'Epidemiology', 'Biostatistics', 'Embryology', 'History taking', 'Physical examination'],
         system:  ['Cardiology', 'Pulmonology', 'Nephrology', 'Gastroenterology', 'Neurology', 'Hematology', 'Endocrinology', 'Rheumatology', 'Infectious Disease', 'Dermatology', 'Musculoskeletal', 'Reproductive', 'Renal'],
         major:   ['Internal Medicine', 'Surgery', 'Pediatrics', 'OB/GYN', 'Psychiatry', 'Family Medicine', 'Emergency Medicine'],
         minor:   ['Orthopedics', 'Anesthesia', 'Neurosurgery', 'Cardiothoracic Surgery', 'Vascular Surgery', 'Urology', 'ENT', 'Plastic Surgery', 'Intensive Care', 'Radiology', 'Palliative Care'],
@@ -1271,6 +1271,9 @@ Generate a professional title for this study session.`;
 
         // Auto-tag button
         document.getElementById('ctAutoTagBtn')?.addEventListener('click', () => this.autoTagAll());
+
+        // Refresh syncing button
+        document.getElementById('ctRefreshBtn')?.addEventListener('click', () => this.refreshCTData());
 
         // ID Search Input
         const idIn = document.getElementById('ctIdSearch');
@@ -1540,19 +1543,45 @@ Generate a professional title for this study session.`;
         }
     },
 
+    async refreshCTData() {
+        const btn = document.getElementById('ctRefreshBtn');
+        if (!btn) return;
+
+        const REFRESH_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span style="font-size:11px; font-weight:600; color:var(--muted); white-space:nowrap; display:inline-block; line-height:1;">Syncing...</span>`;
+
+        try {
+            // Force a re-render of everything in Create Test
+            this.initCreateTestDashboard();
+            this.renderCTPreview();
+            
+            // Visual feedback delay
+            await new Promise(r => setTimeout(r, 600));
+            
+            btn.innerHTML = REFRESH_ICON;
+            btn.disabled = false;
+        } catch (e) {
+            console.error("[Refresh] Sync error:", e);
+            btn.innerHTML = REFRESH_ICON;
+            btn.disabled = false;
+        }
+    },
+
     async autoTagAll() {
         const btn = document.getElementById('ctAutoTagBtn');
         const TAG_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
         const oldTitle = btn.title;
 
         // UI Feedback: Phase 1
-        btn.innerHTML = `<span style="font-size:11px; font-weight:600; white-space:nowrap; padding: 0 4px; color:var(--muted); line-height:1;">Phase 1: Checking...</span>`;
+        btn.innerHTML = `<span style="font-size:11px; font-weight:600; white-space:nowrap; padding: 0 4px; color:var(--muted); display:inline-block; line-height:1;">Phase 1: Checking...</span>`;
         btn.disabled = true;
 
         try {
             const questions = this.state.questions;
             if (questions.length === 0) {
-                btn.innerHTML = '<span style="font-size:11px; color:var(--muted);">No Qs...</span>';
+                btn.innerHTML = '<span style="font-size:11px; color:var(--muted); display:inline-block; line-height:1;">No Qs...</span>';
                 setTimeout(() => { btn.innerHTML = TAG_ICON; btn.disabled = false; }, 2000);
                 return;
             }
@@ -1567,7 +1596,7 @@ Generate a professional title for this study session.`;
             });
 
             if (untaggedQuestions.length === 0) {
-                btn.innerHTML = '<span style="font-size:13px; color:var(--muted);">All Tagged!</span>';
+                btn.innerHTML = '<span style="font-size:13px; color:var(--muted); display:inline-block; line-height:1;">All Tagged!</span>';
                 setTimeout(() => {
                     btn.innerHTML = TAG_ICON;
                     btn.disabled = false;
@@ -1585,7 +1614,7 @@ Generate a professional title for this study session.`;
             for (let i = 0; i < untaggedQuestions.length; i += batchSize) {
                 const batch = untaggedQuestions.slice(i, i + batchSize);
                 const progress = Math.round(((i + batch.length) / untaggedQuestions.length) * 100);
-                btn.innerHTML = `<span style="font-size:11px; font-weight:600; white-space:nowrap; padding: 0 4px; color:var(--muted); line-height:1;">Phase 2: ${progress}%...</span>`;
+                btn.innerHTML = `<span style="font-size:11px; font-weight:600; white-space:nowrap; padding: 0 4px; color:var(--muted); display:inline-block; line-height:1;">Phase 2: ${progress}%...</span>`;
 
                 const batchContext = batch.map(q => ({
                     id: q.id,
@@ -1638,7 +1667,7 @@ Rules:
             this.saveData();
             this.initCreateTestDashboard();
             
-            btn.innerHTML = `<span style="font-size:11px; color:var(--muted); font-weight:bold;">Tagged ${totalUpdated}...</span>`;
+            btn.innerHTML = `<span style="font-size:11px; color:var(--muted); font-weight:bold; display:inline-block; line-height:1;">Done!</span>`;
             setTimeout(() => {
                 btn.innerHTML = TAG_ICON;
                 btn.disabled = false;
@@ -1647,7 +1676,7 @@ Rules:
 
         } catch (error) {
             console.error("[AutoTag] AI Error:", error);
-            btn.innerHTML = '<span style="font-size:11px; color:var(--red);">Error...</span>';
+            btn.innerHTML = '<span style="font-size:11px; color:var(--red); display:flex; align-items:center; height:100%;">Error...</span>';
             setTimeout(() => { btn.innerHTML = TAG_ICON; btn.disabled = false; }, 3000);
         }
     },

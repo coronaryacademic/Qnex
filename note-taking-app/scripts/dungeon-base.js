@@ -1179,8 +1179,24 @@ export default class DungeonBase {
         const titleEl = document.getElementById('dungeonQuestionTitle');
         if (titleEl && q) {
             const numericId = (q.spId || '').replace('QNX-', '').replace('-', '');
-            const spIdHtml = numericId ? `<span class="dungeon-spid">${numericId}</span>` : '';
-            titleEl.innerHTML = `${spIdHtml}${q.title || 'Untitled Question'}`;
+            titleEl.innerHTML = `
+                <div class="dungeon-title-line">Title: ${q.title || 'Untitled Question'}</div>
+                <div class="dungeon-id-line" title="Click to copy ID">Question Id: <span class="id-value">${numericId || 'N/A'}</span></div>
+            `;
+
+            // Add Click to Copy functionality
+            const idLine = titleEl.querySelector('.dungeon-id-line');
+            if (idLine && numericId) {
+                idLine.onclick = () => {
+                    navigator.clipboard.writeText(numericId).then(() => {
+                        const originalColor = idLine.style.color;
+                        idLine.style.color = 'var(--success)';
+                        setTimeout(() => {
+                            idLine.style.color = originalColor;
+                        }, 1500);
+                    });
+                };
+            }
         }
     }
 
@@ -2683,6 +2699,18 @@ export default class DungeonBase {
                         optMatches.forEach(() => results.push({ qIndex, type: 'option', optIndex }));
                     }
                 });
+            }
+
+            // 4. Check Question ID (Accurate matching)
+            const spId = q.spId || "";
+            if (spId) {
+                const cleanId = spId.toLowerCase();
+                const numericId = cleanId.replace(/\D/g, "");
+                
+                // Match against full ID (QNX-1234) or just numeric (1234)
+                if (cleanId.includes(termLower) || numericId.includes(termLower)) {
+                    results.push({ qIndex, type: 'id' });
+                }
             }
         });
 

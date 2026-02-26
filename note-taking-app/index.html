@@ -827,9 +827,14 @@
                         <h2>Create Test</h2>
                         <p>Filter by tags, configure your session, and launch</p>
                       </div>
-                      <button id="ctAutoTagBtn" class="icon-btn" title="Auto-assign tags from question content" style="background:none; border:none; padding:8px; display:flex; align-items:center; justify-content:center; margin-top: 40px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                      </button>
+                      <div class="ct-header-actions" style="display:flex; gap:8px; align-items:center; margin-top: 40px;">
+                        <button id="ctRefreshBtn" class="icon-btn" title="Refresh syncing tags" style="background:none; border:none; padding:0; display:flex; align-items:center; justify-content:center; height:34px; min-width:34px;">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        </button>
+                        <button id="ctAutoTagBtn" class="icon-btn" title="Auto-assign tags from question content" style="background:none; border:none; padding:0; display:flex; align-items:center; justify-content:center; height:34px; min-width:34px;">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                        </button>
+                      </div>
                     </div>
 
                     <div class="ct-layout">
@@ -881,7 +886,7 @@
                           <div class="ct-section-title">
                             Load by IDs
                           </div>
-                          <p class="ct-section-hint">Enter numeric IDs separated by commas (the QNX- prefix is already provided)</p>
+                          <p class="ct-section-hint">Enter numeric IDs separated by commas <br/> (e.g. 121014, 121015, 121016, etc..)</p>
                           <div class="ct-id-search-wrap">
                             <span class="ct-id-prefix-fix">QNX-</span>
                             <input type="text" id="ctIdSearch" class="ct-id-input" placeholder="e.g. 121014" spellcheck="false">

@@ -250,15 +250,43 @@
 }
 
 .dungeon-question-title {
-  font-size: 1.1rem;
-  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  margin-right: 24px;
   color: var(--text);
+  overflow: hidden;
+}
+
+.dungeon-title-line {
+  font-size: 0.95rem;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-  margin-right: 24px;
-  /* Separate from buttons if docked left */
+  opacity: 0.9;
+}
+
+.dungeon-id-line {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: 0.8;
+  cursor: pointer;
+  display: inline-block;
+  transition: all 0.2s;
+}
+
+.dungeon-id-line:hover {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.dungeon-id-line:active {
+  transform: scale(0.95);
 }
 
 .dungeon-topbar-separator {
