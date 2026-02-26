@@ -956,8 +956,9 @@ Generate a professional title for this study session.`;
             method: 'POST',
             body: JSON.stringify(data)
         }).catch(err => console.warn('[QuestionBase] Server save failed:', err));
-
+        
         this.renderSidebar();
+        this.renderCTPreview();
     },
 
     open() {
@@ -1078,6 +1079,66 @@ Generate a professional title for this study session.`;
         system:  ['Cardiology', 'Pulmonology', 'Nephrology', 'Gastroenterology', 'Neurology', 'Hematology', 'Endocrinology', 'Rheumatology', 'Infectious Disease', 'Dermatology', 'Musculoskeletal', 'Reproductive', 'Renal'],
         major:   ['Internal Medicine', 'Surgery', 'Pediatrics', 'OB/GYN', 'Psychiatry', 'Family Medicine', 'Emergency Medicine'],
         minor:   ['Orthopedics', 'Anesthesia', 'Neurosurgery', 'Cardiothoracic Surgery', 'Vascular Surgery', 'Urology', 'ENT', 'Plastic Surgery', 'Intensive Care', 'Radiology', 'Palliative Care'],
+    },
+
+    // Helper to decode numeric IDs (e.g., 12541) into tags
+    _ctGetTagsFromNumericId(idStr) {
+        if (!idStr) return null;
+        // Clean ID: numbers only
+        const clean = idStr.replace(/\D/g, '');
+        if (clean.length < 1) return null;
+
+        const tags = { subject: [], system: [], major: [], minor: [] };
+        
+        // This is a loose parser for the concatenated format: Subject - System - Major - Minor - Random
+        // We assume each component is 1 or 2 digits based on the lengths of our arrays.
+        // Array lengths: Subject(11), System(11), Major(7), Minor(11)
+        
+        // Let's try to be smart about it:
+        // We know the exact lists, so we can check if a number matches.
+        // However, the user said "12541" for "1, 2, 5, 4, 1". 
+        // If they have >9 items, they might use two digits.
+        
+        let remaining = clean;
+        const categories = ['subject', 'system', 'major', 'minor'];
+        
+        for (const cat of categories) {
+            if (remaining.length === 0) break;
+            
+            // Check if first two digits form a valid ID for this category
+            const twoDigits = parseInt(remaining.substring(0, 2));
+            const oneDigit = parseInt(remaining.substring(0, 1));
+            
+            let id = -1;
+            let consumed = 0;
+            
+            if (twoDigits > 0 && twoDigits <= this.CT_TAG_OPTIONS[cat].length) {
+                // If it's 10+, it must be two digits
+                if (twoDigits >= 10) {
+                    id = twoDigits;
+                    consumed = 2;
+                } else {
+                    // It's < 10, e.g. "01" (if allowed) or just "1"
+                    // But user said "no zeros". So "1" is more likely.
+                    // If the string starts with "11", is it ID 11 or ID 1 and Next ID 1?
+                    // This is ambiguous. I'll prioritize 1-digit if the next digit is also valid for the next category.
+                    // Actually, let's keep it simple: 1 digit if < 10, unless it's the only option.
+                    id = oneDigit;
+                    consumed = 1;
+                }
+            } else if (oneDigit > 0 && oneDigit <= this.CT_TAG_OPTIONS[cat].length) {
+                id = oneDigit;
+                consumed = 1;
+            }
+            
+            if (id !== -1) {
+                const tagName = this.CT_TAG_OPTIONS[cat][id - 1];
+                if (tagName) tags[cat].push(tagName);
+                remaining = remaining.substring(consumed);
+            }
+        }
+        
+        return tags;
     },
 
     _ctSel: { subject: new Set(), system: new Set(), major: new Set(), minor: new Set() },
@@ -1275,8 +1336,13 @@ Generate a professional title for this study session.`;
             const hasAnyTag = Object.values(tags).flat().length > 0;
             if (!hasAnyTag) return false;
             if (noFilter) return true; // all tagged questions when no filter active
-            const ok = (sel, key) => sel.size === 0 || (tags[key] || []).some(t => sel.has(t));
-            return ok(subject,'subject') && ok(system,'system') && ok(major,'major') && ok(minor,'minor');
+            const ok = (sel, key) => {
+                if (sel.size === 0) return true;
+                const qTags = tags[key] || [];
+                // AND Logic: The question must contain EVERY tag selected in this category
+                return [...sel].every(selectedTag => qTags.includes(selectedTag));
+            };
+            return ok(subject, 'subject') && ok(system, 'system') && ok(major, 'major') && ok(minor, 'minor');
         });
     },
 
@@ -1476,7 +1542,7 @@ Generate a professional title for this study session.`;
 
     async autoTagAll() {
         const btn = document.getElementById('ctAutoTagBtn');
-        const oldHtml = btn.innerHTML;
+        const TAG_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
         const oldTitle = btn.title;
 
         // UI Feedback: Phase 1
@@ -1487,7 +1553,7 @@ Generate a professional title for this study session.`;
             const questions = this.state.questions;
             if (questions.length === 0) {
                 btn.innerHTML = '<span style="font-size:11px; color:var(--muted);">No Qs...</span>';
-                setTimeout(() => { btn.innerHTML = oldHtml; btn.disabled = false; }, 2000);
+                setTimeout(() => { btn.innerHTML = TAG_ICON; btn.disabled = false; }, 2000);
                 return;
             }
 
@@ -1503,7 +1569,7 @@ Generate a professional title for this study session.`;
             if (untaggedQuestions.length === 0) {
                 btn.innerHTML = '<span style="font-size:13px; color:var(--muted);">All Tagged!</span>';
                 setTimeout(() => {
-                    btn.innerHTML = oldHtml;
+                    btn.innerHTML = TAG_ICON;
                     btn.disabled = false;
                 }, 2000);
                 return;
@@ -1574,7 +1640,7 @@ Rules:
             
             btn.innerHTML = `<span style="font-size:11px; color:var(--muted); font-weight:bold;">Tagged ${totalUpdated}...</span>`;
             setTimeout(() => {
-                btn.innerHTML = oldHtml;
+                btn.innerHTML = TAG_ICON;
                 btn.disabled = false;
                 btn.title = oldTitle;
             }, 3000);
@@ -1582,7 +1648,7 @@ Rules:
         } catch (error) {
             console.error("[AutoTag] AI Error:", error);
             btn.innerHTML = '<span style="font-size:11px; color:var(--red);">Error...</span>';
-            setTimeout(() => { btn.innerHTML = oldHtml; btn.disabled = false; }, 3000);
+            setTimeout(() => { btn.innerHTML = TAG_ICON; btn.disabled = false; }, 3000);
         }
     },
 
@@ -2811,6 +2877,7 @@ Rules:
         // Permanent Backend Save
         this.saveData();
         this.renderSidebar();
+        this.renderCTPreview();
 
         // Optional: Visual feedback
         const saveBtn = document.getElementById('saveSessionBtn');
@@ -3052,17 +3119,15 @@ Question explanation:
                 options: [],
                 explanation: "",
                 starred: false,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                tags: { subject: [], system: [], major: [], minor: [] }
             };
 
-            // Parse Title (First line(s) until "Question context:" or end)
-            // But wait, the split removed "Question title:". So the start of chunk is the title.
-
-            // Regex to find parts
-            // This is loose parsing
+            // Regex for parts
             const contextIdx = chunk.indexOf("Question context:");
             const optionsIdx = chunk.indexOf("Question options:");
-            const explIdx = chunk.indexOf("Question explanation:");
+            const explIdx    = chunk.indexOf("Question explanation:");
+            const tagIdIdx   = chunk.indexOf("Question tag ID:");
 
             let titleEnd = chunk.length;
             if (contextIdx !== -1) titleEnd = Math.min(titleEnd, contextIdx);
@@ -3118,7 +3183,28 @@ Question explanation:
 
             // Explanation
             if (explIdx !== -1) {
-                q.explanation = chunk.substring(explIdx + "Question explanation:".length).trim();
+                let explEnd = chunk.length;
+                if (tagIdIdx !== -1) explEnd = Math.min(explEnd, tagIdIdx);
+                q.explanation = chunk.substring(explIdx + "Question explanation:".length, explEnd).trim();
+            }
+
+            // Tag ID (New Numeric System)
+            if (tagIdIdx !== -1) {
+                const tagIdStr = chunk.substring(tagIdIdx + "Question tag ID:".length).trim().split('\n')[0];
+                q.spId = "QNX-" + tagIdStr;
+                const derivedTags = this._ctGetTagsFromNumericId(tagIdStr);
+                if (derivedTags) {
+                    q.tags = derivedTags;
+                }
+            } else {
+                // FALLBACK: If AI skipped the ID (because tags were provided in prompt), 
+                // we apply the currently active UI tags to this question.
+                q.tags = {
+                    subject: [...this.state.selectedTagSubjects],
+                    system: [...this.state.selectedTagSystems],
+                    major: [...this.state.selectedTagMajors],
+                    minor: [...this.state.selectedTagMinors]
+                };
             }
 
             // Validation
@@ -3772,7 +3858,7 @@ Question explanation:`;
         this.el.aiPromptModal.style.display = 'flex';
     },
 
-    getSystemPrompt(learningData = null) {
+    getSystemPrompt(learningData = null, hasTags = false) {
         let statsPrompt = "";
         let examplesPrompt = "";
 
@@ -3816,15 +3902,17 @@ ${statsPrompt}
 
 CRITICAL REQUIREMENTS:
 1. The "Question context" field MUST end with a clear question (lead-in question). NEVER end it with a period.
-2. You MUST mark the correct answer with an asterisk (*) placed IMMEDIATELY BEFORE the option label (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK.
+2. YOU MUST MARK THE CORRECT ANSWER WITH AN ASTERISK (*) PLACED IMMEDIATELY BEFORE THE OPTION LABEL (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK. THIS IS MANDATORY FOR EVERY QUESTION.
+${hasTags ? "" : `3. You MUST provide a "Question tag ID" using the numeric taxonomy below.\n${this._ctGetNumericTaxonomyPrompt()}`}
 ${examplesPrompt}
 
 Formatting rules are strict:
 Use exactly these field labels: Question title, Question context, Question options, Question explanation.
 The "Question context" MUST contain the clinical vignette AND the lead-in question.
 Provide exactly four options labeled (A), (B), (C), (D).
-Mark ONLY ONE correct answer with an asterisk like *(B).
+MARK ONLY ONE CORRECT ANSWER WITH AN ASTERISK LIKE *(B). EVERY QUESTION MUST HAVE AN ASTERISK.
 Randomize which letter is correct.
+${hasTags ? "DO NOT include the 'Question tag ID' field as the user has already specified the tags." : "The final field MUST be 'Question tag ID' with the numeric code."}
 The explanation must justify why the correct option is correct and briefly explain why the others are wrong.
 No extra blank lines inside a question.
 Separate multiple questions with one blank line only.
@@ -3839,6 +3927,7 @@ Question options:
 (D) <option>
 Question explanation:
 <explanation>
+${hasTags ? "" : "Question tag ID:\n<numeric_id>"}
 
 Example of correct formatting (Use this as the fallback formatting guide):
 
@@ -3850,7 +3939,34 @@ Question options:
 *(C) Duodenal ulcer
 (D) GERD
 Question explanation:
-Duodenal ulcers often present with pain that improves with food, whereas gastric ulcers worsen with food. Ibuprofen (NSAID) use is a major risk factor. Option (A) presents with radiating back pain. Option (B) has RUQ pain. Option (D) has retrosternal burning.`;
+Duodenal ulcers often present with pain that improves with food, whereas gastric ulcers worsen with food. Ibuprofen (NSAID) use is a major risk factor. Option (A) presents with radiating back pain. Option (B) has RUQ pain. Option (D) has retrosternal burning.
+Question tag ID:
+14101
+`;
+    },
+
+    _ctGetNumericTaxonomyPrompt() {
+        const categories = [
+            { key: 'subject', label: 'Subject' },
+            { key: 'system',  label: 'System' },
+            { key: 'major',   label: 'Major' },
+            { key: 'minor',   label: 'Minor' }
+        ];
+
+        let text = "\nNUMERIC TAGGING SYSTEM (Question tag ID):\n";
+        text += "Generate a concatenated numeric ID following this order: SubjectID + SystemID + MajorID + MinorID + UniqueDigit.\n";
+        text += "If a category doesn't apply, skip its number. No separators, no zeros.\n\n";
+
+        categories.forEach(cat => {
+            text += `${cat.label} IDs:\n`;
+            this.CT_TAG_OPTIONS[cat.key].forEach((tag, idx) => {
+                text += `${idx + 1}:${tag}  `;
+                if ((idx + 1) % 4 === 0) text += "\n";
+            });
+            text += "\n\n";
+        });
+
+        return text;
     },
 
     showAiHint() {
@@ -3894,8 +4010,6 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
                 }
             } catch (e) { console.warn("Failed to fetch learning data, proceeding with defaults."); }
 
-            const systemPrompt = this.getSystemPrompt(learningData);
-
             // Build tag context from Subject / System / Major / Minor state
             const tagParts = [];
             if (this.state.selectedTagSubjects.length) tagParts.push(`Subject: ${this.state.selectedTagSubjects.join(', ')}`);
@@ -3905,6 +4019,9 @@ Duodenal ulcers often present with pain that improves with food, whereas gastric
             const tagsContext = tagParts.length > 0
                 ? `[TOPIC CONTEXT]\n${tagParts.join('\n')}\n\n`
                 : '';
+
+            const hasTags = tagParts.length > 0;
+            const systemPrompt = this.getSystemPrompt(learningData, hasTags);
 
             // Include uploaded media content if available
             let userPrompt = '';
