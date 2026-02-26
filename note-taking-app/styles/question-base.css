@@ -1837,8 +1837,6 @@ div[data-tab-content="recent-sessions"].active {
 }
 
 .session-row {
-  background: var(--panel);
-  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   display: flex;
@@ -2598,3 +2596,23 @@ body.theme-classic .tag-drop-item {
     border: 1px solid rgba(255,255,255,0.1);
 }
 
+.ct-id-status {
+  padding: 8px 4px 4px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 24px;
+  transition: all 0.2s ease;
+}
+
+.ct-id-valid {
+  color: #10b981; /* Emerald green */
+  font-weight: 600;
+}
+
+.ct-id-invalid {
+  color: #ef4444; /* Red */
+  font-weight: 600;
+}

@@ -26,6 +26,7 @@ const QuestionBase = {
         selectedTagSystems: [],
         selectedTagMajors: [],
         selectedTagMinors: [],
+        ctPreviewExpanded: false,
     },
 
     el: {
@@ -818,15 +819,20 @@ const QuestionBase = {
         // Auto-assign QNX Numeric IDs
         let migratedCount = 0;
         this.state.questions.forEach(q => {
-            // If missing OR still using old SP- format OR doesn't contain the numeric pattern
-            if (!q.spId || q.spId.startsWith('SP-')) {
+            // Migrate if: no ID, or old "SP-" format, or contains a dash "-" (transitioning to pure dashless)
+            const needsMigration = !q.spId || 
+                                 q.spId.startsWith("SP-") || 
+                                 (q.spId.startsWith("QNX-") && q.spId.includes("-", 4)); 
+            if (needsMigration) {
+                const oldId = q.spId;
                 q.spId = this.generateNumericId(q);
+                if (oldId) console.log(`[ID] Re-migrating ${oldId} -> ${q.spId} (dashless)`);
                 migratedCount++;
             }
         });
 
         if (migratedCount > 0) {
-            console.log(`[QuestionBase] Migrated ${migratedCount} questions to Numeric QNX IDs.`);
+            console.log(`[QuestionBase] Migrated ${migratedCount} questions to Dashless Numeric QNX IDs.`);
             this.saveData();
         }
 
@@ -850,12 +856,69 @@ const QuestionBase = {
         const maj = getIdx('major',   (tags.major   || [])[0]);
         const min = getIdx('minor',   (tags.minor   || [])[0]);
 
-        // Random portion (4-digit number to ensure uniqueness within a category set)
+        // salt is always a 4-digit number
         const salt = Math.floor(1000 + Math.random() * 9000);
         
-        // Final internal format: QNX-12541-4512
-        // If some are empty, they just skip (e.g., QNX-14-1234)
-        return `QNX-${sub}${sys}${maj}${min}-${salt}`;
+        const finalId = `QNX-${sub}${sys}${maj}${min}${salt}`;
+        // Debug log to help demystify the numeric structure for the user
+        console.log(`[ID Detail] ${finalId} Breakdown: Subj(${sub || 'none'}), Sys(${sys || 'none'}), Maj(${maj || 'none'}), Min(${min || 'none'}), Salt(${salt})`);
+        return finalId;
+    },
+
+    async generateAISessionTitle(questions) {
+        if (!questions || questions.length === 0) return null;
+
+        try {
+            // Aggregate unique tags and titles for context
+            const subjects = new Set();
+            const systems = new Set();
+            const majors = new Set();
+            const sampleTitles = [];
+
+            questions.slice(0, 10).forEach(q => {
+                if (q.tags?.subject) q.tags.subject.forEach(s => subjects.add(s));
+                if (q.tags?.system) q.tags.system.forEach(s => systems.add(s));
+                if (q.tags?.major) q.tags.major.forEach(m => majors.add(m));
+                if (q.title) sampleTitles.push(q.title);
+            });
+
+            const context = {
+                subjects: Array.from(subjects),
+                systems: Array.from(systems),
+                majors: Array.from(majors),
+                sampleTitles: sampleTitles.slice(0, 5)
+            };
+
+            const systemPrompt = "You are a medical education assistant. Your task is to generate a short, professional, and descriptive title (3-5 words) for a set of study questions based on the provided technical context (subjects, systems, and question titles). Do NOT use generic words like 'Session' or 'Quiz'. Just provide the title text.";
+            const userPrompt = `Context details:
+Subjects: ${context.subjects.join(', ') || 'N/A'}
+Systems: ${context.systems.join(', ') || 'N/A'}
+Major Categories: ${context.majors.join(', ') || 'N/A'}
+Sample Question Titles: ${context.sampleTitles.join('; ')}
+
+Generate a professional title for this study session.`;
+
+            const data = await window.fileSystemService.makeRequest('/ai/chat', {
+                method: 'POST',
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    max_tokens: 50
+                })
+            });
+
+            if (data?.choices?.[0]?.message?.content) {
+                let title = data.choices[0].message.content.trim();
+                // Strip quotes if AI included them
+                title = title.replace(/^["']|["']$/g, '');
+                return title;
+            }
+        } catch (error) {
+            console.error("[QuestionBase] AI Session Title generation failed:", error);
+        }
+        return null;
     },
 
 
@@ -1117,6 +1180,7 @@ const QuestionBase = {
             document.querySelectorAll('.ct-cat-badge').forEach(b => b.textContent = '');
             document.querySelectorAll('.ct-cat-btn').forEach(b => b.classList.remove('ct-cat-active'));
             this._ctUpdateClearBtn();
+            this.state.ctPreviewExpanded = false;
             this.renderCTPreview();
         });
 
@@ -1174,6 +1238,16 @@ const QuestionBase = {
         this.renderCTPreview();
     },
 
+    updateCreateTestSelection(key, tag, isAdded) {
+        if (isAdded) this._ctSel[key].add(tag);
+        else this._ctSel[key].delete(tag);
+        
+        // Reset expanded state when filters change
+        this.state.ctPreviewExpanded = false;
+
+        this.renderCTPreview();
+    },
+
     _ctUpdateClearBtn() {
         const anyActive = Object.values(this._ctSel).some(s => s.size > 0);
         const btn = document.getElementById('ctClearTags');
@@ -1187,11 +1261,15 @@ const QuestionBase = {
         const idInput = document.getElementById('ctIdSearch');
         const idQuery = idInput ? idInput.value.trim().toUpperCase() : '';
         if (idQuery) {
-            // Internal search still uses the QNX- prefix
-            const normalizedQuery = idQuery.startsWith('QNX-') ? idQuery : `QNX-${idQuery}`;
+            // Support multiple IDs (union of results)
+            const queryTerms = idQuery.split(/[\s,]+/)
+                .filter(term => term.trim().length > 0)
+                .map(term => term.replace('QNX-', '').replace(/-/g, ''));
+
             return this.state.questions.filter(q => {
-                const qId = (q.spId || '').toUpperCase();
-                return qId.includes(idQuery) || qId.includes(normalizedQuery);
+                const qNumericPart = (q.spId || '').replace('QNX-', '').replace(/-/g, '').toUpperCase();
+                // Return true if the question ID starts with ANY of the query terms (prefix matching)
+                return queryTerms.some(term => qNumericPart.startsWith(term));
             });
         }
 
@@ -1225,6 +1303,49 @@ const QuestionBase = {
         if (elSelected) elSelected.textContent = desired;
         if (elHint)     elHint.textContent     = `${desired} of ${filtered.length} available`;
 
+        // Update ID Status Indicator
+        const statusEl = document.getElementById('ctIdStatus');
+        const idIn = document.getElementById('ctIdSearch');
+        if (statusEl) {
+            statusEl.innerHTML = '';
+            const idQuery = idIn ? idIn.value.trim() : '';
+            if (idQuery) {
+                const terms = idQuery.split(/[\s,]+/).filter(t => t.trim().length > 0);
+                const allQIds = this.state.questions.map(q => (q.spId || '').replace('QNX-', '').replace(/-/g, '').toUpperCase());
+                
+                const validTerms = [];
+                const invalidTerms = [];
+
+                terms.forEach(term => {
+                    const clean = term.replace('QNX-', '').replace(/-/g, '').toUpperCase();
+                    if (allQIds.includes(clean)) {
+                        validTerms.push(term);
+                    } else {
+                        invalidTerms.push(term);
+                    }
+                });
+
+                if (validTerms.length > 0) {
+                    const span = document.createElement('span');
+                    span.className = 'ct-id-valid';
+                    span.textContent = `${validTerms.length} valid ID${validTerms.length > 1 ? 's' : ''} found`;
+                    statusEl.appendChild(span);
+                }
+                
+                if (invalidTerms.length > 0) {
+                    const span = document.createElement('span');
+                    span.className = 'ct-id-invalid';
+                    span.textContent = `${invalidTerms.length} invalid ID${invalidTerms.length > 1 ? 's' : ''} found: ${invalidTerms.join(', ')}`;
+                    statusEl.appendChild(span);
+                } else if (validTerms.length === 0 && terms.length > 0) {
+                    const span = document.createElement('span');
+                    span.className = 'ct-id-invalid';
+                    span.textContent = `0 valid ID found`;
+                    statusEl.appendChild(span);
+                }
+            }
+        }
+
         // Preview list
         const list = document.getElementById('ctPreviewList');
         if (!list) return;
@@ -1239,14 +1360,17 @@ const QuestionBase = {
                 : `<div>No questions match your tag selection</div>`;
             list.appendChild(empty);
         } else {
-            const preview = filtered.slice(0, desired);
+            // Respect expansion state
+            const showLimit = this.state.ctPreviewExpanded ? filtered.length : desired;
+            const preview = filtered.slice(0, showLimit);
+
             preview.forEach(q => {
                 const item = document.createElement('div');
                 item.className = 'ct-preview-item';
                 // Pick a display tag
                 const allTags = [...(q.tags?.system || []), ...(q.tags?.subject || [])];
                 const tagLabel = allTags[0] || '';
-                const displayId = (q.spId || '').replace('QNX-', '').replace('-', '');
+                const displayId = (q.spId || '').replace('QNX-', '').replace(/-/g, '');
                 item.innerHTML = `
                     <div class="ct-preview-title-row">
                         <span class="ct-preview-spid">${displayId || '????'}</span>
@@ -1256,10 +1380,23 @@ const QuestionBase = {
                 `;
                 list.appendChild(item);
             });
+
             if (filtered.length > desired) {
                 const more = document.createElement('div');
                 more.className = 'ct-preview-more';
-                more.textContent = `+ ${filtered.length - desired} more not shown`;
+                if (!this.state.ctPreviewExpanded) {
+                    more.textContent = `+ ${filtered.length - desired} more not shown — Click to expand`;
+                } else {
+                    more.textContent = `Show less`;
+                    more.classList.add('expanded');
+                }
+                
+                more.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.state.ctPreviewExpanded = !this.state.ctPreviewExpanded;
+                    this.renderCTPreview();
+                });
+
                 list.appendChild(more);
             }
         }
@@ -2966,7 +3103,7 @@ Question explanation:
 
         questions.forEach(q => {
             q.tags = { ...sessionTags };
-            if (!q.spId) q.spId = this.generateSpId();
+            if (!q.spId) q.spId = this.generateNumericId(q);
         });
 
         const hasCorrect = questions.every(q => q.options.some(o => o.isCorrect));
@@ -3017,7 +3154,17 @@ Question explanation:
 
         // New Session Creation
         // Create a new folder for this session
-        const folderName = "Session " + new Date().toLocaleString();
+        let folderName = "Session " + new Date().toLocaleString();
+        
+        // Attempt AI naming
+        try {
+            const aiTitle = await this.generateAISessionTitle(questions);
+            if (aiTitle) {
+                folderName = aiTitle;
+            }
+        } catch (e) {
+            console.warn("[QuestionBase] AI Title failed, staying with default date name.");
+        }
 
         // logic from createNewFolder but returning the object
         const newFolder = {
