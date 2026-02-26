@@ -1196,14 +1196,9 @@ Generate a professional title for this study session.`;
         });
 
         // Range ↔ number input sync
-        const range = document.getElementById('ctQcountRange');
         const numIn = document.getElementById('ctQcount');
-        if (range && numIn) {
-            range.addEventListener('input', () => { numIn.value = range.value; this.renderCTPreview(); });
+        if (numIn) {
             numIn.addEventListener('input', () => {
-                const v = Math.max(1, Math.min(200, parseInt(numIn.value) || 1));
-                numIn.value = v;
-                range.value = Math.min(v, 50);
                 this.renderCTPreview();
             });
         }
@@ -1291,7 +1286,18 @@ Generate a professional title for this study session.`;
 
         // Desired count
         const numIn = document.getElementById('ctQcount');
-        const desired = Math.min(filtered.length, Math.max(1, parseInt(numIn?.value) || 10));
+        const maxEl = document.getElementById('ctMaxTotal');
+        
+        let val = parseInt(numIn?.value) || 10;
+        const maxQuestions = Math.max(1, filtered.length);
+        
+        if (val > maxQuestions) val = maxQuestions;
+        if (val < 1) val = 1;
+
+        if (numIn) numIn.value = val;
+        if (maxEl) maxEl.textContent = maxQuestions;
+        
+        const desired = val;
 
         // Stats
         const elTotal    = document.getElementById('ctMatchTotal');
