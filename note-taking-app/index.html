@@ -745,22 +745,23 @@
                         </div>
                       </div>
 
-                      <!-- Answer Changes -->
-                      <div class="stats-group">
-                        <div class="stats-group-title">Answer Changes</div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Correct to Incorrect</span>
-                          <span class="stats-row-badge" id="stat-c2i">0</span>
-                        </div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Incorrect to Correct</span>
-                          <span class="stats-row-badge" id="stat-i2c">0</span>
-                        </div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Incorrect to Incorrect</span>
-                          <span class="stats-row-badge" id="stat-i2i">0</span>
+                      <div class="stats-graph-container">
+                        <div class="graph-main">
+                          <div class="graph-bar-wrap">
+                            <div class="graph-bar green" id="barCorrect" style="height: 0%;">
+                              <span class="bar-value" id="barValueCorrect">0</span>
+                            </div>
+                            <span class="bar-label">Correct</span>
+                          </div>
+                          <div class="graph-bar-wrap">
+                            <div class="graph-bar red" id="barIncorrect" style="height: 0%;">
+                              <span class="bar-value" id="barValueIncorrect">0</span>
+                            </div>
+                            <span class="bar-label">Incorrect</span>
+                          </div>
                         </div>
                       </div>
+
                     </div>
 
                     <div class="stats-divider"></div>

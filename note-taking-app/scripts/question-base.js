@@ -196,15 +196,17 @@ const QuestionBase = {
         this.el.statTotalTime = document.getElementById("stat-total-time");
         this.el.syncStatsBtn = document.getElementById("syncStatsBtn");
         
-        // New Dashboard Elements
-        this.el.donutCorrect = document.getElementById("donutCorrect");
-        this.el.donutUsed = document.getElementById("donutUsed");
+        this.el.statUnusedQ = document.getElementById("stat-unused-q");
         this.el.statUsedPct = document.getElementById("stat-used-pct");
         this.el.statUsedQ = document.getElementById("stat-used-q");
-        this.el.statUnusedQ = document.getElementById("stat-unused-q");
-        this.el.statC2I = document.getElementById("stat-c2i");
-        this.el.statI2C = document.getElementById("stat-i2c");
-        this.el.statI2I = document.getElementById("stat-i2i");
+        this.el.donutCorrect = document.getElementById("donutCorrect");
+        this.el.donutUsed = document.getElementById("donutUsed");
+        
+        // Column Graph Elements
+        this.el.barCorrect = document.getElementById("barCorrect");
+        this.el.barIncorrect = document.getElementById("barIncorrect");
+        this.el.barValueCorrect = document.getElementById("barValueCorrect");
+        this.el.barValueIncorrect = document.getElementById("barValueIncorrect");
 
         // Statistics Elements
         this.el.statAvgTime = document.getElementById("stat-avg-time");
@@ -1512,7 +1514,7 @@ Generate a professional title for this study session.`;
             }
         }
         const questions = pool.slice(0, desired).map(q => ({
-            ...q, submittedAnswer: undefined, revealed: false, crossedOutOptionIds: [],
+            ...q, submittedAnswer: q.submittedAnswer, revealed: q.revealed || false, crossedOutOptionIds: q.crossedOutOptionIds || [],
             _tutorMode: tutor, _timerSecs: timerSecs
         }));
 
@@ -3289,12 +3291,29 @@ Question explanation:
                 // For now keep title or update date?
                 // Let's keep it simple: clear old questions from this folder, add new ones
                 const folderId = this.state.editingFolderId;
+                const oldQuestions = this.state.questions.filter(q => q.folderId === folderId);
+
+                // Add new questions
+                questions.forEach(q => {
+                    q.folderId = folderId;
+                    // Merge Logic: Find matching question by title and text to preserve state
+                    const match = oldQuestions.find(oldQ => 
+                        (oldQ.title === q.title && oldQ.text === q.text)
+                    );
+                    if (match) {
+                        q.id = match.id;
+                        q.submittedAnswer = match.submittedAnswer;
+                        q.revealed = match.revealed;
+                        q.crossedOutOptionIds = match.crossedOutOptionIds;
+                        q.timerElapsed = match.timerElapsed;
+                        q.starred = match.starred;
+                        q.createdAt = match.createdAt;
+                        if (match.spId) q.spId = match.spId;
+                    }
+                });
 
                 // Remove old questions linked to this folder
                 this.state.questions = this.state.questions.filter(q => q.folderId !== folderId);
-
-                // Add new questions
-                questions.forEach(q => q.folderId = folderId);
                 this.state.questions.push(...questions);
 
                 // Update Recent Session Entry if exists
@@ -3498,9 +3517,9 @@ Question explanation:
             const stats = await window.fileSystemService.makeRequest('/stats');
             if (stats) {
                 // --- Your Score ---
-                const correct = stats.correct || 0;
-                const incorrect = stats.incorrect || 0;
-                const omitted = stats.omitted || 0;
+                const correct = Number(stats.correct) || 0;
+                const incorrect = Number(stats.incorrect) || 0;
+                const omitted = Number(stats.omitted) || 0;
                 const totalAttempted = correct + incorrect;
                 const accuracy = totalAttempted > 0 ? Math.min(100, Math.round((correct / totalAttempted) * 100)) : 0;
 
@@ -3513,6 +3532,20 @@ Question explanation:
                 if (this.el.donutCorrect) {
                   const circumference = 314; // 2 * PI * 50
                   this.el.donutCorrect.style.strokeDasharray = `${(accuracy / 100) * circumference} ${circumference}`;
+                }
+
+                // Column Graph: Correct vs Incorrect
+                if (this.el.barCorrect && this.el.barIncorrect) {
+                  const total = Math.max(correct, incorrect, 1); // Avoid div by zero
+                  const correctPct = (correct / total) * 100;
+                  const incorrectPct = (incorrect / total) * 100;
+                  
+                  // Limit the actual height to 90% to leave room for the top label
+                  this.el.barCorrect.style.height = `${Math.max(4, correctPct * 0.9)}%`;
+                  this.el.barIncorrect.style.height = `${Math.max(4, incorrectPct * 0.9)}%`;
+                  
+                  if (this.el.barValueCorrect) this.el.barValueCorrect.textContent = correct;
+                  if (this.el.barValueIncorrect) this.el.barValueIncorrect.textContent = incorrect;
                 }
 
                 // --- QBank Usage ---
@@ -3543,9 +3576,6 @@ Question explanation:
                 if (this.el.statSuspended) this.el.statSuspended.textContent = "0";
 
                 // --- Answer Changes ---
-                if (this.el.statC2I) this.el.statC2I.textContent = stats.changesC2I || "0";
-                if (this.el.statI2C) this.el.statI2C.textContent = stats.changesI2C || "0";
-                if (this.el.statI2I) this.el.statI2I.textContent = stats.changesI2I || "0";
 
                 // --- Performance ---
                 const totalTime = stats.totalTime || 0;

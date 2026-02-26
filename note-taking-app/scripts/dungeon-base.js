@@ -2344,15 +2344,20 @@ export default class DungeonBase {
             }
             q._searchCached = true;
         });
-        this.state.currentIndex = 0;
         this.state.answers.clear();
 
         // Load persisted answers from question objects
-        this.state.questions.forEach(q => {
+        let firstUnansweredIndex = -1;
+        this.state.questions.forEach((q, idx) => {
             if (q.submittedAnswer) {
                 this.state.answers.set(q.id, q.submittedAnswer);
+            } else if (firstUnansweredIndex === -1) {
+                firstUnansweredIndex = idx;
             }
         });
+
+        // Auto-jump to first unanswered question, or stay at 0 if none found (all answered)
+        this.state.currentIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0;
 
         this.state.selectedOption = null;
 
