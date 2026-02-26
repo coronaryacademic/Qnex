@@ -815,8 +815,49 @@ const QuestionBase = {
             this.state.folders = [];
         }
 
+        // Auto-assign QNX Numeric IDs
+        let migratedCount = 0;
+        this.state.questions.forEach(q => {
+            // If missing OR still using old SP- format OR doesn't contain the numeric pattern
+            if (!q.spId || q.spId.startsWith('SP-')) {
+                q.spId = this.generateNumericId(q);
+                migratedCount++;
+            }
+        });
+
+        if (migratedCount > 0) {
+            console.log(`[QuestionBase] Migrated ${migratedCount} questions to Numeric QNX IDs.`);
+            this.saveData();
+        }
+
         this.renderSidebar();
     },
+
+    generateNumericId(q) {
+        const opts = this.CT_TAG_OPTIONS || {};
+        const tags = q.tags || {};
+        
+        // Helper to get index + 1
+        const getIdx = (cat, val) => {
+            if (!val || !opts[cat]) return "";
+            const idx = opts[cat].indexOf(val);
+            return idx !== -1 ? (idx + 1).toString() : "";
+        };
+
+        // Get first tag for each category (using user "true number" logic)
+        const sub = getIdx('subject', (tags.subject || [])[0]);
+        const sys = getIdx('system',  (tags.system  || [])[0]);
+        const maj = getIdx('major',   (tags.major   || [])[0]);
+        const min = getIdx('minor',   (tags.minor   || [])[0]);
+
+        // Random portion (4-digit number to ensure uniqueness within a category set)
+        const salt = Math.floor(1000 + Math.random() * 9000);
+        
+        // Final internal format: QNX-12541-4512
+        // If some are empty, they just skip (e.g., QNX-14-1234)
+        return `QNX-${sub}${sys}${maj}${min}-${salt}`;
+    },
+
 
     loadQuestionsLegacy() {
         const stored = localStorage.getItem("app-questions");
@@ -1111,6 +1152,24 @@ const QuestionBase = {
         // Auto-tag button
         document.getElementById('ctAutoTagBtn')?.addEventListener('click', () => this.autoTagAll());
 
+        // ID Search Input
+        const idIn = document.getElementById('ctIdSearch');
+        const idClear = document.getElementById('ctIdSearchClear');
+        if (idIn) {
+            idIn.addEventListener('input', () => {
+                const val = idIn.value.trim();
+                if (idClear) idClear.style.display = val ? 'flex' : 'none';
+                this.renderCTPreview();
+            });
+        }
+        if (idClear) {
+            idClear.addEventListener('click', () => {
+                idIn.value = '';
+                idClear.style.display = 'none';
+                this.renderCTPreview();
+            });
+        }
+
         // Initial render
         this.renderCTPreview();
     },
@@ -1123,6 +1182,19 @@ const QuestionBase = {
 
     _ctGetFiltered() {
         const { subject, system, major, minor } = this._ctSel;
+        
+        // ID-based selection check
+        const idInput = document.getElementById('ctIdSearch');
+        const idQuery = idInput ? idInput.value.trim().toUpperCase() : '';
+        if (idQuery) {
+            // Internal search still uses the QNX- prefix
+            const normalizedQuery = idQuery.startsWith('QNX-') ? idQuery : `QNX-${idQuery}`;
+            return this.state.questions.filter(q => {
+                const qId = (q.spId || '').toUpperCase();
+                return qId.includes(idQuery) || qId.includes(normalizedQuery);
+            });
+        }
+
         const noFilter = subject.size === 0 && system.size === 0 && major.size === 0 && minor.size === 0;
         return this.state.questions.filter(q => {
             const tags = q.tags || {};
@@ -1174,8 +1246,12 @@ const QuestionBase = {
                 // Pick a display tag
                 const allTags = [...(q.tags?.system || []), ...(q.tags?.subject || [])];
                 const tagLabel = allTags[0] || '';
+                const displayId = (q.spId || '').replace('QNX-', '').replace('-', '');
                 item.innerHTML = `
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.title || 'Untitled'}</span>
+                    <div class="ct-preview-title-row">
+                        <span class="ct-preview-spid">${displayId || '????'}</span>
+                        <span class="ct-preview-title">${q.title || 'Untitled'}</span>
+                    </div>
                     ${tagLabel ? `<span class="ct-item-tag">${tagLabel}</span>` : ''}
                 `;
                 list.appendChild(item);
@@ -2890,6 +2966,7 @@ Question explanation:
 
         questions.forEach(q => {
             q.tags = { ...sessionTags };
+            if (!q.spId) q.spId = this.generateSpId();
         });
 
         const hasCorrect = questions.every(q => q.options.some(o => o.isCorrect));

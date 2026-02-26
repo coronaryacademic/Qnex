@@ -1178,7 +1178,9 @@ export default class DungeonBase {
         const q = this.state.questions[this.state.currentIndex];
         const titleEl = document.getElementById('dungeonQuestionTitle');
         if (titleEl && q) {
-            titleEl.textContent = q.title || 'Untitled Question';
+            const numericId = (q.spId || '').replace('QNX-', '').replace('-', '');
+            const spIdHtml = numericId ? `<span class="dungeon-spid">${numericId}</span>` : '';
+            titleEl.innerHTML = `${spIdHtml}${q.title || 'Untitled Question'}`;
         }
     }
 
