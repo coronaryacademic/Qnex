@@ -1468,69 +1468,115 @@ Generate a professional title for this study session.`;
         }
     },
 
-    autoTagAll() {
-        const KEYWORD_MAP = {
-            subject: {
-                'Cardiology':   ['heart','cardiac','myocardial','coronary','arrhythmia','ecg'],
-                'Pharmacology': ['drug','medication','dose','receptor','agonist','antibiotic','analgesic'],
-                'Pathology':    ['tumor','cancer','carcinoma','biopsy','necrosis','infarct','inflammation'],
-                'Anatomy':      ['nerve','artery','vein','muscle','bone','ligament','anatomical'],
-                'Physiology':   ['homeostasis','osmol','reflex','metabolism'],
-                'Microbiology': ['bacteria','viral','fungal','parasite','gram','infection'],
-                'Immunology':   ['antibody','antigen','immune','allergy','autoimmune'],
-                'Biochemistry': ['enzyme','substrate','atp','glucose','amino acid','dna','rna'],
-            },
-            system: {
-                'Cardiology':        ['heart','cardiac','stemi','heart failure','palpitation','chest pain','hypertension'],
-                'Pulmonology':       ['lung','asthma','copd','pneumonia','dyspnea','pulmonary'],
-                'Nephrology':        ['kidney','renal','creatinine','dialysis','proteinuria'],
-                'Gastroenterology':  ['stomach','intestin','liver','hepat','pancrea','gallbladder','diarrhea'],
-                'Neurology':         ['brain','stroke','seizure','headache','dementia','spinal'],
-                'Hematology':        ['anemia','platelet','coagulation','leukemia','hemoglobin'],
-                'Endocrinology':     ['diabetes','thyroid','insulin','cortisol','hormone'],
-                'Infectious Disease':['infection','sepsis','fever','hiv','tuberculosis'],
-                'Dermatology':       ['skin','rash','eczema','psoriasis','melanoma'],
-            },
-            major: {
-                'Internal Medicine': ['internal','chronic','management','outpatient'],
-                'Surgery':           ['surgery','surgical','operative','incision'],
-                'Pediatrics':        ['child','infant','neonat','pediatric'],
-                'Emergency Medicine':['emergency','trauma','acute','resuscitat','cpr'],
-                'OB/GYN':            ['obstet','pregnancy','fetus','uterus','menstrual'],
-            }
-        };
-
-        let count = 0;
-        this.state.questions.forEach(q => {
-            if (!q.tags) q.tags = { subject: [], system: [], major: [], minor: [] };
-            const text = `${q.title || ''} ${q.text || ''} ${q.explanation || ''}`.toLowerCase();
-            let changed = false;
-            Object.entries(KEYWORD_MAP).forEach(([dim, map]) => {
-                Object.entries(map).forEach(([tag, kws]) => {
-                    if (kws.some(kw => text.includes(kw))) {
-                        if (!(q.tags[dim] || []).includes(tag)) {
-                            if (!q.tags[dim]) q.tags[dim] = [];
-                            q.tags[dim].push(tag);
-                            changed = true;
-                        }
-                    }
-                });
-            });
-            if (changed) count++;
-        });
-
-        this.saveData();
-        // Rebuild chip counts
-        this.initCreateTestDashboard();
-
+    async autoTagAll() {
         const btn = document.getElementById('ctAutoTagBtn');
-        if (btn) {
-            btn.textContent = `Tagged ${count} questions`;
-            btn.style.color = 'var(--accent)';
+        const oldHtml = btn.innerHTML;
+        const oldTitle = btn.title;
+
+        // UI Feedback: Phase 1
+        btn.innerHTML = `<span style="font-size:11px; font-weight:600; white-space:nowrap; padding: 0 4px; color:var(--muted); line-height:1;">Phase 1: Checking...</span>`;
+        btn.disabled = true;
+
+        try {
+            const questions = this.state.questions;
+            if (questions.length === 0) {
+                btn.innerHTML = '<span style="font-size:11px; color:var(--muted);">No Qs...</span>';
+                setTimeout(() => { btn.innerHTML = oldHtml; btn.disabled = false; }, 2000);
+                return;
+            }
+
+            // Phase 1: Local Filter for untagged questions
+            const untaggedQuestions = questions.filter(q => {
+                const tags = q.tags || {};
+                const hasSubject = Array.isArray(tags.subject) && tags.subject.length > 0;
+                const hasSystem = Array.isArray(tags.system) && tags.system.length > 0;
+                const hasMajor = Array.isArray(tags.major) && tags.major.length > 0;
+                return !hasSubject && !hasSystem && !hasMajor;
+            });
+
+            if (untaggedQuestions.length === 0) {
+                btn.innerHTML = '<span style="font-size:13px; color:var(--muted);">All Tagged!</span>';
+                setTimeout(() => {
+                    btn.innerHTML = oldHtml;
+                    btn.disabled = false;
+                }, 2000);
+                return;
+            }
+
+            // Phase 2: AI Classification for untagged only
+            const model = localStorage.getItem('notesApp_aiModel') || "arcee-ai/trinity-large-preview:free";
+            const tagOptions = JSON.stringify(this.CT_TAG_OPTIONS);
+            
+            const batchSize = 5;
+            let totalUpdated = 0;
+
+            for (let i = 0; i < untaggedQuestions.length; i += batchSize) {
+                const batch = untaggedQuestions.slice(i, i + batchSize);
+                const progress = Math.round(((i + batch.length) / untaggedQuestions.length) * 100);
+                btn.innerHTML = `<span style="font-size:11px; font-weight:600; white-space:nowrap; padding: 0 4px; color:var(--muted); line-height:1;">Phase 2: ${progress}%...</span>`;
+
+                const batchContext = batch.map(q => ({
+                    id: q.id,
+                    title: q.title,
+                    text: q.text,
+                    explanation: q.explanation
+                }));
+
+                const systemPrompt = `You are a medical expert specializing in question classification.
+Tag each question accurately based on this taxonomy:
+${tagOptions}
+
+Rules:
+1. Provide tags for 'subject', 'system', and 'major'. 'minor' is optional.
+2. Use ONLY the exact strings provided in the taxonomy above.
+3. Return results in STRICT JSON: an array of objects [{"id": "...", "tags": {"subject": [], "system": [], "major": [], "minor": []}}]`;
+
+                const response = await window.fileSystemService.makeRequest('/ai/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: `Classify these untagged medical questions:\n${JSON.stringify(batchContext)}` }
+                        ],
+                        model: model,
+                        max_tokens: 1500
+                    })
+                });
+
+                if (response?.choices?.[0]?.message?.content) {
+                    try {
+                        const content = response.choices[0].message.content;
+                        const jsonStr = content.includes('```') ? content.match(/```(?:json)?\s*([\s\S]*?)\s*```/)[1] : content;
+                        const results = JSON.parse(jsonStr);
+
+                        results.forEach(res => {
+                            const q = questions.find(item => item.id === res.id);
+                            if (q) {
+                                q.tags = res.tags;
+                                totalUpdated++;
+                            }
+                        });
+                    } catch (parseErr) {
+                        console.error("[AutoTag] Batch parse error:", parseErr);
+                    }
+                }
+            }
+
+            // Persistence: Save to hard drive backend server
+            this.saveData();
+            this.initCreateTestDashboard();
+            
+            btn.innerHTML = `<span style="font-size:11px; color:var(--muted); font-weight:bold;">Tagged ${totalUpdated}...</span>`;
             setTimeout(() => {
-                btn.innerHTML = `Auto-Tag All`;
-                btn.style.color = '';
+                btn.innerHTML = oldHtml;
+                btn.disabled = false;
+                btn.title = oldTitle;
             }, 3000);
+
+        } catch (error) {
+            console.error("[AutoTag] AI Error:", error);
+            btn.innerHTML = '<span style="font-size:11px; color:var(--red);">Error...</span>';
+            setTimeout(() => { btn.innerHTML = oldHtml; btn.disabled = false; }, 3000);
         }
     },
 

@@ -1241,7 +1241,7 @@ div[data-tab-content="recent-sessions"].active {
   margin-bottom: 3rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 1.5rem;
+  padding-bottom: 1rem;
 }
 
 .stats-header h2 {
@@ -1394,6 +1394,7 @@ div[data-tab-content="recent-sessions"].active {
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
+  opacity: 1 !important;
 }
 
 .donut-track {
