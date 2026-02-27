@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Qnex
+Comment=Note Taking Desktop Application
+Exec=bash -c "cd '/home/momen/WindowsDrive/My projects/Note taking app/notes-app-1.0/windsurf-project/windsurf-project/note-taking-app/' && ./launch.sh"
+Icon=accessories-notes
+Terminal=true
+Categories=Office;Utility;
+Path=/home/momen/WindowsDrive/My projects/Note taking app/notes-app-1.0/windsurf-project/windsurf-project/note-taking-app/
