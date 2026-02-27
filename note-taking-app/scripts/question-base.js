@@ -1356,10 +1356,10 @@ Generate a professional title for this study session.`;
             // Support multiple IDs (union of results)
             const queryTerms = idQuery.split(/[\s,]+/)
                 .filter(term => term.trim().length > 0)
-                .map(term => term.replace('QNX-', '').replace(/-/g, ''));
+                .map(term => term.replace('QNX-', '').replace(/[-.]/g, ''));
 
             return this.state.questions.filter(q => {
-                const qNumericPart = (q.spId || '').replace('QNX-', '').replace(/-/g, '').toUpperCase();
+                const qNumericPart = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
                 // Return true if the question ID starts with ANY of the query terms (prefix matching)
                 return queryTerms.some(term => qNumericPart.startsWith(term));
             });
@@ -1419,13 +1419,13 @@ Generate a professional title for this study session.`;
             const idQuery = idIn ? idIn.value.trim() : '';
             if (idQuery) {
                 const terms = idQuery.split(/[\s,]+/).filter(t => t.trim().length > 0);
-                const allQIds = this.state.questions.map(q => (q.spId || '').replace('QNX-', '').replace(/-/g, '').toUpperCase());
+                const allQIds = this.state.questions.map(q => (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase());
                 
                 const validTerms = [];
                 const invalidTerms = [];
 
                 terms.forEach(term => {
-                    const clean = term.replace('QNX-', '').replace(/-/g, '').toUpperCase();
+                    const clean = term.replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
                     if (allQIds.includes(clean)) {
                         validTerms.push(term);
                     } else {

@@ -56,6 +56,14 @@
   color: #ef4444 !important; /* Tailwind-style red-500 */
 }
 
+.dungeon-stat-item.score {
+  color: #f97316 !important; /* Orange-500 */
+}
+
+.dungeon-stat-item.total {
+  color: #3b82f6 !important; /* Blue-500 */
+}
+
 /* Timer Clickable */
 #dungeonTimer {
   transition: all 0.2s;

@@ -344,32 +344,40 @@ export default class DungeonBase {
                   <div class="dungeon-footer-center">
                       <div id="dungeonExamResults" class="dungeon-footer-center-stats hidden">
                           <div class="dungeon-stat-item correct" title="Correct Answers">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                               <span id="dungeonStatCorrectExam">0</span>
                           </div>
                           <div class="dungeon-stat-item total" title="Total Questions">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                               <span id="dungeonStatTotalExam">0</span>
                           </div>
                           <div class="dungeon-stat-item score" title="Final Score">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
                               <span id="dungeonStatScore">0%</span>
                           </div>
                           <div class="dungeon-stat-item wrong" title="Wrong Answers">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                               <span id="dungeonStatWrongExam">0</span>
                           </div>
                       </div>
-                      <div id="dungeonTutorStats" class="dungeon-footer-center-stats">
-                          <div class="dungeon-stat-item correct" title="Correct Answers">
-                              <span id="dungeonStatCorrect">0</span>
-                          </div>
-                          <div class="dungeon-stat-item total" title="Question Progress">
-                              <span id="dungeonStatTotal">0/0</span>
-                          </div>
-                          <div class="dungeon-stat-item score" title="Current Score">
-                              <span id="dungeonStatScoreTutor">0%</span>
-                          </div>
-                          <div class="dungeon-stat-item wrong" title="Wrong Answers">
-                              <span id="dungeonStatWrong">0</span>
-                          </div>
-                      </div>
+                       <div id="dungeonTutorStats" class="dungeon-footer-center-stats">
+                           <div class="dungeon-stat-item correct" title="Correct Answers">
+                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                               <span id="dungeonStatCorrect">0</span>
+                           </div>
+                           <div class="dungeon-stat-item total" title="Question Progress">
+                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                               <span id="dungeonStatTotal">0/0</span>
+                           </div>
+                           <div class="dungeon-stat-item score" title="Current Score">
+                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+                               <span id="dungeonStatScoreTutor">0%</span>
+                           </div>
+                           <div class="dungeon-stat-item wrong" title="Wrong Answers">
+                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                               <span id="dungeonStatWrong">0</span>
+                           </div>
+                       </div>
                   </div>
                   <div class="dungeon-footer-right">
                       <span id="dungeonSaveStatus" class="dungeon-save-status saved">Saved</span>
@@ -1021,13 +1029,39 @@ export default class DungeonBase {
         if (toolbar) {
             if (this.state.toolbarVisible) {
                 toolbar.style.display = 'flex';
+                // RE-APPLY layout if docked
+                if (this.state.toolbarPosition !== 'floating') {
+                    this.setToolbarPosition(this.state.toolbarPosition);
+                }
                 // Trigger reflow for animation
                 toolbar.offsetHeight;
                 toolbar.classList.add('visible');
             } else {
                 toolbar.classList.remove('visible');
+                // REMOVE layout padding immediately
+                const main = document.querySelector('.dungeon-main');
+                const sidebar = document.getElementById('dungeonSidebar');
+                const topbar = document.getElementById('dungeonTopbar');
+                const topbarHeight = (topbar && topbar.offsetHeight) || 60;
+                
+                if (main) {
+                    main.style.top = topbarHeight + 'px';
+                    main.style.bottom = '0';
+                    main.style.left = ''; // Reset to default (flex layout usually handles it)
+                    if (sidebar && !this.state.sidebarCollapsed) {
+                         // If sidebar exists, we might need to restore its default left/width if we pushed it
+                         // But usually sidebar is static.
+                    }
+                }
+                if (sidebar) {
+                    sidebar.style.top = topbarHeight + 'px';
+                    sidebar.style.bottom = '0';
+                }
+
                 setTimeout(() => {
-                    toolbar.style.display = 'none';
+                    if (!this.state.toolbarVisible) {
+                        toolbar.style.display = 'none';
+                    }
                 }, 300); // Match animation duration
             }
         }
@@ -1095,11 +1129,11 @@ export default class DungeonBase {
 
                 // Push sidebar down below toolbar
                 if (sidebar) {
-                    sidebar.style.top = (topbarHeight + toolbarHeight) + 'px';
+                    sidebar.style.top = this.state.toolbarVisible ? (topbarHeight + toolbarHeight) + 'px' : topbarHeight + 'px';
                 }
                 if (main) {
                     main.classList.add('toolbar-docked-top');
-                    main.style.top = (topbarHeight + toolbarHeight) + 'px';
+                    main.style.top = this.state.toolbarVisible ? (topbarHeight + toolbarHeight) + 'px' : topbarHeight + 'px';
                 }
                 break;
             case 'bottom':
@@ -1113,11 +1147,11 @@ export default class DungeonBase {
 
                 // Push sidebar up above toolbar + footer
                 if (sidebar) {
-                    sidebar.style.bottom = (toolbarHeight + footerHeight) + 'px';
+                    sidebar.style.bottom = this.state.toolbarVisible ? (toolbarHeight + footerHeight) + 'px' : footerHeight + 'px';
                 }
                 if (main) {
                     main.classList.add('toolbar-docked-bottom');
-                    main.style.bottom = (toolbarHeight + footerHeight) + 'px';
+                    main.style.bottom = this.state.toolbarVisible ? (toolbarHeight + footerHeight) + 'px' : footerHeight + 'px';
                 }
                 break;
             case 'left':
@@ -1136,7 +1170,7 @@ export default class DungeonBase {
                     main.style.top = topbarHeight + 'px';
                     main.style.bottom = '0';
                     // Push main content right to make room for toolbar (50px)
-                    const contentLeft = sidebarWidth + 50;
+                    const contentLeft = this.state.toolbarVisible ? (sidebarWidth + 50) : sidebarWidth;
                     main.style.left = contentLeft + 'px';
                 }
                 break;
@@ -1156,6 +1190,7 @@ export default class DungeonBase {
                 if (main) {
                     main.style.top = topbarHeight + 'px';
                     main.style.bottom = '0';
+                    main.style.right = this.state.toolbarVisible ? '50px' : '0';
                 }
                 break;
             case 'floating':
@@ -1252,7 +1287,7 @@ export default class DungeonBase {
         const q = this.state.questions[this.state.currentIndex];
         const titleEl = document.getElementById('dungeonQuestionTitle');
         if (titleEl && q) {
-            const numericId = (q.spId || '').replace('QNX-', '').replace('-', '');
+            const numericId = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '');
             titleEl.innerHTML = `
                 <div class="dungeon-title-line">Title: ${q.title || 'Untitled Question'}</div>
                 <div class="dungeon-id-line" title="Click to copy ID">Question Id: <span class="id-value">${numericId || 'N/A'}</span></div>
@@ -2133,8 +2168,10 @@ export default class DungeonBase {
 
         // If the exam block is already revealed (session finished/resumed), freeze timer
         if (this.state.isBlockRevealed) {
-            timerEl.textContent = 'Complete';
-            timerEl.title = 'Session complete';
+            const mode = this._getSessionMode();
+            const modeLabel = mode === 'exam' || mode === 'revealed-exam' ? 'Exam' : 'Tutor';
+            timerEl.textContent = `${modeLabel} | Completed`;
+            timerEl.title = 'Session completed';
             return;
         }
 
@@ -2142,9 +2179,19 @@ export default class DungeonBase {
         const timerScope = q._timerScope || 'question';
         const timerSecs = q._timerSecs || 60;
 
+        if (timerMode === 'off') {
+            const mode = this._getSessionMode();
+            const modeLabel = mode === 'exam' || mode === 'revealed-exam' ? 'Exam' : 'Tutor';
+            timerEl.textContent = `${modeLabel} | Untimed`;
+            timerEl.title = "Assessment is untimed";
+            return;
+        }
+
         if (q._timerMode === 'untimed') {
-            if (timerEl) timerEl.textContent = "Untimed | Self assessment";
-            if (timerEl) timerEl.title = "Assessment is untimed";
+            const mode = this._getSessionMode();
+            const modeLabel = mode === 'exam' || mode === 'revealed-exam' ? 'Exam' : 'Tutor';
+            timerEl.textContent = `${modeLabel} | Untimed`;
+            timerEl.title = "Assessment is untimed";
             return;
         }
 
@@ -2211,8 +2258,10 @@ export default class DungeonBase {
         if (!timerEl) return;
 
         const q = this.state.questions[this.state.currentIndex];
-        if (q && q._timerMode === 'untimed') {
-            timerEl.textContent = "Untimed | Self assessment";
+        if (q && (q._timerMode === 'untimed' || q._timerMode === 'off')) {
+            const mode = this._getSessionMode();
+            const modeLabel = mode === 'exam' || mode === 'revealed-exam' ? 'Exam' : 'Tutor';
+            timerEl.textContent = `${modeLabel} | Untimed`;
             return;
         }
 
@@ -3612,12 +3661,20 @@ export default class DungeonBase {
             resizer.classList.remove('hidden');
             expPanel.classList.remove('hidden');
             mainPanel.classList.remove('full-width');
-            if (toggleBtn) toggleBtn.classList.add('active');
+            if (toggleBtn) {
+                toggleBtn.classList.add('active');
+                const span = toggleBtn.querySelector('span');
+                if (span) span.textContent = "Hide Split View";
+            }
         } else {
             resizer.classList.add('hidden');
             expPanel.classList.add('hidden');
             mainPanel.classList.add('full-width');
-            if (toggleBtn) toggleBtn.classList.remove('active');
+            if (toggleBtn) {
+                toggleBtn.classList.remove('active');
+                const span = toggleBtn.querySelector('span');
+                if (span) span.textContent = "Show Split View";
+            }
         }
         
         // Always scroll main panel to top on change
