@@ -53,7 +53,7 @@
 }
 
 .dungeon-stat-item.wrong {
-  color: var(--danger);
+  color: #ef4444 !important; /* Tailwind-style red-500 */
 }
 
 /* Timer Clickable */

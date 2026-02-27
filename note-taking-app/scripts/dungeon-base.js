@@ -343,30 +343,30 @@ export default class DungeonBase {
                   </div>
                   <div class="dungeon-footer-center">
                       <div id="dungeonExamResults" class="dungeon-footer-center-stats hidden">
-                          <div class="dungeon-stat-item" title="Correct Answers">
-                              <span id="dungeonStatCorrectExam" style="color: var(--success, #10b981);">0</span>
+                          <div class="dungeon-stat-item correct" title="Correct Answers">
+                              <span id="dungeonStatCorrectExam">0</span>
                           </div>
-                          <div class="dungeon-stat-item" title="Total Questions">
+                          <div class="dungeon-stat-item total" title="Total Questions">
                               <span id="dungeonStatTotalExam">0</span>
                           </div>
-                          <div class="dungeon-stat-item" title="Final Score">
-                              <span id="dungeonStatScore" style="font-weight: bold; color: var(--accent);">0%</span>
+                          <div class="dungeon-stat-item score" title="Final Score">
+                              <span id="dungeonStatScore">0%</span>
                           </div>
-                          <div class="dungeon-stat-item" title="Wrong Answers" style="color: var(--error);">
+                          <div class="dungeon-stat-item wrong" title="Wrong Answers">
                               <span id="dungeonStatWrongExam">0</span>
                           </div>
                       </div>
                       <div id="dungeonTutorStats" class="dungeon-footer-center-stats">
-                          <div class="dungeon-stat-item" title="Correct Answers">
+                          <div class="dungeon-stat-item correct" title="Correct Answers">
                               <span id="dungeonStatCorrect">0</span>
                           </div>
-                          <div class="dungeon-stat-item" title="Question Progress">
+                          <div class="dungeon-stat-item total" title="Question Progress">
                               <span id="dungeonStatTotal">0/0</span>
                           </div>
-                          <div class="dungeon-stat-item" title="Current Score">
-                              <span id="dungeonStatScoreTutor" style="font-weight: bold; color: var(--accent);">0%</span>
+                          <div class="dungeon-stat-item score" title="Current Score">
+                              <span id="dungeonStatScoreTutor">0%</span>
                           </div>
-                          <div class="dungeon-stat-item" title="Wrong Answers" style="color: var(--error);">
+                          <div class="dungeon-stat-item wrong" title="Wrong Answers">
                               <span id="dungeonStatWrong">0</span>
                           </div>
                       </div>
@@ -394,7 +394,7 @@ export default class DungeonBase {
                       </button>
 
                       <button id="dungeonSubmitBlockBtn" class="dungeon-reveal-btn submit-block-svg" title="Submit Block & See Results">
-                          <svg class="btn-icon-submit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 11.08 12 11.08 9 11.08 2 11.08"></polyline><path d="M22 4L12 14.01l-3-3"></path></svg>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11"/></svg>
                       </button>
 
                       <button id="dungeonClearBtn" class="dungeon-reveal-btn" title="Clear Answer" style="display: none;">
@@ -2115,11 +2115,28 @@ export default class DungeonBase {
         }
     }
 
+    // Returns the current session mode based on the first question's settings
+    _getSessionMode() {
+        const q = this.state.questions[0];
+        if (!q) return 'tutor';
+        if (q._tutorMode === false) {
+            return this.state.isBlockRevealed ? 'revealed-exam' : 'exam';
+        }
+        return 'tutor';
+    }
+
     startTimer() {
         this.stopTimer(); // Clear existing
         const q = this.state.questions[this.state.currentIndex];
         const timerEl = document.getElementById('dungeonTimer');
         if (!timerEl) return;
+
+        // If the exam block is already revealed (session finished/resumed), freeze timer
+        if (this.state.isBlockRevealed) {
+            timerEl.textContent = 'Complete';
+            timerEl.title = 'Session complete';
+            return;
+        }
 
         const timerMode = q._timerMode || 'off';
         const timerScope = q._timerScope || 'question';
@@ -2217,22 +2234,41 @@ export default class DungeonBase {
             }
         });
 
-        const correctEl = document.getElementById('dungeonStatCorrect');
-        const wrongEl = document.getElementById('dungeonStatWrong');
-        const totalEl = document.getElementById('dungeonStatTotal');
-        const scoreEl = document.getElementById('dungeonStatScoreTutor');
+        const mode = this._getSessionMode();
+        const showScores = (mode === 'tutor' || mode === 'revealed-exam');
 
-        if (correctEl) correctEl.textContent = correct;
-        if (wrongEl) wrongEl.textContent = wrong;
-        if (totalEl) {
-            const attempted = correct + wrong;
-            const totalQuestions = this.state.questions.length;
-            totalEl.textContent = `${attempted}/${totalQuestions}`;
-        }
-        if (scoreEl) {
-            const attempted = correct + wrong;
-            const percentage = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
-            scoreEl.textContent = `${percentage}%`;
+        const correctEl = document.getElementById('dungeonStatCorrect');
+        const wrongEl   = document.getElementById('dungeonStatWrong');
+        const totalEl   = document.getElementById('dungeonStatTotal');
+        const scoreEl   = document.getElementById('dungeonStatScoreTutor');
+
+        // Correct stat wrapper (hide in exam until revealed)
+        const correctWrap = correctEl?.closest('.dungeon-stat-item');
+        const wrongWrap   = wrongEl?.closest('.dungeon-stat-item');
+        const scoreWrap   = scoreEl?.closest('.dungeon-stat-item');
+
+        if (correctWrap) correctWrap.style.display = showScores ? '' : 'none';
+        if (wrongWrap)   wrongWrap.style.display   = showScores ? '' : 'none';
+        if (scoreWrap)   scoreWrap.style.display   = showScores ? '' : 'none';
+
+        if (showScores) {
+            if (correctEl) correctEl.textContent = correct;
+            if (wrongEl)   wrongEl.textContent   = wrong;
+            if (totalEl) {
+                const attempted = correct + wrong;
+                totalEl.textContent = `${attempted}/${this.state.questions.length}`;
+            }
+            if (scoreEl) {
+                const attempted = correct + wrong;
+                const pct = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
+                scoreEl.textContent = `${pct}%`;
+            }
+        } else {
+            // Exam mode (pre-reveal): only show total attempted
+            if (totalEl) {
+                const attempted = correct + wrong;
+                totalEl.textContent = `${attempted}/${this.state.questions.length}`;
+            }
         }
     }
 
@@ -2271,94 +2307,70 @@ export default class DungeonBase {
     updateRevealButton() {
         const q = this.state.questions[this.state.currentIndex];
         const answer = this.state.answers.get(q.id);
-        const revealBtn = document.getElementById('dungeonRevealBtn');
-        const clearBtn = document.getElementById('dungeonClearBtn');
-        const suspendBtn = document.getElementById('dungeonSuspendBtn');
-        const endBlockBtn = document.getElementById('dungeonEndBlockBtn');
+        const revealBtn     = document.getElementById('dungeonRevealBtn');
+        const clearBtn      = document.getElementById('dungeonClearBtn');
+        const suspendBtn    = document.getElementById('dungeonSuspendBtn');
+        const endBlockBtn   = document.getElementById('dungeonEndBlockBtn');
         const submitBlockBtn = document.getElementById('dungeonSubmitBlockBtn');
-        const resultsEl = document.getElementById("dungeonExamResults");
-        const statsEl = document.getElementById("dungeonTutorStats");
+        const resultsEl     = document.getElementById('dungeonExamResults');
+        const statsEl       = document.getElementById('dungeonTutorStats');
 
         if (!revealBtn) return;
 
-        // Mode handling: Show Exam buttons only if _tutorMode is exactly false
-        const isExamMode = q._tutorMode === false;
-        
+        const mode = this._getSessionMode();
+        const isExamMode    = (mode === 'exam' || mode === 'revealed-exam');
+        const isRevealed    = (mode === 'revealed-exam');
+        const unanswered    = this.state.questions.length - this.state.answers.size;
+
         if (isExamMode) {
+            // Exam mode: hide Reveal, show Suspend
             revealBtn.style.display = 'none';
             if (suspendBtn) suspendBtn.style.display = 'inline-flex';
-            
-            const unanswered = this.state.questions.length - this.state.answers.size;
-            if (this.state.isBlockRevealed) {
-                if (endBlockBtn) endBlockBtn.style.display = 'none';
+
+            if (isRevealed) {
+                // Block already submitted/ended — hide action buttons
+                if (endBlockBtn)   endBlockBtn.style.display   = 'none';
                 if (submitBlockBtn) submitBlockBtn.style.display = 'none';
+                if (resultsEl) resultsEl.classList.remove('hidden');
+                if (statsEl)   statsEl.classList.add('hidden');
             } else {
-                if (unanswered === 0) {
-                    if (endBlockBtn) endBlockBtn.style.display = 'none';
-                    if (submitBlockBtn) submitBlockBtn.style.display = 'inline-flex';
-                } else {
-                    if (endBlockBtn) endBlockBtn.style.display = 'inline-flex';
+                // Pre-reveal: show End Block or Submit depending on unanswered count
+                if (unanswered > 0) {
+                    if (endBlockBtn)    endBlockBtn.style.display    = 'inline-flex';
                     if (submitBlockBtn) submitBlockBtn.style.display = 'none';
+                } else {
+                    if (endBlockBtn)    endBlockBtn.style.display    = 'none';
+                    if (submitBlockBtn) submitBlockBtn.style.display = 'inline-flex';
                 }
-            }
-            
-            // Stats handling
-            if (this.state.isBlockRevealed) {
-                if (resultsEl) resultsEl.classList.remove("hidden");
-                if (statsEl) statsEl.classList.add("hidden"); 
-            } else {
-                if (resultsEl) resultsEl.classList.add("hidden");
-                if (statsEl) statsEl.classList.remove("hidden");
-                
-                // Hide counts in Exam until reveal
-                const correctItem = statsEl.querySelector('[title="Correct Answers"]');
-                const wrongItem = statsEl.querySelector('[title="Wrong Answers"]');
-                if (correctItem) correctItem.style.display = 'none';
-                if (wrongItem) wrongItem.style.display = 'none';
+                if (resultsEl) resultsEl.classList.add('hidden');
+                if (statsEl)   statsEl.classList.remove('hidden');
             }
         } else {
-            // Tutor Mode / Other
+            // Tutor mode
             revealBtn.style.display = 'inline-flex';
-            if (suspendBtn) suspendBtn.style.display = 'none';
-            if (endBlockBtn) endBlockBtn.style.display = 'none';
+            if (suspendBtn)    suspendBtn.style.display    = 'none';
+            if (endBlockBtn)   endBlockBtn.style.display   = 'none';
             if (submitBlockBtn) submitBlockBtn.style.display = 'none';
-            
-            if (resultsEl) resultsEl.classList.add("hidden");
-            if (statsEl) {
-                statsEl.classList.remove("hidden");
-                const correctItem = statsEl.querySelector('[title="Correct Answers"]');
-                const wrongItem = statsEl.querySelector('[title="Wrong Answers"]');
-                if (correctItem) correctItem.style.display = 'flex';
-                if (wrongItem) wrongItem.style.display = 'flex';
-            }
+            if (resultsEl) resultsEl.classList.add('hidden');
+            if (statsEl)   statsEl.classList.remove('hidden');
         }
 
-        // Show/hide clear button based on answer state
+        // Clear button: show when answer is submitted (both modes)
         if (clearBtn) {
+            clearBtn.style.display = (answer && answer.submitted) ? 'inline-flex' : 'none';
+        }
+
+        // Reveal button state (Tutor only)
+        if (mode === 'tutor') {
             if (answer && answer.submitted) {
-                clearBtn.style.display = 'inline-flex';
+                revealBtn.style.opacity = '0.3';
+                revealBtn.style.pointerEvents = 'none';
+                revealBtn.classList.remove('active');
             } else {
-                clearBtn.style.display = 'none';
+                revealBtn.style.opacity = '1';
+                revealBtn.style.pointerEvents = 'auto';
+                revealBtn.classList.toggle('active', !!q.revealed);
             }
-        }
-
-        // If submitted, disable reveal button (for Tutor mode)
-        if (answer && answer.submitted) {
-            revealBtn.style.opacity = '0.3';
-            revealBtn.style.pointerEvents = 'none';
-            revealBtn.classList.remove('active');
-            return;
-        }
-
-        // Enable button
-        revealBtn.style.opacity = '1';
-        revealBtn.style.pointerEvents = 'auto';
-
-        // Toggle active state based on revealed
-        if (q.revealed) {
-            revealBtn.classList.add('active');
-        } else {
-            revealBtn.classList.remove('active');
         }
     }
 

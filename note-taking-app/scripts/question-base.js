@@ -162,6 +162,7 @@ const QuestionBase = {
         this.el.uploadedFileStatus = document.getElementById("uploadedFileStatus");
         this.el.uploadedFileName = document.getElementById("uploadedFileName");
         this.el.viewAiPromptBtn = document.getElementById("viewAiPromptBtn");
+        this.el.ctRefreshBtn = document.getElementById("ctRefreshBtn");
         this.el.aiPromptModal = document.getElementById("aiPromptModal");
 
         // Model Selector
@@ -225,6 +226,7 @@ const QuestionBase = {
         this.el.tagMenuMinor  = document.getElementById('tagMenuMinor');
         this.el.tagBadgeMinor = document.getElementById('tagBadgeMinor');
         this.initTagDropdowns();
+        this.initSessionToggleHandlers();
 
         if (this.el.syncStatsBtn) {
             this.el.syncStatsBtn.onclick = () => this.renderStatistics(true);
@@ -386,6 +388,9 @@ const QuestionBase = {
         }
         if (this.el.viewAiPromptBtn) {
             this.el.viewAiPromptBtn.onclick = () => this.viewAiPrompt();
+        }
+        if (this.el.ctRefreshBtn) {
+            this.el.ctRefreshBtn.onclick = () => this._sessionAutoDetectTags();
         }
 
         // Modal close listeners
@@ -851,25 +856,26 @@ const QuestionBase = {
         const opts = this.CT_TAG_OPTIONS || {};
         const tags = q.tags || {};
         
-        // Helper to get index + 1
-        const getIdx = (cat, val) => {
-            if (!val || !opts[cat]) return "";
+        // Helper to get index + 1, using "0" as placeholder
+        const getVal = (cat, val) => {
+            if (!val || !opts[cat]) return "0";
             const idx = opts[cat].indexOf(val);
-            return idx !== -1 ? (idx + 1).toString() : "";
+            return idx !== -1 ? (idx + 1).toString() : "0";
         };
 
         // Get first tag for each category (using user "true number" logic)
-        const sub = getIdx('subject', (tags.subject || [])[0]);
-        const sys = getIdx('system',  (tags.system  || [])[0]);
-        const maj = getIdx('major',   (tags.major   || [])[0]);
-        const min = getIdx('minor',   (tags.minor   || [])[0]);
+        const sub = getVal('subject', (tags.subject || [])[0]);
+        const sys = getVal('system',  (tags.system  || [])[0]);
+        const maj = getVal('major',   (tags.major   || [])[0]);
+        const min = getVal('minor',   (tags.minor   || [])[0]);
 
         // salt is always a 4-digit number
         const salt = Math.floor(1000 + Math.random() * 9000);
         
-        const finalId = `QNX-${sub}${sys}${maj}${min}${salt}`;
-        // Debug log to help demystify the numeric structure for the user
-        console.log(`[ID Detail] ${finalId} Breakdown: Subj(${sub || 'none'}), Sys(${sys || 'none'}), Maj(${maj || 'none'}), Min(${min || 'none'}), Salt(${salt})`);
+        // Use dot separator to prevent ambiguity
+        const finalId = `QNX-${sub}.${sys}.${maj}.${min}.${salt}`;
+        // Debug log
+        console.log(`[ID Detail] ${finalId} Breakdown: Subj(${sub}), Sys(${sys}), Maj(${maj}), Min(${min}), Salt(${salt})`);
         return finalId;
     },
 
@@ -1092,28 +1098,35 @@ Generate a professional title for this study session.`;
     // Helper to decode numeric IDs (e.g., 12541) into tags
     _ctGetTagsFromNumericId(idStr) {
         if (!idStr) return null;
-        // Clean ID: numbers only
+        const tags = { subject: [], system: [], major: [], minor: [] };
+        
+        // Handle dot-separated format first (preferred)
+        if (idStr.includes('.')) {
+            const parts = idStr.replace('QNX-', '').split('.');
+            // parts[0]=Subject, [1]=System, [2]=Major, [3]=Minor
+            const cats = ['subject', 'system', 'major', 'minor'];
+            cats.forEach((cat, i) => {
+                const valStr = parts[i];
+                if (valStr && valStr !== '0') {
+                    const id = parseInt(valStr);
+                    if (id > 0 && this.CT_TAG_OPTIONS[cat][id - 1]) {
+                        tags[cat].push(this.CT_TAG_OPTIONS[cat][id - 1]);
+                    }
+                }
+            });
+            return tags;
+        }
+
+        // Fallback for legacy / digits-only IDs
         const clean = idStr.replace(/\D/g, '');
         if (clean.length < 1) return null;
 
-        const tags = { subject: [], system: [], major: [], minor: [] };
-        
-        // This is a loose parser for the concatenated format: Subject - System - Major - Minor - Random
-        // We assume each component is 1 or 2 digits based on the lengths of our arrays.
-        // Array lengths: Subject(11), System(11), Major(7), Minor(11)
-        
-        // Let's try to be smart about it:
-        // We know the exact lists, so we can check if a number matches.
-        // However, the user said "12541" for "1, 2, 5, 4, 1". 
-        // If they have >9 items, they might use two digits.
-        
         let remaining = clean;
         const categories = ['subject', 'system', 'major', 'minor'];
         
         for (const cat of categories) {
             if (remaining.length === 0) break;
             
-            // Check if first two digits form a valid ID for this category
             const twoDigits = parseInt(remaining.substring(0, 2));
             const oneDigit = parseInt(remaining.substring(0, 1));
             
@@ -1121,16 +1134,10 @@ Generate a professional title for this study session.`;
             let consumed = 0;
             
             if (twoDigits > 0 && twoDigits <= this.CT_TAG_OPTIONS[cat].length) {
-                // If it's 10+, it must be two digits
                 if (twoDigits >= 10) {
                     id = twoDigits;
                     consumed = 2;
                 } else {
-                    // It's < 10, e.g. "01" (if allowed) or just "1"
-                    // But user said "no zeros". So "1" is more likely.
-                    // If the string starts with "11", is it ID 11 or ID 1 and Next ID 1?
-                    // This is ambiguous. I'll prioritize 1-digit if the next digit is also valid for the next category.
-                    // Actually, let's keep it simple: 1 digit if < 10, unless it's the only option.
                     id = oneDigit;
                     consumed = 1;
                 }
@@ -1811,6 +1818,112 @@ Rules:
             console.error("[AutoTag] AI Error:", error);
             btn.innerHTML = '<span style="font-size:11px; color:var(--red); display:flex; align-items:center; height:100%;">Error...</span>';
             setTimeout(() => { btn.innerHTML = TAG_ICON; btn.disabled = false; }, 3000);
+        }
+    },
+
+    // ── Session Toggle Handlers ───────────────────────────────────────────────
+    initSessionToggleHandlers() {
+        // Wire Tutor / Shuffle / Timer compact toggles
+        ['sessionTutorGroup', 'sessionShuffleGroup', 'sessionTimerGroup',
+         'sessionTimerScopeGroup'].forEach(groupId => {
+            const group = document.getElementById(groupId);
+            if (!group) return;
+            group.querySelectorAll('.ct-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    group.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
+                    btn.classList.add('ct-toggle-active');
+                });
+            });
+        });
+
+        // Wire duration toggle groups (per-question 30s/60s/…)
+        const durationQGroup = document.querySelector('#sessionTimerDurationQ .ct-toggle-group');
+        if (durationQGroup) {
+            durationQGroup.querySelectorAll('.ct-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    durationQGroup.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
+                    btn.classList.add('ct-toggle-active');
+                });
+            });
+        }
+
+        // Show/hide timer sub-options when Down is toggled
+        const timerGroup = document.getElementById('sessionTimerGroup');
+        const subOpts    = document.getElementById('sessionTimerSubOpts');
+        if (timerGroup && subOpts) {
+            timerGroup.querySelectorAll('.ct-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const isDown = btn.dataset.val === 'down';
+                    subOpts.style.display = isDown ? 'flex' : 'none';
+                });
+            });
+        }
+
+        // Scope toggle: swap between per-question and whole-session duration
+        const scopeGroup = document.getElementById('sessionTimerScopeGroup');
+        const durationQ  = document.getElementById('sessionTimerDurationQ');
+        const durationS  = document.getElementById('sessionTimerDurationS');
+        if (scopeGroup && durationQ && durationS) {
+            scopeGroup.querySelectorAll('.ct-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const isSession = btn.dataset.val === 'session';
+                    durationQ.style.display = isSession ? 'none' : 'flex';
+                    durationS.style.display = isSession ? 'flex' : 'none';
+                });
+            });
+        }
+
+        // Live tag auto-detection on sessionInput
+        const sessionInput = document.getElementById('sessionInput');
+        if (sessionInput) {
+            let tagDetectTimer = null;
+            sessionInput.addEventListener('input', () => {
+                clearTimeout(tagDetectTimer);
+                tagDetectTimer = setTimeout(() => this._sessionAutoDetectTags(), 200);
+            });
+        }
+    },
+
+    // Reads all "Question tag ID:\n<digits>" blocks from the session editor
+    // and auto-checks the corresponding tag dropdowns.
+    _sessionAutoDetectTags() {
+        const sessionInput = document.getElementById('sessionInput');
+        if (!sessionInput) return;
+        const text = sessionInput.innerText || sessionInput.textContent || '';
+        // Aggregate all derived tags across all IDs found in text
+        const combined = { subject: new Set(), system: new Set(), major: new Set(), minor: new Set() };
+        
+        // Collect all numeric IDs from the text (supports dots and digits)
+        const idMatches = [...text.matchAll(/Question tag ID:\s*\n?\s*([\d.]+)/g)];
+        
+        if (idMatches.length > 0) {
+            for (const m of idMatches) {
+                const derived = this._ctGetTagsFromNumericId(m[1]);
+                if (!derived) continue;
+                for (const key of ['subject','system','major','minor']) {
+                    (derived[key] || []).forEach(v => combined[key].add(v));
+                }
+            }
+        }
+
+        // Apply to state and dropdown checkboxes
+        const configs = [
+            { key: 'subject', stateKey: 'selectedTagSubjects', badgeId: 'tagBadgeSubject', btnId: 'tagBtnSubject' },
+            { key: 'system',  stateKey: 'selectedTagSystems',  badgeId: 'tagBadgeSystem',  btnId: 'tagBtnSystem'  },
+            { key: 'major',   stateKey: 'selectedTagMajors',   badgeId: 'tagBadgeMajor',   btnId: 'tagBtnMajor'   },
+            { key: 'minor',   stateKey: 'selectedTagMinors',   badgeId: 'tagBadgeMinor',   btnId: 'tagBtnMinor'   },
+        ];
+        for (const { key, stateKey, badgeId, btnId } of configs) {
+            const vals = [...combined[key]];
+            this.state[stateKey] = vals;
+            // Tick checkboxes in the floating menus
+            document.querySelectorAll(`[data-tag-key="${key}"] input[type="checkbox"]`).forEach(cb => {
+                cb.checked = vals.includes(cb.value);
+            });
+            const badge = document.getElementById(badgeId);
+            const btn   = document.getElementById(btnId);
+            if (badge) badge.textContent = vals.length > 0 ? vals.length : '';
+            if (btn)   btn.classList.toggle('has-selection', vals.length > 0);
         }
     },
 
@@ -3001,6 +3114,9 @@ Rules:
         }
 
         this.el.sessionInput.focus();
+        
+        // Auto-detect tags after text is loaded
+        this._sessionAutoDetectTags();
     },
 
     saveTextEditorChanges() {
@@ -3401,6 +3517,38 @@ Question tag ID:
             return;
         }
 
+        // Read session toolbar options
+        const tutorEl   = document.querySelector('#sessionTutorGroup .ct-toggle-active');
+        const shuffleEl = document.querySelector('#sessionShuffleGroup .ct-toggle-active');
+        const timerEl   = document.querySelector('#sessionTimerGroup .ct-toggle-active');
+        const tutor      = tutorEl?.dataset.val !== 'off';
+        const doShuffle  = shuffleEl?.dataset.val === 'on';
+        const timerMode  = timerEl?.dataset.val || 'off';
+
+        // Read timer sub-options
+        const timerScopeEl = document.querySelector('#sessionTimerScopeGroup .ct-toggle-active');
+        const timerScope   = timerScopeEl?.dataset.val || 'question';
+        let timerSecs = 0;
+        if (timerMode === 'down') {
+            if (timerScope === 'question') {
+                const durEl = document.querySelector('#sessionTimerDurationQ .ct-toggle-active');
+                timerSecs = parseInt(durEl?.dataset.val) || 60;
+            } else {
+                const hr  = parseInt(document.getElementById('sessionTimerHr')?.value)  || 0;
+                const min = parseInt(document.getElementById('sessionTimerMin')?.value) || 0;
+                const sec = parseInt(document.getElementById('sessionTimerSec')?.value) || 0;
+                timerSecs = (hr * 3600) + (min * 60) + sec;
+            }
+        }
+
+        // Shuffle if requested
+        if (doShuffle) {
+            for (let i = questions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [questions[i], questions[j]] = [questions[j], questions[i]];
+            }
+        }
+
         // Apply selected Tags to these questions
         const sessionTags = {
             subject: [...this.state.selectedTagSubjects],
@@ -3410,8 +3558,20 @@ Question tag ID:
         };
 
         questions.forEach(q => {
-            q.tags = { ...sessionTags };
+            // Use tag derived from question's own spId if session tags are empty
+            if (!sessionTags.subject.length && !sessionTags.system.length && q.spId) {
+                const numericId = q.spId.replace(/^QNX-/, '');
+                const derived = this._ctGetTagsFromNumericId(numericId);
+                if (derived) q.tags = derived;
+            } else {
+                q.tags = { ...sessionTags };
+            }
             if (!q.spId) q.spId = this.generateNumericId(q);
+            // Attach session options
+            q._tutorMode  = tutor;
+            q._timerMode  = timerMode;
+            q._timerScope = timerScope;
+            q._timerSecs  = timerSecs;
         });
 
         const hasCorrect = questions.every(q => q.options.some(o => o.isCorrect));
@@ -4139,7 +4299,7 @@ Question options:
 Question explanation:
 Duodenal ulcers often present with pain that improves with food, whereas gastric ulcers worsen with food. Ibuprofen (NSAID) use is a major risk factor. Option (A) presents with radiating back pain. Option (B) has RUQ pain. Option (D) has retrosternal burning.
 Question tag ID:
-14101
+1.4.1.0.1234
 `;
     },
 
@@ -4152,8 +4312,8 @@ Question tag ID:
         ];
 
         let text = "\nNUMERIC TAGGING SYSTEM (Question tag ID):\n";
-        text += "Generate a concatenated numeric ID following this order: SubjectID + SystemID + MajorID + MinorID + UniqueDigit.\n";
-        text += "If a category doesn't apply, skip its number. No separators, no zeros.\n\n";
+        text += "Generate a numeric ID with 5 components separated by dots: SubjectID.SystemID.MajorID.MinorID.RandomSalt\n";
+        text += "If a category doesn't apply, use 0. Do NOT skip components. Always provide 4 tag parts + 1 random salt (0-9999).\n\n";
 
         categories.forEach(cat => {
             text += `${cat.label} IDs:\n`;
@@ -4259,6 +4419,8 @@ Question tag ID:
 
                 if (data && data.choices && data.choices[0] && data.choices[0].message) {
                     this.el.sessionInput.innerText = data.choices[0].message.content;
+                    // Trigger tag sync immediately after AI generation
+                    this._sessionAutoDetectTags();
                     return;
                 }
             } catch (error) {

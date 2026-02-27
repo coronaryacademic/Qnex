@@ -1151,6 +1151,14 @@
                     <option value="google/gemini-2.0-pro-exp-02-05:free">Gemini 2.0 Pro - Premium</option>
                   </select>
 
+                  <button id="ctRefreshBtn" class="icon-btn" title="Sync tags from content" style="margin-left: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 4v6h-6"></path>
+                      <path d="M1 20v-6h6"></path>
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                  </button>
+
                   <!-- Tag Dropdowns: Subject / System / Major -->
                   <div class="tag-drop-wrapper" id="tagWrapSubject">
                     <button class="icon-btn tag-drop-btn" id="tagBtnSubject" title="Filter by Subject">
@@ -1177,7 +1185,35 @@
                     <div class="tag-drop-menu hidden" id="tagMenuMinor"></div>
                   </div>
                </div>
-               <div class="session-creator-actions-right" style="gap: 8px;">
+               <div class="session-creator-actions-right" style="gap: 8px; align-items: center; flex-wrap: wrap;">
+                  <!-- Session Options (compact) -->
+                  <div class="session-inline-opts" style="display:flex; align-items:center; gap:6px; border-right:1px solid var(--border); padding-right:8px; margin-right:2px;">
+                    <!-- Tutor toggle -->
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                      <span style="font-size:9px; color:var(--muted); letter-spacing:.03em; text-transform:uppercase;">Tutor</span>
+                      <div class="ct-toggle-group session-toggle-group" id="sessionTutorGroup" style="gap:2px;">
+                        <button class="ct-toggle-btn ct-toggle-active" data-val="on" style="padding:2px 7px; font-size:10px;">On</button>
+                        <button class="ct-toggle-btn" data-val="off" style="padding:2px 7px; font-size:10px;">Off</button>
+                      </div>
+                    </div>
+                    <!-- Shuffle toggle -->
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                      <span style="font-size:9px; color:var(--muted); letter-spacing:.03em; text-transform:uppercase;">Shuffle</span>
+                      <div class="ct-toggle-group session-toggle-group" id="sessionShuffleGroup" style="gap:2px;">
+                        <button class="ct-toggle-btn" data-val="on" style="padding:2px 7px; font-size:10px;">On</button>
+                        <button class="ct-toggle-btn ct-toggle-active" data-val="off" style="padding:2px 7px; font-size:10px;">Off</button>
+                      </div>
+                    </div>
+                    <!-- Timer toggle -->
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                      <span style="font-size:9px; color:var(--muted); letter-spacing:.03em; text-transform:uppercase;">Timer</span>
+                      <div class="ct-toggle-group session-toggle-group" id="sessionTimerGroup" style="gap:2px;">
+                        <button class="ct-toggle-btn ct-toggle-active" data-val="off" style="padding:2px 6px; font-size:10px;">Off</button>
+                        <button class="ct-toggle-btn" data-val="up" style="padding:2px 6px; font-size:10px;">Up</button>
+                        <button class="ct-toggle-btn" data-val="down" style="padding:2px 6px; font-size:10px;">Down</button>
+                      </div>
+                    </div>
+                  </div>
                   <button id="cancelSessionBtn" class="icon-btn" title="Cancel">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1190,9 +1226,41 @@
                     </svg>
                   </button>
                </div>
+
             </div>
+            <!-- Timer sub-options (shown only when Down is selected) -->
+            <div id="sessionTimerSubOpts" style="display:none; align-items:center; gap:10px; padding:4px 12px 6px; flex-wrap:wrap; border-top:1px solid var(--border); background:var(--bg-secondary,var(--bg)); font-size:11px;">
+              <span style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.04em;">Scope:</span>
+              <div class="ct-toggle-group session-toggle-group" id="sessionTimerScopeGroup" style="gap:2px;">
+                <button class="ct-toggle-btn ct-toggle-active" data-val="question" style="padding:2px 8px; font-size:10px;">Per Question</button>
+                <button class="ct-toggle-btn" data-val="session" style="padding:2px 8px; font-size:10px;">Whole Session</button>
+              </div>
+              <!-- Per-question duration buttons -->
+              <div id="sessionTimerDurationQ" style="display:flex; align-items:center; gap:3px;">
+                <span style="color:var(--muted); font-size:10px; margin-right:2px;">Duration:</span>
+                <div class="ct-toggle-group session-toggle-group" style="gap:2px;">
+                  <button class="ct-toggle-btn" data-val="30" style="padding:2px 6px; font-size:10px;">30s</button>
+                  <button class="ct-toggle-btn ct-toggle-active" data-val="60" style="padding:2px 6px; font-size:10px;">60s</button>
+                  <button class="ct-toggle-btn" data-val="120" style="padding:2px 6px; font-size:10px;">2m</button>
+                  <button class="ct-toggle-btn" data-val="180" style="padding:2px 6px; font-size:10px;">3m</button>
+                  <button class="ct-toggle-btn" data-val="300" style="padding:2px 6px; font-size:10px;">5m</button>
+                </div>
+              </div>
+              <!-- Whole-session duration inputs -->
+              <div id="sessionTimerDurationS" style="display:none; align-items:center; gap:4px;">
+                <span style="color:var(--muted); font-size:10px; margin-right:2px;">Duration:</span>
+                <input type="number" id="sessionTimerHr"  min="0" max="99" value="1" class="ct-num-input" style="width:42px; font-size:11px;">
+                <span style="font-size:10px; color:var(--muted);">hr</span>
+                <input type="number" id="sessionTimerMin" min="0" max="59" value="0" class="ct-num-input" style="width:42px; font-size:11px;">
+                <span style="font-size:10px; color:var(--muted);">min</span>
+                <input type="number" id="sessionTimerSec" min="0" max="59" value="0" class="ct-num-input" style="width:42px; font-size:11px;">
+                <span style="font-size:10px; color:var(--muted);">sec</span>
+              </div>
+            </div>
+
             <div class="session-editor-container">
                <div id="sessionInput" class="session-input" contenteditable="true" placeholder="Click '+ Add Question' to start..."></div>
+
                <!-- AI Loading Overlay -->
                <div id="aiLoadingOverlay" class="ai-loading-overlay hidden">
                  <div class="ai-spinner"></div>
