@@ -35,6 +35,17 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# Launch the app
-echo "Launching Note Taking App from $DIR..."
-npm start -- --no-sandbox
+# Start the Backend Server in background
+echo "Starting Backend Server..."
+setsid node server/server.js > "$DIR/logs/server.log" 2>&1 &
+
+# Launch the app in background
+echo "Launching Note Taking App..."
+# --disable-gpu is added to prevent "GPU process isn't usable" crashes on this system
+# setsid ensures the app stays running after the terminal closes
+setsid "$DIR/node_modules/electron/dist/electron" "$DIR" --no-sandbox --disable-gpu > "$DIR/logs/electron.log" 2>&1 &
+
+# Give it a tiny bit of time to spawn
+sleep 0.5
+echo "App initiated! Terminal closing..."
+exit 0

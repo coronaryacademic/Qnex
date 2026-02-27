@@ -220,14 +220,12 @@ function createWindow() {
 
   // Intercept window close
   win.on('close', async (e) => {
-    // Always prevent default close
-    e.preventDefault();
-
     // Check settings for minimize to tray preference
-    // Always read fresh settings from file to ensure we rely on latest state
     const settings = await readFile(FILES.settings, {});
 
     if (settings.minimizeToTray) {
+      // Always prevent default close if we want to minimize to tray
+      e.preventDefault();
       // Minimize/Hide to tray
       win.hide();
 
@@ -236,8 +234,8 @@ function createWindow() {
         createTray();
       }
     } else {
-      // Ask renderer to show confirmation for full quit
-      win.webContents.send('app-close-requested');
+      // If minimizeToTray is false, allow the window to close normally
+      // This will trigger app.quit() via window-all-closed event
     }
   });
 
