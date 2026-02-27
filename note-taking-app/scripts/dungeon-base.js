@@ -546,6 +546,21 @@ export default class DungeonBase {
         this.initSearch();
 
         this.bindEvents();
+
+        // Global Keybinds for switching between layers
+        document.addEventListener('keydown', (e) => {
+            // ESC to close Dungeon layer
+            if (e.key === 'Escape' && document.body.classList.contains('dungeon-open')) {
+                // Don't close if a modal or search is open?
+                // For simplicity, just close.
+                const searchWrapper = document.getElementById('dungeonSearchWrapper');
+                if (searchWrapper && searchWrapper.classList.contains('active')) {
+                    // If search is active, let search-close handle it or just close search first?
+                    // But usually user wants to exit the whole thing.
+                }
+                this.close();
+            }
+        });
     }
 
     initFooter() {
@@ -2154,6 +2169,7 @@ export default class DungeonBase {
     _getSessionMode() {
         const q = this.state.questions[0];
         if (!q) return 'tutor';
+        if (q._allMode) return 'all';
         if (q._tutorMode === false) {
             return this.state.isBlockRevealed ? 'revealed-exam' : 'exam';
         }
@@ -2260,7 +2276,10 @@ export default class DungeonBase {
         const q = this.state.questions[this.state.currentIndex];
         if (q && (q._timerMode === 'untimed' || q._timerMode === 'off')) {
             const mode = this._getSessionMode();
-            const modeLabel = mode === 'exam' || mode === 'revealed-exam' ? 'Exam' : 'Tutor';
+            let modeLabel = 'Tutor';
+            if (mode === 'exam' || mode === 'revealed-exam') modeLabel = 'Exam';
+            else if (mode === 'all') modeLabel = 'ALL Mode';
+            
             timerEl.textContent = `${modeLabel} | Untimed`;
             return;
         }
@@ -2285,34 +2304,47 @@ export default class DungeonBase {
 
         const mode = this._getSessionMode();
         const showScores = (mode === 'tutor' || mode === 'revealed-exam');
+        const showTotalOnly = (mode === 'all');
 
         const correctEl = document.getElementById('dungeonStatCorrect');
         const wrongEl   = document.getElementById('dungeonStatWrong');
         const totalEl   = document.getElementById('dungeonStatTotal');
         const scoreEl   = document.getElementById('dungeonStatScoreTutor');
 
-        // Correct stat wrapper (hide in exam until revealed)
+        // Stats wrappers
         const correctWrap = correctEl?.closest('.dungeon-stat-item');
         const wrongWrap   = wrongEl?.closest('.dungeon-stat-item');
+        const totalWrap   = totalEl?.closest('.dungeon-stat-item');
         const scoreWrap   = scoreEl?.closest('.dungeon-stat-item');
 
         if (correctWrap) correctWrap.style.display = showScores ? '' : 'none';
         if (wrongWrap)   wrongWrap.style.display   = showScores ? '' : 'none';
         if (scoreWrap)   scoreWrap.style.display   = showScores ? '' : 'none';
+        if (totalWrap)   totalWrap.style.display   = (showScores || showTotalOnly) ? '' : 'none';
 
-        if (showScores) {
-            if (correctEl) correctEl.textContent = correct;
-            if (wrongEl)   wrongEl.textContent   = wrong;
-            if (totalEl) {
-                const attempted = correct + wrong;
-                totalEl.textContent = `${attempted}/${this.state.questions.length}`;
+        if (showScores || showTotalOnly) {
+            if (showScores) {
+                if (correctEl) correctEl.textContent = correct;
+                if (wrongEl)   wrongEl.textContent   = wrong;
             }
-            if (scoreEl) {
+            
+            if (totalEl) {
+                if (showTotalOnly) {
+                    const current = this.state.currentIndex + 1;
+                    totalEl.textContent = `${current}/${this.state.questions.length}`;
+                } else {
+                    const attempted = correct + wrong;
+                    totalEl.textContent = `${attempted}/${this.state.questions.length}`;
+                }
+            }
+            
+            if (showScores && scoreEl) {
                 const attempted = correct + wrong;
                 const pct = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
                 scoreEl.textContent = `${pct}%`;
             }
-        } else {
+        }
+ else {
             // Exam mode (pre-reveal): only show total attempted
             if (totalEl) {
                 const attempted = correct + wrong;

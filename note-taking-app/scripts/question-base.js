@@ -107,6 +107,25 @@ const QuestionBase = {
                 }
             }
         });
+
+        // ALT+Q to toggle between Questions Layer and Base Layer
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'q' || e.key === 'Q')) {
+                // If Dungeon is open, we might want to close it or just let it be.
+                // User specifically said switch between Q layer and base layer.
+                if (document.body.classList.contains('dungeon-open')) {
+                    // Optionally close dungeon if desired? 
+                    // Usually if you are in Dungeon, Alt+Q going back to Dashboard is what "Base" implies.
+                    if (window.DungeonBase) window.DungeonBase.close();
+                }
+
+                if (this.el.base && !this.el.base.classList.contains("hidden")) {
+                    this.close();
+                } else {
+                    this.open();
+                }
+            }
+        });
     },
 
     cacheElements() {
@@ -432,7 +451,8 @@ const QuestionBase = {
                     const questions = this.state.questions.map(q => ({
                         ...q,
                         _timerMode: 'off',
-                        _tutorMode: true
+                        _tutorMode: true,
+                        _allMode: true
                     }));
                     window.DungeonBase.open(questions);
                 }
