@@ -70,16 +70,6 @@
   margin: 0;
 }
 
-/* Classic Theme Overrides */
-body.theme-classic .question-empty-state svg,
-body.theme-classic .question-empty-state p {
-  color: #878787 !important;
-}
-
-body.theme-classic .question-title-input,
-body.theme-classic .question-empty-state h3 {
-  color: #2c3e50 !important;
-}
 
 /* Question Sidebar overrides */
 .question-sidebar {
@@ -184,13 +174,6 @@ body.theme-classic .question-empty-state h3 {
 
 /* ... existing styles ... */
 
-body.theme-classic .question-editor-container .form-group label,
-body.theme-classic #addOptionBtn,
-body.theme-classic #addSessionQBtn,
-body.theme-classic #cancelSessionBtn,
-body.theme-classic #startSessionBtn {
-  color: #2c3e50 !important;
-}
 
 .question-title-input {
   flex: 1;
@@ -571,57 +554,7 @@ textarea:focus {
   margin-left: -7px;
 }
 
-/* Classic Theme Additional Overrides */
-body.theme-classic .question-title-input::placeholder {
-  color: #2c3e50 !important;
-  opacity: 1;
-}
 
-body.theme-classic .question-body label,
-body.theme-classic .question-editor-container .form-group label,
-body.theme-classic #addOptionBtn {
-  color: #2c3e50 !important;
-}
-
-body.theme-classic .session-creator-toolbar .icon-btn,
-body.theme-classic .session-creator-toolbar .model-selector,
-body.theme-classic #uploadedFileStatus {
-  color: #2c3e50 !important;
-  border-color: #2c3e50 !important;
-}
-
-body.theme-classic .session-creator-toolbar .icon-btn svg {
-  stroke: #2c3e50 !important;
-}
-
-/* Ensure danger buttons keep their red color even in classic */
-body.theme-classic .session-creator-toolbar .icon-btn.danger {
-  color: #dc2626 !important;
-  border-color: #dc2626 !important;
-}
-
-body.theme-classic .session-creator-toolbar .icon-btn.danger svg {
-  stroke: #dc2626 !important;
-}
-
-/* Question Header Buttons for Classic Theme */
-body.theme-classic .question-header .icon-btn {
-  color: #2c3e50 !important;
-}
-
-body.theme-classic .question-header .icon-btn svg {
-  stroke: #2c3e50 !important;
-}
-
-/* Manual Session Button in Header */
-body.theme-classic #createSessionBtn {
-  color: #2c3e50 !important;
-  border-color: #2c3e50 !important;
-}
-
-body.theme-classic #createSessionBtn svg text {
-  fill: #2c3e50 !important;
-}
 
 /* Session Creator Styles */
 .session-creator {
@@ -889,14 +822,7 @@ body.theme-classic #createSessionBtn svg text {
   stroke: currentColor; /* Ensure SVG uses button color */
 }
 
-/* Classic Theme Override for Breadcrumb Buttons handled in style.css or here */
-body.theme-classic .breadcrumb-actions .icon-btn {
-  color: #2c3e50;
-}
 
-body.theme-classic .breadcrumb-actions .icon-btn:hover {
-  background: rgba(0, 0, 0, 0.05); /* Light hover */
-}
 /* Recent Sessions - Empty State Enhancement */
 .empty-state-content {
   display: flex;
@@ -2142,14 +2068,7 @@ div[data-tab-content="recent-sessions"].active {
   margin: 0;
 }
 
-body.theme-classic .tag-drop-menu {
-  background: #fff;
-  border-color: #c0ccd8;
-}
 
-body.theme-classic .tag-drop-item {
-  color: #2c3e50;
-}
 
 /* ══════════════════════════════════════════════════
    CREATE TEST DASHBOARD

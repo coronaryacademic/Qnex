@@ -5226,13 +5226,6 @@ window.startImportProcess = function () {
                       </div>
                       <span class="theme-label">Light</span>
                     </div>
-                    <div class="theme-card" data-theme="classic">
-                       <div class="theme-preview">
-                        <div class="sidebar-prev" style="background:#555; border-right:1px solid #999;"></div>
-                        <div class="main-prev" style="background:#e9e9e9;"></div>
-                      </div>
-                      <span class="theme-label">Classic</span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -5784,10 +5777,7 @@ window.startImportProcess = function () {
   // Settings actions
   function applyTheme(themeName) {
     // Remove all theme classes
-    document.body.classList.remove(
-      "theme-light",
-      "theme-classic"
-    );
+    document.body.classList.remove("theme-light");
 
     // Apply new theme (dark is default, no class needed)
     if (themeName !== "dark") {

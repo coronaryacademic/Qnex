@@ -847,7 +847,7 @@ export default class DungeonBase {
             });
 
             // Theme Carousel Logic
-            const themes = ['dark', 'light', 'classic'];
+            const themes = ['dark', 'light'];
             const themeDisplay = document.getElementById('dungeonThemeDisplay');
 
             const updateThemeDisplay = () => {
@@ -1924,12 +1924,10 @@ export default class DungeonBase {
 
     async setTheme(theme) {
         // Apply theme to document body (Matching app.js logic)
-        document.body.classList.remove('theme-light', 'theme-classic');
+        document.body.classList.remove('theme-light');
 
         if (theme === 'light') {
             document.body.classList.add('theme-light');
-        } else if (theme === 'classic') {
-            document.body.classList.add('theme-classic');
         }
         // 'dark' is default (no class)
 

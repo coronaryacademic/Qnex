@@ -121,321 +121,63 @@ body {
   --scrollbar-thumb-hover: var(--accent);
 }
 
-/* Light Theme - Clean white/light gray */
+/* ── LIGHT THEME ── Warm off-white, slate accent, refined minimal ── */
 body.theme-light {
-  --bg: #e9e9e9;
-  --panel: #ffffff;
-  --panel-2: #fafafa;
-  --text: #1f2937;
-  --muted: #2b2b2b;
-  --accent: #3851a3;
-  --accent-2: #2d4080;
-  --border: #e0e0e0;
-  --chip: #eeeeee;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --panel-hover: rgba(0, 0, 0, 0.05);
-  --borderX: #c4c4c4;
-  --boot: black;
-  --settingsborder: #938e8e;
+  --bg: #f5f3ef;           /* Warm parchment background */
+  --panel: #ffffff;        /* Pure white panels */
+  --panel-2: #f0ede8;      /* Warm secondary panels */
+  --text: #1c1917;         /* Almost-black warm text */
+  --muted: #57534e;        /* Warm muted stone */
+  --accent: #4f46e5;       /* Indigo accent */
+  --accent-2: #6366f1;     /* Lighter indigo */
+  --border: #e8e3db;       /* Warm soft border */
+  --chip: #ede9e3;         /* Warm chip background */
+  --shadow: 0 2px 16px rgba(28, 25, 23, 0.08), 0 1px 4px rgba(28, 25, 23, 0.04);
+  --panel-hover: rgba(79, 70, 229, 0.06); /* Indigo tinted hover */
+  --borderX: #d6d0c8;
+  --boot: #1c1917;
+  --settingsborder: #d1cdc6;
   --bg-secondary: #ffffff;
-  --success: #059669;
+  --bg-primary: #f5f3ef;
+  --success: #16a34a;
   --danger: #dc2626;
-  --defualt: black;
-  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-  --scrollbar-thumb-hover: var(--accent);
+  --defualt: #1c1917;
+  --scrollbar-thumb: rgba(79, 70, 229, 0.18);
+  --scrollbar-thumb-hover: #4f46e5;
 }
 
-/* Classic Theme - Light professional theme with dark panels */
-body.theme-classic {
-  --bg: #e9e9e9;
-  --panel: #393a3a;
-  --panel-2: #444647;
-  --text: #e8e8e8;
-  --muted: #dddddd;
-  --accent: #4a9eff;
-  --accent-2: #6bb0ff;
-  --border: rgba(106, 106, 106, 0.449);
-  --chip: #4a4d51;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  --panel-hover: rgba(173, 173, 173, 0.277);
-  --boot: black;
-  --settingsborder: #938e8e;
-  --bg-secondary: white;
-  --success: #059669;
-  --danger: #dc2626;
-  --defualt: black;
-  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-  --scrollbar-thumb-hover: var(--accent);
+
+
+/* ── LIGHT THEME OVERRIDES ── */
+body.theme-light .sidebar-action-menu-content {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(79, 70, 229, 0.12);
+  box-shadow: 0 8px 32px rgba(28, 25, 23, 0.12);
 }
 
-/* Classic Theme - Specific overrides */
-body.theme-classic .breadcrumb-path {
-  color: #2c3e50 !important;
+body.theme-light .sidebar-action-menu-content::after {
+  background: white;
+  border-left: 1px solid rgba(79, 70, 229, 0.08);
+  border-top: 1px solid rgba(79, 70, 229, 0.08);
 }
 
-/* Classic Theme - Specific overrides */
-body.theme-classic .workspace-empty-hint {
-  color: #878787 !important;
+body.theme-light .menu-item:hover {
+  background: rgba(79, 70, 229, 0.06);
 }
 
-body.theme-classic .workspace-section-header {
-  color: #2c3e50 !important;
-  border-bottom-color: #c0c0c0 !important;
-}
-
-body.theme-classic .workspace-item:hover {
-  background: #9f9f9fa6 !important;
-}
-
-/* Welcome pane and content text colors */
-body.theme-classic .welcome-title,
-body.theme-classic .welcome-subtitle,
-body.theme-classic .section-title,
-body.theme-classic h1,
-body.theme-classic h2,
-body.theme-classic h3,
-body.theme-classic h4,
-body.theme-classic .workspace-empty-text,
-body.theme-classic .empty-state-text,
-body.theme-classic .note-overview,
-body.theme-classic .today-tasks,
-body.theme-classic .task-item,
-body.theme-classic .marquee-label,
-body.theme-classic .progress-text,
-body.theme-classic .progress-stats,
-body.theme-classic .todo-text,
-body.theme-classic .todo-drag-handle {
-  color: #2c3e50 !important;
-}
-
-body.theme-classic .workspace-item {
-  background: #dcdcdc !important;
-}
-
-body.theme-classic .note-tab.active {
-  background-color: rgb(39 39 39) !important;
-}
-
-body.theme-classic .toolbar-align-btn,
-body.theme-classic .toolbar-position-btn {
-  background: #2a2a2a !important;
-}
-
-/* Workspace item title - keep white */
-body.theme-classic .workspace-item-title {
-  color: #2c3e50 !important;
-}
-
-/* Muted text in Classic theme */
-body.theme-classic .workspace-item-meta,
-body.theme-classic .task-subtitle {
-  color: #131313 !important;
-}
-
-/* Buttons in Classic theme */
-body.theme-classic .todo-delete {
-  color: #2c3e50 !important;
-}
-
-/* Only SVG icons inside todo items */
-body.theme-classic .todo-item svg {
-  stroke: #2c3e50;
-}
-
-/* Welcome shortcuts styling */
-body.theme-classic .welcome-shortcuts {
-  background: #dcdcdc !important;
-}
-
-body.theme-classic .welcome-shortcuts h4,
-body.theme-classic .welcome-shortcuts-grid,
-body.theme-classic .welcome-shortcuts-grid div,
-body.theme-classic .welcome-shortcuts kbd {
-  color: #2c3e50 !important;
-}
-
-/* Marquee wrapper styling */
-body.theme-classic .marquee-wrapper {
-  background: #dcdcdc !important;
-  background-image: none !important;
-}
-
-body.theme-classic .marquee-content,
-body.theme-classic #marquee-content {
-  color: #2c3e50 !important;
-  background: transparent !important;
-}
-
-/* Remove any gradients or shadows from marquee elements */
-body.theme-classic .marquee-wrapper::before,
-body.theme-classic .marquee-wrapper::after {
-  display: none !important;
-}
-
-/* Breadcrumb navigation SVG icons - make all dark */
-body.theme-classic .breadcrumb-nav svg,
-body.theme-classic .breadcrumb-back svg,
-body.theme-classic .breadcrumb-actions svg,
-body.theme-classic #searchBtn svg,
-body.theme-classic #multiSelectBtn svg,
-body.theme-classic #sortBtn svg,
-body.theme-classic #viewToggleBtn svg {
-  stroke: #2c3e50 !important;
-}
-
-/* Helper for topbar buttons in Classic Theme */
-body.theme-classic .topbar .icon-btn {
-  color: #2c3e50 !important;
-}
-
-/* Breadcrumb navigation buttons hover */
-body.theme-classic .breadcrumb-back:hover,
-body.theme-classic .breadcrumb-actions .icon-btn:hover,
-body.theme-classic #searchBtn:hover,
-body.theme-classic #multiSelectBtn:hover,
-body.theme-classic #sortBtn:hover,
-body.theme-classic #viewToggleBtn:hover {
-  background: rgb(190 190 190 / 55%) !important;
-}
-
-/* Progress bar wrapper styling */
-body.theme-classic .progress-bar-wrapper {
-  background: #dcdcdc !important;
-}
-
-/* Todo input styling */
-body.theme-classic .todo-input {
-  background: #dcdcdc !important;
-  color: #2c3e50 !important;
-}
-
-body.theme-classic .todo-input::placeholder {
-  color: #7f8c8d !important;
-}
-
-/* Todo input text and cancel button */
-body.theme-classic .todo-input input,
-body.theme-classic .todo-input textarea {
-  color: #2c3e50 !important;
-}
-
-body.theme-classic .todo-cancel,
-body.theme-classic button#cancelTodoBtn.btn,
-body.theme-classic .btn#cancelTodoBtn {
-  color: #2c3e50 !important;
-}
-
-/* Search bar styling */
-body.theme-classic .sidebar-search input,
-body.theme-classic #searchInput {
-  background: #303030 !important;
-}
-
-/* Search results modal styling */
-body.theme-classic .search-results-modal h3,
-body.theme-classic .search-results-header h3 {
-  color: #ffffff !important;
-}
-
-body.theme-classic .search-results-query {
-  background: #dcdcdc !important;
-  color: #2c3e50 !important;
-}
-
-body.theme-classic .search-results-query strong {
-  color: #2c3e50 !important;
-}
-
-/* Search results content - panel background */
-body.theme-classic .search-results-content {
-  background: var(--panel) !important;
-}
-
-/* Search result items */
-body.theme-classic .search-result-item {
-  background: var(--panel) !important;
-  color: #e8e8e8 !important;
-}
-
-body.theme-classic .search-result-item:hover {
-  background: var(--panel-hover) !important;
-}
-
-/* Search result titles - white */
-body.theme-classic .search-result-title {
-  color: #ffffff !important;
-}
-
-/* Other search result elements */
-body.theme-classic .search-result-header,
-body.theme-classic .search-result-match-type,
-body.theme-classic .search-result-folder,
-body.theme-classic .search-result-preview {
-  color: #e8e8e8 !important;
-}
-
-/* Todo items - transparent background */
-body.theme-classic .todo-item {
-  background: transparent !important;
-}
-
-/* Todo edit button hover */
-body.theme-classic .todo-edit:hover {
-  background: rgb(203, 203, 203) !important;
-}
-
-/* Todo cancel button */
-body.theme-classic .todo-cancel {
-  background: #cccccc !important;
-}
-
-/* Modal and dialog titles - white (override inline styles) */
-body.theme-classic .modal-overlay h3[style],
-body.theme-classic .modal h3[style],
-body.theme-classic .dialog h3[style],
-body.theme-classic [class*="modal"] h3[style],
-body.theme-classic [class*="dialog"] h3[style],
-body.theme-classic .modal-overlay h3,
-body.theme-classic .modal h3,
-body.theme-classic .dialog h3,
-body.theme-classic [class*="modal"] h3,
-body.theme-classic [class*="dialog"] h3,
-body.theme-classic div[style*="background: var(--panel)"] h3,
-body.theme-classic h3[style*="color: var(--text)"],
-body.theme-classic .modal-overlay h2[style],
-body.theme-classic .modal h2[style],
-body.theme-classic .dialog h2[style],
-body.theme-classic [class*="modal"] h2[style],
-body.theme-classic [class*="dialog"] h2[style],
-body.theme-classic .modal-overlay h2,
-body.theme-classic .modal h2,
-body.theme-classic .dialog h2,
-body.theme-classic [class*="modal"] h2,
-body.theme-classic [class*="dialog"] h2,
-body.theme-classic .search-results-header h2,
-body.theme-classic h2[style*="color: var(--text)"] {
-  color: #ffffff !important;
-}
-
-/* Empty state SVG icons - Classic and Light themes */
-body.theme-classic svg[width="64"][height="64"] {
-  color: black !important;
-  stroke: black !important;
-}
-
-/* About modal icon overrides */
-body.theme-classic #about-modal-icon {
-  color: #ffffff !important;
-  stroke: #ffffff !important;
+body.theme-light .menu-item + .menu-item::before {
+  background: rgba(28, 25, 23, 0.04);
 }
 
 body.theme-light svg[width="64"][height="64"] {
-  color: black !important;
-  stroke: black !important;
+  color: #1c1917 !important;
+  stroke: #1c1917 !important;
 }
 
+
+
 /* Empty state SVG icons - Dark theme */
-body:not(.theme-classic):not(.theme-light) svg[width="64"][height="64"] {
+body:not(.theme-light) svg[width="64"][height="64"] {
   color: #ffffff !important;
   stroke: #ffffff !important;
 }
@@ -4321,10 +4063,6 @@ body.debug-borders div {
   color: var(--bg);
 }
 
-/* Classic theme specific hover styling */
-body.theme-classic .welcome-shortcuts-grid kbd:hover {
-  color: white !important;
-}
 
 @keyframes fadeIn {
   from {
@@ -6572,22 +6310,4 @@ ol.editor-block {
   height: 24px;
 }
 
-/* Classic Theme Specific Overrides requested by User */
-body.theme-classic .question-title-input,
-body.theme-classic .simple-loader-text {
-  color: #2c3e50 !important;
-}
 
-body.theme-classic .question-title-input::placeholder {
-  color: #2c3e50 !important;
-  opacity: 0.6;
-}
-
-body.theme-classic .question-body h1,
-body.theme-classic .question-body h2,
-body.theme-classic .question-body h3,
-body.theme-classic .question-body h4,
-body.theme-classic .question-body h5,
-body.theme-classic .question-body h6 {
-  color: #2c3e50 !important;
-}

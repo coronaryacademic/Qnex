@@ -135,7 +135,6 @@ let currentFontSize = 16;
 const themes = [
   { name: "Dark", class: "" }, // Default (no class needed for :root)
   { name: "Light", class: "theme-light" },
-  { name: "Classic", class: "theme-classic" },
 ];
 let currentThemeIndex = 0;
 
@@ -1906,9 +1905,7 @@ async function initializeThemeCarousel() {
     }
 
     // Fallback: detect from body class
-    if (document.body.classList.contains("theme-classic")) {
-      return themes.findIndex((t) => t.class === "theme-classic");
-    } else if (document.body.classList.contains("theme-light")) {
+    if (document.body.classList.contains("theme-light")) {
       return themes.findIndex((t) => t.class === "theme-light");
     }
 
@@ -1956,8 +1953,7 @@ async function initializeThemeCarousel() {
     const themeClass = theme.class;
 
     // Remove all theme classes
-    // Remove all theme classes
-    document.body.classList.remove("theme-light", "theme-classic");
+    document.body.classList.remove("theme-light");
 
     // Apply new theme (dark is default, no class needed)
     if (themeClass) {

@@ -2377,10 +2377,7 @@
           const theme = settings.theme || "dark";
 
           // Remove all theme classes
-          document.body.classList.remove(
-            "theme-light",
-            "theme-classic"
-          );
+          document.body.classList.remove("theme-light");
 
           // Apply theme (dark is default, no class needed)
           if (theme !== "dark") {
