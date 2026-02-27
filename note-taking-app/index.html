@@ -1184,8 +1184,24 @@
                     </button>
                     <div class="tag-drop-menu hidden" id="tagMenuMinor"></div>
                   </div>
-               </div>
-               <div class="session-creator-actions-right" style="gap: 8px; align-items: center; flex-wrap: wrap;">
+                </div>
+                <div class="session-creator-actions-right" style="display: flex; align-items: center; gap: 8px;">
+                  <button id="cancelSessionBtn" class="icon-btn" title="Cancel">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                  <button id="startSessionBtn" class="icon-btn" title="Start Session" style="color: var(--accent);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+            <!-- Timer sub-options (shown only when Down is selected) -->
+            <div id="sessionTimerSubOpts" style="display:flex; align-items:center; gap:10px; padding:4px 12px 6px; flex-wrap:wrap; border-top:1px solid var(--border); background:var(--bg-secondary,var(--bg)); font-size:11px;">
                   <!-- Session Options (compact) -->
                   <div class="session-inline-opts" style="display:flex; align-items:center; gap:6px; border-right:1px solid var(--border); padding-right:8px; margin-right:2px;">
                     <!-- Tutor toggle -->
@@ -1214,22 +1230,7 @@
                       </div>
                     </div>
                   </div>
-                  <button id="cancelSessionBtn" class="icon-btn" title="Cancel">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                  <button id="startSessionBtn" class="icon-btn" title="Start Session" style="color: var(--accent);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </button>
-               </div>
-
-            </div>
-            <!-- Timer sub-options (shown only when Down is selected) -->
-            <div id="sessionTimerSubOpts" style="display:none; align-items:center; gap:10px; padding:4px 12px 6px; flex-wrap:wrap; border-top:1px solid var(--border); background:var(--bg-secondary,var(--bg)); font-size:11px;">
+               <div id="sessionTimerConfigInner" style="display:none; align-items:center; gap:10px;">
               <span style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.04em;">Scope:</span>
               <div class="ct-toggle-group session-toggle-group" id="sessionTimerScopeGroup" style="gap:2px;">
                 <button class="ct-toggle-btn ct-toggle-active" data-val="question" style="padding:2px 8px; font-size:10px;">Per Question</button>
@@ -1257,6 +1258,8 @@
                 <span style="font-size:10px; color:var(--muted);">sec</span>
               </div>
             </div>
+            </div>
+
 
             <div class="session-editor-container">
                <div id="sessionInput" class="session-input" contenteditable="true" placeholder="Click '+ Add Question' to start..."></div>

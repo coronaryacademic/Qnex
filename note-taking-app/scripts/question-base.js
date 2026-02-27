@@ -1847,14 +1847,14 @@ Rules:
             });
         }
 
-        // Show/hide timer sub-options when Down is toggled
+        // Show/hide timer sub-options when Down is selected
         const timerGroup = document.getElementById('sessionTimerGroup');
-        const subOpts    = document.getElementById('sessionTimerSubOpts');
-        if (timerGroup && subOpts) {
+        const timerConfigInner = document.getElementById('sessionTimerConfigInner');
+        if (timerGroup && timerConfigInner) {
             timerGroup.querySelectorAll('.ct-toggle-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const isDown = btn.dataset.val === 'down';
-                    subOpts.style.display = isDown ? 'flex' : 'none';
+                    timerConfigInner.style.display = isDown ? 'flex' : 'none';
                 });
             });
         }
