@@ -917,16 +917,43 @@
                           <!-- Timer -->
                           <div class="ct-option-row">
                             <div class="ct-option-label">
-                              Timer
+                              Timer Mode
                             </div>
-                            <div class="ct-toggle-group" id="ctTimerGroup">
-                              <button class="ct-toggle-btn ct-toggle-active" data-val="none">Off</button>
-                              <button class="ct-toggle-btn" data-val="30">30s</button>
-                              <button class="ct-toggle-btn" data-val="60">1m</button>
-                              <button class="ct-toggle-btn" data-val="90">1.5m</button>
-                              <button class="ct-toggle-btn" data-val="120">2m</button>
+                            <div class="ct-toggle-group" id="ctTimerModeGroup">
+                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
+                              <button class="ct-toggle-btn" data-val="up">Up (Elapsed)</button>
+                              <button class="ct-toggle-btn" data-val="down">Down (Remain)</button>
                             </div>
-                            <div class="ct-option-hint">Per question time limit</div>
+                            <div class="ct-option-hint">Count time spent or time remaining</div>
+                          </div>
+
+                          <!-- Timer Sub-Options (Down Only) -->
+                          <div id="ctTimerDownOptions" style="display: none; flex-direction: column; gap: 12px; margin-top: 8px;">
+                            <div class="ct-option-row">
+                              <div class="ct-option-label">Timer Scope</div>
+                              <div class="ct-toggle-group" id="ctTimerScopeGroup">
+                                <button class="ct-toggle-btn ct-toggle-active" data-val="question">Per Question</button>
+                                <button class="ct-toggle-btn" data-val="session">Whole Session</button>
+                              </div>
+                            </div>
+                            <div class="ct-option-row" id="ctTimerDurationRow">
+                              <div class="ct-option-label">Duration</div>
+                              <!-- Per Question Options -->
+                              <div class="ct-toggle-group" id="ctTimerDurationGroupQuestion">
+                                <button class="ct-toggle-btn" data-val="30">30s</button>
+                                <button class="ct-toggle-btn ct-toggle-active" data-val="60">60s</button>
+                                <button class="ct-toggle-btn" data-val="120">2m</button>
+                                <button class="ct-toggle-btn" data-val="180">3m</button>
+                                <button class="ct-toggle-btn" data-val="300">5m</button>
+                              </div>
+                              <!-- Whole Session Options -->
+                              <div class="ct-session-timer-wrap" id="ctTimerDurationGroupSession" style="display: none; align-items: center; gap: 8px;">
+                                <input type="number" id="ctTimerHr" min="0" max="99" value="1" class="ct-num-input" style="width: 50px;"> <span style="font-size: 12px; color: var(--text-muted);">hr</span>
+                                <input type="number" id="ctTimerMin" min="0" max="59" value="0" class="ct-num-input" style="width: 50px;"> <span style="font-size: 12px; color: var(--text-muted);">min</span>
+                                <input type="number" id="ctTimerSec" min="0" max="59" value="0" class="ct-num-input" style="width: 50px;"> <span style="font-size: 12px; color: var(--text-muted);">sec</span>
+                              </div>
+                              <div class="ct-option-hint">Set duration for your timer</div>
+                            </div>
                           </div>
 
                           <!-- Tutor Mode -->

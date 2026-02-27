@@ -3,6 +3,8 @@ const path = require("path");
 const fs = require("fs").promises;
 const http = require("http");
 const handler = require("serve-handler");
+const axios = require("axios");
+require("dotenv").config({ path: path.join(__dirname, "server", ".env") });
 
 // Track main window and tray
 let mainWindow = null;
@@ -942,6 +944,60 @@ function startServer3002() {
     expressApp.delete('/api/trash', async (req, res) => {
       const result = await writeFile(FILES.trash, []);
       res.json(result);
+    });
+
+    expressApp.post('/api/ai/chat', async (req, res) => {
+      try {
+        const { messages, max_tokens = 200, model } = req.body;
+        const API_KEY = process.env.OPENROUTER_API_KEY;
+
+        if (!API_KEY) {
+          console.error("[AI] ERROR: OPENROUTER_API_KEY missing");
+          return res.status(500).json({ error: "AI API key not configured" });
+        }
+
+        const modelToUse = model || "arcee-ai/trinity-large-preview:free";
+        const response = await axios.post(
+          "https://openrouter.ai/api/v1/chat/completions",
+          {
+            model: modelToUse,
+            messages: messages,
+            max_tokens: max_tokens,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${API_KEY}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "http://localhost:3002",
+              "X-Title": "Qnex Local",
+            },
+            timeout: 120000,
+          }
+        );
+        res.json(response.data);
+      } catch (error) {
+        const statusCode = error.response?.status === 404 ? 502 : (error.response?.status || 500);
+        res.status(statusCode).json({
+          error: "Failed to get response from AI",
+          details: error.response?.data || error.message
+        });
+      }
+    });
+
+    expressApp.post('/api/upload', async (req, res) => {
+      try {
+        const { image, name } = req.body;
+        if (!image || !name) return res.status(400).json({ error: "Missing data" });
+        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+        const imagesDir = path.join(dataDir, "images");
+        await fs.mkdir(imagesDir, { recursive: true });
+        const filePath = path.join(imagesDir, name);
+        await fs.writeFile(filePath, buffer);
+        res.json({ success: true, url: `/api/images/${name}`, filename: name });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
     });
 
     expressApp.get('/api/questions', async (req, res) => {

@@ -10,7 +10,10 @@ export default class DungeonBase {
             sidebarCollapsed: false,
             toolbarVisible: true,
             toolbarPosition: 'floating', // 'floating', 'top', 'bottom', 'left', 'right'
-            unsavedChanges: false
+            unsavedChanges: false,
+            splitView: false,
+            isBlockRevealed: false,
+            associatedSessionId: null
         };
         this.labData = {
             "Blood": [
@@ -247,7 +250,14 @@ export default class DungeonBase {
               <!-- Toolbar Options Menu -->
               <div id="dungeonToolbarMenu" class="dungeon-toolbar-menu hidden">
                 <div class="dungeon-toolbar-menu-section">
-                  <div class="dungeon-toolbar-menu-label">Visibility</div>
+                  <div class="dungeon-toolbar-menu-label">View Options</div>
+                  <button id="dungeonSplitViewToggle" class="dungeon-menu-toggle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="12" y1="3" x2="12" y2="21"></line>
+                    </svg>
+                    <span>Split View Explanation</span>
+                  </button>
                   <button id="dungeonToolbarToggle" data-action="toggle">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -308,14 +318,18 @@ export default class DungeonBase {
                 </div>
               </div>
               
-
-              
               <div id="dungeonSidebar" class="dungeon-sidebar">
                 <!-- Stats will be added at bottom by JS -->
               </div>
               <div class="dungeon-main">
-                  <div class="dungeon-scroll-wrapper">
-                      <div id="dungeonMainContent" class="dungeon-question-container"></div>
+                  <div class="dungeon-scroll-wrapper" id="dungeonScrollWrapper">
+                      <div id="dungeonMainPanel" class="dungeon-main-panel">
+                          <div id="dungeonMainContent" class="dungeon-question-container font-medium"></div>
+                      </div>
+                      <div id="dungeonSplitResizer" class="dungeon-split-resizer hidden"></div>
+                      <div id="dungeonExplanationPanel" class="dungeon-explanation-panel hidden">
+                          <div id="dungeonExplanationContent" class="dungeon-question-container font-medium"></div>
+                      </div>
                   </div>
               </div>
               
@@ -328,26 +342,42 @@ export default class DungeonBase {
                       </div>
                   </div>
                   <div class="dungeon-footer-center">
-                      <div class="dungeon-stat-item" title="Correct Answers">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          <span id="dungeonStatCorrect">0</span>
+                      <div id="dungeonExamResults" class="dungeon-footer-center-stats hidden">
+                          <div class="dungeon-stat-item" title="Correct Answers">
+                              <span id="dungeonStatCorrectExam" style="color: var(--success, #10b981);">0</span>
+                          </div>
+                          <div class="dungeon-stat-item" title="Total Questions">
+                              <span id="dungeonStatTotalExam">0</span>
+                          </div>
+                          <div class="dungeon-stat-item" title="Final Score">
+                              <span id="dungeonStatScore" style="font-weight: bold; color: var(--accent);">0%</span>
+                          </div>
+                          <div class="dungeon-stat-item" title="Wrong Answers" style="color: var(--error);">
+                              <span id="dungeonStatWrongExam">0</span>
+                          </div>
                       </div>
-                      <div class="dungeon-stat-item" title="Question Progress">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <rect x="3" y="3" width="7" height="7"></rect>
-                              <rect x="14" y="3" width="7" height="7"></rect>
-                              <rect x="14" y="14" width="7" height="7"></rect>
-                              <rect x="3" y="14" width="7" height="7"></rect>
-                          </svg>
-                          <span id="dungeonStatTotal">0/0</span>
-                      </div>
-                      <div class="dungeon-stat-item" title="Incorrect Answers">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                          <span id="dungeonStatWrong">0</span>
+                      <div id="dungeonTutorStats" class="dungeon-footer-center-stats">
+                          <div class="dungeon-stat-item" title="Correct Answers">
+                              <span id="dungeonStatCorrect">0</span>
+                          </div>
+                          <div class="dungeon-stat-item" title="Question Progress">
+                              <span id="dungeonStatTotal">0/0</span>
+                          </div>
+                          <div class="dungeon-stat-item" title="Current Score">
+                              <span id="dungeonStatScoreTutor" style="font-weight: bold; color: var(--accent);">0%</span>
+                          </div>
+                          <div class="dungeon-stat-item" title="Wrong Answers" style="color: var(--error);">
+                              <span id="dungeonStatWrong">0</span>
+                          </div>
                       </div>
                   </div>
                   <div class="dungeon-footer-right">
                       <span id="dungeonSaveStatus" class="dungeon-save-status saved">Saved</span>
+                      
+                      <button id="dungeonSuspendBtn" class="dungeon-reveal-btn" title="Suspend Block (Resume Later)">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                      </button>
+
                       <button id="dungeonRevealBtn" class="dungeon-reveal-btn" title="Reveal Answer">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                               <path d="M9 18h6"></path>
@@ -358,7 +388,16 @@ export default class DungeonBase {
                               <line x1="4" y1="4" x2="20" y2="20"></line>
                           </svg>
                       </button>
-                      <button id="dungeonClearBtn" class="dungeon-clear-btn" title="Clear Answer & Start Over" style="display: none;">
+
+                      <button id="dungeonEndBlockBtn" class="dungeon-reveal-btn" title="End Block (Finish Early)">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                      </button>
+
+                      <button id="dungeonSubmitBlockBtn" class="dungeon-reveal-btn submit-block-svg" title="Submit Block & See Results">
+                          <svg class="btn-icon-submit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 11.08 12 11.08 9 11.08 2 11.08"></polyline><path d="M22 4L12 14.01l-3-3"></path></svg>
+                      </button>
+
+                      <button id="dungeonClearBtn" class="dungeon-reveal-btn" title="Clear Answer" style="display: none;">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                               <circle cx="12" cy="12" r="10"></circle>
                               <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
@@ -517,6 +556,11 @@ export default class DungeonBase {
                 this.timerStart = Date.now();
                 this.updateTimerDisplay(0);
             };
+        }
+
+        const endBlockBtn = document.getElementById('dungeonEndBlockBtn');
+        if (endBlockBtn) {
+            endBlockBtn.onclick = () => this.submitBlock(); // Both end the block
         }
 
         // Initialize Sub-components
@@ -724,6 +768,16 @@ export default class DungeonBase {
         const toolbarOptionsBtn = document.getElementById('dungeonToolbarOptions');
         const toolbarMenu = document.getElementById('dungeonToolbarMenu');
 
+        const splitViewToggle = document.getElementById('dungeonSplitViewToggle');
+        if (splitViewToggle) {
+            splitViewToggle.onclick = (e) => {
+                e.stopPropagation();
+                this.toggleSplitView();
+                toolbarMenu.classList.add('hidden');
+                toolbarOptionsBtn.classList.remove('active');
+            };
+        }
+
         if (toolbarOptionsBtn && toolbarMenu) {
             toolbarOptionsBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -912,7 +966,8 @@ export default class DungeonBase {
             this.updateToolbarVisibility();
         }
 
-
+        // Initialize Split View Resizer
+        this.initSplitResizer();
     }
 
     toggleSidebar() {
@@ -1166,7 +1221,26 @@ export default class DungeonBase {
             this.state.unsavedChanges = false;
         } else if (status === 'unsaved') {
             this.showNotification("Unsaved changes", "info");
-            this.state.unsavedChanges = true;
+            // Toggle End/Submit Block UI based on completion
+        const submitBlockBtn = document.getElementById("dungeonSubmitBlockBtn");
+        if (submitBlockBtn) {
+            const unanswered = this.state.questions.length - this.state.answers.size;
+            const iconSubmit = submitBlockBtn.querySelector('.btn-icon-submit');
+            const iconEnd = submitBlockBtn.querySelector('.btn-icon-end');
+            const btnText = submitBlockBtn.querySelector('.btn-text');
+
+            if (unanswered === 0) {
+                if (iconSubmit) iconSubmit.style.display = 'block';
+                if (iconEnd) iconEnd.style.display = 'none';
+                if (btnText) btnText.textContent = 'Submit Block';
+            } else {
+                if (iconSubmit) iconSubmit.style.display = 'none';
+                if (iconEnd) iconEnd.style.display = 'block';
+                if (btnText) btnText.textContent = 'End Block';
+            }
+        }
+
+        this.state.unsavedChanges = true;
         }
 
         const saveStatusEl = document.getElementById('dungeonSaveStatus');
@@ -1201,14 +1275,18 @@ export default class DungeonBase {
     }
 
     setFontSize(size) {
-        const container = document.getElementById('dungeonMainContent');
-        if (!container) return;
+        const containers = [
+            document.getElementById('dungeonMainContent'),
+            document.getElementById('dungeonExplanationContent')
+        ];
 
-        // Remove all font size classes
-        container.classList.remove('font-small', 'font-medium', 'font-large');
-
-        // Add the selected font size class
-        container.classList.add(`font-${size}`);
+        containers.forEach(container => {
+            if (!container) return;
+            // Remove all font size classes
+            container.classList.remove('font-small', 'font-medium', 'font-large');
+            // Add the selected font size class
+            container.classList.add(`font-${size}`);
+        });
 
         // Save to localStorage
         localStorage.setItem('dungeonFontSize', size);
@@ -2043,20 +2121,65 @@ export default class DungeonBase {
         const timerEl = document.getElementById('dungeonTimer');
         if (!timerEl) return;
 
-        // If question has been answered, display saved timer but don't run
-        if (q && q.submittedAnswer && q.timerElapsed !== undefined) {
-            this.updateTimerDisplay(q.timerElapsed);
-            return; // Don't start interval for answered questions
+        const timerMode = q._timerMode || 'off';
+        const timerScope = q._timerScope || 'question';
+        const timerSecs = q._timerSecs || 60;
+
+        if (q._timerMode === 'untimed') {
+            if (timerEl) timerEl.textContent = "Untimed | Self assessment";
+            if (timerEl) timerEl.title = "Assessment is untimed";
+            return;
         }
 
-        // Start fresh timer for unanswered questions
+        // Handle Session-wide timer initialization
+        if (timerMode === 'down' && timerScope === 'session' && !this.sessionTimerStart) {
+            this.sessionTimerStart = Date.now();
+        }
+
+        // If question has been answered, display saved timer but don't run (for 'up' mode)
+        if (timerMode === 'up' && q && q.submittedAnswer && q.timerElapsed !== undefined) {
+            this.updateTimerDisplay(q.timerElapsed);
+            return; 
+        }
+
         this.timerStart = Date.now();
-        this.updateTimerDisplay(0);
+        
+        // Initial display
+        if (timerMode === 'up') {
+            this.updateTimerDisplay(q.timerElapsed || 0);
+        } else if (timerMode === 'down') {
+            const initialRemaining = timerScope === 'session' 
+                ? (timerSecs * 1000) - (Date.now() - this.sessionTimerStart)
+                : (timerSecs * 1000);
+            this.updateTimerDisplay(Math.max(0, initialRemaining));
+        }
 
         this.timerInterval = setInterval(() => {
-            const elapsed = Date.now() - this.timerStart;
-            this.updateTimerDisplay(elapsed);
+            const now = Date.now();
+            if (timerMode === 'up') {
+                const elapsed = (q.timerElapsed || 0) + (now - this.timerStart);
+                this.updateTimerDisplay(elapsed);
+            } else if (timerMode === 'down') {
+                let remaining;
+                if (timerScope === 'question') {
+                    remaining = (timerSecs * 1000) - (now - this.timerStart);
+                } else {
+                    remaining = (timerSecs * 1000) - (now - this.sessionTimerStart);
+                }
+                
+                if (remaining <= 0) {
+                    this.updateTimerDisplay(0);
+                    this.handleTimeUp();
+                } else {
+                    this.updateTimerDisplay(remaining);
+                }
+            }
         }, 1000);
+    }
+
+    handleTimeUp() {
+        this.stopTimer();
+        this.showNotification("Time is up!", "error");
     }
 
     stopTimer() {
@@ -2070,20 +2193,26 @@ export default class DungeonBase {
         const timerEl = document.getElementById('dungeonTimer');
         if (!timerEl) return;
 
+        const q = this.state.questions[this.state.currentIndex];
+        if (q && q._timerMode === 'untimed') {
+            timerEl.textContent = "Untimed | Self assessment";
+            return;
+        }
+
         const totalSeconds = Math.floor(ms / 1000);
         const m = Math.floor(totalSeconds / 60);
         const s = totalSeconds % 60;
         timerEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 
-    updateFooterStats() {
-        // Calculate stats
+    updateSidebarStats() {
         let correct = 0;
         let wrong = 0;
 
-        this.state.answers.forEach(a => {
-            if (a.submitted) {
-                if (a.isCorrect) correct++;
+        this.state.questions.forEach(q => {
+            const ans = this.state.answers.get(q.id);
+            if (ans) {
+                if (ans.isCorrect) correct++;
                 else wrong++;
             }
         });
@@ -2091,13 +2220,19 @@ export default class DungeonBase {
         const correctEl = document.getElementById('dungeonStatCorrect');
         const wrongEl = document.getElementById('dungeonStatWrong');
         const totalEl = document.getElementById('dungeonStatTotal');
+        const scoreEl = document.getElementById('dungeonStatScoreTutor');
 
         if (correctEl) correctEl.textContent = correct;
         if (wrongEl) wrongEl.textContent = wrong;
         if (totalEl) {
-            const currentQuestion = this.state.currentIndex + 1;
+            const attempted = correct + wrong;
             const totalQuestions = this.state.questions.length;
-            totalEl.textContent = `${currentQuestion}/${totalQuestions}`;
+            totalEl.textContent = `${attempted}/${totalQuestions}`;
+        }
+        if (scoreEl) {
+            const attempted = correct + wrong;
+            const percentage = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
+            scoreEl.textContent = `${percentage}%`;
         }
     }
 
@@ -2138,8 +2273,65 @@ export default class DungeonBase {
         const answer = this.state.answers.get(q.id);
         const revealBtn = document.getElementById('dungeonRevealBtn');
         const clearBtn = document.getElementById('dungeonClearBtn');
+        const suspendBtn = document.getElementById('dungeonSuspendBtn');
+        const endBlockBtn = document.getElementById('dungeonEndBlockBtn');
+        const submitBlockBtn = document.getElementById('dungeonSubmitBlockBtn');
+        const resultsEl = document.getElementById("dungeonExamResults");
+        const statsEl = document.getElementById("dungeonTutorStats");
 
         if (!revealBtn) return;
+
+        // Mode handling: Show Exam buttons only if _tutorMode is exactly false
+        const isExamMode = q._tutorMode === false;
+        
+        if (isExamMode) {
+            revealBtn.style.display = 'none';
+            if (suspendBtn) suspendBtn.style.display = 'inline-flex';
+            
+            const unanswered = this.state.questions.length - this.state.answers.size;
+            if (this.state.isBlockRevealed) {
+                if (endBlockBtn) endBlockBtn.style.display = 'none';
+                if (submitBlockBtn) submitBlockBtn.style.display = 'none';
+            } else {
+                if (unanswered === 0) {
+                    if (endBlockBtn) endBlockBtn.style.display = 'none';
+                    if (submitBlockBtn) submitBlockBtn.style.display = 'inline-flex';
+                } else {
+                    if (endBlockBtn) endBlockBtn.style.display = 'inline-flex';
+                    if (submitBlockBtn) submitBlockBtn.style.display = 'none';
+                }
+            }
+            
+            // Stats handling
+            if (this.state.isBlockRevealed) {
+                if (resultsEl) resultsEl.classList.remove("hidden");
+                if (statsEl) statsEl.classList.add("hidden"); 
+            } else {
+                if (resultsEl) resultsEl.classList.add("hidden");
+                if (statsEl) statsEl.classList.remove("hidden");
+                
+                // Hide counts in Exam until reveal
+                const correctItem = statsEl.querySelector('[title="Correct Answers"]');
+                const wrongItem = statsEl.querySelector('[title="Wrong Answers"]');
+                if (correctItem) correctItem.style.display = 'none';
+                if (wrongItem) wrongItem.style.display = 'none';
+            }
+        } else {
+            // Tutor Mode / Other
+            revealBtn.style.display = 'inline-flex';
+            if (suspendBtn) suspendBtn.style.display = 'none';
+            if (endBlockBtn) endBlockBtn.style.display = 'none';
+            if (submitBlockBtn) submitBlockBtn.style.display = 'none';
+            
+            if (resultsEl) resultsEl.classList.add("hidden");
+            if (statsEl) {
+                statsEl.classList.remove("hidden");
+                const correctItem = statsEl.querySelector('[title="Correct Answers"]');
+                const wrongItem = statsEl.querySelector('[title="Wrong Answers"]');
+                if (correctItem) correctItem.style.display = 'flex';
+                if (wrongItem) wrongItem.style.display = 'flex';
+            }
+        }
 
         // Show/hide clear button based on answer state
         if (clearBtn) {
@@ -2150,7 +2342,7 @@ export default class DungeonBase {
             }
         }
 
-        // If submitted, disable reveal button
+        // If submitted, disable reveal button (for Tutor mode)
         if (answer && answer.submitted) {
             revealBtn.style.opacity = '0.3';
             revealBtn.style.pointerEvents = 'none';
@@ -2302,6 +2494,13 @@ export default class DungeonBase {
         const closeBtn = document.getElementById("dungeonCloseBtn");
         if (closeBtn) closeBtn.onclick = () => this.close();
 
+        // Footer buttons
+        const suspendBtn = document.getElementById("dungeonSuspendBtn");
+        if (suspendBtn) suspendBtn.onclick = () => this.suspendBlock();
+
+        const submitBlockBtn = document.getElementById("dungeonSubmitBlockBtn");
+        if (submitBlockBtn) submitBlockBtn.onclick = () => this.submitBlock();
+
         // Keyboard nav
         document.addEventListener("keydown", (e) => {
             if (this.el.container.classList.contains("hidden")) return;
@@ -2315,28 +2514,36 @@ export default class DungeonBase {
             if (e.key === "ArrowLeft") this.navPrev();
             if (e.key === "Escape") this.close();
 
-            // Enter to Submit (Prevent if search or calculator active)
+            // Enter Key logic
             if (e.key === "Enter" && !isSearchActive && !isCalcActive) {
-                this.handleSubmit();
+                const currentQ = this.state.questions[this.state.currentIndex];
+                if (currentQ && currentQ._tutorMode !== false) {
+                    // Tutor Mode: Submit to see feedback
+                    this.handleSubmit();
+                }
+                // Exam Mode: Do nothing (prevent accidental revelation)
             }
         });
     }
 
-    open(questions) {
+    open(questions, sessionId = null) {
         document.body.classList.add("dungeon-open");
         if (!questions || questions.length === 0) {
             alert("No questions to play!");
             return;
         }
 
+        // Setup state
         this.state.questions = [...questions];
+        this.state.associatedSessionId = sessionId;
+        this.state.isBlockRevealed = false; // Reset block revealed on open
+        this.sessionTimerStart = null; // Reset session timer on new session open
 
-        // Performance: Pre-cache search text to avoid stripping HTML during search loop
+        // Performance: Pre-cache search text
         this.state.questions.forEach(q => {
             if (q._searchCached) return;
             q._searchTitle = (q.title || "").toLowerCase();
             q._searchContent = this.stripHtml(q.text || q.body || q.content || "").toLowerCase();
-            // Cache options text
             if (q.options) {
                 q.options.forEach(opt => {
                     opt._searchText = (opt.text || "").toLowerCase();
@@ -2344,6 +2551,7 @@ export default class DungeonBase {
             }
             q._searchCached = true;
         });
+        
         this.state.answers.clear();
 
         // Load persisted answers from question objects
@@ -2351,6 +2559,9 @@ export default class DungeonBase {
         this.state.questions.forEach((q, idx) => {
             if (q.submittedAnswer) {
                 this.state.answers.set(q.id, q.submittedAnswer);
+                // If it's a resumed session and questions have submitted answers,
+                // and it's tutor mode off (exam), we might want to check if block was previously revealed.
+                // For now, we only reveal if explicitly submitted in this instance.
             } else if (firstUnansweredIndex === -1) {
                 firstUnansweredIndex = idx;
             }
@@ -2358,7 +2569,6 @@ export default class DungeonBase {
 
         // Auto-jump to first unanswered question, or stay at 0 if none found (all answered)
         this.state.currentIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0;
-
         this.state.selectedOption = null;
 
         // Show container and loading screen
@@ -2366,19 +2576,125 @@ export default class DungeonBase {
         const loadingScreen = document.getElementById('dungeonLoadingScreen');
         if (loadingScreen) {
             loadingScreen.classList.remove('hidden');
-
-            // Hide loading screen and render content after brief delay
             setTimeout(() => {
                 loadingScreen.classList.add('hidden');
                 this.render();
-            }, 400); // Fast loading (400ms)
+            }, 400);
         } else {
-            // Fallback if loading screen doesn't exist
             this.render();
         }
 
         // Ensure Lab is initialized (fixes hot-reload/state issues)
         this.initLab();
+    }
+
+    suspendBlock() {
+        if (confirm("Are you sure you want to suspend this block? Your progress will be saved but the timer will stop.")) {
+            this.close();
+        }
+    }
+
+    async submitBlock() {
+        if (!this.state.isBlockRevealed) {
+            const unanswered = this.state.questions.length - this.state.answers.size;
+            if (unanswered > 0) {
+                if (!confirm(`You still have ${unanswered} unanswered questions. Are you sure you want to end the block?`)) {
+                    return;
+                }
+            }
+
+            this.state.isBlockRevealed = true;
+        }
+        
+        // Finalize scoring
+        const stats = this.calculateStats();
+        stats.percentage = this.state.questions.length > 0 ? Math.round((stats.correct / this.state.questions.length) * 100) : 0;
+        
+        // Show results in footer
+        const resultsEl = document.getElementById("dungeonExamResults");
+        const statsEl = document.getElementById("dungeonTutorStats");
+        const scoreEl = document.getElementById("dungeonStatScore"); // This is for the main exam score
+        
+        if (resultsEl) resultsEl.classList.remove("hidden");
+        // if (statsEl) statsEl.classList.add("hidden"); // Optional: hide old stats
+        
+        if (scoreEl) {
+            scoreEl.textContent = `${stats.percentage}%`;
+        }
+
+        const correctExam = document.getElementById("dungeonStatCorrectExam");
+        const totalExam = document.getElementById("dungeonStatTotalExam");
+        const wrongExam = document.getElementById("dungeonStatWrongExam");
+
+        if (correctExam) correctExam.textContent = stats.correct;
+        if (totalExam) totalExam.textContent = this.state.questions.length;
+        if (wrongExam) wrongExam.textContent = stats.wrong; // Use stats.wrong from calculateStats
+
+        // Also update Tutor stats for consistency if visible
+        const tutorCorrect = document.getElementById("dungeonStatCorrect");
+        const tutorTotal = document.getElementById("dungeonStatTotal");
+        const tutorScore = document.getElementById("dungeonStatScoreTutor");
+        const tutorWrong = document.getElementById("dungeonStatWrong");
+
+        if (tutorCorrect) tutorCorrect.textContent = stats.correct;
+        if (tutorTotal) tutorTotal.textContent = `${stats.correct + stats.wrong}/${this.state.questions.length}`;
+        if (tutorScore) tutorScore.textContent = `${stats.percentage}%`;
+        if (tutorWrong) tutorWrong.textContent = stats.wrong;
+
+        this.updateSidebarStats();
+        this.render(); // Re-render to show feedback for current question
+        
+        // Persist session results if sessionId exists
+        if (this.state.associatedSessionId) {
+            try {
+                // Fetch the existing session if needed, but here we just want to update stats.
+                // Assuming backend has a way to update specific session stats.
+                // For now, let's just save the questions (which contain submittedAnswer with feedback)
+                await this.saveQuestionsToBackend();
+                
+                // Also update the session record itself if possible
+                const sessionsStr = localStorage.getItem("active-recall-recent-sessions");
+                if (sessionsStr) {
+                    const sessions = JSON.parse(sessionsStr);
+                    const session = sessions.find(s => s.id === this.state.associatedSessionId);
+                    if (session) {
+                        session.stats = {
+                            score: Math.round((stats.correct / this.state.questions.length) * 100),
+                            correct: stats.correct,
+                            total: this.state.questions.length,
+                            date: new Date().toISOString()
+                        };
+                        localStorage.setItem("active-recall-recent-sessions", JSON.stringify(sessions));
+                        
+                        // Sync to backend
+                        await window.fileSystemService.makeRequest('/sessions', {
+                            method: 'POST',
+                            body: JSON.stringify(sessions)
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("[DungeonBase] Failed to persist session stats:", err);
+            }
+        }
+    }
+
+    calculateStats() {
+        let correct = 0;
+        let wrong = 0;
+        let unanswered = 0;
+
+        this.state.questions.forEach(q => {
+            const ans = this.state.answers.get(q.id);
+            if (ans) {
+                if (ans.isCorrect) correct++;
+                else wrong++;
+            } else {
+                unanswered++;
+            }
+        });
+
+        return { correct, wrong, unanswered };
     }
 
     close() {
@@ -2403,7 +2719,7 @@ export default class DungeonBase {
         // 3. Update topbar and footer
         this.updateQuestionTitle();
         this.updateStats(); // Keeps old hook just in case
-        this.updateFooterStats(); // New Stats
+        this.updateSidebarStats(); // New Stats
 
         // Update Reveal Button State
         this.updateRevealButton();
@@ -2487,11 +2803,22 @@ export default class DungeonBase {
             let content = `<span class="q-number" style="font-size: 0.9rem;">${index + 1}</span>`;
 
             if (answer && answer.submitted) {
-                if (answer.isCorrect) {
-                    box.classList.add("correct");
+                if (this.state.isBlockRevealed || q._tutorMode !== false) {
+                    if (answer.isCorrect) {
+                        box.classList.add("correct");
+                    } else {
+                        box.classList.add("wrong");
+                    }
                 } else {
-                    box.classList.add("wrong");
+                    // Exam Mode: Solved but results not revealed yet
+                    box.classList.add("solved");
                 }
+            }
+            
+            // Revealed state (Orange) - take precedence
+            if (q.revealed) {
+                box.classList.remove("correct", "wrong", "solved");
+                box.classList.add("revealed-state");
             }
 
             box.title = q.title || `Question ${index + 1}`; // Tooltip
@@ -2899,17 +3226,21 @@ export default class DungeonBase {
         const isSubmitted = answer && answer.submitted;
         const isRevealed = q.revealed || false;
 
+        // Tutor Mode respect
+        // Show explanation if revealed OR (submitted AND tutor mode is ON)
+        // IN EXAM MODE: Hide feedback until block is revealed
+        const isExamMode = q._tutorMode === false;
+        const showFeedback = !isExamMode || this.state.isBlockRevealed;
+        const showExplanation = isRevealed || (isSubmitted && showFeedback);
+
         let html = `
-    
-    <!-- Context Box (Image/Code) - Placeholder if empty -->
-    <!-- Context Box (Image/Code) -->
     <!-- Context Box (Image/Code) -->
     <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event, 'main')">
            ${q.text || q.body || q.content || "No question details."}
     </div>
 
     <div class="dungeon-options-list">
-  `;
+      `;
 
         const options = q.options || [];
         const currentSel = this.state.selectedOption; // Valid only if not submitted
@@ -2920,13 +3251,18 @@ export default class DungeonBase {
             // Logic for styling
             if (isSubmitted) {
                 // Submitted state
-                if (String(opt.id) === String(submittedSel)) {
-                    classes += " selected"; // Visual selected
-                    if (answer.isCorrect) classes += " correct-answer";
-                    else classes += " wrong-answer";
-                }
-                if (opt.isCorrect && !answer.isCorrect) {
-                    classes += " correct-answer"; // Show missed correct answer
+                if (showFeedback) {
+                    if (String(opt.id) === String(submittedSel)) {
+                        classes += " selected"; // Visual selected
+                        if (answer.isCorrect) classes += " correct-answer";
+                        else classes += " wrong-answer";
+                    }
+                    if (opt.isCorrect && !answer.isCorrect) {
+                        classes += " correct-answer"; // Show missed correct answer
+                    }
+                } else {
+                    // Exam mode, block not revealed yet - just show selected state
+                    if (String(opt.id) === String(submittedSel)) classes += " selected";
                 }
             } else if (isRevealed) {
                 // Revealed state (not submitted but showing answers)
@@ -2957,17 +3293,14 @@ export default class DungeonBase {
 
         html += `</div>`; // End options
 
-        html += `</div>`; // End actions row
-
-        this.renderToolbarState(); // Sync toolbar with current question state
-
-        // Show explanation if submitted OR revealed
-        if (isSubmitted || isRevealed) {
+        // Explanation rendering logic
+        let explHtml = '';
+        if (showExplanation) {
             const explanationTitle = isSubmitted
                 ? (answer.isCorrect ? "Correct!" : "Incorrect")
                 : "Answer Revealed";
 
-            html += `
+            explHtml = `
          <div class="dungeon-explanation">
              <h3>${explanationTitle}</h3>
              <p>${q.explanation || "No explanation provided."}</p>
@@ -2975,7 +3308,30 @@ export default class DungeonBase {
       `;
         }
 
-        this.el.main.innerHTML = html;
+        // Handle Split View
+        const explContent = document.getElementById('dungeonExplanationContent');
+        const expPanel = document.getElementById('dungeonExplanationPanel');
+        const resizer = document.getElementById('dungeonSplitResizer');
+        
+        if (this.state.splitView && showExplanation && explContent && expPanel && resizer) {
+            explContent.innerHTML = explHtml;
+            expPanel.classList.remove('hidden');
+            resizer.classList.remove('hidden');
+            // Standard main container
+            this.el.main.innerHTML = html;
+        } else {
+            // Hide split panel if not showing explanation or split view is off
+            if (expPanel) expPanel.classList.add('hidden');
+            if (resizer) resizer.classList.add('hidden');
+            
+            // Standard mode: Explanation follows options
+            html += explHtml;
+            this.el.main.innerHTML = html;
+            // Clear side panel if it exists
+            if (explContent) explContent.innerHTML = '';
+        }
+
+        this.renderToolbarState(); // Sync toolbar with current question state
 
         // Re-apply search highlights if active
         if (this.state.search) {
@@ -2994,6 +3350,10 @@ export default class DungeonBase {
             this.state.selectedOption = null;
         } else {
             this.state.selectedOption = optionId;
+            // Exam Mode Persistence: Auto-submit selection
+            if (q._tutorMode === false) {
+                this.handleSubmit();
+            }
         }
         this.renderQuestion();
     }
@@ -3136,7 +3496,12 @@ export default class DungeonBase {
 
         this.updateSaveStatus('unsaved');
         this.saveQuestionsToBackend();
-        this.stopTimer();
+        
+        // In exam mode, we don't stop timer or show feedback immediately
+        if (q._tutorMode !== false) {
+            this.stopTimer();
+        }
+        
         this.render(); // Update sidebar and content
     }
 
@@ -3221,5 +3586,70 @@ export default class DungeonBase {
             this.state.selectedOption = null;
             this.render();
         }
+    }
+
+    toggleSplitView() {
+        this.state.splitView = !this.state.splitView;
+        const wrapper = document.getElementById('dungeonScrollWrapper');
+        const mainPanel = document.getElementById('dungeonMainPanel');
+        const resizer = document.getElementById('dungeonSplitResizer');
+        const expPanel = document.getElementById('dungeonExplanationPanel');
+        const toggleBtn = document.getElementById('dungeonSplitViewToggle');
+
+        if (this.state.splitView) {
+            resizer.classList.remove('hidden');
+            expPanel.classList.remove('hidden');
+            mainPanel.classList.remove('full-width');
+            if (toggleBtn) toggleBtn.classList.add('active');
+        } else {
+            resizer.classList.add('hidden');
+            expPanel.classList.add('hidden');
+            mainPanel.classList.add('full-width');
+            if (toggleBtn) toggleBtn.classList.remove('active');
+        }
+        
+        // Always scroll main panel to top on change
+        if (mainPanel) mainPanel.scrollTop = 0;
+        
+        // Re-render question to correctly move explanation DOM
+        this.renderQuestion();
+    }
+
+    initSplitResizer() {
+        const resizer = document.getElementById('dungeonSplitResizer');
+        const wrapper = document.getElementById('dungeonScrollWrapper');
+        const expPanel = document.getElementById('dungeonExplanationPanel');
+        if (!resizer || !wrapper || !expPanel) return;
+
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            resizer.classList.add('active');
+            document.body.style.cursor = 'col-resize';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const wrapperRect = wrapper.getBoundingClientRect();
+            // Calculate from right because the explanation panel is on the right
+            const offsetRight = wrapperRect.right - e.clientX;
+            const percentage = (offsetRight / wrapperRect.width) * 100;
+
+            // Constrain between 20% and 70%
+            if (percentage >= 20 && percentage <= 70) {
+                expPanel.style.width = `${percentage}%`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizer.classList.remove('active');
+                document.body.style.cursor = '';
+            }
+        });
     }
 }

@@ -423,7 +423,13 @@ const QuestionBase = {
                     return;
                 }
                 if (typeof window.DungeonBase !== 'undefined') {
-                    window.DungeonBase.open(this.state.questions);
+                    // All mode button - untimed tutor session
+                    const questions = this.state.questions.map(q => ({
+                        ...q,
+                        _timerMode: 'off',
+                        _tutorMode: true
+                    }));
+                    window.DungeonBase.open(questions);
                 }
             });
         }
@@ -1253,9 +1259,27 @@ Generate a professional title for this study session.`;
                 btn.addEventListener('click', () => {
                     group.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
                     btn.classList.add('ct-toggle-active');
+                    
+                    // Logic for sub-menus
+                    if (group.id === 'ctTimerModeGroup') {
+                        const downOps = document.getElementById('ctTimerDownOptions');
+                        if (downOps) downOps.style.display = btn.dataset.val === 'down' ? 'flex' : 'none';
+                    }
+                    if (group.id === 'ctTimerScopeGroup') {
+                        const qDur = document.getElementById('ctTimerDurationGroupQuestion');
+                        const sDur = document.getElementById('ctTimerDurationGroupSession');
+                        if (qDur) qDur.style.display = btn.dataset.val === 'question' ? 'flex' : 'none';
+                        if (sDur) sDur.style.display = btn.dataset.val === 'session' ? 'flex' : 'none';
+                    }
+
                     this.renderCTPreview(); // update summary
                 });
             });
+        });
+
+        // Session timer inputs
+        ['ctTimerHr', 'ctTimerMin', 'ctTimerSec'].forEach(id => {
+            document.getElementById(id)?.addEventListener('input', () => this.renderCTPreview());
         });
 
         // Range ↔ number input sync
@@ -1489,7 +1513,24 @@ Generate a professional title for this study session.`;
             const timerVal  = timerBtn?.dataset.val || 'none';
             const tutorVal  = tutorBtn?.dataset.val || 'on';
             const shuffleVal= shuffleBtn?.dataset.val || 'off';
-            const timerStr  = timerVal === 'none' ? 'No timer' : `${timerVal}s per question`;
+            
+            const timerModeEl = document.querySelector('#ctTimerModeGroup .ct-toggle-active');
+            const timerMode = timerModeEl?.dataset.val || 'off';
+            let timerStr = 'Untimed';
+            if (timerMode === 'up') timerStr = 'Timer: Up';
+            else if (timerMode === 'down') {
+                const scopeEl = document.querySelector('#ctTimerScopeGroup .ct-toggle-active');
+                if (scopeEl?.dataset.val === 'question') {
+                    const durationEl = document.querySelector('#ctTimerDurationGroupQuestion .ct-toggle-active');
+                    timerStr = `Timer: Down (${durationEl?.dataset.val || 60}s)`;
+                } else {
+                    const hr = parseInt(document.getElementById('ctTimerHr')?.value) || 0;
+                    const min = parseInt(document.getElementById('ctTimerMin')?.value) || 0;
+                    const sec = parseInt(document.getElementById('ctTimerSec')?.value) || 0;
+                    timerStr = `Timer: Down (${hr}h ${min}m ${sec}s)`;
+                }
+            }
+            
             summary.innerHTML = `<strong>${desired}</strong> questions · ${timerStr} · Tutor mode ${tutorVal} · Shuffle ${shuffleVal}`;
         }
     },
@@ -1501,22 +1542,55 @@ Generate a professional title for this study session.`;
         const desired   = Math.min(filtered.length, Math.max(1, parseInt(document.getElementById('ctQcount')?.value) || 10));
         const shuffleEl = document.querySelector('#ctShuffleGroup .ct-toggle-active');
         const tutorEl   = document.querySelector('#ctTutorGroup .ct-toggle-active');
-        const timerEl   = document.querySelector('#ctTimerGroup .ct-toggle-active');
+        
+        // Timer elements
+        const timerModeEl = document.querySelector('#ctTimerModeGroup .ct-toggle-active');
+        const timerScopeEl = document.querySelector('#ctTimerScopeGroup .ct-toggle-active');
+        
         const doShuffle = shuffleEl?.dataset.val === 'on';
         const tutor     = tutorEl?.dataset.val !== 'off';
-        const timerSecs = parseInt(timerEl?.dataset.val) || 0;
+        
+        const timerMode = timerModeEl?.dataset.val || 'off';
+        const timerScope = timerScopeEl?.dataset.val || 'question';
+        let timerSecs = 0;
+
+        if (timerMode === 'down') {
+            if (timerScope === 'question') {
+                const durationEl = document.querySelector('#ctTimerDurationGroupQuestion .ct-toggle-active');
+                timerSecs = parseInt(durationEl?.dataset.val) || 60;
+            } else {
+                const hr = parseInt(document.getElementById('ctTimerHr')?.value) || 0;
+                const min = parseInt(document.getElementById('ctTimerMin')?.value) || 0;
+                const sec = parseInt(document.getElementById('ctTimerSec')?.value) || 0;
+                timerSecs = (hr * 3600) + (min * 60) + sec;
+            }
+        }
 
         let pool = [...filtered];
         if (doShuffle) {
+            // Fisher-Yates shuffle
             for (let i = pool.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [pool[i], pool[j]] = [pool[j], pool[i]];
             }
         }
-        const questions = pool.slice(0, desired).map(q => ({
-            ...q, submittedAnswer: q.submittedAnswer, revealed: q.revealed || false, crossedOutOptionIds: q.crossedOutOptionIds || [],
-            _tutorMode: tutor, _timerSecs: timerSecs
-        }));
+        
+        const questions = pool.slice(0, desired).map(q => {
+            // New Test Reset: Clear answers/stats for every new test created
+            const newQ = { ...q };
+            delete newQ.submittedAnswer;
+            delete newQ.revealed;
+            delete newQ.timerElapsed;
+            newQ.crossedOutOptionIds = [];
+            
+            return {
+                ...newQ,
+                _tutorMode: tutor,
+                _timerMode: timerMode,
+                _timerScope: timerScope,
+                _timerSecs: timerSecs
+            };
+        });
 
         // Build title
         const activeTags = [
@@ -1539,7 +1613,7 @@ Generate a professional title for this study session.`;
         this.saveRecentSessions();
 
         if (typeof window.DungeonBase !== 'undefined') {
-            window.DungeonBase.open(questions);
+            window.DungeonBase.open(questions, session.id);
         } else {
             alert('Dungeon mode is not loaded.');
         }
@@ -3332,7 +3406,7 @@ Question explanation:
 
                 // Open Dungeon
                 if (typeof window.DungeonBase !== 'undefined') {
-                    window.DungeonBase.open(questions);
+                    window.DungeonBase.open(questions, this.state.recentSessions[sessionIndex].id);
                 }
                 return;
             }
@@ -3383,7 +3457,7 @@ Question explanation:
 
         // Switch to Dungeon (Play) Mode with these questions
         if (typeof window.DungeonBase !== 'undefined') {
-            window.DungeonBase.open(questions);
+            window.DungeonBase.open(questions, session.id);
         } else {
             alert("Dungeon Mode is not loaded.");
         }
@@ -3658,7 +3732,7 @@ Question explanation:
         }
 
         if (typeof window.DungeonBase !== 'undefined') {
-            window.DungeonBase.open(questionsToOpen);
+            window.DungeonBase.open(questionsToOpen, id);
         }
     },
 
