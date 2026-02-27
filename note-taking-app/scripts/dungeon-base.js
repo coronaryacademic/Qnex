@@ -271,10 +271,11 @@ export default class DungeonBase {
                   </button>
                   <button id="dungeonHideTimerToggle" class="dungeon-menu-toggle">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                        <line x1="2" y1="2" x2="22" y2="22"></line>
                     </svg>
-                    <span>Hide Timer (1 min)</span>
+                    <span>Hide Timer</span>
                   </button>
                   <button id="dungeonTimerFloatingToggle" class="dungeon-menu-toggle">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -561,13 +562,22 @@ export default class DungeonBase {
         this.initTopbar();
         // Timer Hiding Toggle
         const hideTimerBtn = document.getElementById('dungeonHideTimerToggle');
+        const CLOCK_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+        const CLOCK_HIDDEN_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline><line x1="2" y1="2" x2="22" y2="22"></line></svg>`;
+        const _updateHideTimerBtn = () => {
+            if (!hideTimerBtn) return;
+            const hidden = this.state.hideTimerUntilMinute;
+            hideTimerBtn.classList.toggle('active', hidden);
+            hideTimerBtn.innerHTML = `${hidden ? CLOCK_HIDDEN_SVG : CLOCK_SVG} <span>${hidden ? 'Show Timer' : 'Hide Timer'}</span>`;
+        };
         if (hideTimerBtn) {
-            hideTimerBtn.onclick = () => {
+            hideTimerBtn.onclick = (e) => {
+                e.stopPropagation();
                 this.state.hideTimerUntilMinute = !this.state.hideTimerUntilMinute;
-                hideTimerBtn.classList.toggle('active', this.state.hideTimerUntilMinute);
+                _updateHideTimerBtn();
                 this.updateTimerDisplay(this.lastTimerMs || 0);
             };
-            hideTimerBtn.classList.toggle('active', this.state.hideTimerUntilMinute);
+            _updateHideTimerBtn();
         }
 
         // Timer Floating Toggle
@@ -836,8 +846,7 @@ export default class DungeonBase {
             splitViewToggle.onclick = (e) => {
                 e.stopPropagation();
                 this.toggleSplitView();
-                toolbarMenu.classList.add('hidden');
-                toolbarOptionsBtn.classList.remove('active');
+                // Keep menu open
             };
         }
 
@@ -2240,7 +2249,7 @@ export default class DungeonBase {
 
         if (timerMode === 'off' || q._timerMode === 'untimed') {
             const mode = this._getSessionMode();
-            const modeLabel = (mode === 'exam' || mode === 'revealed-exam') ? 'Exam' : (mode === 'all' ? 'ALL Mode' : 'Tutor');
+            const modeLabel = (mode === 'exam' || mode === 'revealed-exam') ? 'Exam' : (mode === 'all' ? 'Open Mode' : 'Tutor');
             timerEl.textContent = `${modeLabel} | Untimed`;
             timerEl.title = "Assessment is untimed";
             return;
@@ -2257,6 +2266,49 @@ export default class DungeonBase {
             return; 
         }
 
+        // For per-question countdown: restore remaining time if we've been here before
+        if (timerMode === 'down' && timerScope === 'question') {
+            // If answered or timed out, show frozen time and don't run
+            const existingAnswer = this.state.answers.get(q.id);
+            if (q._timedOut) {
+                timerEl.textContent = '0:00';
+                timerEl.title = 'Time expired for this question';
+                return;
+            }
+            if (existingAnswer && existingAnswer.submitted && !existingAnswer.examCommitted) {
+                // Answered via normal submit — show remaining time frozen, don't tick
+                const frozenMs = (q._remainingMs !== undefined) ? q._remainingMs : (timerSecs * 1000);
+                this.updateTimerDisplay(frozenMs);
+                return;
+            }
+            // Restore saved remaining time (from a previous visit), otherwise start fresh
+            const initialMs = (q._remainingMs !== undefined) ? q._remainingMs : (timerSecs * 1000);
+            this.lastTimerMs = initialMs;
+            this.timerStart = Date.now();
+            // Track which question owns this timer
+            this._timerQuestion = q;
+            this._timerInitialMs = initialMs;
+            this.updateTimerDisplay(initialMs);
+
+            this.timerInterval = setInterval(() => {
+                const now = Date.now();
+                const elapsed = now - this.timerStart;
+                this.lastTimerMs = Math.max(0, initialMs - elapsed);
+
+                if (this.lastTimerMs <= 0) {
+                    this.updateTimerDisplay(0);
+                    q._timedOut = true;
+                    q._remainingMs = 0;
+                    this.handlePerQuestionTimeUp(q);
+                } else {
+                    this.updateTimerDisplay(this.lastTimerMs);
+                }
+            }, 100);
+            return;
+        }
+        this._timerQuestion = null;
+        this._timerInitialMs = null;
+
         this.timerStart = Date.now();
         
         // Initial display
@@ -2271,11 +2323,14 @@ export default class DungeonBase {
 
         this.timerInterval = setInterval(() => {
             const now = Date.now();
-            this.lastTimerMs = (timerMode === 'up') 
-                ? (q.timerElapsed || 0) + (now - this.timerStart)
-                : (timerScope === 'question' 
-                    ? (timerSecs * 1000) - (now - this.timerStart)
-                    : (timerSecs * 1000) - (now - this.sessionTimerStart));
+            const elapsedSinceRender = now - this.timerStart;
+            
+            if (timerMode === 'up') {
+                this.lastTimerMs = (q.timerElapsed || 0) + elapsedSinceRender;
+            } else {
+                // Down + Session scope
+                this.lastTimerMs = Math.max(0, (timerSecs * 1000) - (now - this.sessionTimerStart));
+            }
 
             if (timerMode === 'down' && this.lastTimerMs <= 0) {
                 this.updateTimerDisplay(0);
@@ -2283,7 +2338,30 @@ export default class DungeonBase {
             } else {
                 this.updateTimerDisplay(this.lastTimerMs);
             }
-        }, 1000);
+        }, 100);
+    }
+
+    // Called when a per-question countdown hits zero
+    handlePerQuestionTimeUp(q) {
+        this.stopTimer();
+        // Auto-submit if not already answered
+        if (!this.state.answers.has(q.id)) {
+            const autoAnswer = {
+                selectedId: null,
+                isCorrect: false,
+                submitted: true,
+                autoSubmitted: true,
+                timestamp: Date.now()
+            };
+            this.state.answers.set(q.id, autoAnswer);
+            q.submittedAnswer = autoAnswer;
+        } else {
+            // Lock the existing answer
+            const ans = this.state.answers.get(q.id);
+            if (ans) ans.locked = true;
+        }
+        this.renderSidebar();
+        this.renderQuestion();
     }
 
     handleTimeUp() {
@@ -2362,6 +2440,24 @@ export default class DungeonBase {
     }
 
     stopTimer() {
+        const now = Date.now();
+        // Save remaining time for per-question countdown
+        if (this._timerQuestion && !this._timerQuestion._timedOut && this._timerInitialMs !== undefined && this.timerStart) {
+            const elapsed = now - this.timerStart;
+            this._timerQuestion._remainingMs = Math.max(0, this._timerInitialMs - elapsed);
+        }
+        
+        // Save elapsed time for 'up' mode to prevent loss on re-renders
+        const q = this.state.questions?.[this.state.currentIndex];
+        if (q && q._timerMode === 'up' && this.timerStart) {
+            const elapsed = now - this.timerStart;
+            q.timerElapsed = (q.timerElapsed || 0) + elapsed;
+        }
+
+        this._timerQuestion = null;
+        this._timerInitialMs = null;
+        this.timerStart = null; // Important: Clear to indicate timer is stopped
+
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
@@ -2376,19 +2472,25 @@ export default class DungeonBase {
         const q = this.state.questions[this.state.currentIndex];
         
         // 1. Check if timer should be hidden (Hide until 1 min passes)
+        // If timer is hidden, hide the entire timer element (including icon)
         if (this.state.hideTimerUntilMinute && !this.state.isBlockRevealed) {
-            const sessionMode = this._getSessionMode();
-            const isExam = sessionMode === 'exam' || sessionMode === 'revealed-exam';
-            
-            // Only hide if not answered (optional logic, but usually timer is hidden while thinking)
             const now = Date.now();
             const elapsedOnCurrentQ = now - this.questionStartTime;
             
-            if (elapsedOnCurrentQ < 60000) {
-                timerEl.textContent = "Timer Hidden";
-                timerEl.style.opacity = "0.5";
+            if (elapsedOnCurrentQ < 30000) {
+                const statItem = timerEl.closest('.dungeon-stat-item') || timerEl;
+                statItem.style.visibility = 'hidden';
+                statItem.style.opacity = '0';
+                statItem.style.pointerEvents = 'none';
                 return;
             }
+        }
+        // Restore visibility
+        {
+            const statItem = timerEl.closest('.dungeon-stat-item') || timerEl;
+            statItem.style.visibility = '';
+            statItem.style.opacity = '1';
+            statItem.style.pointerEvents = '';
         }
         timerEl.style.opacity = "1";
 
@@ -2396,7 +2498,7 @@ export default class DungeonBase {
             const mode = this._getSessionMode();
             let modeLabel = 'Tutor';
             if (mode === 'exam' || mode === 'revealed-exam') modeLabel = 'Exam';
-            else if (mode === 'all') modeLabel = 'ALL Mode';
+            else if (mode === 'all') modeLabel = 'Open Mode';
             
             timerEl.textContent = `${modeLabel} | Untimed`;
             return;
@@ -2430,6 +2532,31 @@ export default class DungeonBase {
                 floatingWrap.id = 'dungeonFloatingTimerWrap';
                 floatingWrap.className = 'dungeon-floating-timer';
                 container.appendChild(floatingWrap);
+                // Make draggable
+                let isDragging = false, startX, startY, startLeft, startTop;
+                floatingWrap.style.cursor = 'grab';
+                floatingWrap.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    const rect = floatingWrap.getBoundingClientRect();
+                    startLeft = rect.left;
+                    startTop = rect.top;
+                    floatingWrap.style.cursor = 'grabbing';
+                    floatingWrap.style.right = 'auto';
+                    floatingWrap.style.left = startLeft + 'px';
+                    floatingWrap.style.top = startTop + 'px';
+                    e.preventDefault();
+                });
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    floatingWrap.style.left = (startLeft + e.clientX - startX) + 'px';
+                    floatingWrap.style.top  = (startTop  + e.clientY - startY) + 'px';
+                });
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    if (floatingWrap) floatingWrap.style.cursor = 'grab';
+                });
             }
             // Move timerEl to floatingWrap
             const timerParent = timerEl.closest('.dungeon-stat-item');
@@ -2768,11 +2895,27 @@ export default class DungeonBase {
             // Enter Key logic
             if (e.key === "Enter" && !isSearchActive && !isCalcActive) {
                 const currentQ = this.state.questions[this.state.currentIndex];
-                if (currentQ && currentQ._tutorMode !== false) {
-                    // Tutor Mode: Submit to see feedback
-                    this.handleSubmit();
+                if (currentQ && this.state.selectedOption) {
+                    if (currentQ._tutorMode !== false) {
+                        // Tutor mode: full submit (shows feedback, stops timer)
+                        this.handleSubmit();
+                    } else {
+                        // Exam mode: silently save the choice — timer keeps running
+                        // When timer runs out, this saved choice is final
+                        const selectedOpt = currentQ.options?.find(o => String(o.id) === String(this.state.selectedOption));
+                        const isCorrect = selectedOpt?.isCorrect || false;
+                        const answerData = {
+                            submitted: true,
+                            selectedId: this.state.selectedOption,
+                            isCorrect,
+                            examCommitted: true  // Saved by Enter, timer still running
+                        };
+                        this.state.answers.set(currentQ.id, answerData);
+                        currentQ.submittedAnswer = answerData;
+                        this.renderSidebar();
+                        // Don't re-render question or stop timer — they continue
+                    }
                 }
-                // Exam Mode: Do nothing (prevent accidental revelation)
             }
         });
     }
@@ -2788,7 +2931,8 @@ export default class DungeonBase {
         this.state.questions = [...questions];
         this.state.associatedSessionId = sessionId;
         this.state.isBlockRevealed = false; // Reset block revealed on open
-        this.sessionTimerStart = null; // Reset session timer on new session open
+        // Initialize session timer start IMMEDIATELY on open
+        this.sessionTimerStart = Date.now();
 
         // Performance: Pre-cache search text
         this.state.questions.forEach(q => {
@@ -2990,6 +3134,9 @@ export default class DungeonBase {
         // Update Reveal Button State
         this.updateRevealButton();
 
+        // Reset per-question hide-timer clock and questionStartTime on each navigation
+        this.questionStartTime = Date.now();
+
         // Start Timer
         this.startTimer();
 
@@ -3060,11 +3207,7 @@ export default class DungeonBase {
             // Add data-index for fast filtering updates without re-render
             box.dataset.qIndex = index;
 
-            if (index === this.state.currentIndex) {
-                box.classList.add("active");
-            }
-
-            // Check Status
+            // Check Status first so active styling can build on it
             const answer = this.state.answers.get(q.id);
             let content = `<span class="q-number" style="font-size: 0.9rem;">${index + 1}</span>`;
 
@@ -3076,7 +3219,6 @@ export default class DungeonBase {
                         box.classList.add("wrong");
                     }
                 } else {
-                    // Exam Mode: Solved but results not revealed yet
                     box.classList.add("solved");
                 }
             }
@@ -3087,8 +3229,25 @@ export default class DungeonBase {
                 box.classList.add("revealed-state");
             }
 
-            box.title = q.title || `Question ${index + 1}`; // Tooltip
-            box.innerHTML = `<span class="dungeon-box-status">${content}</span>`;
+            if (index === this.state.currentIndex) {
+                box.classList.add("active");
+            }
+
+            box.title = q.title || `Question ${index + 1}`;
+
+            // Timed-out indicator: crossed clock SVG
+            const timedOutSvg = q._timedOut 
+                ? `<span class="dungeon-timed-out-icon" title="Time expired — answer locked" style="position:absolute;bottom:2px;right:2px;opacity:0.9;">
+                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                         <circle cx="12" cy="12" r="10"></circle>
+                         <polyline points="12 6 12 12 16 14"></polyline>
+                         <line x1="2" y1="2" x2="22" y2="22"></line>
+                       </svg>
+                   </span>` 
+                : '';
+            if (q._timedOut) box.classList.add('timed-out');
+            box.style.position = 'relative';
+            box.innerHTML = `<span class="dungeon-box-status">${content}</span>${timedOutSvg}`;
 
             // Star Indicator
             if (q.starred || q.isStarred) {
@@ -3489,7 +3648,9 @@ export default class DungeonBase {
     renderQuestion() {
         const q = this.state.questions[this.state.currentIndex];
         const answer = this.state.answers.get(q.id);
+        const isTimedOut = q._timedOut === true;
         const isSubmitted = answer && answer.submitted;
+        const isLocked = isTimedOut || (answer && answer.locked);
         const isRevealed = q.revealed || false;
 
         // Tutor Mode respect
@@ -3549,8 +3710,8 @@ export default class DungeonBase {
 
             html += `
         <div class="${classes}">
-            <div class="dungeon-radio-circle" onclick="window.DungeonBase.handleSelectOption('${opt.id}')"></div>
-            <div class="dungeon-radio-text" onclick="window.DungeonBase.handleStrikeOption(event, this)" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')">
+            <div class="dungeon-radio-circle" onclick="${isLocked ? '' : `window.DungeonBase.handleSelectOption('${opt.id}')`}" style="${isLocked ? 'cursor:default;opacity:0.6;' : ''}"></div>
+            <div class="dungeon-radio-text" onclick="${isLocked ? '' : `window.DungeonBase.handleStrikeOption(event, this)`}" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')" style="${isLocked ? 'user-select:none;' : ''}">
                 <span style="margin-right: 8px;">(${letter})</span>${opt.text || "Option"}
             </div>
         </div>
@@ -3616,9 +3777,19 @@ export default class DungeonBase {
             this.state.selectedOption = null;
         } else {
             this.state.selectedOption = optionId;
-            // Exam Mode Persistence: Auto-submit selection
+            // Exam Mode Persistence: Silently record the choice — timer keeps running
             if (q._tutorMode === false) {
-                this.handleSubmit();
+                const selectedOpt = q.options?.find(o => String(o.id) === String(this.state.selectedOption));
+                const isCorrect = selectedOpt?.isCorrect || false;
+                const answerData = {
+                    submitted: true,
+                    selectedId: this.state.selectedOption,
+                    isCorrect,
+                    examCommitted: true // Saved silently, timer still running
+                };
+                this.state.answers.set(q.id, answerData);
+                q.submittedAnswer = answerData;
+                this.renderSidebar();
             }
         }
         this.renderQuestion();
