@@ -269,16 +269,21 @@ class NotificationCenter {
         this.notifications = JSON.parse(localStorage.getItem('app_notif_history') || '[]');
         this.unreadCount = parseInt(localStorage.getItem('app_notif_unread') || '0');
         this.isOpen = false;
+        this.dnd = localStorage.getItem('app_notif_dnd') === 'true';
         
         this.el = {
             trigger: document.getElementById('notifCenter'),
             count: document.getElementById('notifCount'),
             pane: document.getElementById('notifPane'),
             list: document.getElementById('notifList'),
-            clearBtn: document.getElementById('clearNotifsBtn')
+            clearBtn: document.getElementById('clearNotifsBtn'),
+            dndBtn: document.getElementById('dndToggleBtn'),
+            dndBellSvg: document.getElementById('dndBellSvg'),
+            mainBellSvg: document.getElementById('notifBellSvg')
         };
         
         this.init();
+        this._loadDndFromBackend(); // Load from backend asynchronously
     }
 
     init() {
@@ -289,6 +294,12 @@ class NotificationCenter {
             this.el.clearBtn.onclick = () => this.clearAll();
         }
         
+        // DND Toggle
+        if (this.el.dndBtn) {
+            this.el.dndBtn.onclick = () => this.toggleDnd();
+        }
+        this.applyDndState(); // Apply initial state from localStorage
+        
         // Close pane on click outside
         document.addEventListener('mousedown', (e) => {
             if (this.isOpen && !this.el.pane.contains(e.target) && !this.el.trigger.contains(e.target)) {
@@ -298,6 +309,85 @@ class NotificationCenter {
 
         this.updateBadge();
         this.render();
+    }
+
+    toggleDnd() {
+        this.dnd = !this.dnd;
+        localStorage.setItem('app_notif_dnd', this.dnd ? 'true' : 'false');
+        this.applyDndState();
+        this._saveDndToBackend();
+    }
+
+    async _saveDndToBackend() {
+        try {
+            if (window.fileSystemService && window.fileSystemService.makeRequest) {
+                await window.fileSystemService.makeRequest('/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ app_notif_dnd: this.dnd })
+                });
+            }
+        } catch (e) {
+            // Silently fail — localStorage is the fallback
+        }
+    }
+
+    async _loadDndFromBackend() {
+        try {
+            if (window.fileSystemService && window.fileSystemService.makeRequest) {
+                const settings = await window.fileSystemService.makeRequest('/settings');
+                if (settings && typeof settings.app_notif_dnd !== 'undefined') {
+                    this.dnd = settings.app_notif_dnd === true || settings.app_notif_dnd === 'true';
+                    localStorage.setItem('app_notif_dnd', this.dnd ? 'true' : 'false');
+                    this.applyDndState();
+                }
+            }
+        } catch (e) {
+            // Silently fail — localStorage fallback already applied
+        }
+    }
+
+    applyDndState() {
+        const BELL_INNER = `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>`;
+        const BELL_OFF_INNER = `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+
+        // Update main bell (trigger icon)
+        const mainBellSvg = document.getElementById('notifBellSvg');
+        if (mainBellSvg) {
+            mainBellSvg.innerHTML = this.dnd ? BELL_OFF_INNER : BELL_INNER;
+        }
+
+        // Update the pane header mini-bell
+        if (this.el.dndBellSvg) {
+            this.el.dndBellSvg.innerHTML = this.dnd ? BELL_OFF_INNER : BELL_INNER;
+        }
+
+        // Keep badge at same visual corner, adjust position for smaller dot when DND on
+        if (this.el.count) {
+            if (this.dnd) {
+                this.el.count.style.background = 'rgba(130, 130, 130, 0.55)';
+                this.el.count.style.fontSize = '0';
+                this.el.count.style.minWidth = '7px';
+                this.el.count.style.height = '7px';
+                this.el.count.style.padding = '0';
+                this.el.count.style.top = '-3px';
+                this.el.count.style.right = '-3px';
+                this.el.count.classList.remove('hidden');
+            } else {
+                this.el.count.style.background = '';
+                this.el.count.style.fontSize = '';
+                this.el.count.style.minWidth = '';
+                this.el.count.style.height = '';
+                this.el.count.style.padding = '';
+                this.el.count.style.top = '';
+                this.el.count.style.right = '';
+                this.updateBadge();
+            }
+        }
+
+        if (this.el.dndBtn) {
+            this.el.dndBtn.title = this.dnd ? 'Do Not Disturb: ON' : 'Do Not Disturb: Off';
+            this.el.dndBtn.classList.toggle('dnd-active', this.dnd);
+        }
     }
 
     add(message, type = 'info', skipAnimation = false) {
@@ -413,6 +503,13 @@ class NotificationCenter {
  * @param {number} duration - Duration in ms
  */
 function showToast(message, type = 'info', duration = 4000) {
+    // If DND mode is on, skip the flying animation entirely
+    if (window.notifCenter && window.notifCenter.dnd) {
+        // Log to notification center silently without animation
+        window.notifCenter.add(message, type, true);
+        return;
+    }
+
     // Prevent duplicates by removing existing flyers
     const existingFlyers = document.querySelectorAll('.flying-notif');
     existingFlyers.forEach(f => f.remove());

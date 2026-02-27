@@ -2467,18 +2467,27 @@
 
     <!-- Notification Center -->
     <div id="notifCenter" class="notif-center-trigger" title="Notifications">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg id="notifBellSvg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
         <div id="notifCount" class="notif-count hidden">0</div>
     </div>
 
+
     <!-- Notification Pane -->
     <div id="notifPane" class="notif-pane hidden">
         <div class="notif-pane-header">
             <h3>Notifications</h3>
-            <button id="clearNotifsBtn" class="clear-notifs-btn">Clear All</button>
+            <div class="notif-pane-actions">
+                <button id="dndToggleBtn" class="dnd-toggle-btn" title="Do Not Disturb: Off">
+                    <svg id="dndBellSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                </button>
+                <button id="clearNotifsBtn" class="clear-notifs-btn">Clear All</button>
+            </div>
         </div>
         <div id="notifList" class="notif-list">
             <!-- Notifications will be injected here -->

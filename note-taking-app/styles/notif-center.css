@@ -134,6 +134,36 @@ body.dungeon-open .notif-center-trigger {
     transform: translateY(20px);
 }
 
+/* DND Toggle Button (inside notif pane header) */
+.notif-pane-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dnd-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.dnd-toggle-btn:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.dnd-toggle-btn.dnd-active {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
 /* Notification Pane - Premium Redesign */
 .notif-pane {
     position: fixed;
