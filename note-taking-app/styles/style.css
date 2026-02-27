@@ -203,6 +203,19 @@ textarea {
   -ms-user-select: text;
 }
 
+/* Remove Arrows/Spinners from Number Inputs */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 #app {
   display: grid;
   grid-template-columns: auto 1fr;

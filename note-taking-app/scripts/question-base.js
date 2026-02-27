@@ -1843,18 +1843,26 @@ Rules:
 
     // ── Session Toggle Handlers ───────────────────────────────────────────────
     initSessionToggleHandlers() {
-        // Wire Tutor / Shuffle / Timer compact toggles
-        ['sessionTutorGroup', 'sessionShuffleGroup', 'sessionTimerGroup',
-         'sessionTimerScopeGroup'].forEach(groupId => {
-            const group = document.getElementById(groupId);
+        // Use event delegation for all toggle buttons in the question editor
+        const creator = document.getElementById('sessionCreator');
+        const subOpts = document.getElementById('sessionTimerSubOpts');
+        
+        const handleToggle = (e) => {
+            const btn = e.target.closest('.ct-toggle-btn');
+            if (!btn) return;
+            
+            const group = btn.closest('.ct-toggle-group');
             if (!group) return;
-            group.querySelectorAll('.ct-toggle-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    group.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
-                    btn.classList.add('ct-toggle-active');
-                });
-            });
-        });
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            group.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
+            btn.classList.add('ct-toggle-active');
+        };
+
+        if (creator) creator.addEventListener('click', handleToggle);
+        if (subOpts) subOpts.addEventListener('click', handleToggle);
 
         // Wire duration toggle groups (per-question 30s/60s/…)
         const durationQGroup = document.querySelector('#sessionTimerDurationQ .ct-toggle-group');
@@ -1902,6 +1910,40 @@ Rules:
                 tagDetectTimer = setTimeout(() => this._sessionAutoDetectTags(), 200);
             });
         }
+
+        // Timer Input Arrow Navigation (Hr <-> Min <-> Sec)
+        ['sessionTimerHr', 'sessionTimerMin', 'sessionTimerSec'].forEach((id, idx, array) => {
+            const input = document.getElementById(id);
+            if (!input) return;
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') {
+                    // Only jump if cursor is at the end of the text
+                    if (input.selectionEnd === input.value.length) {
+                        if (idx < array.length - 1) {
+                            e.preventDefault();
+                            const next = document.getElementById(array[idx + 1]);
+                            if (next) {
+                                next.focus();
+                                next.select();
+                            }
+                        }
+                    }
+                } else if (e.key === 'ArrowLeft') {
+                    // Only jump if cursor is at the start of the text
+                    if (input.selectionStart === 0) {
+                        if (idx > 0) {
+                            e.preventDefault();
+                            const prev = document.getElementById(array[idx - 1]);
+                            if (prev) {
+                                prev.focus();
+                                prev.select();
+                            }
+                        }
+                    }
+                }
+            });
+        });
     },
 
     // Reads all "Question tag ID:\n<digits>" blocks from the session editor
@@ -3544,6 +3586,9 @@ Question tag ID:
         const tutor      = tutorEl?.dataset.val !== 'off';
         const doShuffle  = shuffleEl?.dataset.val === 'on';
         const timerMode  = timerEl?.dataset.val || 'off';
+        const resetEl   = document.querySelector('#sessionResetGroup .ct-toggle-active') || 
+                          document.querySelector('#ctResetGroup .ct-toggle-active');
+        const doReset   = resetEl?.dataset.val === 'on';
 
         // Read timer sub-options
         const timerScopeEl = document.querySelector('#sessionTimerScopeGroup .ct-toggle-active');
@@ -3619,7 +3664,7 @@ Question tag ID:
                     const match = oldQuestions.find(oldQ => 
                         (oldQ.title === q.title && oldQ.text === q.text)
                     );
-                    if (match) {
+                    if (match && !doReset) {
                         q.id = match.id;
                         q.submittedAnswer = match.submittedAnswer;
                         q.revealed = match.revealed;

@@ -956,6 +956,18 @@
                             </div>
                           </div>
 
+                          <!-- Reset Mode -->
+                          <div class="ct-option-row">
+                            <div class="ct-option-label">
+                              Reset Progress
+                            </div>
+                            <div class="ct-toggle-group" id="ctResetGroup">
+                              <button class="ct-toggle-btn" data-val="on">On</button>
+                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
+                            </div>
+                            <div class="ct-option-hint">Clear previous answers when starting folder session</div>
+                          </div>
+
                           <!-- Tutor Mode -->
                           <div class="ct-option-row">
                             <div class="ct-option-label">
@@ -1204,6 +1216,14 @@
             <div id="sessionTimerSubOpts" style="display:flex; align-items:center; gap:10px; padding:4px 25px 6px; flex-wrap:wrap; font-size:11px;">
                   <!-- Session Options (compact) -->
                   <div class="session-inline-opts" style="display:flex; align-items:center; gap:6px; border-right:1px solid var(--border); padding-right:8px; margin-right:2px;">
+                    <!-- Reset toggle -->
+                    <div style="display:flex; flex-direction:row; align-items:center; gap:6px;">
+                      <span style="font-size:9px; color:var(--muted); letter-spacing:.03em; text-transform:uppercase;">Reset</span>
+                      <div class="ct-toggle-group session-toggle-group" id="sessionResetGroup" style="gap:2px;">
+                        <button class="ct-toggle-btn" data-val="on" style="padding:2px 7px; font-size:10px;">On</button>
+                        <button class="ct-toggle-btn ct-toggle-active" data-val="off" style="padding:2px 7px; font-size:10px;">Off</button>
+                      </div>
+                    </div>
                     <!-- Tutor toggle -->
                     <div style="display:flex; flex-direction:row; align-items:center; gap:6px;">
                       <span style="font-size:9px; color:var(--muted); letter-spacing:.03em; text-transform:uppercase;">Tutor</span>
@@ -1250,11 +1270,11 @@
               <!-- Whole-session duration inputs -->
               <div id="sessionTimerDurationS" style="display:none; align-items:center; gap:4px;">
                 <span style="color:var(--muted); font-size:10px; margin-right:2px;">Duration:</span>
-                <input type="number" id="sessionTimerHr"  min="0" max="99" value="1" class="ct-num-input" style="width:42px; font-size:11px;">
+                <input type="text" inputmode="numeric" id="sessionTimerHr" value="1" class="ct-num-input" style="width:42px; font-size:11px;">
                 <span style="font-size:10px; color:var(--muted);">hr</span>
-                <input type="number" id="sessionTimerMin" min="0" max="59" value="0" class="ct-num-input" style="width:42px; font-size:11px;">
+                <input type="text" inputmode="numeric" id="sessionTimerMin" value="0" class="ct-num-input" style="width:42px; font-size:11px;">
                 <span style="font-size:10px; color:var(--muted);">min</span>
-                <input type="number" id="sessionTimerSec" min="0" max="59" value="0" class="ct-num-input" style="width:42px; font-size:11px;">
+                <input type="text" inputmode="numeric" id="sessionTimerSec" value="0" class="ct-num-input" style="width:42px; font-size:11px;">
                 <span style="font-size:10px; color:var(--muted);">sec</span>
               </div>
             </div>
