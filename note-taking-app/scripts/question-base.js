@@ -1629,13 +1629,14 @@ Generate a professional title for this study session.`;
         btn.innerHTML = `<span style="font-size:11px; font-weight:600; color:var(--muted); white-space:nowrap; display:inline-block; line-height:1;">Syncing...</span>`;
 
         try {
-            // Force a re-render of everything in Create Test
+            // Reload questions from backend and re-derive tags for all QNX-* IDs
+            await this._syncQuestionsFromBackend();
+
+            // Re-render Create Test dashboard
             this.initCreateTestDashboard();
             this.renderCTPreview();
             
-            // Visual feedback delay
-            await new Promise(r => setTimeout(r, 600));
-            
+            await new Promise(r => setTimeout(r, 500));
             btn.innerHTML = REFRESH_ICON;
             btn.disabled = false;
         } catch (e) {
@@ -1644,6 +1645,62 @@ Generate a professional title for this study session.`;
             btn.disabled = false;
         }
     },
+
+    // Reloads all questions from the backend, re-derives tags for QNX-* spIds, saves if changed
+    async _syncQuestionsFromBackend() {
+        console.log('[Sync] Loading questions from backend...');
+
+        // 1. Load fresh from server
+        let freshData = null;
+        try {
+            freshData = await window.fileSystemService.makeRequest('/questions');
+        } catch (e) {
+            console.warn('[Sync] Server unreachable, using current state:', e.message);
+        }
+
+        if (freshData) {
+            // Merge fresh data into state
+            if (Array.isArray(freshData)) {
+                this.state.questions = freshData;
+                this.state.folders = this.state.folders; // keep existing folders
+            } else {
+                this.state.questions = freshData.questions || [];
+                if (freshData.folders?.length) this.state.folders = freshData.folders;
+            }
+            console.log(`[Sync] Loaded ${this.state.questions.length} questions from backend.`);
+        }
+
+        // 2. Re-derive tags for every question that has a QNX-* spId but empty/missing tags
+        let retagged = 0;
+        for (const q of this.state.questions) {
+            if (!q.spId) continue;
+
+            const hasAnyTag = q.tags &&
+                ((q.tags.subject?.length > 0) || (q.tags.system?.length > 0) ||
+                 (q.tags.major?.length > 0)  || (q.tags.minor?.length > 0));
+
+            if (!hasAnyTag) {
+                const numericId = q.spId.replace(/^QNX-/, '');
+                if (/^\d+$/.test(numericId)) {
+                    const derivedTags = this._ctGetTagsFromNumericId(numericId);
+                    if (derivedTags && (derivedTags.subject?.length > 0 || derivedTags.system?.length > 0)) {
+                        q.tags = derivedTags;
+                        retagged++;
+                        console.log(`[Sync] Tagged "${q.title}" from spId ${q.spId}:`, derivedTags);
+                    }
+                }
+            }
+        }
+
+        if (retagged > 0) {
+            console.log(`[Sync] Re-tagged ${retagged} question(s). Saving...`);
+            await this.saveData();
+        } else {
+            console.log('[Sync] All questions already tagged — nothing changed.');
+        }
+    },
+
+
 
     async autoTagAll() {
         const btn = document.getElementById('ctAutoTagBtn');
@@ -2889,6 +2946,13 @@ Rules:
             });
 
             text += `Question explanation: ${q.explanation || ""}\n`;
+            // Include numeric tag ID so it round-trips correctly
+            const numericId = q.spId ? q.spId.replace(/^QNX-/, '') : '';
+            if (numericId) {
+                text += `Question tag ID:\n${numericId}\n`;
+            } else {
+                text += `Question tag ID:\n\n`;
+            }
             text += `</div>`;
             return text;
         }).join("\n");
@@ -3142,6 +3206,7 @@ Question options:
   (C) 
   (D) 
 Question explanation: 
+Question tag ID:
 
 `;
         const input = this.el.sessionInput;
