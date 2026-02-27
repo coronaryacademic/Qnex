@@ -1843,63 +1843,44 @@ Rules:
 
     // ── Session Toggle Handlers ───────────────────────────────────────────────
     initSessionToggleHandlers() {
-        // Use event delegation for all toggle buttons in the question editor
-        const creator = document.getElementById('sessionCreator');
-        const subOpts = document.getElementById('sessionTimerSubOpts');
-        
-        const handleToggle = (e) => {
+        // Use global event delegation for all toggle buttons to ensure reliability across all views
+        document.addEventListener('click', (e) => {
             const btn = e.target.closest('.ct-toggle-btn');
             if (!btn) return;
             
             const group = btn.closest('.ct-toggle-group');
             if (!group) return;
             
-            e.preventDefault();
-            e.stopPropagation();
-            
+            // Handle active state switching
             group.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
             btn.classList.add('ct-toggle-active');
-        };
+            
+            const val = btn.dataset.val;
 
-        if (creator) creator.addEventListener('click', handleToggle);
-        if (subOpts) subOpts.addEventListener('click', handleToggle);
+            // 1. Timer Mode Toggle: Show/hide duration segments
+            if (group.id === 'sessionTimerGroup' || group.id === 'ctTimerModeGroup') {
+                const subOpts = (group.id === 'sessionTimerGroup') 
+                    ? document.getElementById('sessionTimerConfigInner')
+                    : document.getElementById('ctTimerDownOptions');
+                if (subOpts) subOpts.style.display = (val === 'down') ? 'flex' : 'none';
+            }
 
-        // Wire duration toggle groups (per-question 30s/60s/…)
-        const durationQGroup = document.querySelector('#sessionTimerDurationQ .ct-toggle-group');
-        if (durationQGroup) {
-            durationQGroup.querySelectorAll('.ct-toggle-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    durationQGroup.querySelectorAll('.ct-toggle-btn').forEach(b => b.classList.remove('ct-toggle-active'));
-                    btn.classList.add('ct-toggle-active');
-                });
-            });
-        }
-
-        // Show/hide timer sub-options when Down is selected
-        const timerGroup = document.getElementById('sessionTimerGroup');
-        const timerConfigInner = document.getElementById('sessionTimerConfigInner');
-        if (timerGroup && timerConfigInner) {
-            timerGroup.querySelectorAll('.ct-toggle-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const isDown = btn.dataset.val === 'down';
-                    timerConfigInner.style.display = isDown ? 'flex' : 'none';
-                });
-            });
-        }
-
-        // Scope toggle: swap between per-question and whole-session duration
-        const scopeGroup = document.getElementById('sessionTimerScopeGroup');
-        const durationQ  = document.getElementById('sessionTimerDurationQ');
-        const durationS  = document.getElementById('sessionTimerDurationS');
-        if (scopeGroup && durationQ && durationS) {
-            scopeGroup.querySelectorAll('.ct-toggle-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const isSession = btn.dataset.val === 'session';
-                    durationQ.style.display = isSession ? 'none' : 'flex';
-                    durationS.style.display = isSession ? 'flex' : 'none';
-                });
-            });
-        }
+            // 2. Timer Scope Toggle: Swap between Per-Question and Whole-Session inputs
+            if (group.id === 'sessionTimerScopeGroup' || group.id === 'ctTimerScopeGroup') {
+                const isSession = (val === 'session');
+                if (group.id === 'sessionTimerScopeGroup') {
+                    const durQ = document.getElementById('sessionTimerDurationQ');
+                    const durS = document.getElementById('sessionTimerDurationS');
+                    if (durQ) durQ.style.display = isSession ? 'none' : 'flex';
+                    if (durS) durS.style.display = isSession ? 'flex' : 'none';
+                } else {
+                    const durQGroup = document.getElementById('ctTimerDurationGroupQuestion');
+                    const durSGroup = document.getElementById('ctTimerDurationGroupSession');
+                    if (durQGroup) durQGroup.style.display = isSession ? 'none' : 'flex';
+                    if (durSGroup) durSGroup.style.display = isSession ? 'flex' : 'none';
+                }
+            }
+        });
 
         // Live tag auto-detection on sessionInput
         const sessionInput = document.getElementById('sessionInput');
