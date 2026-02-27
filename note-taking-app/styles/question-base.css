@@ -999,10 +999,24 @@ div[data-tab-content="recent-sessions"].active {
 .session-creator.ai-mode #sessionInput {
   background: rgba(255, 255, 255, 0.02); /* Minimal hint of light */
   border: 2px solid rgba(0, 210, 255, 0.3); /* Subtle AI accent */
-  color: #c0c8d0;
+  color: var(--defualt);
   box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.4);
   pointer-events: auto !important; /* Force interactivity */
   z-index: 10; /* Bring to front */
+}
+
+/* AI Mode — Light Theme Override */
+.theme-light .session-creator.ai-mode {
+  background: #ffffff !important;
+  transition: all 0.5s ease;
+  position: relative;
+}
+
+.theme-light .session-creator.ai-mode #sessionInput {
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px solid rgba(0, 210, 255, 0.3);
+  pointer-events: auto !important;
+  z-index: 10;
 }
 
 /* AI Prompt Modal Styles */

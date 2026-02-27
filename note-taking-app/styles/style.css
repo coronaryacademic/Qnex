@@ -127,7 +127,7 @@ body.theme-light {
   --panel: #ffffff;        /* Pure white panels */
   --panel-2: #f0ede8;      /* Warm secondary panels */
   --text: #1c1917;         /* Almost-black warm text */
-  --muted: #57534e;        /* Warm muted stone */
+  --muted: #000000fa;        /* Warm muted stone */
   --accent: #4f46e5;       /* Indigo accent */
   --accent-2: #6366f1;     /* Lighter indigo */
   --border: #e8e3db;       /* Warm soft border */
