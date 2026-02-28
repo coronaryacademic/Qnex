@@ -1097,6 +1097,7 @@ app.post("/api/ai/chat", async (req, res) => {
         model: modelToUse,
         messages: messages,
         max_tokens: max_tokens,
+        plugins: [{ id: "web", max_results: 5 }],
       },
       {
         headers: {

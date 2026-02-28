@@ -4597,13 +4597,14 @@ Question explanation:`;
 
         return `You are an MCQ generator for a medical education app. Output ONLY questions in the exact template format shown below. Do not add commentary, headings, explanations outside the template, or extra text. Do not use markdown. Do not number questions unless instructed. Follow the structure exactly and keep spacing identical.
 
-Each question must test high-yield medical knowledge suitable for USMLE Step 1 or Step 2 CK level. Focus on mechanism, pathophysiology, diagnosis, and management. Avoid trivial recall. Use realistic clinical vignettes.
+Each question must test high-yield medical knowledge suitable for USMLE Step 1 or Step 2 CK level. Focus on mechanism, pathophysiology, anatomy, diagnosis, and management. Avoid trivial first-order recall. Use realistic clinical vignettes. The questions MUST require multi-step, second-order, or third-order reasoning. Make the options indirect descriptions (e.g., describing an anatomical feature, mechanism of action, or pathophysiology) rather than using the direct name of the diagnosis or structure.
 ${statsPrompt}
 
 CRITICAL REQUIREMENTS:
 1. The "Question context" field MUST end with a clear question (lead-in question). NEVER end it with a period.
 2. YOU MUST MARK THE CORRECT ANSWER WITH AN ASTERISK (*) PLACED IMMEDIATELY BEFORE THE OPTION LABEL (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK. THIS IS MANDATORY FOR EVERY QUESTION.
 ${hasTags ? "" : `3. You MUST provide a "Question tag ID" using the numeric taxonomy below.\n${this._ctGetNumericTaxonomyPrompt()}`}
+4. MAKE OPTIONS INDIRECT: Instead of straightforward diagnoses, the answer choices should describe the underlying mechanism, a secondary consequence, or anatomic path.
 ${examplesPrompt}
 
 Formatting rules are strict:
@@ -4621,25 +4622,25 @@ Template to follow exactly:
 Question title: <brief title>
 Question context: <clinical vignette ending with a ? lead-in question>
 Question options:
-(A) <option>
-(B) <option>
-(C) <option>
-(D) <option>
+(A) <indirect option description>
+(B) <indirect option description>
+(C) <indirect option description>
+(D) <indirect option description>
 Question explanation:
 <explanation>
 ${hasTags ? "" : "Question tag ID:\n<numeric_id>"}
 
 Example of correct formatting (Use this as the fallback formatting guide):
 
-Question title: Epigastric Pain
-Question context: A 45-year-old man presents with burning epigastric pain that is relieved by meals. He has been taking ibuprofen for chronic back pain. Which of the following is the most likely diagnosis?
+Question title: Knee Trauma Complication
+Question context: A 19-year-old male is brought to the emergency department after injuring his left knee in a motor vehicle accident. Physical examination reveals a moderate level of pain over the leg but no motor or sensory deficits. An x-ray of the left leg shows several small fractures in the distal femur and proximal tibia. After thorough evaluation he is placed in a cast that spans the length of his entire leg. At a follow-up appointment 4 days later he is unable to evert and dorsiflex the left foot but the pain has diminished. Which of the following most likely explains these findings?
 Question options:
-(A) Acute pancreatitis
-(B) Cholecystitis
-*(C) Duodenal ulcer
-(D) GERD
+(A) A nerve was injured in the motor vehicle accident
+(B) Limb compartment syndrome
+(C) Medial tibial stress syndrome
+*(D) A nerve was compressed
 Question explanation:
-Duodenal ulcers often present with pain that improves with food, whereas gastric ulcers worsen with food. Ibuprofen (NSAID) use is a major risk factor. Option (A) presents with radiating back pain. Option (B) has RUQ pain. Option (D) has retrosternal burning.
+This patient developed a common fibular (peroneal) nerve palsy due to compression by a tight-fitting leg cast. The common fibular nerve wraps around the neck of the fibula, making it highly susceptible to external compression. Injury results in foot drop (inability to dorsiflex) and loss of foot eversion. Option (A) is incorrect as he had no deficits initially. Compartment syndrome (B) presents with severe pain out of proportion to exam, but his pain diminished.
 Question tag ID:
 1.4.1.0.1234
 `;
@@ -4695,7 +4696,14 @@ Question tag ID:
             const selectedModel = this.el.aiModelSelector ? this.el.aiModelSelector.value : null;
             const modelName = selectedModel ? selectedModel.split('/')[1].split(':')[0] : 'AI';
             if (loadingText) {
-                loadingText.textContent = `${modelName} is thinking...`;
+                loadingText.textContent = `${modelName} is searching the web...`;
+                
+                // Simulate transition from searching to generating status since standard API doesn't stream status
+                this.aiLoadingTimeoutId = setTimeout(() => {
+                    if (loadingText && overlay && !overlay.classList.contains('hidden')) {
+                         loadingText.textContent = `${modelName} is writing question...`;
+                    }
+                }, 2500);
             }
         }
 
