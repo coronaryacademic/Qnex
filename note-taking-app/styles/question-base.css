@@ -2661,3 +2661,81 @@ div[data-tab-content="recent-sessions"].active {
   color: #ef4444; /* Red */
   font-weight: 600;
 }
+
+/* Drag and Drop Visuals */
+.q-folder.dragging,
+.question-item.dragging {
+    opacity: 0.5;
+    border: 1px dashed var(--accent);
+}
+
+.q-folder.drag-over > .q-folder-header {
+    background: var(--panel-hover) !important;
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.q-section-content.drag-over {
+    background: rgba(var(--accent-rgb, 99, 102, 241), 0.05);
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Folder Selection Modal Refinements */
+.folder-select-modal {
+    background: var(--panel) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+    border-radius: 10px !important;
+}
+
+.folder-select-modal .modal-header {
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+}
+
+.folder-selection-list {
+    padding: 4px 0;
+}
+
+.folder-select-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border-bottom: none !important; /* Cleaner look */
+    color: var(--text);
+    margin: 2px 8px;
+    border-radius: 6px;
+}
+
+.folder-select-item:hover {
+    background: var(--panel-hover);
+}
+
+.folder-select-item .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    color: var(--muted);
+}
+
+.folder-select-item .title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.9;
+}
+
+.folder-select-item:hover .icon {
+    color: var(--accent);
+}
+
+.small-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 6px;
+    font-weight: 600;
+}

@@ -71,6 +71,7 @@ const QuestionBase = {
         }
 
         this.bindEvents();
+        this.bindSidebarContextMenu(); // NEW: Initial binding
         this.initResizer();
         this.loadSidebarWidth();
         this.loadCollapsedSections(); // Load BEFORE data so state is ready for renderSidebar
@@ -473,65 +474,7 @@ const QuestionBase = {
             });
         }
 
-        // Context Menu for Sidebar (Handles list items + empty space)
-        this.el.sidebar.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation(); // Prevent main app context menu
-
-            const item = e.target.closest(".question-item, .q-folder-header");
-            const targetId = item ? item.dataset.id : null;
-
-            console.log("[QuestionBase] Sidebar ContextMenu Triggered on:", e.target, "Item:", item);
-
-            // Visual Highlight Synchronization
-            document.querySelectorAll(".question-item.context-active, .q-folder-header.context-active").forEach(el => el.classList.remove("context-active"));
-            if (item) {
-                item.classList.add("context-active");
-
-                // If it's a question, also ensure it's selected in state
-                if (item.classList.contains("question-item")) {
-                    this.state.selectedItems.clear();
-                    this.state.selectedItems.add(targetId);
-                    item.classList.add("selected");
-                }
-            }
-
-            // Check if clicking specific item type
-            let type = 'empty';
-            let context = null;
-            if (item) {
-                if (item.classList.contains("q-folder-header")) type = 'folder';
-                else {
-                    type = 'question';
-                    context = item.getAttribute("data-context");
-                }
-            }
-
-            this.showContextMenu(e.clientX, e.clientY, targetId, type, context);
-        });
-
-        // Context Menu for Empty State
-        if (this.el.emptyState) {
-            this.el.emptyState.addEventListener("contextmenu", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // Treat as empty space click
-                this.showContextMenu(e.clientX, e.clientY, null, 'empty');
-            });
-        }
-
-        // Context Menu for Editor (Global options or specific if handled)
-        if (this.el.editor) {
-            this.el.editor.addEventListener("contextmenu", (e) => {
-                // Ignore if clicking on inputs/contenteditable (to allow native menu for text)
-                if (e.target.isContentEditable || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                    return;
-                }
-                e.preventDefault();
-                e.stopPropagation();
-                this.showContextMenu(e.clientX, e.clientY, null, 'global');
-            });
-        }
+        // Context menu binding logic moved to bindSidebarContextMenu
 
         // Delete key handler for multi-selection
         document.addEventListener("keydown", (e) => {
@@ -630,6 +573,96 @@ const QuestionBase = {
                 modeBtn.classList.add('active');
             }
         });
+    },
+
+    bindSidebarContextMenu() {
+        console.log("[QuestionBase] Binding Sidebar Context Menu...");
+        
+        // Remove existing listeners if any by cloning or just re-adding (addEventListener is idempotent if function is same, but these are anonymous)
+        // To be safe, we use a named handler if we were cleaning up, but here we just want to ensure it's bound.
+        // However, multiple anonymous listeners could stack. 
+        // Better: ensure we only bind once or remove before adding.
+        // For simplicity and to fix the "refresh needed" issue, we'll replace the element or clear listeners.
+        // Actually, the user says "it don't appear so I must refresh", implying it's LOST.
+        
+        if (!this.el.sidebar) return;
+
+        // Use a flag to avoid multiple bindings if open() is called multiple times
+        if (this._contextMenuBound) {
+            // Check if it's still working? Or just re-bind if we suspect it's lost.
+            // Usually valid listeners aren't "lost" unless DOM is replaced.
+            // But if the user says it's lost, maybe something is replacing the sidebar.
+        }
+
+        const sidebarHandler = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const item = e.target.closest(".question-item, .q-folder-header");
+            const targetId = item ? item.dataset.id : null;
+
+            document.querySelectorAll(".question-item.context-active, .q-folder-header.context-active").forEach(el => el.classList.remove("context-active"));
+            
+            if (item) {
+                item.classList.add("context-active");
+
+                // Refinement: Right-click any item deselects current ones and selects this one
+                this.state.selectedItems.clear();
+                this.state.selectedItems.add(targetId);
+                
+                // Visual sync: remove 'selected' from all then add to this
+                document.querySelectorAll(".question-item.selected, .q-folder-header.selected").forEach(el => el.classList.remove("selected"));
+                item.classList.add("selected");
+
+                if (item.classList.contains("question-item")) {
+                    this.state.activeContext = item.getAttribute("data-context");
+                    this.activeQuestionId = targetId;
+                } else if (item.classList.contains("q-folder-header")) {
+                    // Keep tracks of active folder if needed, or just let context menu handle it
+                }
+            }
+
+            let type = 'empty';
+            let context = null;
+            if (item) {
+                if (item.classList.contains("q-folder-header")) type = 'folder';
+                else {
+                    type = 'question';
+                    context = item.getAttribute("data-context");
+                }
+            }
+            this.showContextMenu(e.clientX, e.clientY, targetId, type, context);
+        };
+
+        // Remove old and add new to avoid stacking
+        this.el.sidebar.removeEventListener("contextmenu", this._sidebarCtxHandler);
+        this._sidebarCtxHandler = sidebarHandler;
+        this.el.sidebar.addEventListener("contextmenu", this._sidebarCtxHandler);
+
+        if (this.el.emptyState) {
+            const emptyHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.showContextMenu(e.clientX, e.clientY, null, 'empty');
+            };
+            this.el.emptyState.removeEventListener("contextmenu", this._emptyCtxHandler);
+            this._emptyCtxHandler = emptyHandler;
+            this.el.emptyState.addEventListener("contextmenu", this._emptyCtxHandler);
+        }
+
+        if (this.el.editor) {
+            const editorHandler = (e) => {
+                if (e.target.isContentEditable || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                e.preventDefault();
+                e.stopPropagation();
+                this.showContextMenu(e.clientX, e.clientY, null, 'global');
+            };
+            this.el.editor.removeEventListener("contextmenu", this._editorCtxHandler);
+            this._editorCtxHandler = editorHandler;
+            this.el.editor.addEventListener("contextmenu", this._editorCtxHandler);
+        }
+        
+        this._contextMenuBound = true;
     },
 
     initResizer() {
@@ -1028,6 +1061,9 @@ Generate a professional title for this study session.`;
                 this.el.sidebar.classList.remove("collapsed");
             }
         }
+
+        // Re-bind context menu to ensure it's active
+        this.bindSidebarContextMenu();
     },
 
     close() {
@@ -2092,44 +2128,61 @@ Rules:
     },
 
     async createNewFolder(parentId = null) {
-        let name;
-        if (typeof window.modalPrompt === 'function') {
-            name = await window.modalPrompt(parentId ? "New Subfolder" : "New Folder", "Folder Name");
-        } else {
-            name = prompt("Folder Name:");
+    if (parentId) {
+        // Enforce rule: cannot add subfolders to folder with questions
+        const hasQs = this.state.questions.some(q => q.folderId === parentId);
+        if (hasQs) {
+            showToast("Cannot add subfolders to folders that contain questions", "error");
+            return;
         }
-        if (!name) return;
-        const newFolder = {
-            id: "fq-" + Date.now(),
-            title: name,
-            parentId: parentId // support nesting
-        };
-        this.state.folders.push(newFolder);
-        this.saveData();
+    }
+    let name;
+    if (typeof window.modalPrompt === 'function') {
+        name = await window.modalPrompt(parentId ? "New Subfolder" : "New Folder", "Folder Name");
+    } else {
+        name = prompt("Folder Name:");
+    }
+    if (!name) return;
+    const newFolder = {
+        id: "fq-" + Date.now(),
+        title: name,
+        parentId: parentId // support nesting
+    };
+    this.state.folders.push(newFolder);
+    this.saveData();
+    this.renderSidebar();
     },
 
-    createNewQuestion() {
-        const id = 'q_' + Date.now();
-        const newQ = {
-            id,
-            title: "Untitled Question",
-            text: "",
-            options: [
-                { id: 'opt1', text: "Option A", isCorrect: true },
-                { id: 'opt2', text: "Option B", isCorrect: false }
-            ],
-            explanation: "",
-            starred: false,
-            folderId: null,
-            createdAt: new Date().toISOString()
-        };
+    createNewQuestion(folderId = null) {
+    if (folderId) {
+        // Enforce rule: cannot add questions to folder with subfolders
+        const hasSub = this.state.folders.some(f => f.parentId === folderId);
+        if (hasSub) {
+            showToast("Cannot add questions to folders that have subfolders", "error");
+            return;
+        }
+    }
+    const id = 'q_' + Date.now();
+    const newQ = {
+        id,
+        title: "Untitled Question",
+        text: "",
+        options: [
+            { id: 'opt1', text: "Option A", isCorrect: true },
+            { id: 'opt2', text: "Option B", isCorrect: false }
+        ],
+        explanation: "",
+        starred: false,
+        folderId: folderId,
+        createdAt: new Date().toISOString()
+    };
 
-        this.state.questions.push(newQ);
-        this.saveData();
-        this.renderSidebar();
+    this.state.questions.push(newQ);
+    this.saveData();
+    this.renderSidebar();
 
-        // Open directly in text editor
-        this.openSessionCreator(null, id);
+    // Open directly in text editor
+    this.openSessionCreator(folderId, id);
     },
 
     // Unified Editor Routing
@@ -2440,16 +2493,19 @@ Rules:
 
     renderFolderItem(folder, questions, container) {
         const isExpanded = this.state.expandedFolders.has(folder.id);
+        const directSubfolders = this.state.folders.filter(f => f.parentId === folder.id);
+        const count = questions.length + directSubfolders.length;
+
         const folderEl = document.createElement("div");
         folderEl.className = "q-folder";
         folderEl.innerHTML = `
-        <div class="q-folder-header" data-id="${folder.id}">
+        <div class="q-folder-header" data-id="${folder.id}" draggable="true">
              <!-- Chevron removed as requested -->
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
             <span class="folder-title">${folder.title}</span>
-            <span class="folder-count">${questions.length}</span>
+            <span class="folder-count">${count}</span>
         </div>
         <div class="q-folder-content ${isExpanded ? '' : 'hidden'}"></div>
       `;
@@ -2470,6 +2526,18 @@ Rules:
                     this.openSessionCreator(folder.id);
                 }, 200);
             }
+        };
+
+        header.ondragstart = (e) => {
+            e.stopPropagation();
+            const dragData = { type: 'folder', id: folder.id };
+            e.dataTransfer.setData("application/json", JSON.stringify(dragData));
+            e.dataTransfer.effectAllowed = "move";
+            folderEl.classList.add('dragging');
+        };
+
+        header.ondragend = (e) => {
+            folderEl.classList.remove('dragging');
         };
 
         header.ondblclick = (e) => {
@@ -2519,7 +2587,15 @@ Rules:
 
             try {
                 const data = JSON.parse(e.dataTransfer.getData("application/json"));
+
+                // Check if folder has subfolders (Rule: no questions if has subfolders)
+                const hasSub = this.state.folders.some(f => f.parentId === folder.id);
+
                 if (data.type === 'question' && data.id) {
+                    if (hasSub) {
+                        showToast("Cannot add questions to folders that have subfolders", "error");
+                        return;
+                    }
                     const q = this.state.questions.find(q => q.id === data.id);
                     if (q && q.folderId !== folder.id) {
                         q.folderId = folder.id;
@@ -2528,6 +2604,36 @@ Rules:
                         this.state.expandedFolders.add(folder.id);
                         this.renderSidebar();
                     }
+                } else if (data.type === 'folder' && data.id) {
+                    if (data.id === folder.id) return; // Cannot move to itself
+
+                    // Rule: Cannot move folder into a folder that has questions
+                    const targetHasQs = this.state.questions.some(q => q.folderId === folder.id);
+                    if (targetHasQs) {
+                        showToast("Cannot add subfolders to folders that contain questions", "error");
+                        return;
+                    }
+
+                    // Prevent moving a folder into its own descendants
+                    const targetFolder = this.state.folders.find(f => f.id === data.id);
+                    if (!targetFolder) return;
+
+                    // Recursive check for descendant
+                    const isDescendant = (parentId, childId) => {
+                        const subfolders = this.state.folders.filter(f => f.parentId === parentId);
+                        if (subfolders.some(f => f.id === childId)) return true;
+                        return subfolders.some(f => isDescendant(f.id, childId));
+                    };
+
+                    if (isDescendant(data.id, folder.id)) {
+                        showToast("Cannot move a folder into its own subfolder", "error");
+                        return;
+                    }
+
+                    targetFolder.parentId = folder.id;
+                    this.saveData();
+                    this.state.expandedFolders.add(folder.id);
+                    this.renderSidebar();
                 }
             } catch (err) { console.error("Drop failed", err); }
         };
@@ -2651,21 +2757,30 @@ Rules:
             </div>
           `;
         } else if (isFolder) {
+            const hasSub = this.state.folders.some(f => f.parentId === id);
+            const hasQs = this.state.questions.some(q => q.folderId === id);
+
             html = `
             <div class="ctx-section">
+                ${!hasSub ? `
                 <button class="ctx-btn" data-action="new-sub-question">
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     New Question Here
-                </button>
+                </button>` : ''}
+                ${!hasQs ? `
                 <button class="ctx-btn" data-action="new-sub-folder">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
                     New Subfolder
-                </button>
+                </button>` : ''}
             </div>
             <div class="ctx-section">
                 <button class="ctx-btn" data-action="rename">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     Rename
+                </button>
+                <button class="ctx-btn" data-action="move-to-folder">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline><line x1="3" y1="12" x2="15" y2="12"></line></svg>
+                    Move to Folder
                 </button>
                 <button class="ctx-btn" data-action="edit-session">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -2697,6 +2812,10 @@ Rules:
                 <button class="ctx-btn" data-action="rename">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     Rename
+                </button>
+                <button class="ctx-btn" data-action="move-to-folder">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline><line x1="3" y1="12" x2="15" y2="12"></line></svg>
+                    Move to Folder
                 </button>
                 <button class="ctx-btn" data-action="star">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="${isStarred ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2">
@@ -2877,6 +2996,13 @@ Rules:
                     if (item.id !== id) item.starred = false;
                 });
                 this.saveData();
+            } else if (action === 'move-to-folder') {
+                const targetFolderId = await this.promptFolderSelection(id, 'question');
+                if (targetFolderId !== undefined) {
+                    q.folderId = targetFolderId;
+                    this.saveData();
+                    this.renderSidebar();
+                }
             }
         } else if (type === 'folder') {
             const fIndex = this.state.folders.findIndex(f => f.id === id);
@@ -2910,14 +3036,169 @@ Rules:
                 }
             } else if (action === 'rename') {
                 this.renameFolder(id);
+            } else if (action === 'move-to-folder') {
+                const targetFolderId = await this.promptFolderSelection(id, 'folder');
+                if (targetFolderId !== undefined) {
+                    folder.parentId = targetFolderId;
+                    this.saveData();
+                    this.renderSidebar();
+                }
             } else if (action === 'edit-session') {
                 this.editSessionFromFolder(id);
             } else if (action === 'new-sub-question') {
+                // Check if folder has subfolders
+                const hasSub = this.state.folders.some(f => f.parentId === id);
+                if (hasSub) {
+                    showToast("Cannot add questions to folders that have subfolders", "error");
+                    return;
+                }
                 this.createNewQuestion(id);
             } else if (action === 'new-sub-folder') {
+                // Check if folder has questions
+                const hasQs = this.state.questions.some(q => q.folderId === id);
+                if (hasQs) {
+                    showToast("Cannot add subfolders to folders that contain questions", "error");
+                    return;
+                }
                 this.createNewFolder(id);
             }
         }
+    },
+
+    async promptFolderSelection(movingId, movingType) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.style.zIndex = '100001';
+
+            const content = document.createElement('div');
+            content.className = 'modal-content folder-select-modal';
+            content.style.width = '360px'; // More compact
+            content.style.maxHeight = '60vh';
+            content.style.display = 'flex';
+            content.style.flexDirection = 'column';
+
+            const header = document.createElement('div');
+            header.className = 'modal-header';
+            header.style.padding = '12px 16px';
+            header.innerHTML = `<h3 style="margin:0; font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Move to Folder</h3><button class="close-btn" style="background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer;">&times;</button>`;
+
+            const body = document.createElement('div');
+            body.className = 'modal-body';
+            body.style.overflowY = 'auto';
+            body.style.padding = '0'; // Clean selection list
+
+            const footer = document.createElement('div');
+            footer.className = 'modal-footer';
+            footer.style.padding = '8px 12px';
+            footer.style.justifyContent = 'flex-end';
+            footer.style.borderTop = '1px solid var(--border-subtle, rgba(255,255,255,0.05))';
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn secondary small-btn';
+            cancelBtn.textContent = 'Cancel';
+            footer.appendChild(cancelBtn);
+
+            const list = document.createElement('div');
+            list.className = 'folder-selection-list';
+
+            const folderIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.6"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+            const rootIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>`;
+
+            // Root option
+            const rootItem = document.createElement('div');
+            rootItem.className = 'folder-select-item';
+            rootItem.innerHTML = `<span class="icon">${rootIcon}</span> <span class="title">Top Level (Root)</span>`;
+            rootItem.onclick = () => {
+                cleanup();
+                resolve(null);
+            };
+            list.appendChild(rootItem);
+
+            // Other folders
+            const folders = this.state.folders.filter(f => {
+                if (movingType === 'folder') {
+                    // Cannot move to itself or its descendants
+                    if (f.id === movingId) return false;
+
+                    // Check if f is a descendant of movingId
+                    let curr = f;
+                    while (curr && curr.parentId) {
+                        if (curr.parentId === movingId) return false;
+                        curr = this.state.folders.find(x => x.id === curr.parentId);
+                    }
+                    
+                    // Rule: Cannot move folder into a folder that has questions
+                    const targetHasQs = this.state.questions.some(q => q.folderId === f.id);
+                    if (targetHasQs) return false;
+
+                } else if (movingType === 'question') {
+                    // Rule: Cannot move question into a folder that has subfolders
+                    const hasSub = this.state.folders.some(x => x.parentId === f.id);
+                    if (hasSub) return false;
+                }
+                return true;
+            });
+
+            folders.sort((a, b) => a.title.localeCompare(b.title));
+
+            folders.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'folder-select-item';
+                // Calculate indentation
+                let depth = 0;
+                let curr = f;
+                while (curr && curr.parentId) {
+                    depth++;
+                    const parent = this.state.folders.find(x => x.id === curr.parentId);
+                    if (!parent) break;
+                    curr = parent;
+                }
+                item.style.paddingLeft = `${depth * 15 + 15}px`;
+                item.innerHTML = `<span class="icon">${folderIcon}</span> <span class="title">${f.title}</span>`;
+                item.onclick = () => {
+                    cleanup();
+                    resolve(f.id);
+                };
+                list.appendChild(item);
+            });
+
+            if (folders.length === 0 && movingType === 'question') {
+                const empty = document.createElement('div');
+                empty.style.padding = '20px';
+                empty.style.color = 'var(--muted)';
+                empty.style.textAlign = 'center';
+                empty.style.fontSize = '12px';
+                empty.textContent = 'No available leaf folders for questions.';
+                list.appendChild(empty);
+            }
+
+            body.appendChild(list);
+            content.appendChild(header);
+            content.appendChild(body);
+            content.appendChild(footer);
+            overlay.appendChild(content);
+            document.body.appendChild(overlay);
+
+            const cleanup = () => {
+                overlay.remove();
+            };
+
+            header.querySelector('.close-btn').onclick = () => {
+                cleanup();
+                resolve(undefined);
+            };
+            cancelBtn.onclick = () => {
+                cleanup();
+                resolve(undefined);
+            };
+            overlay.onclick = (e) => {
+                if (e.target === overlay) {
+                    cleanup();
+                    resolve(undefined);
+                }
+            };
+        });
     },
 
     async showTrashModal() {
