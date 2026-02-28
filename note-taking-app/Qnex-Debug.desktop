@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Qnex Debug (Terminal)
+Comment=Launch Qnex with visible backend logs
+Exec="/home/momen/WindowsDrive/My projects/Note taking app/notes-app-1.0/windsurf-project/windsurf-project/note-taking-app/launch-debug.sh"
+Icon=/home/momen/WindowsDrive/My projects/Note taking app/notes-app-1.0/windsurf-project/windsurf-project/note-taking-app/icon.png
+Terminal=true
+Type=Application
+Categories=Development;TextEditor;
