@@ -739,6 +739,64 @@
   /* Align to left */
 }
 
+/* Content Alignment */
+.dungeon-main-panel.align-center,
+.dungeon-explanation-panel.align-center {
+  display: block;
+  text-align: center;
+  padding: 85px 65px 160px 65px; /* Symmetrical padding */
+}
+
+.dungeon-explanation-panel.align-center {
+  padding: 52px 40px 160px 40px; /* Keep panel's vertical padding */
+}
+
+.dungeon-main-panel.align-center .dungeon-question-container,
+.dungeon-explanation-panel.align-center .dungeon-question-container {
+  margin: 0 auto;
+  text-align: left; /* Lock text to left inside centered container */
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start; /* Ensure items inside are start-aligned */
+}
+
+.dungeon-main-panel.align-center .dungeon-context-box,
+.dungeon-explanation-panel.align-center .dungeon-context-box {
+  text-align: center; /* Center the question/title text */
+  width: 100%;
+}
+
+.dungeon-main-panel.align-center .dungeon-options-list {
+  text-align: left;
+  align-self: stretch; /* Take full width of centered container */
+}
+
+.dungeon-main-panel.align-center .dungeon-radio-option,
+.dungeon-explanation-panel.align-center .dungeon-radio-option {
+  justify-content: flex-start; 
+}
+
+.dungeon-main-panel.align-center .dungeon-explanation,
+.dungeon-explanation-panel.align-center .dungeon-explanation {
+  text-align: center;
+}
+
+.dungeon-main-panel.align-left,
+.dungeon-explanation-panel.align-left {
+  padding: 85px 65px 160px 117px; 
+  display: block;
+  text-align: left;
+}
+
+.dungeon-explanation-panel.align-left {
+  padding: 52px 40px 160px 40px;
+}
+
+.dungeon-main-panel.align-left .dungeon-question-container {
+  margin-left: 0;
+  display: flex;
+}
+
 /* Font Size Modifiers */
 .dungeon-question-container.font-small .dungeon-context-box,
 .dungeon-question-container.font-small .dungeon-context-box h1,

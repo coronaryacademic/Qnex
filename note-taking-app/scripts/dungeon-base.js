@@ -16,6 +16,7 @@ export default class DungeonBase {
             associatedSessionId: null,
             hideTimerUntilMinute: false, // User requested: hide timer until 1 min passes
             floatingTimer: false,       // User requested: floating clock
+            contentAlignment: localStorage.getItem('dungeonContentAlignment') || 'left',
         };
         this.questionStartTime = 0;
         this.currentNote = null;
@@ -324,6 +325,20 @@ export default class DungeonBase {
                 </div>
                 <div class="dungeon-toolbar-menu-divider"></div>
                 <div class="dungeon-toolbar-menu-section">
+                  <div class="dungeon-toolbar-menu-label">Content Alignment</div>
+                  <div class="dungeon-menu-grid">
+                    <button id="dungeonAlignLeftBtn" class="dungeon-menu-toggle" data-alignment="left">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="6" x2="3" y2="6"></line><line x1="21" y1="12" x2="3" y2="12"></line><line x1="15" y1="18" x2="3" y2="18"></line></svg>
+                      <span>Left</span>
+                    </button>
+                    <button id="dungeonAlignCenterBtn" class="dungeon-menu-toggle" data-alignment="center">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="17" y1="12" x2="7" y2="12"></line><line x1="19" y1="18" x2="5" y2="18"></line></svg>
+                      <span>Center</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="dungeon-toolbar-menu-divider"></div>
+                <div class="dungeon-toolbar-menu-section">
                   <div class="dungeon-toolbar-menu-label">Theme</div>
                   <div class="dungeon-theme-selector">
                     <button id="dungeonThemePrev" class="dungeon-theme-nav-btn" title="Previous Theme">
@@ -599,7 +614,8 @@ export default class DungeonBase {
 
         // Global Keybinds for switching between layers
         document.addEventListener('keydown', (e) => {
-            // ESC to close Dungeon layer
+            // ESC to close Dungeon layer - DISABLED per user request
+            /*
             if (e.key === 'Escape' && document.body.classList.contains('dungeon-open')) {
                 // Don't close if a modal or search is open?
                 // For simplicity, just close.
@@ -610,6 +626,7 @@ export default class DungeonBase {
                 }
                 this.close();
             }
+            */
         });
     }
 
@@ -895,6 +912,15 @@ export default class DungeonBase {
                 };
             });
 
+            // Content Alignment buttons
+            toolbarMenu.querySelectorAll('button[data-alignment]').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const alignment = btn.dataset.alignment;
+                    this.setContentAlignment(alignment);
+                };
+            });
+
             // Theme Carousel Logic
             const themes = ['dark', 'light'];
             const themeDisplay = document.getElementById('dungeonThemeDisplay');
@@ -980,17 +1006,20 @@ export default class DungeonBase {
                 });
             }
 
-            // Close Button Logic
             const closeBtn = document.getElementById('dungeonCloseBtn');
             if (closeBtn) {
                 closeBtn.onclick = () => {
-                    // Hide Dungeon Base
-                    if (this.el.container) this.el.container.classList.add('hidden');
-                    
-                    // Show Note Base if it exists
-                    const noteBase = document.getElementById('noteBase');
-                    if (noteBase) {
-                        noteBase.classList.remove('hidden');
+                    if (confirm("Are you sure you want to exit the Dungeon session? Unsaved progress may be lost.")) {
+                        // Hide Dungeon Base
+                        if (this.el.container) this.el.container.classList.add('hidden');
+                        
+                        // Show Note Base if it exists
+                        const noteBase = document.getElementById('noteBase');
+                        if (noteBase) {
+                            noteBase.classList.remove('hidden');
+                        }
+                        this.stopTimer();
+                        document.body.classList.remove("dungeon-open");
                     }
                 };
             }
@@ -1037,6 +1066,9 @@ export default class DungeonBase {
             this.state.toolbarVisible = false;
             this.updateToolbarVisibility();
         }
+
+        // Initial state sync
+        this.setContentAlignment(this.state.contentAlignment);
 
         // Initialize Split View Resizer
         this.initSplitResizer();
@@ -1444,6 +1476,29 @@ export default class DungeonBase {
 
         // Save preference
         localStorage.setItem('dungeonTopbarButtonsPosition', position);
+    }
+
+    setContentAlignment(alignment) {
+        this.state.contentAlignment = alignment;
+        const mainPanel = document.getElementById('dungeonMainPanel');
+        const expPanel = document.getElementById('dungeonExplanationPanel');
+        
+        [mainPanel, expPanel].forEach(panel => {
+            if (panel) {
+                panel.classList.remove('align-center', 'align-right', 'align-left');
+                panel.classList.add(`align-${alignment}`);
+            }
+        });
+
+        // Update active state in menu
+        const menu = document.getElementById('dungeonToolbarMenu');
+        if (menu) {
+            menu.querySelectorAll('button[data-alignment]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.alignment === alignment);
+            });
+        }
+
+        localStorage.setItem('dungeonContentAlignment', alignment);
     }
 
     ensureLabComponents() {
@@ -2894,7 +2949,13 @@ export default class DungeonBase {
     bindEvents() {
         // Close button
         const closeBtn = document.getElementById("dungeonCloseBtn");
-        if (closeBtn) closeBtn.onclick = () => this.close();
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                if (confirm("Are you sure you want to exit the Dungeon session? Unsaved progress may be lost.")) {
+                    this.close();
+                }
+            };
+        }
 
         // Footer buttons
         const suspendBtn = document.getElementById("dungeonSuspendBtn");
@@ -2914,7 +2975,7 @@ export default class DungeonBase {
 
             if (e.key === "ArrowRight") this.navNext();
             if (e.key === "ArrowLeft") this.navPrev();
-            if (e.key === "Escape") this.close();
+            // if (e.key === "Escape") this.close(); // DISABLED per user request
 
             // Enter Key logic
             if (e.key === "Enter" && !isSearchActive && !isCalcActive) {
