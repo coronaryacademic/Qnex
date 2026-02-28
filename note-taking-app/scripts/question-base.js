@@ -1200,13 +1200,16 @@ Generate a professional title for this study session.`;
             } else if (oneDigit > 0 && oneDigit <= this.CT_TAG_OPTIONS[cat].length) {
                 id = oneDigit;
                 consumed = 1;
+            } else {
+                // If it's a 0 or out of range, skip at least 1 digit to avoid getting stuck
+                consumed = 1;
             }
             
             if (id !== -1) {
                 const tagName = this.CT_TAG_OPTIONS[cat][id - 1];
                 if (tagName) tags[cat].push(tagName);
-                remaining = remaining.substring(consumed);
             }
+            remaining = remaining.substring(consumed);
         }
         
         return tags;
@@ -1968,18 +1971,21 @@ Rules:
         const sessionInput = document.getElementById('sessionInput');
         if (!sessionInput) return;
         const text = sessionInput.innerText || sessionInput.textContent || '';
+        
         // Aggregate all derived tags across all IDs found in text
-        const combined = { subject: new Set(), system: new Set(), major: new Set(), minor: new Set() };
+        const derivedSets = { subject: new Set(), system: new Set(), major: new Set(), minor: new Set() };
         
         // Collect all numeric IDs from the text (supports dots and digits)
         const idMatches = [...text.matchAll(/Question tag ID:\s*\n?\s*([\d.]+)/g)];
         
+        let hasAnyIdsInText = false;
         if (idMatches.length > 0) {
+            hasAnyIdsInText = true;
             for (const m of idMatches) {
                 const derived = this._ctGetTagsFromNumericId(m[1]);
                 if (!derived) continue;
                 for (const key of ['subject','system','major','minor']) {
-                    (derived[key] || []).forEach(v => combined[key].add(v));
+                    (derived[key] || []).forEach(v => derivedSets[key].add(v));
                 }
             }
         }
@@ -1991,13 +1997,23 @@ Rules:
             { key: 'major',   stateKey: 'selectedTagMajors',   badgeId: 'tagBadgeMajor',   btnId: 'tagBtnMajor'   },
             { key: 'minor',   stateKey: 'selectedTagMinors',   badgeId: 'tagBadgeMinor',   btnId: 'tagBtnMinor'   },
         ];
+
         for (const { key, stateKey, badgeId, btnId } of configs) {
-            const vals = [...combined[key]];
+            // MERGE Logic: Combine what's in the text with what the user manually selected
+            const currentSelection = new Set(this.state[stateKey] || []);
+            
+            // If we have IDs in text, we ensure those tags are present.
+            // If the user manually selected something that ISN'T in the IDs, we keep it!
+            derivedSets[key].forEach(v => currentSelection.add(v));
+            
+            const vals = [...currentSelection];
             this.state[stateKey] = vals;
+
             // Tick checkboxes in the floating menus
             document.querySelectorAll(`[data-tag-key="${key}"] input[type="checkbox"]`).forEach(cb => {
                 cb.checked = vals.includes(cb.value);
             });
+
             const badge = document.getElementById(badgeId);
             const btn   = document.getElementById(btnId);
             if (badge) badge.textContent = vals.length > 0 ? vals.length : '';

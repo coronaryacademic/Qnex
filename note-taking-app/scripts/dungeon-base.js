@@ -2296,9 +2296,14 @@ export default class DungeonBase {
             this.sessionTimerStart = Date.now();
         }
 
-        // If question has been answered, display saved timer but don't run (for 'up' mode)
-        if (timerMode === 'up' && q && q.submittedAnswer && q.timerElapsed !== undefined) {
-            this.updateTimerDisplay(q.timerElapsed);
+        // Initialize tracker for stopTimer()
+        this._timerQuestion = q;
+        this._timerInitialMs = (timerMode === 'up') ? (q.timerElapsed || 0) : null;
+        
+        // Stop 'up' timer from ticking if question is answered, committed (exam), or revealed
+        const isAnswered = this.state.answers.has(q.id) || q.submittedAnswer;
+        if (timerMode === 'up' && (isAnswered || q.revealed)) {
+            this.updateTimerDisplay(q.timerElapsed || 0);
             return; 
         }
 
@@ -2342,8 +2347,6 @@ export default class DungeonBase {
             }, 100);
             return;
         }
-        this._timerQuestion = null;
-        this._timerInitialMs = null;
 
         this.timerStart = Date.now();
         
@@ -2477,22 +2480,27 @@ export default class DungeonBase {
 
     stopTimer() {
         const now = Date.now();
-        // Save remaining time for per-question countdown
-        if (this._timerQuestion && !this._timerQuestion._timedOut && this._timerInitialMs !== undefined && this.timerStart) {
-            const elapsed = now - this.timerStart;
-            this._timerQuestion._remainingMs = Math.max(0, this._timerInitialMs - elapsed);
-        }
-        
-        // Save elapsed time for 'up' mode to prevent loss on re-renders
-        const q = this.state.questions?.[this.state.currentIndex];
-        if (q && q._timerMode === 'up' && this.timerStart) {
-            const elapsed = now - this.timerStart;
-            q.timerElapsed = (q.timerElapsed || 0) + elapsed;
+        if (!this.timerStart) {
+            // If timer isn't active, ensure we clear tracking refs anyway
+            this._timerQuestion = null;
+            this._timerInitialMs = null;
+            return;
         }
 
+        // Save remaining/elapsed time to the CORRECT question (tracked at start)
+        const q = this._timerQuestion;
+        if (q && !q._timedOut) {
+            const elapsed = now - this.timerStart;
+            if (q._timerMode === 'up') {
+                q.timerElapsed = (q.timerElapsed || 0) + elapsed;
+            } else if (q._timerMode === 'down' && q._timerScope === 'question' && this._timerInitialMs !== null) {
+                q._remainingMs = Math.max(0, this._timerInitialMs - elapsed);
+            }
+        }
+        
         this._timerQuestion = null;
         this._timerInitialMs = null;
-        this.timerStart = null; // Important: Clear to indicate timer is stopped
+        this.timerStart = null; // Mark inactive
 
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
@@ -2975,7 +2983,7 @@ export default class DungeonBase {
                         // Tutor mode: full submit (shows feedback, stops timer)
                         this.handleSubmit();
                     } else {
-                        // Exam mode: silently save the choice — timer keeps running
+                        // Exam mode: silently save the choice — timer keeps running (unless 'up' mode)
                         // When timer runs out, this saved choice is final
                         const selectedOpt = currentQ.options?.find(o => String(o.id) === String(this.state.selectedOption));
                         const isCorrect = selectedOpt?.isCorrect || false;
@@ -2987,8 +2995,17 @@ export default class DungeonBase {
                         };
                         this.state.answers.set(currentQ.id, answerData);
                         currentQ.submittedAnswer = answerData;
+                        
+                        // Stop 'up' timer immediately on commit
+                        if (currentQ._timerMode === 'up') {
+                            this.stopTimer();
+                        }
+                        
                         this.renderSidebar();
-                        // Don't re-render question or stop timer — they continue
+                        // For 'up' mode, re-render question to freeze timer UI
+                        if (currentQ._timerMode === 'up') {
+                            this.render();
+                        }
                     }
                 }
             }
@@ -3972,10 +3989,7 @@ export default class DungeonBase {
         // Persist to question object
         q.submittedAnswer = answerData;
 
-        // Save timer value before stopping
-        if (this.timerStart) {
-            q.timerElapsed = (q.timerElapsed || 0) + (Date.now() - this.timerStart);
-        }
+        const timeSpent = this.timerStart ? Math.floor((Date.now() - this.timerStart) / 1000) : 0;
 
         // Calculate transition for stats
         let changeType = null;
@@ -3999,7 +4013,7 @@ export default class DungeonBase {
             method: 'POST',
             body: JSON.stringify({ 
                 type: isCorrect ? 'correct' : 'incorrect',
-                timeSpent: Math.floor((Date.now() - (this.timerStart || Date.now())) / 1000),
+                timeSpent: timeSpent,
                 isNewSubmission: isNewSubmission,
                 changeType: changeType,
                 adjustment: adjustment
@@ -4009,8 +4023,8 @@ export default class DungeonBase {
         this.updateSaveStatus('unsaved');
         this.saveQuestionsToBackend();
         
-        // In exam mode, we don't stop timer or show feedback immediately
-        if (q._tutorMode !== false) {
+        // Stop timer for Tutor mode (always) OR for 'up' mode in Exam mode
+        if (q._tutorMode !== false || q._timerMode === 'up') {
             this.stopTimer();
         }
         
@@ -4096,6 +4110,7 @@ export default class DungeonBase {
 
     navNext() {
         if (this.state.currentIndex < this.state.questions.length - 1) {
+            this.stopTimer();
             this.state.currentIndex++;
             this.state.selectedOption = null;
             this.questionStartTime = 0; // Reset question start time for hiding logic
@@ -4105,6 +4120,7 @@ export default class DungeonBase {
 
     navPrev() {
         if (this.state.currentIndex > 0) {
+            this.stopTimer();
             this.state.currentIndex--;
             this.state.selectedOption = null;
             this.questionStartTime = 0; // Reset question start time for hiding logic
