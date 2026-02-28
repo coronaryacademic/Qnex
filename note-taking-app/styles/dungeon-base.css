@@ -469,6 +469,7 @@
 
 .dungeon-sidebar.collapsed {
   transform: translateX(-100%);
+  overflow: hidden; /* Prevent active box protrusion from leaking back into view */
 }
 
 /* Sidebar Questions Container */
@@ -577,6 +578,11 @@
   font-weight: bold;
   border-radius: 0;
   position: relative;
+}
+
+.dungeon-sidebar.collapsed .dungeon-q-box.active {
+  width: 100%;
+  border-right: none !important;
 }
 
 /* Even rows keep panel-2 */
@@ -734,43 +740,46 @@
 }
 
 /* Font Size Modifiers */
-.dungeon-question-container.font-small .dungeon-context-box {
-  font-size: 0.95rem;
+.dungeon-question-container.font-small .dungeon-context-box,
+.dungeon-question-container.font-small .dungeon-context-box h1,
+.dungeon-question-container.font-small .dungeon-context-box h2,
+.dungeon-question-container.font-small .dungeon-context-box h3,
+.dungeon-question-container.font-small .dungeon-explanation h3,
+.dungeon-question-container.font-small .dungeon-explanation p,
+.dungeon-question-container.font-small .dungeon-explanation li {
+  font-size: 1.35rem;
 }
 
 .dungeon-question-container.font-small .dungeon-radio-option {
-  font-size: 0.85rem;
-}
-
-.dungeon-question-container.font-small .dungeon-explanation p,
-.dungeon-question-container.font-small .dungeon-explanation li {
-  font-size: 0.95rem;
-}
-
-.dungeon-question-container.font-medium .dungeon-context-box {
   font-size: 1.15rem;
+}
+
+.dungeon-question-container.font-medium .dungeon-context-box,
+.dungeon-question-container.font-medium .dungeon-context-box h1,
+.dungeon-question-container.font-medium .dungeon-context-box h2,
+.dungeon-question-container.font-medium .dungeon-context-box h3,
+.dungeon-question-container.font-medium .dungeon-explanation h3,
+.dungeon-question-container.font-medium .dungeon-explanation p,
+.dungeon-question-container.font-medium .dungeon-explanation li {
+  font-size: 1.6rem;
 }
 
 .dungeon-question-container.font-medium .dungeon-radio-option {
-  font-size: 1rem;
-}
-
-.dungeon-question-container.font-medium .dungeon-explanation p,
-.dungeon-question-container.font-medium .dungeon-explanation li {
-  font-size: 1.15rem;
-}
-
-.dungeon-question-container.font-large .dungeon-context-box {
   font-size: 1.35rem;
+}
+
+.dungeon-question-container.font-large .dungeon-context-box,
+.dungeon-question-container.font-large .dungeon-context-box h1,
+.dungeon-question-container.font-large .dungeon-context-box h2,
+.dungeon-question-container.font-large .dungeon-context-box h3,
+.dungeon-question-container.font-large .dungeon-explanation h3,
+.dungeon-question-container.font-large .dungeon-explanation p,
+.dungeon-question-container.font-large .dungeon-explanation li {
+  font-size: 1.85rem;
 }
 
 .dungeon-question-container.font-large .dungeon-radio-option {
-  font-size: 1.15rem;
-}
-
-.dungeon-question-container.font-large .dungeon-explanation p,
-.dungeon-question-container.font-large .dungeon-explanation li {
-  font-size: 1.35rem;
+  font-size: 1.55rem;
 }
 
 /* Question Header - Removed, now in topbar */
