@@ -600,12 +600,12 @@
 
 .dungeon-q-box.active.correct:nth-child(odd),
 .dungeon-q-box.active.correct:nth-child(even) {
-  background: #15803d !important;
+  background: #07963c !important;
 }
 
 .dungeon-q-box.active.wrong:nth-child(odd),
 .dungeon-q-box.active.wrong:nth-child(even) {
-  background: #991b1b !important;
+  background: #d51515 !important;
 }
 
 .dungeon-q-box.active.solved:nth-child(odd),
@@ -615,7 +615,7 @@
 
 .dungeon-q-box.active.revealed-state:nth-child(odd),
 .dungeon-q-box.active.revealed-state:nth-child(even) {
-  background: #c2410c !important;
+  background: #ed4d0b !important;
 }
 
 /* Status Icons inside box */
@@ -626,13 +626,13 @@
 
 .dungeon-q-box.correct {
   color: var(--text);
-  background: #15803d !important;
+  background: #07963c !important;
   border-color: #16a34a;
 }
 
 .dungeon-q-box.wrong {
   color: var(--text);
-  background: #991b1b !important;
+  background: #d51515 !important;
   border-color: #b91c1c;
 }
 
@@ -642,7 +642,7 @@
 }
 
 .dungeon-q-box.revealed-state {
-  background: #c2410c !important;
+  background: #ed4d0b !important;
   border-color: #ea580c;
   color: var(--text);
 }
@@ -1506,7 +1506,7 @@
 }
 
 .dungeon-footer-right {
-  gap: 8px !important;
+  gap: 1px !important;
 }
 
 .dungeon-footer-center {

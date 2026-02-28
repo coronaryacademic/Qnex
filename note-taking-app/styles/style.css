@@ -130,7 +130,7 @@ body.theme-light {
   --muted: #000000fa;        /* Warm muted stone */
   --accent: #4f46e5;       /* Indigo accent */
   --accent-2: #6366f1;     /* Lighter indigo */
-  --border: #e8e3db;       /* Warm soft border */
+  --border: #a2a2a2;       /* Warm soft border */
   --chip: #ede9e3;         /* Warm chip background */
   --shadow: 0 2px 16px rgba(28, 25, 23, 0.08), 0 1px 4px rgba(28, 25, 23, 0.04);
   --panel-hover: rgba(79, 70, 229, 0.06); /* Indigo tinted hover */

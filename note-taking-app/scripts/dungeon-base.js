@@ -2182,25 +2182,31 @@ export default class DungeonBase {
     }
 
     saveQuestionsToBackend() {
-        // Placeholder for persistence
         this.updateSaveStatus('saving');
 
-        // 1. Persist via QuestionBase (Best for FileSystem sync)
+        // 1. Force sync ALL questions in the current session back to QuestionBase
         if (window.QuestionBase && window.QuestionBase.state) {
-            // Sync current question back to QuestionBase state
-            const currentQ = this.state.questions[this.state.currentIndex];
-            const qBaseIndex = window.QuestionBase.state.questions.findIndex(item => item.id === currentQ.id);
-
-            if (qBaseIndex !== -1) {
-                // Update the specific question in the master list
-                window.QuestionBase.state.questions[qBaseIndex] = currentQ;
-                window.QuestionBase.saveData(); // Triggers JSON file write
+            this.state.questions.forEach(dq => {
+                const mq = window.QuestionBase.state.questions.find(item => item.id === dq.id);
+                if (mq) {
+                    mq.submittedAnswer = dq.submittedAnswer;
+                    mq.revealed = dq.revealed;
+                    mq.crossedOutOptionIds = dq.crossedOutOptionIds;
+                    mq.timerElapsed = dq.timerElapsed;
+                    mq.starred = dq.starred;
+                    mq.isStarred = dq.isStarred;
+                    if (dq.tags) mq.tags = dq.tags;
+                }
+            });
+            window.QuestionBase.saveData(); // This handles LocalStorage, Electron, and Server
+        } else {
+            // Fallback if QuestionBase is not available (though it should be)
+            if (window.Storage && window.Storage.saveQuestions) {
+                window.Storage.saveQuestions({
+                    questions: this.state.questions,
+                    folders: []
+                });
             }
-        }
-
-        // 2. Fallback / Electron API direct call
-        if (window.electronAPI && window.electronAPI.saveQuestions) {
-            window.electronAPI.saveQuestions(JSON.parse(JSON.stringify(this.state.questions)));
         }
 
         setTimeout(() => this.updateSaveStatus('saved'), 500);
@@ -2241,31 +2247,6 @@ export default class DungeonBase {
         this.currentNote = new DungeonNote(this, q.id);
     }
 
-    toggleReveal() {
-        const q = this.state.questions[this.state.currentIndex];
-        const answer = this.state.answers.get(q.id);
-
-        // If already submitted, don't allow reveal toggle
-        if (answer && answer.submitted) return;
-
-        // Toggle revealed state
-        q.revealed = !q.revealed;
-
-        // Persist
-        this.updateSaveStatus('unsaved');
-        this.saveQuestionsToBackend();
-
-        // Re-render to show/hide answer
-        this.renderQuestion();
-
-        // Update reveal button state
-        this.updateRevealButton();
-
-        // Stop timer when revealing
-        if (q.revealed) {
-            this.stopTimer();
-        }
-    }
 
     // Returns the current session mode based on the first question's settings
     _getSessionMode() {
@@ -2719,10 +2700,11 @@ export default class DungeonBase {
 
     clearAnswer() {
         const q = this.state.questions[this.state.currentIndex];
+        if (!q) return;
         const answer = this.state.answers.get(q.id);
 
-        // Only allow clearing if answered
-        if (!answer || !answer.submitted) return;
+        // Only allow clearing if answered or revealed
+        if (!q.revealed && (!answer || !answer.submitted)) return;
 
         // Remove from runtime state
         this.state.answers.delete(q.id);
@@ -2734,9 +2716,7 @@ export default class DungeonBase {
         delete q.timerElapsed;
 
         // Clear revealed state too
-        if (q.revealed) {
-            q.revealed = false;
-        }
+        q.revealed = false;
 
         // Reset selection
         this.state.selectedOption = null;
@@ -2751,6 +2731,7 @@ export default class DungeonBase {
 
     updateRevealButton() {
         const q = this.state.questions[this.state.currentIndex];
+        if (!q) return;
         const answer = this.state.answers.get(q.id);
         const revealBtn     = document.getElementById('dungeonRevealBtn');
         const clearBtn      = document.getElementById('dungeonClearBtn');
@@ -2764,57 +2745,66 @@ export default class DungeonBase {
 
         const mode = this._getSessionMode();
         const isExamMode    = (mode === 'exam' || mode === 'revealed-exam');
-        const isRevealed    = (mode === 'revealed-exam');
+        const isRevealedSession = (mode === 'revealed-exam');
+        const isOpenMode    = (mode === 'all');
         const unanswered    = this.state.questions.length - this.state.answers.size;
 
-        if (isExamMode) {
+        // Reset visibility
+        if (revealBtn) revealBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (suspendBtn) suspendBtn.style.display = 'none';
+        if (endBlockBtn) endBlockBtn.style.display = 'none';
+        if (submitBlockBtn) submitBlockBtn.style.display = 'none';
+
+        if (isOpenMode) {
+            // Open Mode: Only Reveal and Clear
+            if (q.revealed || (answer && answer.submitted)) {
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
+                if (revealBtn) revealBtn.style.display = 'none';
+            } else {
+                if (revealBtn) {
+                    revealBtn.style.display = 'inline-flex';
+                    revealBtn.classList.remove('active');
+                }
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+            if (resultsEl) resultsEl.classList.add('hidden');
+            if (statsEl) statsEl.classList.remove('hidden');
+        } else if (isExamMode) {
             // Exam mode: hide Reveal, show Suspend
-            revealBtn.style.display = 'none';
             if (suspendBtn) suspendBtn.style.display = 'inline-flex';
 
-            if (isRevealed) {
+            if (isRevealedSession) {
                 // Block already submitted/ended — hide action buttons
-                if (endBlockBtn)   endBlockBtn.style.display   = 'none';
-                if (submitBlockBtn) submitBlockBtn.style.display = 'none';
                 if (resultsEl) resultsEl.classList.remove('hidden');
                 if (statsEl)   statsEl.classList.add('hidden');
             } else {
                 // Pre-reveal: show End Block or Submit depending on unanswered count
                 if (unanswered > 0) {
                     if (endBlockBtn)    endBlockBtn.style.display    = 'inline-flex';
-                    if (submitBlockBtn) submitBlockBtn.style.display = 'none';
                 } else {
-                    if (endBlockBtn)    endBlockBtn.style.display    = 'none';
                     if (submitBlockBtn) submitBlockBtn.style.display = 'inline-flex';
                 }
                 if (resultsEl) resultsEl.classList.add('hidden');
                 if (statsEl)   statsEl.classList.remove('hidden');
             }
         } else {
-            // Tutor mode
-            revealBtn.style.display = 'inline-flex';
-            if (suspendBtn)    suspendBtn.style.display    = 'none';
-            if (endBlockBtn)   endBlockBtn.style.display   = 'none';
-            if (submitBlockBtn) submitBlockBtn.style.display = 'none';
-            if (resultsEl) resultsEl.classList.add('hidden');
-            if (statsEl)   statsEl.classList.remove('hidden');
-        }
-
-        // Clear button: show when answer is submitted (both modes)
-        if (clearBtn) {
-            clearBtn.style.display = (answer && answer.submitted) ? 'inline-flex' : 'none';
-        }
-
-        // Reveal button state (Tutor only)
-        if (mode === 'tutor') {
+            // Tutor Mode
             if (answer && answer.submitted) {
-                revealBtn.style.opacity = '0.3';
-                revealBtn.style.pointerEvents = 'none';
-                revealBtn.classList.remove('active');
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
+                if (revealBtn) revealBtn.style.display = 'none';
+            } else if (q.revealed) {
+                if (revealBtn) {
+                    revealBtn.style.display = 'inline-flex';
+                    revealBtn.classList.add('active');
+                }
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
             } else {
-                revealBtn.style.opacity = '1';
-                revealBtn.style.pointerEvents = 'auto';
-                revealBtn.classList.toggle('active', !!q.revealed);
+                if (revealBtn) {
+                    revealBtn.style.display = 'inline-flex';
+                    revealBtn.classList.remove('active');
+                }
+                if (clearBtn) clearBtn.style.display = 'none';
             }
         }
     }
@@ -4034,6 +4024,9 @@ export default class DungeonBase {
         const revealBtn = document.getElementById('dungeonRevealBtn');
         const answer = this.state.answers.get(q.id);
 
+        // If already submitted, don't allow reveal toggle
+        if (answer && answer.submitted) return;
+
         // Toggle reveal state
         const wasRevealed = q.revealed;
         q.revealed = !q.revealed;
@@ -4073,15 +4066,22 @@ export default class DungeonBase {
                         q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
                     }
 
-                    // Save changes
-                    this.updateSaveStatus('unsaved');
-                    this.saveQuestionsToBackend();
                 }
             }
         }
 
-        // Re-render to show/hide the answer
+        // Save revealed state changes to backend
+        this.updateSaveStatus('unsaved');
+        this.saveQuestionsToBackend();
+
+        // Re-render to show/hide the answer and update sidebar
         this.renderQuestion();
+        this.renderSidebar();
+        
+        // Stop timer when revealing
+        if (q.revealed) {
+            this.stopTimer();
+        }
     }
 
     jumpToQuestion(index) {

@@ -1642,7 +1642,6 @@ Generate a professional title for this study session.`;
             // New Test Reset: Clear answers/stats for every new test created
             const newQ = { ...q };
             delete newQ.submittedAnswer;
-            delete newQ.revealed;
             delete newQ.timerElapsed;
             newQ.crossedOutOptionIds = [];
             
