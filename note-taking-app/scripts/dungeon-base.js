@@ -18,6 +18,7 @@ export default class DungeonBase {
             floatingTimer: false,       // User requested: floating clock
             contentAlignment: localStorage.getItem('dungeonContentAlignment') || 'left',
         };
+        this.history = { past: [], future: [] };
         this.questionStartTime = 0;
         this.currentNote = null;
         this.labData = {
@@ -536,6 +537,9 @@ export default class DungeonBase {
                     <div id="dungeonToolPrev" class="dungeon-tool-btn" title="Previous Question">
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </div>
+                    <div id="dungeonToolUndo" class="dungeon-tool-btn" title="Undo (Ctrl+Z)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                    </div>
                     <div class="dungeon-tool-btn" data-tool="star" title="Star Question">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     </div>
@@ -552,6 +556,9 @@ export default class DungeonBase {
                     </div>
                     <div class="dungeon-tool-btn" data-tool="clear" title="Clear Highlights">
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"></path><path d="M22 21H7"></path><path d="m5 11 9 9"></path></svg>
+                    </div>
+                    <div id="dungeonToolRedo" class="dungeon-tool-btn" title="Redo (Ctrl+Y)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
                     </div>
                     <div id="dungeonToolNext" class="dungeon-tool-btn" title="Next Question">
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -824,8 +831,13 @@ export default class DungeonBase {
         // Bind Nav Buttons
         const btnPrev = document.getElementById("dungeonToolPrev");
         const btnNext = document.getElementById("dungeonToolNext");
+        const btnUndo = document.getElementById("dungeonToolUndo");
+        const btnRedo = document.getElementById("dungeonToolRedo");
+
         if (btnPrev) btnPrev.onclick = () => this.navPrev();
         if (btnNext) btnNext.onclick = () => this.navNext();
+        if (btnUndo) btnUndo.onclick = () => this.handleUndo();
+        if (btnRedo) btnRedo.onclick = () => this.handleRedo();
 
         // Bind Tools
         const starBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="star"]');
@@ -843,8 +855,112 @@ export default class DungeonBase {
         const clearBtn = toolbar.querySelector('.dungeon-tool-btn[data-tool="clear"]');
         if (clearBtn) clearBtn.onclick = () => this.clearHighlights();
 
-        // Set initial highlight SVG based on orientation
         this.updateHighlightSVG(toolbar);
+        this.renderToolbarState();
+    }
+
+    pushHistoryState() {
+        const q = this.state.questions[this.state.currentIndex];
+        if (!q) return;
+
+        // Clone relevant state
+        const stateSnapshot = {
+            questionId: q.id,
+            questionIndex: this.state.currentIndex,
+            text: q.text,
+            crossedOutOptionIds: q.crossedOutOptionIds ? [...q.crossedOutOptionIds] : [],
+            selectedOption: this.state.selectedOption,
+            answer: this.state.answers.has(q.id) ? JSON.parse(JSON.stringify(this.state.answers.get(q.id))) : null
+        };
+
+        this.history.past.push(stateSnapshot);
+        // Clear future on new action
+        this.history.future = [];
+        
+        // Optional: limit history size
+        if (this.history.past.length > 50) {
+            this.history.past.shift();
+        }
+        
+        this.renderToolbarState();
+    }
+
+    applyHistoryState(stateSnapshot) {
+        if (!stateSnapshot) return;
+
+        const q = this.state.questions[stateSnapshot.questionIndex];
+        if (!q || q.id !== stateSnapshot.questionId) return; // Paranoia check
+
+        // Restore state
+        q.text = stateSnapshot.text;
+        q.crossedOutOptionIds = [...stateSnapshot.crossedOutOptionIds];
+        
+        if (stateSnapshot.answer) {
+            this.state.answers.set(q.id, JSON.parse(JSON.stringify(stateSnapshot.answer)));
+            q.submittedAnswer = JSON.parse(JSON.stringify(stateSnapshot.answer));
+        } else {
+            this.state.answers.delete(q.id);
+            q.submittedAnswer = null;
+        }
+
+        // Only restore selectedOption if we are on the same question
+        if (this.state.currentIndex === stateSnapshot.questionIndex) {
+            this.state.selectedOption = stateSnapshot.selectedOption;
+        }
+
+        this.updateSaveStatus('unsaved');
+        this.saveQuestionsToBackend();
+        
+        // If we are not on the question where the undo happened, jump to it
+        if (this.state.currentIndex !== stateSnapshot.questionIndex) {
+            this.jumpToQuestion(stateSnapshot.questionIndex);
+        } else {
+            this.renderQuestion();
+            this.renderSidebar();
+        }
+    }
+
+    getCurrentStateSnapshot() {
+        const q = this.state.questions[this.state.currentIndex];
+        if (!q) return null;
+        return {
+            questionId: q.id,
+            questionIndex: this.state.currentIndex,
+            text: q.text,
+            crossedOutOptionIds: q.crossedOutOptionIds ? [...q.crossedOutOptionIds] : [],
+            selectedOption: this.state.selectedOption,
+            answer: this.state.answers.has(q.id) ? JSON.parse(JSON.stringify(this.state.answers.get(q.id))) : null
+        };
+    }
+
+    handleUndo() {
+        if (this.history.past.length === 0) return;
+        
+        // Save current actual state to future before applying past
+        const currentState = this.getCurrentStateSnapshot();
+        if (currentState) {
+            this.history.future.push(currentState);
+        }
+
+        const poppedState = this.history.past.pop();
+        this.applyHistoryState(poppedState);
+        this.showNotification("Action undone", "info");
+        this.renderToolbarState();
+    }
+
+    handleRedo() {
+        if (this.history.future.length === 0) return;
+
+        // Save current actual state to past before applying future
+        const currentState = this.getCurrentStateSnapshot();
+        if (currentState) {
+            this.history.past.push(currentState);
+        }
+
+        const poppedState = this.history.future.pop();
+        this.applyHistoryState(poppedState);
+        this.showNotification("Action redone", "info");
+        this.renderToolbarState();
     }
 
     initTopbar() {
@@ -2132,6 +2248,8 @@ export default class DungeonBase {
         // 1. Un-Highlight (Clicking existing highlight)
         if (selection.toString().length === 0) {
             if (e.target.classList.contains('highlight')) {
+                this.pushHistoryState(); // Snapshot before change
+                
                 const content = e.target.textContent;
                 const parent = e.target.parentNode;
                 // replace span with text node
@@ -2156,6 +2274,8 @@ export default class DungeonBase {
 
             // Ensure we are selecting inside the context box
             if (!e.currentTarget.contains(range.commonAncestorContainer)) return;
+
+            this.pushHistoryState(); // Snapshot before change
 
             const span = document.createElement("span");
             span.className = "highlight";
@@ -2231,6 +2351,34 @@ export default class DungeonBase {
         if (highlightBtn) {
             if (this.state.highlightMode) highlightBtn.classList.add('active');
             else highlightBtn.classList.remove('active');
+        }
+
+        // Undo/Redo
+        const undoBtn = document.getElementById('dungeonToolUndo');
+        const redoBtn = document.getElementById('dungeonToolRedo');
+
+        if (undoBtn) {
+            if (this.history.past.length === 0) {
+                undoBtn.classList.add('disabled');
+                undoBtn.style.opacity = '0.4';
+                undoBtn.style.cursor = 'not-allowed';
+            } else {
+                undoBtn.classList.remove('disabled');
+                undoBtn.style.opacity = '1';
+                undoBtn.style.cursor = 'pointer';
+            }
+        }
+
+        if (redoBtn) {
+            if (this.history.future.length === 0) {
+                redoBtn.classList.add('disabled');
+                redoBtn.style.opacity = '0.4';
+                redoBtn.style.cursor = 'not-allowed';
+            } else {
+                redoBtn.classList.remove('disabled');
+                redoBtn.style.opacity = '1';
+                redoBtn.style.cursor = 'pointer';
+            }
         }
     }
 
@@ -3865,6 +4013,8 @@ export default class DungeonBase {
 
         if (answer && answer.submitted) return; // Locked
 
+        this.pushHistoryState();
+
         if (this.state.selectedOption === optionId) {
             this.state.selectedOption = null;
         } else {
@@ -3897,6 +4047,8 @@ export default class DungeonBase {
 
         // Initialize if missing
         if (!q.crossedOutOptionIds) q.crossedOutOptionIds = [];
+
+        this.pushHistoryState();
 
         const idx = q.crossedOutOptionIds.indexOf(optionId);
         if (idx !== -1) {
@@ -3977,6 +4129,8 @@ export default class DungeonBase {
         // Detect if this is a re-submission
         const previousAnswer = q.submittedAnswer;
         const isNewSubmission = !previousAnswer;
+
+        this.pushHistoryState();
 
         const answerData = {
             submitted: true,

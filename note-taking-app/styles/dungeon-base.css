@@ -137,6 +137,11 @@
   color: var(--text);
 }
 
+.dungeon-topbar-btn.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .dungeon-topbar-btn.active {
   color: var(--accent);
   background: var(--bg-secondary);
@@ -795,7 +800,7 @@
 
 .dungeon-main-panel.align-center .dungeon-radio-option,
 .dungeon-explanation-panel.align-center .dungeon-radio-option {
-  justify-content: flex-start; 
+  justify-content: flex-start;
 }
 
 .dungeon-main-panel.align-center .dungeon-explanation,
@@ -805,7 +810,7 @@
 
 .dungeon-main-panel.align-left,
 .dungeon-explanation-panel.align-left {
-  padding: 85px 65px 160px 117px; 
+  padding: 85px 65px 160px 117px;
   display: block;
   text-align: left;
 }
@@ -1304,6 +1309,11 @@
 .dungeon-tool-btn:hover {
   background: var(--panel-hover);
   color: var(--accent);
+}
+
+.dungeon-tool-btn.disabled {
+  opacity: 0.4 !important;
+  pointer-events: none !important;
 }
 
 .dungeon-tool-btn.active {
@@ -2570,8 +2580,24 @@
   position: relative;
 }
 
-@keyframes overlayFadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes modalPopUp { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes modalPopUp {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
 .dungeon-modal-header {
   padding: 20px 24px 12px 24px;
@@ -2622,9 +2648,15 @@
   color: var(--text);
 }
 
-.dungeon-result-stat .value.score { color: var(--accent); }
-.dungeon-result-stat .value.correct { color: var(--success); }
-.dungeon-result-stat .value.incorrect { color: var(--danger); }
+.dungeon-result-stat .value.score {
+  color: var(--accent);
+}
+.dungeon-result-stat .value.correct {
+  color: var(--success);
+}
+.dungeon-result-stat .value.incorrect {
+  color: var(--danger);
+}
 
 .dungeon-modal-text {
   text-align: center;
@@ -2687,8 +2719,16 @@
 }
 
 @keyframes fadeInOut {
-  0%   { opacity: 0; }
-  10%  { opacity: 1; }
-  80%  { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
