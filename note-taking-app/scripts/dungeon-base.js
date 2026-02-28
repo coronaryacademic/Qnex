@@ -2478,15 +2478,28 @@ export default class DungeonBase {
             const elapsedOnCurrentQ = now - this.questionStartTime;
             
             if (elapsedOnCurrentQ < 30000) {
-                const statItem = timerEl.closest('.dungeon-stat-item') || timerEl;
-                statItem.style.visibility = 'hidden';
-                statItem.style.opacity = '0';
-                statItem.style.pointerEvents = 'none';
+                const floatingWrap = document.getElementById('dungeonFloatingTimerWrap');
+                if (floatingWrap) {
+                    floatingWrap.style.visibility = 'hidden';
+                    floatingWrap.style.opacity = '0';
+                    floatingWrap.style.pointerEvents = 'none';
+                } else {
+                    const statItem = timerEl.closest('.dungeon-stat-item') || timerEl;
+                    statItem.style.visibility = 'hidden';
+                    statItem.style.opacity = '0';
+                    statItem.style.pointerEvents = 'none';
+                }
                 return;
             }
         }
         // Restore visibility
         {
+            const floatingWrap = document.getElementById('dungeonFloatingTimerWrap');
+            if (floatingWrap) {
+                floatingWrap.style.visibility = '';
+                floatingWrap.style.opacity = '1';
+                floatingWrap.style.pointerEvents = '';
+            }
             const statItem = timerEl.closest('.dungeon-stat-item') || timerEl;
             statItem.style.visibility = '';
             statItem.style.opacity = '1';
@@ -2550,8 +2563,19 @@ export default class DungeonBase {
                 });
                 document.addEventListener('mousemove', (e) => {
                     if (!isDragging) return;
-                    floatingWrap.style.left = (startLeft + e.clientX - startX) + 'px';
-                    floatingWrap.style.top  = (startTop  + e.clientY - startY) + 'px';
+                    let newLeft = startLeft + e.clientX - startX;
+                    let newTop = startTop + e.clientY - startY;
+
+                    // Constraints
+                    const rect = floatingWrap.getBoundingClientRect();
+                    const maxX = window.innerWidth - rect.width;
+                    const maxY = window.innerHeight - rect.height;
+
+                    newLeft = Math.max(0, Math.min(newLeft, maxX));
+                    newTop = Math.max(0, Math.min(newTop, maxY));
+
+                    floatingWrap.style.left = newLeft + 'px';
+                    floatingWrap.style.top  = newTop + 'px';
                 });
                 document.addEventListener('mouseup', () => {
                     isDragging = false;
