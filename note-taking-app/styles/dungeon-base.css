@@ -20,28 +20,42 @@
 /* Question Images */
 .question-image-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  margin: 1.5rem 0;
+  margin: 2rem 0;
   width: 100%;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 16px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .question-image {
   max-width: 100%;
-  max-height: 500px;
+  max-height: 550px;
   object-fit: contain;
   display: block;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .question-image:hover {
-  transform: scale(1.02);
+  transform: scale(1.05);
   cursor: zoom-in;
+}
+
+.question-image-container img {
+  border-radius: 8px;
+}
+
+.question-image-container::after {
+  content: "Wikimedia Commons Resource";
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-top: 8px;
+  padding-bottom: 8px;
 }
 
 .dungeon-base.hidden {
@@ -2731,4 +2745,35 @@
   100% {
     opacity: 0;
   }
+}
+
+/* Image Fallback UI */
+.image_fallback {
+  padding: 20px;
+  background: var(--panel-hover);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.image_fallback p {
+  color: var(--muted);
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.view-image-link {
+  display: inline-block;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.view-image-link:hover {
+  opacity: 0.9;
 }

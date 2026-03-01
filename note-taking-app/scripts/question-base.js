@@ -27,6 +27,7 @@ const QuestionBase = {
         selectedTagMajors: [],
         selectedTagMinors: [],
         ctPreviewExpanded: false,
+        aiImageMode: false, // Default to disabled
     },
 
     el: {
@@ -184,6 +185,8 @@ const QuestionBase = {
         this.el.viewAiPromptBtn = document.getElementById("viewAiPromptBtn");
         this.el.ctRefreshBtn = document.getElementById("ctRefreshBtn");
         this.el.aiPromptModal = document.getElementById("aiPromptModal");
+        this.el.toggleAiImageBtn = document.getElementById("toggleAiImageBtn");
+        this.el.copyAiPromptBtn = document.getElementById("copyAiPromptBtn");
 
         // Model Selector
         this.el.aiModelSelector = document.getElementById("aiModelSelector");
@@ -403,11 +406,18 @@ const QuestionBase = {
         if (this.el.fillAiBtn) {
             this.el.fillAiBtn.onclick = () => this.fillWithAI();
         }
+        if (this.el.toggleAiImageBtn) {
+            this.el.toggleAiImageBtn.onclick = () => this.toggleAiImageMode();
+            this.updateAiImageToggleUI();
+        }
         if (this.el.uploadMediaBtn) {
             this.el.uploadMediaBtn.onclick = () => this.uploadMedia();
         }
         if (this.el.viewAiPromptBtn) {
             this.el.viewAiPromptBtn.onclick = () => this.viewAiPrompt();
+        }
+        if (this.el.copyAiPromptBtn) {
+            this.el.copyAiPromptBtn.onclick = () => this.copyAiPrompt();
         }
         if (this.el.ctRefreshBtn) {
             this.el.ctRefreshBtn.onclick = () => this._sessionAutoDetectTags();
@@ -3958,13 +3968,29 @@ Question tag ID:
                 this.state.questions.push(...questions);
 
                 // Update Recent Session Entry if exists
+                let sessionId = null;
                 const sessionIndex = this.state.recentSessions.findIndex(s => s.folderId === folderId);
+                
                 if (sessionIndex !== -1) {
                     this.state.recentSessions[sessionIndex].date = new Date().toISOString();
                     this.state.recentSessions[sessionIndex].count = questions.length;
                     // Move to top
                     const s = this.state.recentSessions.splice(sessionIndex, 1)[0];
                     this.state.recentSessions.unshift(s);
+                    sessionId = s.id;
+                    this.saveRecentSessions();
+                } else {
+                    // Create a session entry for this folder if it doesn't exist
+                    const folder = this.state.folders.find(f => f.id === folderId);
+                    const newSession = {
+                        id: "sess-" + Date.now(),
+                        folderId: folderId,
+                        title: folder ? folder.title : "Untitled Session",
+                        date: new Date().toISOString(),
+                        count: questions.length
+                    };
+                    this.state.recentSessions.unshift(newSession);
+                    sessionId = newSession.id;
                     this.saveRecentSessions();
                 }
 
@@ -3973,7 +3999,7 @@ Question tag ID:
 
                 // Open Dungeon
                 if (typeof window.DungeonBase !== 'undefined') {
-                    window.DungeonBase.open(questions, this.state.recentSessions[sessionIndex].id);
+                    window.DungeonBase.open(questions, sessionId);
                 }
                 return;
             }
@@ -4525,6 +4551,9 @@ Question tag ID:
         if (this.el.viewAiPromptBtn) {
             this.el.viewAiPromptBtn.style.display = this.state.aiMode ? 'flex' : 'none';
         }
+        if (this.el.toggleAiImageBtn) {
+            this.el.toggleAiImageBtn.style.display = this.state.aiMode ? 'flex' : 'none';
+        }
 
         if (this.state.aiMode) {
             // Inject user's specific hard-coded prompt template
@@ -4549,6 +4578,23 @@ Question explanation:`;
         }
     },
 
+    toggleAiImageMode() {
+        this.state.aiImageMode = !this.state.aiImageMode;
+        this.updateAiImageToggleUI();
+        console.log(`[AI] Image Search ${this.state.aiImageMode ? 'Enabled' : 'Disabled'}`);
+    },
+
+    updateAiImageToggleUI() {
+        if (!this.el.toggleAiImageBtn) return;
+        if (this.state.aiImageMode) {
+            this.el.toggleAiImageBtn.classList.add('active');
+            this.el.toggleAiImageBtn.title = "AI Image Search: ON (Wikimedia)";
+        } else {
+            this.el.toggleAiImageBtn.classList.remove('active');
+            this.el.toggleAiImageBtn.title = "AI Image Search: OFF";
+        }
+    },
+
     viewAiPrompt() {
         if (!this.el.aiPromptModal) return;
         const promptArea = document.getElementById("promptTextArea");
@@ -4556,6 +4602,28 @@ Question explanation:`;
             promptArea.innerText = this.getSystemPrompt();
         }
         this.el.aiPromptModal.style.display = 'flex';
+    },
+
+    copyAiPrompt() {
+        const promptArea = document.getElementById("promptTextArea");
+        if (!promptArea) return;
+
+        const text = promptArea.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = this.el.copyAiPromptBtn;
+            if (btn) {
+                const originalText = btn.innerText;
+                btn.innerText = "Copied!";
+                btn.classList.add('success');
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.classList.remove('success');
+                }, 2000);
+            }
+        }).catch(err => {
+            console.error("Failed to copy prompt:", err);
+            alert("Failed to copy prompt to clipboard.");
+        });
     },
 
     getSystemPrompt(learningData = null, hasTags = false) {
@@ -4595,7 +4663,7 @@ Question explanation:`;
             }
         }
 
-        return `You are an MCQ generator for a medical education app. Output ONLY questions in the exact template format shown below. Do not add commentary, headings, explanations outside the template, or extra text. Do not use markdown. Do not number questions unless instructed. Follow the structure exactly and keep spacing identical.
+        return `You are an MCQ generator for a medical education app. Output ONLY questions in the exact template format shown below. Do not add commentary, headings, explanations outside the template, or extra text. Do not use markdown (except for images). Do not number questions unless instructed. Follow the structure exactly and keep spacing identical.
 
 Each question must test high-yield medical knowledge suitable for USMLE Step 1 or Step 2 CK level. Focus on mechanism, pathophysiology, anatomy, diagnosis, and management. Avoid trivial first-order recall. Use realistic clinical vignettes. The questions MUST require multi-step, second-order, or third-order reasoning. Make the options indirect descriptions (e.g., describing an anatomical feature, mechanism of action, or pathophysiology) rather than using the direct name of the diagnosis or structure.
 ${statsPrompt}
@@ -4605,11 +4673,20 @@ CRITICAL REQUIREMENTS:
 2. YOU MUST MARK THE CORRECT ANSWER WITH AN ASTERISK (*) PLACED IMMEDIATELY BEFORE THE OPTION LABEL (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK. THIS IS MANDATORY FOR EVERY QUESTION.
 ${hasTags ? "" : `3. You MUST provide a "Question tag ID" using the numeric taxonomy below.\n${this._ctGetNumericTaxonomyPrompt()}`}
 4. MAKE OPTIONS INDIRECT: Instead of straightforward diagnoses, the answer choices should describe the underlying mechanism, a secondary consequence, or anatomic path.
+${this.state.aiImageMode ? `5. AI IMAGE ENHANCEMENT (MANDATORY): Use your web search ability to find 1-2 REAL, educational images from Wikimedia Commons (upload.wikimedia.org) related to the medical condition.
+- Medical cases should include an image if relevant (e.g., X-ray, ECG, histology).
+- IMPORTANT: Use ONLY direct image URLs (e.g., from Wikimedia Commons). 
+- CRITICAL: Do NOT use " commons.wikimedia.org/wiki/File:..." links. They are NOT images.
+- CRITICAL: Instead, use the direct file link starting with "https://upload.wikimedia.org/wikipedia/commons/...".
+- EXAMPLE: ![Aortic Dissection](https://upload.wikimedia.org/wikipedia/commons/a/a2/Descending_%28Type_B_Stanford%29_Aortic_Dissection.PNG)
+- If no specific image is found, omit the image tag entirely.
+- Ensure the URLs are REAL and ACCESSIBLE. Use the direct 'upload.wikimedia.org' link if possible. Do not hallucinate URLs.
+- Place them at the end of the context or where most relevant.` : ""}
 ${examplesPrompt}
 
 Formatting rules are strict:
 Use exactly these field labels: Question title, Question context, Question options, Question explanation.
-The "Question context" MUST contain the clinical vignette AND the lead-in question.
+The "Question context" MUST contain the clinical vignette, any relevant images in markdown, AND the lead-in question.
 Provide exactly four options labeled (A), (B), (C), (D).
 MARK ONLY ONE CORRECT ANSWER WITH AN ASTERISK LIKE *(B). EVERY QUESTION MUST HAVE AN ASTERISK.
 Randomize which letter is correct.
@@ -4621,19 +4698,21 @@ Separate multiple questions with one blank line only.
 Template to follow exactly:
 Question title: <brief title>
 Question context: <clinical vignette ending with a ? lead-in question>
+![Image Description](https://upload.wikimedia.org/wikipedia/commons/...)
 Question options:
 (A) <indirect option description>
 (B) <indirect option description>
 (C) <indirect option description>
 (D) <indirect option description>
 Question explanation:
-<explanation>
+<explanation text including optional images if helpful>
 ${hasTags ? "" : "Question tag ID:\n<numeric_id>"}
 
 Example of correct formatting (Use this as the fallback formatting guide):
 
 Question title: Knee Trauma Complication
 Question context: A 19-year-old male is brought to the emergency department after injuring his left knee in a motor vehicle accident. Physical examination reveals a moderate level of pain over the leg but no motor or sensory deficits. An x-ray of the left leg shows several small fractures in the distal femur and proximal tibia. After thorough evaluation he is placed in a cast that spans the length of his entire leg. At a follow-up appointment 4 days later he is unable to evert and dorsiflex the left foot but the pain has diminished. Which of the following most likely explains these findings?
+![Common Peroneal Nerve Path](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Placeholder_LC.svg/1200px-Placeholder_LC.svg.png)
 Question options:
 (A) A nerve was injured in the motor vehicle accident
 (B) Limb compartment syndrome

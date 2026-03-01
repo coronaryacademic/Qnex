@@ -284,12 +284,70 @@
     return md.trim();
   }
 
+  // Basic render function for markdown-like text (used in Dungeon)
+  function render(text) {
+    if (!text) return "";
+    let html = text;
+
+    // Handle images: ![alt](url)
+    html = html.replace(/!\[(.*?)\]\(((?:[^()]|\([^()]*\))+)\)/g, (match, alt, src) => {
+      const id = 'img_' + Math.random().toString(36).substr(2, 9);
+      
+      // Rewrite external URLs to use the local proxy
+      let displaySrc = src;
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+          // Check if it's already a local/proxied URL to avoid double proxying
+          if (!src.includes(window.location.host) && !src.includes('/api/proxy-image')) {
+              // Default to same origin, which works for many local environments
+              // But if we're on a Vite port (5173/3000), we should try 3001
+              // Final Boss: Persistent Port Correction
+              // If we are on port 3002 (frontend) but the server is on 3001, we MUST force 3001
+              let backendBase = window.API_BASE_URL;
+              const isLocal = window.location.hostname === 'localhost' || 
+                             window.location.hostname === '127.0.0.1' || 
+                             window.location.hostname.startsWith('192.168.') || 
+                             window.location.hostname.startsWith('10.') ||
+                             window.location.hostname.endsWith('.local');
+              
+              if (isLocal && window.location.port !== '3001') {
+                  backendBase = `${window.location.protocol}//${window.location.hostname}:3001/api`;
+              } else if (!backendBase) {
+                  backendBase = '/api';
+              }
+              
+              const endpoint = backendBase.endsWith('/api') ? `${backendBase}/proxy-image` : `${backendBase}/api/proxy-image`;
+              // Manually encode parentheses as some servers (Wikimedia) are strict
+              const encodedUrl = encodeURIComponent(src).replace(/\(/g, '%28').replace(/\)/g, '%29');
+              displaySrc = `${endpoint}?url=${encodedUrl}`;
+              console.log(`[Markdown] Proxy URL: ${displaySrc} (detected from ${window.location.origin})`);
+          }
+      }
+
+      return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="${alt}" class="question-image" onerror="this.style.display='none'; document.getElementById('${id}_fallback').style.display='block'; console.error('Image failed to load:', this.src)"><div id="${id}_fallback" class="image-fallback" style="display:none;"><p>Image could not be loaded directly.</p><a href="${src}" target="_blank" class="view-image-link">View source image ↗</a></div></div>`;
+    });
+
+    // Handle bold: **text**
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Handle italic: *text*
+    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+    // Handle links: [text](url)
+    html = html.replace(/\[((?:[^\]]|\\\])+)\]\(((?:[^()]|\([^()]*\))+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+    // Handle newlines
+    html = html.replace(/\n/g, "<br>");
+
+    return html;
+  }
+
   // Expose markdown utilities globally for existing code to use
   window.Markdown = {
     parseMarkdownTable,
     setupNotionHeaders,
     parseFrontmatter,
     escapeHtmlForMarkdown,
+    render,
   };
 
   // Initialize header behavior on DOM ready (or immediately if DOM is already loaded)

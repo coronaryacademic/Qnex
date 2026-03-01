@@ -3903,7 +3903,7 @@ export default class DungeonBase {
         let html = `
     <!-- Context Box (Image/Code) -->
     <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event, 'main')">
-           ${q.text || q.body || q.content || "No question details."}
+           ${window.Markdown ? window.Markdown.render(q.text || q.body || q.content || "No question details.") : (q.text || q.body || q.content || "No question details.")}
     </div>
 
     <div class="dungeon-options-list">
@@ -3952,7 +3952,7 @@ export default class DungeonBase {
         <div class="${classes}">
             <div class="dungeon-radio-circle" onclick="${isLocked ? '' : `window.DungeonBase.handleSelectOption('${opt.id}')`}" style="${isLocked ? 'cursor:default;opacity:0.6;' : ''}"></div>
             <div class="dungeon-radio-text" onclick="${isLocked ? '' : `window.DungeonBase.handleStrikeOption(event, this)`}" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')" style="${isLocked ? 'user-select:none;' : ''}">
-                <span style="margin-right: 8px;">(${letter})</span>${opt.text || "Option"}
+                <span style="margin-right: 8px;">(${letter})</span>${window.Markdown ? window.Markdown.render(opt.text || "Option") : (opt.text || "Option")}
             </div>
         </div>
       `;
@@ -3970,7 +3970,7 @@ export default class DungeonBase {
             explHtml = `
          <div class="dungeon-explanation">
              <h3>${explanationTitle}</h3>
-             <p>${q.explanation || "No explanation provided."}</p>
+             <p>${window.Markdown ? window.Markdown.render(q.explanation || "No explanation provided.") : (q.explanation || "No explanation provided.")}</p>
          </div>
       `;
         }

@@ -981,12 +981,28 @@ div[data-tab-content="recent-sessions"].active {
 #toggleAiModeBtn.active {
   color: var(--accent);
   background: var(--panel-hover);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb, 99, 102, 241), 0.3);
+  border: 1px solid var(--accent);
 }
 
 #toggleAiModeBtn.active svg {
-  fill: var(--accent);
-  opacity: 0.8;
+  fill: none; /* User requested no glitchy fills */
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 2px var(--accent));
+}
+
+#toggleAiImageBtn.active {
+  color: var(--accent);
+  background: var(--panel-hover);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb, 99, 102, 241), 0.3);
+  border: 1px solid var(--accent);
+}
+
+#toggleAiImageBtn.active svg {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 2px var(--accent));
 }
 
 /* AI Mode Simplification */
@@ -1094,10 +1110,17 @@ div[data-tab-content="recent-sessions"].active {
 }
 
 .ai-modal .custom-modal-footer {
-  padding: 12px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 15px 20px;
+  border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+}
+
+#copyAiPromptBtn.success {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: white;
 }
 
 /* Hide Canvas remnants if any */

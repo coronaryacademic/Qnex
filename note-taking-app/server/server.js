@@ -21,6 +21,12 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// Simple Request Logger
+app.use((req, res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 // Base directory for notes on D drive
 // Base directory for notes
 const NOTES_BASE_DIR =
@@ -46,6 +52,75 @@ app.get("/api/health", (req, res) => {
     version: "3.0 AI mode integration",
     storage: NOTES_BASE_DIR,
   });
+});
+
+// Image Proxy Endpoint to bypass CORS
+app.get("/api/proxy-image", async (req, res) => {
+  const imageUrl = req.query.url;
+  console.log(`[Proxy] 📥 Request for: ${imageUrl}`);
+  
+  if (!imageUrl) {
+    return res.status(400).send("URL parameter is required");
+  }
+
+  try {
+    const response = await axios({
+      method: 'get',
+      url: imageUrl,
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Referer': 'https://commons.wikimedia.org/',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+      },
+      timeout: 15000,
+      validateStatus: (status) => status < 500 
+    });
+
+    console.log(`[Proxy] 📡 Source responded with: ${response.status} (${response.headers['content-type']})`);
+
+    const contentType = response.headers['content-type'] || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    
+    // Send the buffer directly
+    res.send(Buffer.from(response.data));
+    console.log(`[Proxy] ✅ Sent ${response.data.byteLength} bytes`);
+  } catch (error) {
+    console.error(`[Proxy] ❌ Error: ${error.message}`);
+    if (error.response) {
+      console.error(`[Proxy] Status: ${error.response.status}`);
+      res.status(error.response.status).send(`Proxy Error: ${error.message}`);
+    } else {
+      res.status(500).send(`Proxy Error: ${error.message}`);
+    }
+  }
+});
+
+// Diagnostic endpoint
+app.get("/api/test-proxy", async (req, res) => {
+  const testUrl = "https://www.google.com/favicon.ico";
+  try {
+    const response = await axios({
+      method: 'get',
+      url: testUrl,
+      responseType: 'stream',
+      timeout: 5000
+    });
+    res.setHeader('Content-Type', 'image/x-icon');
+    response.data.pipe(res);
+  } catch (error) {
+    res.status(500).send(`Test Proxy Failed: ${error.message}`);
+  }
+});
+
+// Logging Bridge Endpoint
+app.post("/api/logs", (req, res) => {
+  const { type, message } = req.body;
+  const color = type === 'error' ? '\x1b[31m' : (type === 'warn' ? '\x1b[33m' : '\x1b[36m');
+  const reset = '\x1b[0m';
+  console.log(`${color}[Frontend ${type.toUpperCase()}]${reset} ${message}`);
+  res.sendStatus(200);
 });
 
 // Helper function to get safe file path
@@ -1216,6 +1291,8 @@ const serverInstance = app.listen(PORT, "0.0.0.0", () => {
   console.log("  GET  /api/settings - Get settings");
   console.log("  POST /api/settings - Save settings");
   console.log("  GET  /api/file-structure - Get file structure for sidebar");
+  console.log("  POST /api/upload - Handle image uploads");
+  console.log("  GET  /api/proxy-image - Proxy external images (CORS bypass)");
 });
 
 // Handle server errors

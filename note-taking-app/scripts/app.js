@@ -2,6 +2,14 @@
 import { medicalIcons, getIcon } from "./medical-icons.js";
 import { BlockEditor } from "./editor-core.js";
 
+// Global exposure for non-module scripts
+// Set it immediately to the default, then update after probe
+window.API_BASE_URL = fileSystemService.baseUrl;
+fileSystemService.waitForReady().then(() => {
+    window.API_BASE_URL = fileSystemService.baseUrl;
+    console.log(`[App] API Base URL exposed: ${window.API_BASE_URL}`);
+});
+
 // Initialize Log Capture
 window.appLogs = [];
 const maxLogs = 1000;
@@ -15,6 +23,26 @@ const captureLog = (type, args) => {
     const timestamp = new Date().toLocaleTimeString();
     window.appLogs.push(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
     if (window.appLogs.length > maxLogs) window.appLogs.shift();
+
+    // Send to backend bridge if it's an error or warning
+    if (type === 'error' || type === 'warn') {
+       // Force absolute URL for logging if we are on a dev port
+       const isDevPort = ['3000', '3002', '5173', '8080'].includes(window.location.port);
+       let backendUrl = window.API_BASE_URL;
+       
+       if (isDevPort && (!backendUrl || backendUrl === '/api' || backendUrl.includes(window.location.port))) {
+          backendUrl = `${window.location.protocol}//${window.location.hostname}:3001/api`;
+       } else if (!backendUrl) {
+          backendUrl = '/api';
+       }
+       const endpoint = backendUrl.endsWith('/api') ? `${backendUrl}/logs` : `${backendUrl}/api/logs`;
+       
+       fetch(endpoint, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ type, message: `[Frontend] ${message}` })
+       }).catch(() => {}); // Silent fail for logger
+    }
   } catch (e) {
     /* ignore circular structure errors etc */
   }
