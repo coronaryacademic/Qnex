@@ -1146,8 +1146,8 @@
   flex-direction: column;
   gap: 0; /* Remove gap */
   border: 1px solid var(--settingsborder);
-  border-bottom: 2px solid var(--accent); /* Accent bottom border */
-  border-radius: 8px;
+  border-bottom: 5px solid var(--accent); /* Accent bottom border */
+  border-radius: 4px;
   overflow: hidden; /* Clip corners */
   margin-top: 10px;
   padding-bottom: 16px;

@@ -3995,15 +3995,15 @@ export default class DungeonBase {
 
         // Inline Submit Button (shown when toolbar is hidden)
         if (!this.state.toolbarVisible) {
-            const isSubmitted = answer && answer.submitted;
+            const isSubmittedBtn = (answer && answer.submitted) || isRevealed;
             const alignClass = this.state.contentAlignment === 'center' ? 'align-center' : 'align-left';
             
             html += `
                 <div class="dungeon-inline-submit-wrap ${alignClass}">
-                    <button class="dungeon-inline-submit ${isSubmitted ? 'submitted' : ''}" 
-                            onclick="${isSubmitted ? '' : 'window.DungeonBase.handleSubmit()'}"
-                            ${isSubmitted ? 'disabled' : ''}>
-                        ${isSubmitted ? 'Submitted' : 'Submit Answer'}
+                    <button class="dungeon-inline-submit ${isSubmittedBtn ? 'submitted' : ''}" 
+                            onclick="${isSubmittedBtn ? '' : 'window.DungeonBase.handleSubmit()'}"
+                            ${isSubmittedBtn ? 'disabled' : ''}>
+                        ${isSubmittedBtn ? 'Submitted' : 'Submit Answer'}
                     </button>
                 </div>
             `;
