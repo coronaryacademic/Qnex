@@ -3135,22 +3135,6 @@ export default class DungeonBase {
         const submitBlockBtn = document.getElementById("dungeonSubmitBlockBtn");
         if (submitBlockBtn) submitBlockBtn.onclick = () => this.submitBlock();
 
-        // Event Delegation for Sidebar Starring (Double-click on question box)
-        if (this.el.sidebar) {
-            this.el.sidebar.ondblclick = (e) => {
-                const qBox = e.target.closest('.dungeon-q-box');
-                if (qBox) {
-                    const index = parseInt(qBox.dataset.qIndex);
-                    if (!isNaN(index)) {
-                        e.stopPropagation();
-                        // Update current index and toggle star
-                        this.state.currentIndex = index;
-                        this.toggleStar();
-                    }
-                }
-            };
-        }
-
         // Keyboard nav
         document.addEventListener("keydown", (e) => {
             if (this.el.container.classList.contains("hidden")) return;
@@ -3544,6 +3528,13 @@ export default class DungeonBase {
                 this.state.currentIndex = index;
                 this.state.selectedOption = null; // Reset temp selection on switch
                 this.render();
+            };
+
+            // DIRECT double-click for starring - Most robust way
+            box.ondblclick = (e) => {
+                e.stopPropagation();
+                this.state.currentIndex = index;
+                this.toggleStar();
             };
 
             newQuestionsContainer.appendChild(box);

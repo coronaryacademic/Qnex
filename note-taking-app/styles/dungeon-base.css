@@ -1046,13 +1046,13 @@
 
 .dungeon-main-panel.align-left,
 .dungeon-explanation-panel.align-left {
-  padding: 85px 65px 160px 117px;
+  padding: 30px 65px 160px 117px;
   display: block;
   text-align: left;
 }
 
 .dungeon-explanation-panel.align-left {
-  padding: 52px 40px 160px 40px;
+  padding: 30px 40px 160px 40px;
 }
 
 .dungeon-main-panel.align-left .dungeon-question-container {
@@ -1144,13 +1144,14 @@
 .dungeon-options-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  /* Remove gap */
+  gap: 0; /* Remove gap */
   border: 1px solid var(--settingsborder);
+  border-bottom: 2px solid var(--accent); /* Accent bottom border */
   border-radius: 8px;
-  overflow: hidden;
-  /* Clip corners */
+  overflow: hidden; /* Clip corners */
   margin-top: 10px;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .dungeon-radio-option {
@@ -1295,7 +1296,7 @@
 
 /* Explanation */
 .dungeon-explanation {
-  margin-top: 50px;
+  margin-top: 45px;
   border-top: 1px solid var(--settingsborder);
   padding-top: 20px;
   opacity: 0;
@@ -1583,7 +1584,19 @@
   border-radius: 2px;
 }
 
-/* Sidebar Star Indicator - Removed dot style */
+/* Sidebar Star Indicator */
+.dungeon-starred-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  background-color: #fbbf24; /* Amber-400 */
+  border-radius: 50%; /* Clear Dot Style */
+  z-index: 100;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+  pointer-events: none;
+}
 
 /* Actions Row (Footer) */
 .dungeon-actions-row {
@@ -2993,7 +3006,7 @@
 
 /* Inline Submit Button (shown when toolbar is hidden) */
 .dungeon-inline-submit-wrap {
-    margin-top: 43px;
+    margin-top: 20px;
     margin-bottom: 0;
     border-top: 1px solid var(--dungeon-border-dim);
     display: flex;
