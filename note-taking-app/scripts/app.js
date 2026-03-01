@@ -7729,6 +7729,11 @@ window.startImportProcess = function () {
 
   // Add paste handler to handle image data
   document.addEventListener("paste", async (e) => {
+    // If the event is already handled by QuestionBase editors, ignore it here
+    if (e.target.closest('#questionTextInput, #sessionInput')) {
+      console.log("[App] Ignoring paste event handled by QuestionBase");
+      return;
+    }
     console.log("Paste event detected");
     console.log("Clipboard types:", [...e.clipboardData.types]);
 

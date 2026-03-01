@@ -443,8 +443,16 @@ const QuestionBase = {
                     }
                 }
             });
-            // Removed unconditional enable
-            // this.el.titleInput.disabled = false; 
+        }
+
+        // Paste handler for Question Editor
+        if (this.el.textInput) {
+            this.el.textInput.addEventListener("paste", (e) => this.handlePaste(e));
+        }
+
+        // Paste handler for Manual Session Editor
+        if (this.el.sessionInput) {
+            this.el.sessionInput.addEventListener("paste", (e) => this.handlePaste(e));
         }
 
         if (this.el.addOptionBtn) this.el.addOptionBtn.addEventListener("click", () => this.addOptionUI());
@@ -3640,36 +3648,63 @@ Rules:
     },
 
     async handlePaste(e) {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+        if (!items) return;
+
+        let hasImage = false;
         for (const item of items) {
             if (item.type.indexOf("image") !== -1) {
-                e.preventDefault();
+                hasImage = true;
                 const file = item.getAsFile();
+                if (!file) continue;
 
-                // Convert to base64
+                // Convert to data URL for transport but upload to server for storage
                 const reader = new FileReader();
                 reader.onload = async (event) => {
                     const base64Data = event.target.result;
                     const tempName = `img_${Date.now()}.png`;
 
                     try {
-                        const result = await window.Storage.uploadImageToServer(tempName, base64Data);
-                        if (result && result.success) {
-                            // Insert placeholder [img:filename]
-                            this.insertTextAtCursor(`[img:${result.filename}]`);
+                        console.log(`[QuestionBase] Uploading pasted image to server: ${tempName}`);
+                        // Use Storage adapter to upload. Note: window.Storage is globally exposed in app.js
+                        if (window.Storage && typeof window.Storage.uploadImageToServer === 'function') {
+                            const result = await window.Storage.uploadImageToServer(tempName, base64Data);
+                            if (result && result.success) {
+                                const filename = result.filename || result.url?.split('/').pop();
+                                // Insert the shortened tag [img:filename]
+                                console.log(`[QuestionBase] Inserting shortened tag: [img:${filename}]`);
+                                this.insertTextAtCursor(`[img:${filename}]`, e.currentTarget);
+                            }
+                        } else {
+                            // Fallback to base64 if server unavailable (requested to be reliable)
+                            this.insertTextAtCursor(`[img:${base64Data}]`, e.currentTarget);
                         }
                     } catch (err) {
-                        console.error("Paste upload failed:", err);
+                        console.error("Paste upload failed, falling back to base64:", err);
+                        this.insertTextAtCursor(`[img:${base64Data}]`, e.currentTarget);
                     }
                 };
                 reader.readAsDataURL(file);
+                break; // Only handle the first image found in clipboard points
             }
+        }
+
+        if (hasImage) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation(); // Ensure no other listeners handle this
         }
     },
 
-    insertTextAtCursor(text) {
+    insertTextAtCursor(text, targetElement = null) {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
+
+        // If targetElement is provided, ensure we are actually inside it
+        if (targetElement && !targetElement.contains(selection.anchorNode)) {
+            // If not in target, just append or focus target
+            targetElement.focus();
+        }
 
         selection.deleteFromDocument();
         const range = selection.getRangeAt(0);
@@ -3890,11 +3925,6 @@ Question tag ID:
                 else if (explIdx !== -1) contextEnd = Math.min(contextEnd, explIdx);
 
                 let contextText = chunk.substring(contextIdx + "Question context:".length, contextEnd).trim();
-
-                // Handle Images: Convert [img:filename.png] to <img src="...">
-                contextText = contextText.replace(/\[img:([^\]]+)\]/g, (match, filename) => {
-                    return `<div class="question-image-container"><img src="/api/images/${filename}" class="question-image" alt="Question Image"></div>`;
-                });
 
                 q.text = contextText.replace(/\n/g, "<br>");
             }

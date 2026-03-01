@@ -284,68 +284,88 @@
     return md.trim();
   }
 
-  // Basic render function for markdown-like text (used in Dungeon)
-  function render(text) {
-    if (!text) return "";
-    let html = text;
+    // Basic render function for markdown-like text (used in Dungeon)
+    function render(text) {
+        if (!text) return "";
+        let html = text;
 
-    // Handle images: ![alt](url)
-    html = html.replace(/!\[(.*?)\]\(((?:[^()]|\([^()]*\))+)\)/g, (match, alt, src) => {
-      const id = 'img_' + Math.random().toString(36).substr(2, 9);
-      
-      // Process image source
-      let displaySrc = src;
-      
-      // Determine Backend Base for local/dev environments
-      let backendBase = window.API_BASE_URL;
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (isLocal && window.location.port !== '3001') {
-          backendBase = `${window.location.protocol}//${window.location.hostname}:3001/api`;
-      } else if (!backendBase) {
-          backendBase = '/api';
-      }
-
-      if (src.startsWith('http://') || src.startsWith('https://')) {
-          // Check if it's already a local/proxied URL to avoid double proxying
-          if (!src.includes(window.location.host) && !src.includes('/api/proxy-image')) {
-              const endpoint = backendBase.endsWith('/api') ? `${backendBase}/proxy-image` : `${backendBase}/api/proxy-image`;
-              const encodedUrl = encodeURIComponent(src).replace(/\(/g, '%28').replace(/\)/g, '%29');
-              displaySrc = `${endpoint}?url=${encodedUrl}`;
-              console.log(`[Markdown] Proxy URL: ${displaySrc}`);
-          }
-      } else if (src.startsWith('/api/images/')) {
-          // Fix relative API paths to point to 3001 if needed
-          if (isLocal && window.location.port !== '3001') {
-              const serverRoot = `${window.location.protocol}//${window.location.hostname}:3001`;
-              displaySrc = serverRoot + src;
-          }
-      } else if (!src.startsWith('data:')) {
-          // Handle other relative paths (like img_... from pasted images)
-          const serverRoot = (isLocal && window.location.port !== '3001') 
-              ? `${window.location.protocol}//${window.location.hostname}:3001`
-              : window.location.origin;
-          
-          // If it looks like a local internal image name, point to /api/images/
-          if (src.startsWith('img_') || !src.includes('/')) {
-              displaySrc = `${serverRoot}/api/images/${src}`;
-          } else {
-              displaySrc = `${serverRoot}/${src}`;
-          }
-      }
-
-      return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="${alt}" class="question-image" onerror="this.style.display='none'; document.getElementById('${id}_fallback').style.display='block'; console.error('Image failed to load:', this.src)"><div id="${id}_fallback" class="image-fallback" style="display:none;"><p>Image could not be loaded directly.</p><a href="${src}" target="_blank" class="view-image-link">View source image ↗</a></div></div>`;
-    });
-
-    // Handle specific [img:filename] shorthand (used in pasted images)
-    html = html.replace(/\[img:(.*?)\]/g, (match, filename) => {
-        const id = 'img_pasted_' + Math.random().toString(36).substr(2, 9);
-        const serverRoot = (isLocal && window.location.port !== '3001') 
-            ? `${window.location.protocol}//${window.location.hostname}:3001`
-            : window.location.origin;
-        const displaySrc = `${serverRoot}/api/images/${filename}`;
+        // --- Robust URL resolution for static assets ---
+        let apiBase = window.API_BASE_URL;
         
-        return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="Pasted Image" class="question-image" onerror="this.style.display='none'; console.error('Pasted image failed:', this.src)"></div>`;
-    });
+        // If API base is not set yet or is relative, try to resolve it to an absolute backend URL
+        const hostname = window.location.hostname || 'localhost';
+        const port = window.location.port;
+        const isLocalNetwork = hostname === 'localhost' || hostname === '127.0.0.1' || 
+                              hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
+
+        if (!apiBase || apiBase.startsWith('/')) {
+            // If we are on a dev/frontend port, explicitly point to the backend port 3001
+            if (isLocalNetwork && port && port !== '3001') {
+                apiBase = `${window.location.protocol}//${hostname}:3001/api`;
+            } else {
+                apiBase = apiBase || "/api";
+            }
+        }
+
+        // Server root is apiBase minus the '/api' suffix (if present)
+        // This ensures relative paths point to the correct backend port
+        const serverRoot = apiBase.replace(/\/api$/, '') || window.location.origin;
+
+        // Handle images: ![alt](url)
+        html = html.replace(/!\[(.*?)\]\(((?:[^()]|\([^()]*\))+)\)/g, (match, alt, src) => {
+            const id = 'img_' + Math.random().toString(36).substr(2, 9);
+            
+            // Process image source
+            let displaySrc = src;
+            
+            if (src.startsWith('data:')) {
+                // If it's already a data URL, use it directly (requested by user for robust local display)
+                displaySrc = src;
+            } else if (src.startsWith('http://') || src.startsWith('https://')) {
+                // Check if it's already a local/proxied URL to avoid double proxying
+                if (!src.includes(window.location.host) && !src.includes('/api/proxy-image')) {
+                    const proxyEndpoint = apiBase.endsWith('/api') ? `${apiBase}/proxy-image` : `${apiBase}/api/proxy-image`;
+                    const encodedUrl = encodeURIComponent(src).replace(/\(/g, '%28').replace(/\)/g, '%29');
+                    displaySrc = `${proxyEndpoint}?url=${encodedUrl}`;
+                }
+            } else if (src.startsWith('/api/images/')) {
+                displaySrc = serverRoot + src;
+            } else if (!src.startsWith('data:')) {
+                // Handle short filenames or other relative paths
+                if (src.startsWith('img_') || !src.includes('/')) {
+                    displaySrc = `${apiBase}/images/${src}`;
+                } else {
+                    displaySrc = `${serverRoot}/${src}`;
+                }
+            }
+
+            return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="${alt}" class="question-image" onerror="this.style.display='none'; document.getElementById('${id}_fallback').style.display='block'; console.error('[Markdown] Image failed to load:', this.src)"><div id="${id}_fallback" class="image-fallback" style="display:none;"><p>Image could not be loaded directly.</p><a href="${src}" target="_blank" class="view-image-link">View source image ↗</a></div></div>`;
+        });
+
+        // Handle specific [img:filename] shorthand (used in pasted images)
+        html = html.replace(/\[img:(.*?)\]/g, (match, src) => {
+            const id = 'img_pasted_' + Math.random().toString(36).substr(2, 9);
+            
+            let displaySrc = src;
+            if (!src.startsWith('data:')) {
+                // Robust resolution for internal filenames
+                // If we are on port 3000/3002/etc, force port 3001 for the image
+                const hostname = window.location.hostname || 'localhost';
+                const currentPort = window.location.port;
+                const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || 
+                              hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.');
+                
+                if (isLocal && currentPort && currentPort !== '3001') {
+                    displaySrc = `${window.location.protocol}//${hostname}:3001/api/images/${src}`;
+                } else {
+                    displaySrc = `/api/images/${src}`;
+                }
+            }
+            
+            console.log(`[Markdown] Rendering pasted image shorthand: ${src.startsWith('data:') ? 'base64' : src} -> ${displaySrc}`);
+            
+            return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="Pasted Image" class="question-image" onerror="this.style.display='none'; console.error('[Markdown] Pasted image fail:', this.src)"></div>`;
+        });
 
     // Handle bold: **text**
     html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
