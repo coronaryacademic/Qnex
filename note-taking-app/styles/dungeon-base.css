@@ -23,13 +23,11 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  margin: 2rem 0;
+  margin: 1.5rem 0;
   width: 100%;
   overflow: hidden;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-radius: 16px;
 }
 
 .question-image {
@@ -49,17 +47,170 @@
   border-radius: 8px;
 }
 
-.question-image-container::after {
-  content: "Medical Resource";
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  opacity: 0.5;
-  margin-top: 8px;
-  padding-bottom: 8px;
-}
+/* Removed "Medical Resource" label as requested */
+
 
 .dungeon-base.hidden {
   display: none;
+}
+
+/* Image Viewer Modal */
+#dungeonImageViewer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.98); /* Slightly darker for better contrast without blur */
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+#dungeonImageViewer.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.viewer-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+  z-index: 10002;
+}
+
+.viewer-title {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.viewer-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.viewer-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.viewer-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: grab;
+  contain: strict; /* Isolate this area for better performance */
+}
+
+.viewer-content:active {
+  cursor: grabbing;
+}
+
+#viewerImage {
+  max-width: 90%;
+  max-height: 80%;
+  object-fit: contain;
+  transition: filter 0.3s ease;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Smaller, cheaper shadow */
+  transform-origin: center center;
+}
+
+.viewer-toolbar-wrap {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10002;
+}
+
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(12px);
+  padding: 8px 16px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.viewer-tool-btn {
+  background: transparent;
+  border: none;
+  color: #ccc;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.viewer-tool-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.viewer-tool-btn.active {
+    color: #4dabf7;
+    background: rgba(77, 171, 247, 0.1);
+}
+
+.viewer-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 4px;
+}
+
+.zoom-level {
+  color: white;
+  font-size: 0.8rem;
+  min-width: 45px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+@keyframes viewerFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.viewer-content img {
+    animation: viewerFadeIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 /* TOPBAR */

@@ -339,7 +339,7 @@
                 }
             }
 
-            return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="${alt}" class="question-image" onerror="this.style.display='none'; document.getElementById('${id}_fallback').style.display='block'; console.error('[Markdown] Image failed to load:', this.src)"><div id="${id}_fallback" class="image-fallback" style="display:none;"><p>Image could not be loaded directly.</p><a href="${src}" target="_blank" class="view-image-link">View source image ↗</a></div></div>`;
+            return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="${alt}" class="question-image" onerror="this.style.opacity='0';"></div>`;
         });
 
         // Handle specific [img:filename] shorthand (used in pasted images)
@@ -364,7 +364,7 @@
             
             console.log(`[Markdown] Rendering pasted image shorthand: ${src.startsWith('data:') ? 'base64' : src} -> ${displaySrc}`);
             
-            return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="Pasted Image" class="question-image" onerror="this.style.display='none'; console.error('[Markdown] Pasted image fail:', this.src)"></div>`;
+            return `<div class="question-image-container"><img id="${id}" src="${displaySrc}" alt="Pasted Image" class="question-image" onerror="this.style.opacity='0';"></div>`;
         });
 
     // Handle bold: **text**

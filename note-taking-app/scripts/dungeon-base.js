@@ -17,6 +17,17 @@ export default class DungeonBase {
             hideTimerUntilMinute: false, // User requested: hide timer until 1 min passes
             floatingTimer: false,       // User requested: floating clock
             contentAlignment: localStorage.getItem('dungeonContentAlignment') || 'left',
+            viewer: {
+                zoom: 1,
+                x: 0,
+                y: 0,
+                rotation: 0,
+                inverted: false,
+                flipped: false,
+                isDragging: false,
+                startX: 0,
+                startY: 0
+            }
         };
         this.history = { past: [], future: [] };
         this.questionStartTime = 0;
@@ -635,6 +646,8 @@ export default class DungeonBase {
             }
             */
         });
+
+        this.initImageViewer();
     }
 
     initFooter() {
@@ -3998,6 +4011,15 @@ export default class DungeonBase {
             if (explContent) explContent.innerHTML = '';
         }
 
+        // Bind click events to images for the viewer
+        this.el.main.querySelectorAll('.question-image').forEach(img => {
+            img.style.cursor = 'zoom-in';
+            img.onclick = (e) => {
+                e.stopPropagation();
+                this.openImageViewer(img.src);
+            };
+        });
+
         this.renderToolbarState(); // Sync toolbar with current question state
 
         // Re-apply search highlights if active
@@ -4353,5 +4375,172 @@ export default class DungeonBase {
                 document.body.style.cursor = '';
             }
         });
+    }
+
+    initImageViewer() {
+        const viewer = document.getElementById('dungeonImageViewer');
+        const img = document.getElementById('viewerImage');
+        const content = document.getElementById('viewerContent');
+        const closeBtn = document.getElementById('closeViewerBtn');
+        
+        if (!viewer || !img || !content) return;
+
+        // Toolbar Buttons
+        const zoomIn = document.getElementById('zoomInBtn');
+        const zoomOut = document.getElementById('zoomOutBtn');
+        const rotateLeft = document.getElementById('rotateLeftBtn');
+        const rotateRight = document.getElementById('rotateRightBtn');
+        const invert = document.getElementById('invertBtn');
+        const flipH = document.getElementById('flipHBtn');
+        const reset = document.getElementById('resetViewerBtn');
+
+        // Close logic
+        const closeViewer = () => {
+            viewer.classList.remove('visible');
+            document.removeEventListener('keydown', handleEsc);
+        };
+        const handleEsc = (e) => { if (e.key === 'Escape') closeViewer(); };
+
+        closeBtn.onclick = closeViewer;
+        viewer.onclick = (e) => { if (e.target === viewer) closeViewer(); };
+
+        let rafPending = false;
+        const requestUpdate = () => {
+            if (rafPending) return;
+            rafPending = true;
+            requestAnimationFrame(() => {
+                this.updateViewerTransform();
+                rafPending = false;
+            });
+        };
+
+        // Zoom Logic
+        const applyZoom = (delta, e) => {
+            const oldZoom = this.state.viewer.zoom;
+            // Slightly smaller factor for smoother control, but fast
+            const factor = delta > 0 ? 1.08 : 0.92; 
+            this.state.viewer.zoom = Math.min(Math.max(oldZoom * factor, 0.1), 10);
+            
+            if (e && this._imgRect) {
+                const mouseX = e.clientX - this._imgRect.left;
+                const mouseY = e.clientY - this._imgRect.top;
+                
+                const relX = (mouseX / this._imgRect.width) - 0.5;
+                const relY = (mouseY / this._imgRect.height) - 0.5;
+                
+                this.state.viewer.x -= relX * this._imgRect.width * (factor - 1);
+                this.state.viewer.y -= relY * this._imgRect.height * (factor - 1);
+            }
+            
+            requestUpdate();
+        };
+
+        content.onwheel = (e) => {
+            e.preventDefault();
+            applyZoom(-e.deltaY, e);
+        };
+
+        if (zoomIn) zoomIn.onclick = () => applyZoom(1);
+        if (zoomOut) zoomOut.onclick = () => applyZoom(-1);
+
+        // Pan Logic
+        content.onmousedown = (e) => {
+            if (e.button !== 0) return;
+            this.state.viewer.isDragging = true;
+            this.state.viewer.startX = e.clientX - this.state.viewer.x;
+            this.state.viewer.startY = e.clientY - this.state.viewer.y;
+            e.preventDefault();
+        };
+
+        window.addEventListener('mousemove', (e) => {
+            if (!this.state.viewer.isDragging) return;
+            this.state.viewer.x = e.clientX - this.state.viewer.startX;
+            this.state.viewer.y = e.clientY - this.state.viewer.startY;
+            requestUpdate();
+        });
+
+        window.addEventListener('mouseup', () => {
+            this.state.viewer.isDragging = false;
+        });
+
+        // Rotate & Tools
+        if (rotateLeft) rotateLeft.onclick = () => {
+            this.state.viewer.rotation -= 90;
+            this.updateViewerTransform();
+        };
+        if (rotateRight) rotateRight.onclick = () => {
+            this.state.viewer.rotation += 90;
+            this.updateViewerTransform();
+        };
+        if (invert) invert.onclick = () => {
+            this.state.viewer.inverted = !this.state.viewer.inverted;
+            invert.classList.toggle('active', this.state.viewer.inverted);
+            this.updateViewerTransform();
+        };
+        if (flipH) flipH.onclick = () => {
+            this.state.viewer.flipped = !this.state.viewer.flipped;
+            flipH.classList.toggle('active', this.state.viewer.flipped);
+            this.updateViewerTransform();
+        };
+        if (reset) reset.onclick = () => this.resetViewer();
+    }
+
+    openImageViewer(src) {
+        const viewer = document.getElementById('dungeonImageViewer');
+        const img = document.getElementById('viewerImage');
+        if (!viewer || !img) return;
+
+        img.src = src;
+        this.resetViewer();
+        viewer.classList.add('visible');
+
+        // Cache image rect after it might have rendered (short delay)
+        setTimeout(() => {
+            this._imgRect = img.getBoundingClientRect();
+        }, 50);
+
+        // Add Esc listener
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                viewer.classList.remove('visible');
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+    }
+
+    resetViewer() {
+        this.state.viewer = {
+            zoom: 1,
+            x: 0,
+            y: 0,
+            rotation: 0,
+            inverted: false,
+            flipped: false,
+            isDragging: false,
+            startX: 0,
+            startY: 0
+        };
+        
+        // Reset button states
+        const invert = document.getElementById('invertBtn');
+        const flipH = document.getElementById('flipHBtn');
+        if (invert) invert.classList.remove('active');
+        if (flipH) flipH.classList.remove('active');
+        
+        this.updateViewerTransform();
+    }
+
+    updateViewerTransform() {
+        const img = document.getElementById('viewerImage');
+        const zoomLevel = document.getElementById('zoomLevel');
+        if (!img) return;
+
+        const v = this.state.viewer;
+        // Use translate3d exclusively and keep the transform string simple
+        img.style.transform = `translate3d(${v.x}px, ${v.y}px, 0) scale3d(${v.zoom * (v.flipped ? -1 : 1)}, ${v.zoom}, 1) rotate(${v.rotation}deg)`;
+        img.style.filter = v.inverted ? 'invert(1)' : '';
+        
+        if (zoomLevel) zoomLevel.innerText = `${Math.round(v.zoom * 100)}%`;
     }
 }
