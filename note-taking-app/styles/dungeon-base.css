@@ -49,7 +49,6 @@
 
 /* Removed "Medical Resource" label as requested */
 
-
 .dungeon-base.hidden {
   display: none;
 }
@@ -61,7 +60,12 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.98); /* Slightly darker for better contrast without blur */
+  background: rgba(
+    0,
+    0,
+    0,
+    0.98
+  ); /* Slightly darker for better contrast without blur */
   z-index: 10000;
   display: flex;
   flex-direction: column;
@@ -69,7 +73,9 @@
   justify-content: center;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
 }
 
 #dungeonImageViewer.visible {
@@ -86,7 +92,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
   z-index: 10002;
 }
 
@@ -140,16 +145,16 @@
   will-change: transform;
   user-select: none;
   -webkit-user-drag: none;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Smaller, cheaper shadow */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Smaller, cheaper shadow */
   transform-origin: center center;
 }
 
 .viewer-toolbar-wrap {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10002;
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10002;
 }
 
 .viewer-toolbar {
@@ -161,7 +166,7 @@
   padding: 8px 16px;
   border-radius: 50px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .viewer-tool-btn {
@@ -184,8 +189,12 @@
 }
 
 .viewer-tool-btn.active {
-    color: #4dabf7;
-    background: rgba(77, 171, 247, 0.1);
+  color: #4dabf7;
+  background: rgba(77, 171, 247, 0.1);
+}
+
+#invertBtn.active svg path:last-child {
+  opacity: 1;
 }
 
 .viewer-divider {
@@ -205,12 +214,18 @@
 }
 
 @keyframes viewerFadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .viewer-content img {
-    animation: viewerFadeIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  animation: viewerFadeIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 /* TOPBAR */
