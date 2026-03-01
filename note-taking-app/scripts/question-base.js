@@ -1014,7 +1014,7 @@ Generate a professional title for this study session.`;
         }
     },
 
-    saveData() {
+    async saveData() {
         const data = {
             questions: this.state.questions,
             folders: this.state.folders
@@ -1029,10 +1029,14 @@ Generate a professional title for this study session.`;
         }
 
         // 3. Server Persistence (Source of Truth)
-        window.fileSystemService.makeRequest('/questions', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        }).catch(err => console.warn('[QuestionBase] Server save failed:', err));
+        try {
+            await window.fileSystemService.makeRequest('/questions', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        } catch (err) {
+            console.warn('[QuestionBase] Server save failed:', err);
+        }
         
         this.renderSidebar();
         this.renderCTPreview();
@@ -2248,7 +2252,78 @@ Rules:
         this.renderSidebar();
     },
 
-    saveCurrentQuestion() {
+
+    async _internalizeImagesInText(text) {
+        if (!text) return text;
+        const imgRegex = /!\[([^\]]*)\]\((https?:\/\/[^\)]+)\)/g;
+        const matches = [...text.matchAll(imgRegex)];
+        if (matches.length === 0) return text;
+
+        let updatedText = text;
+        console.log(`[Internalizer] Found ${matches.length} images to check.`);
+
+        for (const match of matches) {
+            const externalUrl = match[2];
+
+            // Skip if already internalized
+            if (externalUrl.includes('/api/images/')) {
+                console.log(`[Internalizer] Skipping already local: ${externalUrl}`);
+                continue;
+            }
+
+            try {
+                // Fetch through proxy
+                const backendBase = window.API_BASE_URL || (
+                    (window.location.port === '5173' || window.location.port === '3000' || window.location.port === '3002')
+                    ? `${window.location.protocol}//${window.location.hostname}:3001/api`
+                    : '/api'
+                );
+                const proxyUrl = `${backendBase}/proxy-image?url=${encodeURIComponent(externalUrl)}`;
+                
+                console.log(`[Internalizer] Fetching via proxy: ${proxyUrl}`);
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+                
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve, reject) => {
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+
+                // Extract filename from URL or use default
+                const urlParts = externalUrl.split('/');
+                let fileName = urlParts[urlParts.length - 1].split('?')[0] || "image.png";
+                fileName = decodeURIComponent(fileName);
+                if (!fileName.includes('.')) fileName += ".png";
+
+                // Upload to server
+                console.log(`[Internalizer] Uploading to local server: ${fileName}`);
+                const uploadResponse = await fetch(`${backendBase}/upload`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: base64,
+                        name: fileName
+                    })
+                });
+
+                if (uploadResponse.ok) {
+                    const result = await uploadResponse.json();
+                    if (result.success && result.url) {
+                        updatedText = updatedText.replace(externalUrl, result.url);
+                        console.log(`[Internalizer] Success: ${externalUrl} -> ${result.url}`);
+                    }
+                }
+            } catch (err) {
+                console.error(`[Internalizer] Failed to internalize ${externalUrl}:`, err);
+            }
+        }
+        return updatedText;
+    },
+
+    async saveCurrentQuestion() {
         if (!this.activeQuestionId) return;
 
         const qIndex = this.state.questions.findIndex(q => q.id === this.activeQuestionId);
@@ -2256,40 +2331,67 @@ Rules:
 
         const q = this.state.questions[qIndex];
         q.title = this.el.titleInput.value || "Untitled Question";
-        q.text = this.el.textInput.innerHTML;
-        q.explanation = this.el.explanationInput.value;
 
-        // Gather options
-        const optionItems = this.el.optionsContainer.querySelectorAll(".option-item");
-        const newOptions = [];
-        optionItems.forEach(item => {
-            const radio = item.querySelector("input[type='radio']");
-            const input = item.querySelector("input[type='text']");
-            // preserve ID if possible, else gen new
-            const id = (item.dataset.oid || (Date.now() + Math.random())).toString();
-            newOptions.push({
-                id: id,
-                text: input.value,
-                isCorrect: radio.checked
+        // Internalize external images in both text and explanation
+        const originalText = this.el.textInput.innerHTML;
+        const originalExplanation = this.el.explanationInput.value;
+
+        // Show "Saving..." or similar state
+        const saveBtnHtml = this.el.saveBtn.innerHTML;
+        this.el.saveBtn.disabled = true;
+        this.el.saveBtn.textContent = 'Saving...';
+
+        try {
+            const internalizedText = await this._internalizeImagesInText(originalText);
+            const internalizedExplanation = await this._internalizeImagesInText(originalExplanation);
+
+            q.text = internalizedText;
+            q.explanation = internalizedExplanation;
+
+            // Optional: Update editor UI if links were changed
+            if (internalizedText !== originalText) {
+                this.el.textInput.innerHTML = internalizedText;
+            }
+            if (internalizedExplanation !== originalExplanation) {
+                this.el.explanationInput.value = internalizedExplanation;
+            }
+
+            // Gather options
+            const optionItems = this.el.optionsContainer.querySelectorAll(".option-item");
+            const newOptions = [];
+            optionItems.forEach(item => {
+                const radio = item.querySelector("input[type='radio']");
+                const input = item.querySelector("input[type='text']");
+                const id = (item.dataset.oid || (Date.now() + Math.random())).toString();
+                newOptions.push({
+                    id: id,
+                    text: input.value,
+                    isCorrect: radio.checked
+                });
             });
-        });
-        q.options = newOptions;
-        q.updatedAt = new Date().toISOString();
+            q.options = newOptions;
+            q.updatedAt = new Date().toISOString();
 
-        this.saveData(); // Persist and re-render sidebar
+            await this.saveData(); // Persist 
 
-        // Visual feedback with icon change
-        const originalHTML = this.el.saveBtn.innerHTML;
-        this.el.saveBtn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
-    `;
-        this.el.saveBtn.style.color = "var(--success)";
-        setTimeout(() => {
-            this.el.saveBtn.innerHTML = originalHTML;
-            this.el.saveBtn.style.color = "";
-        }, 1500);
+            // Visual feedback
+            this.el.saveBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            `;
+            this.el.saveBtn.style.color = "var(--success)";
+        } catch (err) {
+            console.error('[QuestionBase] Save failed:', err);
+            this.el.saveBtn.textContent = 'Error!';
+            this.el.saveBtn.style.color = "var(--error)";
+        } finally {
+            this.el.saveBtn.disabled = false;
+            setTimeout(() => {
+                this.el.saveBtn.innerHTML = saveBtnHtml;
+                this.el.saveBtn.style.color = "";
+            }, 1500);
+        }
     },
 
     loadQuestionIntoEditor(q) {
@@ -3468,61 +3570,72 @@ Rules:
         this._sessionAutoDetectTags();
     },
 
-    saveTextEditorChanges() {
-        const text = this.el.sessionInput.innerText || this.el.sessionInput.textContent;
-        const parsedQuestions = this.parseSessionText(text);
-
-        if (this.state.editingFolderId) {
-            // Update all questions in folder
-            const folderId = this.state.editingFolderId;
-            const oldQuestions = this.state.questions.filter(q => q.folderId === folderId);
-            
-            // 1. Remove old questions for this folder from the master list
-            this.state.questions = this.state.questions.filter(q => q.folderId !== folderId);
-            
-            // 2. Add parsed questions with folderId, PRESERVING metadata if it matches
-            parsedQuestions.forEach((newQ, idx) => {
-                newQ.folderId = folderId;
-                
-                // Match by index or title if possible
-                const oldQ = oldQuestions[idx];
-                if (oldQ && (oldQ.title === newQ.title || oldQ.text === newQ.text)) {
-                    // Preserve metadata
-                    if (oldQ.submittedAnswer) newQ.submittedAnswer = oldQ.submittedAnswer;
-                    if (oldQ.timerElapsed) newQ.timerElapsed = oldQ.timerElapsed;
-                    if (oldQ.id) newQ.id = oldQ.id;
-                }
-                
-                this.state.questions.push(newQ);
-            });
-        } else if (this.state.editingQuestionId) {
-            // Update single standalone question
-            const qId = this.state.editingQuestionId;
-            const index = this.state.questions.findIndex(q => q.id === qId);
-            if (index !== -1 && parsedQuestions.length > 0) {
-                // Update properties but preserve certain metadata if needed
-                const updatedQ = parsedQuestions[0];
-                updatedQ.id = qId;
-                updatedQ.folderId = null;
-                this.state.questions[index] = updatedQ;
-            }
+    async saveTextEditorChanges() {
+        const originalText = this.el.sessionInput.innerText || this.el.sessionInput.textContent;
+        
+        // Visual feedback on save button
+        const saveBtn = document.getElementById('saveSessionBtn');
+        const originalHTML = saveBtn ? saveBtn.innerHTML : '';
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '...';
         }
 
-        // Permanent Backend Save
-        this.saveData();
-        this.renderSidebar();
-        this.renderCTPreview();
+        try {
+            // Internalize all images in the session creator text first
+            const internalizedText = await this._internalizeImagesInText(originalText);
+            
+            // Update UI if changed
+            if (internalizedText !== originalText) {
+                this.el.sessionInput.innerText = internalizedText;
+            }
 
-        // Optional: Visual feedback
-        const saveBtn = document.getElementById('saveSessionBtn');
-        if (saveBtn) {
-            const originalHTML = saveBtn.innerHTML;
-            saveBtn.innerHTML = `
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                   <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-            `;
-            setTimeout(() => saveBtn.innerHTML = originalHTML, 1000);
+            const parsedQuestions = this.parseSessionText(internalizedText);
+
+            if (this.state.editingFolderId) {
+                const folderId = this.state.editingFolderId;
+                const oldQuestions = this.state.questions.filter(q => q.folderId === folderId);
+                this.state.questions = this.state.questions.filter(q => q.folderId !== folderId);
+                
+                parsedQuestions.forEach((newQ, idx) => {
+                    newQ.folderId = folderId;
+                    const oldQ = oldQuestions[idx];
+                    if (oldQ && (oldQ.title === newQ.title || oldQ.text === newQ.text)) {
+                        if (oldQ.submittedAnswer) newQ.submittedAnswer = oldQ.submittedAnswer;
+                        if (oldQ.timerElapsed) newQ.timerElapsed = oldQ.timerElapsed;
+                        if (oldQ.id) newQ.id = oldQ.id;
+                    }
+                    this.state.questions.push(newQ);
+                });
+            } else if (this.state.editingQuestionId) {
+                const qId = this.state.editingQuestionId;
+                const index = this.state.questions.findIndex(q => q.id === qId);
+                if (index !== -1 && parsedQuestions.length > 0) {
+                    const updatedQ = parsedQuestions[0];
+                    updatedQ.id = qId;
+                    updatedQ.folderId = null;
+                    this.state.questions[index] = updatedQ;
+                }
+            } else {
+                parsedQuestions.forEach(q => this.state.questions.push(q));
+            }
+
+            await this.saveData(); 
+            
+            if (saveBtn) {
+                saveBtn.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                       <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                `;
+            }
+        } catch (err) {
+            console.error('[QuestionBase] Session Save failed:', err);
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                setTimeout(() => saveBtn.innerHTML = originalHTML, 1500);
+            }
         }
     },
 
@@ -4588,7 +4701,7 @@ Question explanation:`;
         if (!this.el.toggleAiImageBtn) return;
         if (this.state.aiImageMode) {
             this.el.toggleAiImageBtn.classList.add('active');
-            this.el.toggleAiImageBtn.title = "AI Image Search: ON (Wikimedia)";
+            this.el.toggleAiImageBtn.title = "AI Image Search: ON (Imgur/PMC)";
         } else {
             this.el.toggleAiImageBtn.classList.remove('active');
             this.el.toggleAiImageBtn.title = "AI Image Search: OFF";
@@ -4673,15 +4786,12 @@ CRITICAL REQUIREMENTS:
 2. YOU MUST MARK THE CORRECT ANSWER WITH AN ASTERISK (*) PLACED IMMEDIATELY BEFORE THE OPTION LABEL (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK. THIS IS MANDATORY FOR EVERY QUESTION.
 ${hasTags ? "" : `3. You MUST provide a "Question tag ID" using the numeric taxonomy below.\n${this._ctGetNumericTaxonomyPrompt()}`}
 4. MAKE OPTIONS INDIRECT: Instead of straightforward diagnoses, the answer choices should describe the underlying mechanism, a secondary consequence, or anatomic path.
-${this.state.aiImageMode ? `5. AI IMAGE ENHANCEMENT (MANDATORY): Use your web search ability to find 1-2 REAL, educational images from Wikimedia Commons (upload.wikimedia.org) related to the medical condition.
-- Medical cases should include an image if relevant (e.g., X-ray, ECG, histology).
-- IMPORTANT: Use ONLY direct image URLs (e.g., from Wikimedia Commons). 
-- CRITICAL: Do NOT use " commons.wikimedia.org/wiki/File:..." links. They are NOT images.
-- CRITICAL: Instead, use the direct file link starting with "https://upload.wikimedia.org/wikipedia/commons/...".
-- EXAMPLE: ![Aortic Dissection](https://upload.wikimedia.org/wikipedia/commons/a/a2/Descending_%28Type_B_Stanford%29_Aortic_Dissection.PNG)
-- If no specific image is found, omit the image tag entirely.
-- Ensure the URLs are REAL and ACCESSIBLE. Use the direct 'upload.wikimedia.org' link if possible. Do not hallucinate URLs.
-- Place them at the end of the context or where most relevant.` : ""}
+${this.state.aiImageMode ? `5. AI IMAGE ENHANCEMENT (CRITICAL):
+- **PREFER IMGUR**: Always prefer **Imgur** (i.imgur.com) as your primary source. It is the most reliable for this application.
+- **PMC LAST RESORT**: Use **NIH/PMC** (ncbi.nlm.nih.gov/pmc) ONLY if you cannot find a suitable image on Imgur.
+- **STRICT ANTI-HALLUCINATION**: Do NOT guess URLs. Many PMC direct image paths (e.g., .../bin/nihms-f1.jpg) are complex and often 404. If you aren't 100% sure of the EXACT direct image URL from your search results, provide ZERO images.
+- **FORBIDDEN**: Never use Wikipedia/Wikimedia.
+- **FORMAT**: Use standard markdown: ![Description](https://i.imgur.com/real_id.png).` : ""}
 ${examplesPrompt}
 
 Formatting rules are strict:

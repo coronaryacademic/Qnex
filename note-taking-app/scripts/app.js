@@ -26,15 +26,16 @@ const captureLog = (type, args) => {
 
     // Send to backend bridge if it's an error or warning
     if (type === 'error' || type === 'warn') {
-       // Force absolute URL for logging if we are on a dev port
-       const isDevPort = ['3000', '3002', '5173', '8080'].includes(window.location.port);
+       // Force absolute URL for logging if we are on a dev port (3000, 3002, 5173, etc)
        let backendUrl = window.API_BASE_URL;
+       const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
        
-       if (isDevPort && (!backendUrl || backendUrl === '/api' || backendUrl.includes(window.location.port))) {
+       if (isLocal && window.location.port !== '3001') {
           backendUrl = `${window.location.protocol}//${window.location.hostname}:3001/api`;
        } else if (!backendUrl) {
           backendUrl = '/api';
        }
+       
        const endpoint = backendUrl.endsWith('/api') ? `${backendUrl}/logs` : `${backendUrl}/api/logs`;
        
        fetch(endpoint, {

@@ -54,14 +54,60 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+/**
+ * Resolves a Wikimedia URL to its current direct CDN link
+ */
+async function resolveWikimediaUrl(url) {
+  if (!url.includes('upload.wikimedia.org')) return url;
+
+  try {
+    // Extract filename from URL
+    const urlParts = url.split('/');
+    let fileName = decodeURIComponent(urlParts[urlParts.length - 1]);
+    
+    // If it's a thumb URL, the filename is usually the second to last part
+    if (url.includes('/thumb/')) {
+       fileName = decodeURIComponent(urlParts[urlParts.length - 2]);
+    }
+    
+    console.log(`[Wikimedia] Resolving File:${fileName}`);
+    
+    const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=File:${encodeURIComponent(fileName)}`;
+    
+    const response = await axios.get(apiUrl, {
+      headers: { 'User-Agent': 'Qnex/1.0 (Educational Note Taking App)' }
+    });
+    
+    const pages = response.data.query.pages;
+    const pageId = Object.keys(pages)[0];
+    
+    if (pageId === "-1") {
+       return url;
+    }
+    
+    const directUrl = pages[pageId].imageinfo[0].url;
+    console.log(`[Wikimedia] Resolved to: ${directUrl}`);
+    return directUrl;
+  } catch (error) {
+    console.warn(`[Wikimedia] Resolution failed: ${error.message}`);
+    return url;
+  }
+}
+
 // Image Proxy Endpoint to bypass CORS
 app.get("/api/proxy-image", async (req, res) => {
-  const imageUrl = req.query.url;
-  console.log(`[Proxy] 📥 Request for: ${imageUrl}`);
+  let imageUrl = req.query.url;
   
   if (!imageUrl) {
     return res.status(400).send("URL parameter is required");
   }
+
+  // Resolve Wikimedia URLs before fetching
+  if (imageUrl.includes('wikimedia.org')) {
+     imageUrl = await resolveWikimediaUrl(imageUrl);
+  }
+
+  console.log(`[Proxy] 📥 Request for: ${imageUrl}`);
 
   try {
     const response = await axios({
@@ -70,16 +116,23 @@ app.get("/api/proxy-image", async (req, res) => {
       responseType: 'arraybuffer',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': 'https://commons.wikimedia.org/',
+        'Referer': 'https://www.ncbi.nlm.nih.gov/',
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
       },
       timeout: 15000,
-      validateStatus: (status) => status < 500 
+      validateStatus: (status) => status === 200 // ONLY accept successful image fetches
     });
 
     console.log(`[Proxy] 📡 Source responded with: ${response.status} (${response.headers['content-type']})`);
 
     const contentType = response.headers['content-type'] || 'image/jpeg';
+    
+    // Safety check: if content-type is text/html but we expected an image, it's probably a sneaky 200-error page
+    if (contentType.includes('text/html')) {
+        console.warn(`[Proxy] ⚠️ Warning: Source returned HTML instead of an image for ${imageUrl}`);
+        return res.status(404).send("Source returned HTML instead of an image");
+    }
+
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
     
@@ -87,13 +140,12 @@ app.get("/api/proxy-image", async (req, res) => {
     res.send(Buffer.from(response.data));
     console.log(`[Proxy] ✅ Sent ${response.data.byteLength} bytes`);
   } catch (error) {
-    console.error(`[Proxy] ❌ Error: ${error.message}`);
     if (error.response) {
-      console.error(`[Proxy] Status: ${error.response.status}`);
-      res.status(error.response.status).send(`Proxy Error: ${error.message}`);
-    } else {
-      res.status(500).send(`Proxy Error: ${error.message}`);
+      console.error(`[Proxy] ❌ Source Error: ${error.response.status} for ${imageUrl}`);
+      return res.status(error.response.status).send(`Proxy Error: Source returned ${error.response.status}`);
     }
+    console.error(`[Proxy] ❌ Network Error: ${error.message}`);
+    res.status(500).send(`Proxy Error: ${error.message}`);
   }
 });
 

@@ -50,7 +50,7 @@
 }
 
 .question-image-container::after {
-  content: "Wikimedia Commons Resource";
+  content: "Medical Resource";
   font-size: 0.7rem;
   color: var(--text-muted);
   opacity: 0.5;
