@@ -1583,16 +1583,7 @@
   border-radius: 2px;
 }
 
-/* Sidebar Star Indicator */
-.dungeon-starred-indicator {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 6px;
-  height: 6px;
-  background: #fbbf24;
-  border-radius: 50%;
-}
+/* Sidebar Star Indicator - Removed dot style */
 
 /* Actions Row (Footer) */
 .dungeon-actions-row {
@@ -2998,4 +2989,60 @@
 
 .view-image-link:hover {
   opacity: 0.9;
+}
+
+/* Inline Submit Button (shown when toolbar is hidden) */
+.dungeon-inline-submit-wrap {
+    margin-top: 43px;
+    margin-bottom: 0;
+    border-top: 1px solid var(--dungeon-border-dim);
+    display: flex;
+    width: 100%;
+}
+
+.dungeon-inline-submit-wrap.align-left {
+    justify-content: flex-start;
+}
+
+.dungeon-inline-submit-wrap.align-center {
+    justify-content: center;
+}
+
+.dungeon-inline-submit {
+    padding: 10px 24px;
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 120px;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dungeon-inline-submit:hover:not(:disabled) {
+    background-color: var(--accent);
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dungeon-inline-submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.dungeon-inline-submit.submitted,
+.dungeon-inline-submit:disabled {
+    padding: 10px 24px; /* Identical padding */
+    min-width: 120px;   /* Identical min-width */
+    color: #e2e8f0;
+    cursor: default;
+    box-shadow: none;
+    pointer-events: none;
+    opacity: 0.8;
 }

@@ -1193,6 +1193,7 @@ export default class DungeonBase {
         const savedToolbarVisible = localStorage.getItem('dungeonToolbarVisible');
         if (savedToolbarVisible === 'false') {
             this.state.toolbarVisible = false;
+            this.state.highlightMode = true; // Auto-highlight on load if hidden
             this.updateToolbarVisibility();
         }
 
@@ -1245,7 +1246,18 @@ export default class DungeonBase {
 
     toggleToolbar() {
         this.state.toolbarVisible = !this.state.toolbarVisible;
+        
+        // Auto-activate highlight mode when hiding toolbar
+        if (!this.state.toolbarVisible) {
+            this.state.highlightMode = true;
+            const toolbar = document.getElementById('dungeonToolbar');
+            if (toolbar) {
+                this.updateHighlightSVG(toolbar);
+            }
+        }
+
         this.updateToolbarVisibility();
+        this.render(); // Force re-render to show/hide inline submit button
         localStorage.setItem('dungeonToolbarVisible', this.state.toolbarVisible);
     }
 
@@ -3123,6 +3135,22 @@ export default class DungeonBase {
         const submitBlockBtn = document.getElementById("dungeonSubmitBlockBtn");
         if (submitBlockBtn) submitBlockBtn.onclick = () => this.submitBlock();
 
+        // Event Delegation for Sidebar Starring (Double-click on question box)
+        if (this.el.sidebar) {
+            this.el.sidebar.ondblclick = (e) => {
+                const qBox = e.target.closest('.dungeon-q-box');
+                if (qBox) {
+                    const index = parseInt(qBox.dataset.qIndex);
+                    if (!isNaN(index)) {
+                        e.stopPropagation();
+                        // Update current index and toggle star
+                        this.state.currentIndex = index;
+                        this.toggleStar();
+                    }
+                }
+            };
+        }
+
         // Keyboard nav
         document.addEventListener("keydown", (e) => {
             if (this.el.container.classList.contains("hidden")) return;
@@ -3456,6 +3484,7 @@ export default class DungeonBase {
 
             const box = document.createElement("div");
             box.className = "dungeon-q-box";
+            box.style.position = 'relative'; // CRITICAL for star absolute positioning
             if (isHidden) box.style.display = "none";
             // Add data-index for fast filtering updates without re-render
             box.dataset.qIndex = index;
@@ -3972,6 +4001,22 @@ export default class DungeonBase {
         });
 
         html += `</div>`; // End options
+
+        // Inline Submit Button (shown when toolbar is hidden)
+        if (!this.state.toolbarVisible) {
+            const isSubmitted = answer && answer.submitted;
+            const alignClass = this.state.contentAlignment === 'center' ? 'align-center' : 'align-left';
+            
+            html += `
+                <div class="dungeon-inline-submit-wrap ${alignClass}">
+                    <button class="dungeon-inline-submit ${isSubmitted ? 'submitted' : ''}" 
+                            onclick="${isSubmitted ? '' : 'window.DungeonBase.handleSubmit()'}"
+                            ${isSubmitted ? 'disabled' : ''}>
+                        ${isSubmitted ? 'Submitted' : 'Submit Answer'}
+                    </button>
+                </div>
+            `;
+        }
 
         // Explanation rendering logic
         let explHtml = '';
