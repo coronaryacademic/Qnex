@@ -122,6 +122,66 @@ async function writeFile(filePath, data) {
   }
 }
 
+/**
+ * Resolves a Wikimedia URL to its current direct CDN link
+ */
+async function resolveWikimediaUrl(url) {
+  if (!url.includes('upload.wikimedia.org')) return url;
+
+  try {
+    // Extract filename from URL
+    const urlParts = url.split('/');
+    let fileName = decodeURIComponent(urlParts[urlParts.length - 1]);
+    
+    // If it's a thumb URL, the filename is usually the second to last part
+    if (url.includes('/thumb/')) {
+       fileName = decodeURIComponent(urlParts[urlParts.length - 2]);
+    }
+    
+    console.log(`[Wikimedia] Resolving File:${fileName}`);
+    
+    // Try Commons API first as it's the global repository
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=File:${encodeURIComponent(fileName)}`;
+    
+    try {
+      const response = await axios.get(apiUrl, {
+        headers: { 'User-Agent': 'Qnex/1.0 (Educational Note Taking App)' },
+        timeout: 5000
+      });
+      
+      const pages = response.data.query.pages;
+      const pageId = Object.keys(pages)[0];
+      
+      if (pageId !== "-1") {
+         const directUrl = pages[pageId].imageinfo[0].url;
+         console.log(`[Wikimedia] Resolved via Commons: ${directUrl}`);
+         return directUrl;
+      }
+    } catch (e) {
+      console.warn(`[Wikimedia] Commons API failed: ${e.message}`);
+    }
+
+    // String-based fallback for thumbnails if API resolution fails
+    if (url.includes('/thumb/')) {
+        const parts = url.split('/');
+        const thumbIndex = parts.indexOf('thumb');
+        if (thumbIndex !== -1) {
+            const newParts = [...parts];
+            newParts.splice(thumbIndex, 1); // Remove 'thumb'
+            newParts.pop(); // Remove the size-specific part
+            const fallbackUrl = newParts.join('/');
+            console.log(`[Wikimedia] String-fallback resolution: ${fallbackUrl}`);
+            return fallbackUrl;
+        }
+    }
+    
+    return url;
+  } catch (error) {
+    console.warn(`[Wikimedia] Resolution failed: ${error.message}`);
+    return url;
+  }
+}
+
 function createTray() {
   if (tray) return;
 
@@ -1001,6 +1061,62 @@ function startServer3002() {
     expressApp.get('/api/questions', async (req, res) => {
       const data = await readFile(FILES.questions, []);
       res.json(data);
+    });
+
+    // Image Proxy Endpoint to bypass CORS
+    expressApp.get("/api/proxy-image", async (req, res) => {
+      let imageUrl = req.query.url;
+      
+      if (!imageUrl) {
+        return res.status(400).send("URL parameter is required");
+      }
+
+      // Resolve Wikimedia URLs before fetching
+      if (imageUrl.includes('wikimedia.org')) {
+         imageUrl = await resolveWikimediaUrl(imageUrl);
+      }
+
+      console.log(`[Proxy] 📥 Request (3002) for: ${imageUrl}`);
+
+      try {
+        const headers = {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+        };
+
+        // Add Referer ONLY for medical domains where it's known to be needed
+        if (imageUrl.includes('nih.gov') || imageUrl.includes('ncbi.nlm.nih.gov')) {
+            headers['Referer'] = 'https://www.ncbi.nlm.nih.gov/';
+        }
+
+        const response = await axios({
+          method: 'get',
+          url: imageUrl,
+          responseType: 'arraybuffer',
+          headers: headers,
+          timeout: 20000,
+          maxRedirects: 10,
+          validateStatus: (status) => status === 200
+        });
+
+        const contentType = response.headers['content-type'] || 'image/jpeg';
+        
+        if (contentType.includes('text/html')) {
+            return res.status(404).send("Source returned HTML instead of an image");
+        }
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.send(Buffer.from(response.data));
+        console.log(`[Proxy] ✅ Sent ${response.data.byteLength} bytes from 3002`);
+      } catch (error) {
+        if (error.response) {
+          console.error(`[Proxy] ❌ Source Error (3002): ${error.response.status} for ${imageUrl}`);
+          return res.status(error.response.status).send(`Proxy Error: Source returned ${error.response.status}`);
+        }
+        console.error(`[Proxy] ❌ Network Error (3002): ${error.message}`);
+        res.status(500).send(`Proxy Error: ${error.message}`);
+      }
     });
 
     expressApp.post('/api/questions', async (req, res) => {

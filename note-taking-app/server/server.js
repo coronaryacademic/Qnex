@@ -72,22 +72,44 @@ async function resolveWikimediaUrl(url) {
     
     console.log(`[Wikimedia] Resolving File:${fileName}`);
     
-    const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=File:${encodeURIComponent(fileName)}`;
+    // Try Commons API first as it's the global repository
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=File:${encodeURIComponent(fileName)}`;
     
-    const response = await axios.get(apiUrl, {
-      headers: { 'User-Agent': 'Qnex/1.0 (Educational Note Taking App)' }
-    });
-    
-    const pages = response.data.query.pages;
-    const pageId = Object.keys(pages)[0];
-    
-    if (pageId === "-1") {
-       return url;
+    try {
+      const response = await axios.get(apiUrl, {
+        headers: { 'User-Agent': 'Qnex/1.0 (Educational Note Taking App)' },
+        timeout: 5000
+      });
+      
+      const pages = response.data.query.pages;
+      const pageId = Object.keys(pages)[0];
+      
+      if (pageId !== "-1") {
+         const directUrl = pages[pageId].imageinfo[0].url;
+         console.log(`[Wikimedia] Resolved via Commons: ${directUrl}`);
+         return directUrl;
+      }
+    } catch (e) {
+      console.warn(`[Wikimedia] Commons API failed: ${e.message}`);
+    }
+
+    // String-based fallback for thumbnails if API resolution fails
+    // From: .../commons/thumb/a/ab/File.jpg/800px-File.jpg
+    // To:   .../commons/a/ab/File.jpg
+    if (url.includes('/thumb/')) {
+        const parts = url.split('/');
+        const thumbIndex = parts.indexOf('thumb');
+        if (thumbIndex !== -1) {
+            const newParts = [...parts];
+            newParts.splice(thumbIndex, 1); // Remove 'thumb'
+            newParts.pop(); // Remove the size-specific part (last part)
+            const fallbackUrl = newParts.join('/');
+            console.log(`[Wikimedia] String-fallback resolution: ${fallbackUrl}`);
+            return fallbackUrl;
+        }
     }
     
-    const directUrl = pages[pageId].imageinfo[0].url;
-    console.log(`[Wikimedia] Resolved to: ${directUrl}`);
-    return directUrl;
+    return url;
   } catch (error) {
     console.warn(`[Wikimedia] Resolution failed: ${error.message}`);
     return url;
@@ -107,44 +129,45 @@ app.get("/api/proxy-image", async (req, res) => {
      imageUrl = await resolveWikimediaUrl(imageUrl);
   }
 
-  console.log(`[Proxy] 📥 Request for: ${imageUrl}`);
+  console.log(`[Proxy] 📥 Request (3001) for: ${imageUrl}`);
 
   try {
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+    };
+
+    // Add Referer ONLY for medical domains where it's known to be needed
+    if (imageUrl.includes('nih.gov') || imageUrl.includes('ncbi.nlm.nih.gov')) {
+        headers['Referer'] = 'https://www.ncbi.nlm.nih.gov/';
+    }
+
     const response = await axios({
       method: 'get',
       url: imageUrl,
       responseType: 'arraybuffer',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': 'https://www.ncbi.nlm.nih.gov/',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-      },
-      timeout: 15000,
-      validateStatus: (status) => status === 200 // ONLY accept successful image fetches
+      headers: headers,
+      timeout: 20000,
+      maxRedirects: 10,
+      validateStatus: (status) => status === 200
     });
-
-    console.log(`[Proxy] 📡 Source responded with: ${response.status} (${response.headers['content-type']})`);
 
     const contentType = response.headers['content-type'] || 'image/jpeg';
     
-    // Safety check: if content-type is text/html but we expected an image, it's probably a sneaky 200-error page
     if (contentType.includes('text/html')) {
-        console.warn(`[Proxy] ⚠️ Warning: Source returned HTML instead of an image for ${imageUrl}`);
         return res.status(404).send("Source returned HTML instead of an image");
     }
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    
-    // Send the buffer directly
     res.send(Buffer.from(response.data));
-    console.log(`[Proxy] ✅ Sent ${response.data.byteLength} bytes`);
+    console.log(`[Proxy] ✅ Sent ${response.data.byteLength} bytes from 3001`);
   } catch (error) {
     if (error.response) {
-      console.error(`[Proxy] ❌ Source Error: ${error.response.status} for ${imageUrl}`);
+      console.error(`[Proxy] ❌ Source Error (3001): ${error.response.status} for ${imageUrl}`);
       return res.status(error.response.status).send(`Proxy Error: Source returned ${error.response.status}`);
     }
-    console.error(`[Proxy] ❌ Network Error: ${error.message}`);
+    console.error(`[Proxy] ❌ Network Error (3001): ${error.message}`);
     res.status(500).send(`Proxy Error: ${error.message}`);
   }
 });

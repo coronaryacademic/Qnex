@@ -4110,6 +4110,14 @@ Question tag ID:
                 await this.saveData();
                 this.renderRecentSessions();
 
+                // NEW: Cache images in background (Sequential to avoid 429)
+                (async () => {
+                    for (const q of questions) {
+                        await this.cacheQuestionImages(q);
+                        await this.sleep(1000); 
+                    }
+                })();
+
                 // Open Dungeon
                 if (typeof window.DungeonBase !== 'undefined') {
                     window.DungeonBase.open(questions, sessionId);
@@ -4160,6 +4168,14 @@ Question tag ID:
         this.state.recentSessions.unshift(session); // Add to the beginning
         this.saveRecentSessions();
         this.renderRecentSessions();
+
+        // NEW: Cache images in background (Sequential to avoid 429)
+        (async () => {
+            for (const q of questions) {
+                await this.cacheQuestionImages(q);
+                await this.sleep(1000);
+            }
+        })();
 
         // Switch to Dungeon (Play) Mode with these questions
         if (typeof window.DungeonBase !== 'undefined') {
@@ -4990,6 +5006,81 @@ Question tag ID:
         } finally {
             if (this.el.toggleAiModeBtn) this.el.toggleAiModeBtn.classList.remove('loading');
             if (overlay) overlay.classList.add('hidden');
+        }
+    },
+    
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    },
+
+    async cacheQuestionImages(question) {
+        if (!question.id) return;
+        
+        const imageRegex = /!\[.*?\]\((https?:\/\/.*?)\)/g;
+        let hasChanges = false;
+        
+        const processText = async (text) => {
+            if (!text) return text;
+            let updatedText = text;
+            const matches = [...text.matchAll(imageRegex)];
+            
+            for (const match of matches) {
+                const originalUrl = match[1];
+                // Skip if already local
+                if (originalUrl.includes('/api/images/')) continue;
+                
+                try {
+                    console.log(`[Cache] 📥 Caching image: ${originalUrl}`);
+                    const proxyUrl = `/proxy-image?url=${encodeURIComponent(originalUrl)}`;
+                    
+                    // Fetch blob via proxy
+                    const response = await fetch(window.fileSystemService.baseUrl + proxyUrl);
+                    if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
+                    
+                    const blob = await response.blob();
+                    
+                    // Convert to base64 for uploadImage endpoint
+                    const reader = new FileReader();
+                    const base64Data = await new Promise((resolve, reject) => {
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                    
+                    // Generate filename based on question ID
+                    const hash = Math.random().toString(36).substring(2, 7);
+                    const fileName = `q_${question.id}_${hash}.png`;
+                    
+                    // Upload to local server
+                    const result = await window.fileSystemService.uploadImage(fileName, base64Data);
+                    
+                    if (result && result.url) {
+                        console.log(`[Cache] ✅ Cached to: ${result.url}`);
+                        updatedText = updatedText.replace(originalUrl, result.url);
+                        hasChanges = true;
+                    }
+                    
+                    // Delay between images in the same question
+                    await this.sleep(500); 
+                } catch (error) {
+                    console.warn(`[Cache] ❌ Failed to cache ${originalUrl}:`, error.message);
+                }
+            }
+            return updatedText;
+        };
+
+        // Process context and explanation
+        if (question.text) {
+            question.text = await processText(question.text);
+        }
+        if (question.explanation) {
+            question.explanation = await processText(question.explanation);
+        }
+
+        // Save if any URLs were updated
+        if (hasChanges) {
+            console.log(`[Cache] 💾 Saving updated question ${question.id}`);
+            await this.saveData();
         }
     },
 
