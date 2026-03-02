@@ -1007,11 +1007,11 @@
 .dungeon-explanation-panel.align-center {
   display: block;
   text-align: center;
-  padding: 85px 0px 160px 0px; /* Symmetrical padding */
+  padding: 85px 65px 160px 90px; /* Symmetrical padding */
 }
 
 .dungeon-explanation-panel.align-center {
-  padding: 52px 40px 160px 40px; /* Keep panel's vertical padding */
+  padding: 52px 62px 160px 90px; /* Keep panel's vertical padding */
 }
 
 .dungeon-main-panel.align-center .dungeon-question-container,
