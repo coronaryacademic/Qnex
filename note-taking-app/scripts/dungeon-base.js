@@ -627,6 +627,7 @@ export default class DungeonBase {
         this.initFooter();
         this.initCalculator();
         this.initSearch();
+        this.initMobileHighlightSupport();
 
         this.bindEvents();
 
@@ -2324,6 +2325,98 @@ export default class DungeonBase {
                 console.warn("Highlight failed (crossing tags?)", err);
             }
         }
+    }
+
+    // Mobile touch support for highlighting
+    initMobileHighlightSupport() {
+        // Check if we're on a mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (!isMobile) return;
+
+        // Add touch event listeners for mobile highlighting
+        document.addEventListener('touchstart', (e) => {
+            // Only handle touches in context box when highlight mode is active
+            if (!this.state.highlightMode) return;
+            
+            const contextBox = e.target.closest('.dungeon-context-box');
+            if (!contextBox) return;
+            
+            // Store touch start position
+            this.touchStartX = e.touches[0].clientX;
+            this.touchStartY = e.touches[0].clientY;
+            this.touchStartTime = Date.now();
+            this.isLongPress = false;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            if (!this.state.highlightMode) return;
+            
+            const contextBox = e.target.closest('.dungeon-context-box');
+            if (!contextBox) return;
+            
+            // Check if it was a long press (for highlighting)
+            const touchDuration = Date.now() - this.touchStartTime;
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const touchDistance = Math.sqrt(
+                Math.pow(touchEndX - this.touchStartX, 2) + 
+                Math.pow(touchEndY - this.touchStartY, 2)
+            );
+            
+            // If it was a long press (500ms+) with minimal movement, trigger highlight
+            if (touchDuration > 500 && touchDistance < 10) {
+                e.preventDefault();
+                this.isLongPress = true;
+                
+                // Get the current selection
+                const selection = window.getSelection();
+                if (selection.toString().length > 0) {
+                    // Apply highlight to the selection
+                    setTimeout(() => {
+                        this.handleHighlight(e, 'main');
+                        this.showNotification("Text highlighted!", "success");
+                    }, 100);
+                } else {
+                    // Show a hint to user to select text first
+                    this.showNotification("Select text first, then long press to highlight", "info");
+                }
+            }
+        });
+
+        // Also add a fallback: if user selects text and then taps highlight button
+        const highlightBtn = document.querySelector('[data-tool="highlight"]');
+        if (highlightBtn) {
+            highlightBtn.addEventListener('touchend', (e) => {
+                if (!this.state.highlightMode) return;
+                
+                const selection = window.getSelection();
+                if (selection.toString().length > 0) {
+                    e.preventDefault();
+                    this.handleHighlight(e, 'main');
+                    this.showNotification("Text highlighted!", "success");
+                }
+            });
+        }
+
+        // Prevent default touch behavior on context box when in highlight mode
+        document.addEventListener('touchmove', (e) => {
+            if (!this.state.highlightMode) return;
+            
+            const contextBox = e.target.closest('.dungeon-context-box');
+            if (!contextBox) return;
+            
+            // Allow normal scrolling, but track if we're selecting text
+            const touchDistance = Math.sqrt(
+                Math.pow(e.touches[0].clientX - this.touchStartX, 2) + 
+                Math.pow(e.touches[0].clientY - this.touchStartY, 2)
+            );
+            
+            // If movement is minimal, we might be trying to select text
+            if (touchDistance < 5) {
+                // Don't prevent default - let text selection work
+            }
+        });
     }
 
     saveQuestionsToBackend() {

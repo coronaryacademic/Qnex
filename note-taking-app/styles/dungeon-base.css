@@ -1124,7 +1124,7 @@
 }
 
 .highlight {
-  background-color: #ffd700;
+  background-color: #ffeb3b;
   color: #000000;
   display: inline;
   padding: 0 2px;
@@ -1614,8 +1614,8 @@
 
 /* Highlighted Text */
 .dungeon-context-box .highlight {
-  background-color: #fde047;
-  /* yellow-300 */
+  background-color: #ffeb3b;
+  /* bright yellow */
   color: #000;
   padding: 0 2px;
   border-radius: 2px;
