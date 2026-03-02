@@ -1007,7 +1007,7 @@
 .dungeon-explanation-panel.align-center {
   display: block;
   text-align: center;
-  padding: 85px 65px 160px 65px; /* Symmetrical padding */
+  padding: 85px 0px 160px 0px; /* Symmetrical padding */
 }
 
 .dungeon-explanation-panel.align-center {
@@ -1046,13 +1046,13 @@
 
 .dungeon-main-panel.align-left,
 .dungeon-explanation-panel.align-left {
-  padding: 30px 65px 160px 117px;
+  padding: 70px 65px 160px 90px;
   display: block;
   text-align: left;
 }
 
 .dungeon-explanation-panel.align-left {
-  padding: 30px 40px 160px 40px;
+  padding: 70px 65px 160px 90px;
 }
 
 .dungeon-main-panel.align-left .dungeon-question-container {
@@ -3022,12 +3022,12 @@
 }
 
 .dungeon-inline-submit {
-    padding: 10px 24px;
+    padding: 12px 28px; /* Identical padding */
     background-color: var(--accent);
     color: white;
     border: none;
     border-radius: 4px;
-    font-size: 0.95rem;
+    font-size: 18px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -3051,11 +3051,12 @@
 
 .dungeon-inline-submit.submitted,
 .dungeon-inline-submit:disabled {
-    padding: 10px 24px; /* Identical padding */
+    padding: 12px 28px; /* Identical padding */
     min-width: 120px;   /* Identical min-width */
     color: #e2e8f0;
     cursor: default;
     box-shadow: none;
     pointer-events: none;
     opacity: 0.8;
+    font-size: 18px;
 }
