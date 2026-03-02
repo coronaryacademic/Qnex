@@ -1046,13 +1046,13 @@
 
 .dungeon-main-panel.align-left,
 .dungeon-explanation-panel.align-left {
-  padding: 70px 65px 160px 90px;
+  padding: 52px 65px 50px 80px;
   display: block;
   text-align: left;
 }
 
 .dungeon-explanation-panel.align-left {
-  padding: 70px 65px 160px 90px;
+  padding: 52px 65px 50px 80px;
 }
 
 .dungeon-main-panel.align-left .dungeon-question-container {
@@ -1292,6 +1292,44 @@
 .dungeon-submit-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Submit button alignment - follows content alignment */
+.dungeon-inline-submit-wrap {
+  display: flex;
+  width: 100%;
+}
+
+.dungeon-inline-submit-wrap.align-left {
+  justify-content: flex-start;
+}
+
+.dungeon-inline-submit-wrap.align-center {
+  justify-content: center;
+}
+
+/* Also handle toolbar submit button alignment */
+.dungeon-main-panel.align-center ~ .dungeon-footer #dungeonSubmitBlockBtn,
+.dungeon-explanation-panel.align-center ~ .dungeon-footer #dungeonSubmitBlockBtn {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dungeon-main-panel.align-left ~ .dungeon-footer #dungeonSubmitBlockBtn,
+.dungeon-explanation-panel.align-left ~ .dungeon-footer #dungeonSubmitBlockBtn {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* Force inline submit button alignment */
+.dungeon-main-panel.align-center .dungeon-inline-submit-wrap,
+.dungeon-explanation-panel.align-center .dungeon-inline-submit-wrap {
+  justify-content: center !important;
+}
+
+.dungeon-main-panel.align-left .dungeon-inline-submit-wrap,
+.dungeon-explanation-panel.align-left .dungeon-inline-submit-wrap {
+  justify-content: flex-start !important;
 }
 
 /* Explanation */

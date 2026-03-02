@@ -14,8 +14,8 @@ export default class DungeonBase {
             splitView: false,
             isBlockRevealed: false,
             associatedSessionId: null,
-            hideTimerUntilMinute: false, // User requested: hide timer until 1 min passes
-            floatingTimer: false,       // User requested: floating clock
+            hideTimerUntilMinute: false, 
+            floatingTimer: false,       
             contentAlignment: localStorage.getItem('dungeonContentAlignment') || 'left',
             viewer: {
                 zoom: 1,
