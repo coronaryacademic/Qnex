@@ -1007,7 +1007,7 @@
 .dungeon-explanation-panel.align-center {
   display: block;
   text-align: center;
-  padding: 85px 0px 52px 0px; /* Symmetrical padding */
+  padding: 85px 0px 160px 0px; /* Symmetrical padding */
 }
 
 .dungeon-explanation-panel.align-center {
@@ -1045,13 +1045,13 @@
 }
 
 .dungeon-main-panel.align-left {
-  padding: 52px 65px 50px 80px;
+  padding: 52px 65px 160px 80px;
   display: block;
   text-align: left;
 }
  
 .dungeon-explanation-panel.align-left {
-  padding: 18px 80px 50px 80px;
+  padding: 18px 80px 160px 80px;
 }
 
 .dungeon-main-panel.align-left .dungeon-question-container {
