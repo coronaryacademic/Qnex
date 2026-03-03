@@ -72,7 +72,6 @@
 }
 
 #dungeonTimer:hover {
-  background: var(--bg-secondary);
   color: var(--accent);
 }
 

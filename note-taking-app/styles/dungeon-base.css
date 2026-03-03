@@ -884,8 +884,16 @@ body.theme-light .dungeon-inline-submit {
 
 .dungeon-q-box.active.solved:nth-child(odd),
 .dungeon-q-box.active.solved:nth-child(even) {
-  background: var(--accent) !important;
+  background: #f0cc23 !important;
+  color: var(--bg);
 }
+
+body.theme-light .dungeon-q-box.active.solved:nth-child(odd),
+body.theme-light .dungeon-q-box.active.solved:nth-child(even) {
+  background: #f0cc23 !important;
+  color: var(--defualt);
+}
+
 
 .dungeon-q-box.active.revealed-state:nth-child(odd),
 .dungeon-q-box.active.revealed-state:nth-child(even) {
@@ -911,8 +919,15 @@ body.theme-light .dungeon-inline-submit {
 }
 
 .dungeon-q-box.solved {
-  background: var(--accent) !important;
+  background: #f0cc23 !important;
   border-color: var(--accent);
+  color: var(--bg);
+}
+
+body.theme-light .dungeon-q-box.solved {
+  background: #f0cc23 !important;
+  border-color: var(--accent);
+  color: var(--defualt);
 }
 
 .dungeon-q-box.revealed-state {
