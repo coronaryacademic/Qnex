@@ -3373,10 +3373,10 @@ Rules:
         const renderList = () => {
             // Update Header
             header.innerHTML = `
-            <h2 style="font-size: 1.1rem; font-weight: 600; color: var(--text); margin: 0;">Trash (${trashItems.length} items)</h2>
+            <h2 style="font-size: 1.1rem; font-weight: 600; color: var(--defualt); margin: 0;">Trash (${trashItems.length} items)</h2>
             <div class="trash-actions" style="display: flex; gap: 8px; align-items: center;">
               <button class="empty-all-btn trash-btn danger">Empty All</button>
-              <button class="close-modal-btn" style="background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex;">
+              <button class="close-modal-btn" style="background: none; border: none; color: var(--defualt); cursor: pointer; padding: 4px; display: flex;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -3410,12 +3410,12 @@ Rules:
             body.style.cssText = "flex: 1; overflow-y: auto; padding: 0;";
 
             if (trashItems.length === 0) {
-                body.innerHTML = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--muted); text-align: center;">
+                body.innerHTML = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--defualt); text-align: center;">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 16px; opacity: 0.5;">
                       <path d="M3 6h18"></path>
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                   </svg>
-                  <div style="font-size: 15px; font-weight: 500;">Trash is empty</div>
+                  <div style="font-size: 15px; font-weight: 500; color: var(--defualt);">Trash is empty</div>
               </div>`;
             } else {
                 trashItems.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));

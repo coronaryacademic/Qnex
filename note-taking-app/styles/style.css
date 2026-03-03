@@ -103,7 +103,7 @@ body {
   --panel: #1a1a1a;
   --panel-2: #2a2a2a;
   --text: #e5e7eb;
-  --muted: #dddddd;
+  --muted: #141016;
   --accent: #3851a3;
   --accent-2: #2d4080;
   --border: #333333;
@@ -127,7 +127,7 @@ body.theme-light {
   --panel: #3a53a7 ;        /* Pure white panels */
   --panel-2: #f0ede8;      /* Warm secondary panels */
   --text: #ffffff;         /* Almost-black warm text */
-  --muted: #dddddd;        /* Warm muted stone */
+  --muted: #141016;        /* Warm muted stone */
   --accent: #3a53a7;       /* Indigo accent */
   --accent-2: #3a53a7;     /* Lighter indigo */
   --border: #a2a2a2;       /* Warm soft border */
@@ -225,7 +225,7 @@ input[type=number] {
 
 .sidebar {
   width: 230px;
-  background: var(--panel);
+  background: var(--bg-secondary);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -274,7 +274,7 @@ input[type=number] {
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: center center;
   display: block;
-  color: var(--text);
+  color: var(--defualt);
 }
 
 
@@ -294,7 +294,7 @@ input[type=number] {
 
 .sidebar button {
   background: transparent;
-  color: var(--text);
+  color: var(--defualt);
   padding: 6px 10px;
   padding-left: 30px;
   border-radius: 8px;
@@ -324,7 +324,7 @@ input[type=number] {
   border-radius: 50%;
   background: transparent !important;
   border: 2px solid transparent !important;
-  color: var(--accent) !important;
+  color: var(--defualt) !important;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -349,7 +349,7 @@ input[type=number] {
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   width: 16px;
   height: 16px;
-  stroke: var(--muted);
+  stroke: var(--defualt);
   stroke-width: 2.5;
   display: block;
   will-change: transform;
@@ -550,7 +550,7 @@ body.theme-light .menu-item + .menu-item::before {
   gap: 8px;
   padding: 20px 16px 8px 16px;
   font-size: 11px;
-  color: var(--muted);
+  color: var(--defualt);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -560,13 +560,13 @@ body.theme-light .menu-item + .menu-item::before {
 }
 
 .sidebar-section-header-text:hover {
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .sidebar-section-header-text .section-icon {
   width: 14px;
   height: 14px;
-  color: var(--muted);
+  color: var(--defualt);
   flex-shrink: 0;
 }
 
@@ -579,14 +579,14 @@ body.theme-light .menu-item + .menu-item::before {
 .sidebar-section-header-text .section-chevron {
   width: 14px;
   height: 14px;
-  color: var(--muted);
+  color: var(--defualt);
   flex-shrink: 0;
   margin-left: auto;
   transition: transform 0.2s ease;
 }
 
 .sidebar-section-header-text:hover .section-chevron {
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .sidebar-section.collapsed .section-chevron {
@@ -673,7 +673,7 @@ body.theme-light .menu-item + .menu-item::before {
 .sidebar-item svg {
   width: 16px;
   height: 16px;
-  color: var(--muted);
+  color: var(--defualt);
   flex-shrink: 0;
 }
 
@@ -682,7 +682,7 @@ body.theme-light .menu-item + .menu-item::before {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .item-count {
@@ -690,7 +690,7 @@ body.theme-light .menu-item + .menu-item::before {
   padding: 2px 6px;
   background: var(--panel-2);
   border-radius: 10px;
-  color: var(--muted);
+  color: var(--defualt);
   font-weight: 600;
   min-width: 20px;
   text-align: center;
@@ -877,7 +877,7 @@ body.theme-light .item-count {
 .folder-header svg:not(.folder-chevron) {
   width: 15px;
   height: 15px;
-  color: var(--muted);
+  color: var(--defualt);
   flex-shrink: 0;
 }
 
@@ -900,6 +900,7 @@ body.theme-light .item-count {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+  color: var(--defualt);
 }
 
 .folder-notes-list {
@@ -1028,7 +1029,7 @@ body.theme-light .item-count {
   padding: 15px 0;
   padding-top: 20px;
   padding-bottom: 12px;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .sidebar-empty-icon {
@@ -1163,7 +1164,7 @@ body.theme-light .item-count {
   position: relative;
   padding: 8px;
   border-top: 1px solid var(--border);
-  background: var(--panel);
+  background: var(--bg-secondary);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -1189,13 +1190,13 @@ body.theme-light .item-count {
 
 .sidebar-search input:focus {
   border-color: var(--accent);
-  background: var(--panel);
-  color: var(--text);
+  background: var(--bg);
+  color: var(--defualt);
 
 }
 
 .sidebar-search input:focus::placeholder {
-  color: var(--text);
+  color: var(--defualt);
 
 }
 
@@ -1246,19 +1247,16 @@ body.theme-light .item-count {
   border: none;
   cursor: pointer;
   transition: all 0.2s;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .sidebar-search .editor-trash-btn svg {
-  stroke: var(--muted);
+  stroke: var(--defualt);
 }
 
-.sidebar-search .editor-trash-btn:hover {
-  background: var(--panel-2);
-}
 
 .sidebar-search .editor-trash-btn:hover svg {
-  stroke: var(--text);
+  stroke: var(--defualt);
 }
 
 /* Search Results Modal */
@@ -1312,7 +1310,7 @@ body.theme-light .item-count {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
@@ -1577,6 +1575,7 @@ body.theme-light .item-count {
 .trash-btn {
   background: var(--panel-2);
   border: 1px solid var(--border);
+  color: var(--defualt);
 }
 
 .trash-btn:hover {
@@ -1596,7 +1595,7 @@ body.theme-light .item-count {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 6px;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1619,7 +1618,7 @@ body.theme-light .item-count {
   padding: 4px 12px;
   border: 1px solid var(--border);
   background: var(--panel-2);
-  color: var(--text);
+  color: var(--defualt);
   font-size: 12px;
   cursor: pointer;
   border-radius: 4px;
@@ -1800,7 +1799,7 @@ body.theme-light .item-count {
 }
 
 .folder-icon {
-  color: var(--accent-2);
+  color: var(--defualt);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -6344,4 +6343,13 @@ ol.editor-block {
 
 .dungeon-sidebar-questions {
   scrollbar-width: none;
+}
+
+.search-results-list {
+  background-color: var(--bg-secondary);
+}
+
+.search-result-meta,
+.search-result-title {
+  color: var(--defualt) !important;
 }

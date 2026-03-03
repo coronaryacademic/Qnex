@@ -2321,7 +2321,7 @@ window.startImportProcess = function () {
       const cancelBtn = document.createElement("button");
       cancelBtn.textContent = "Cancel";
       cancelBtn.style.cssText =
-        "padding: 8px 16px; border: none; border-radius: 6px; background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 14px;";
+        "padding: 8px 16px; border: none; border-radius: 6px; background: var(--panel-2); color: var(--default); cursor: pointer; font-size: 14px;";
 
       const saveBtn = document.createElement("button");
       saveBtn.textContent = "Save";
@@ -4698,7 +4698,7 @@ window.startImportProcess = function () {
     // Build trash list
     const list = modal.querySelector("#trashList");
     if (state.trash.length === 0) {
-      list.innerHTML = '<div class="no-results">Trash is empty</div>';
+      list.innerHTML = '<div class="no-results" style="color: var(--defualt);">Trash is empty</div>';
     } else {
       state.trash
         .slice()

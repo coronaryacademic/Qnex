@@ -74,7 +74,7 @@
 /* Question Sidebar overrides */
 .question-sidebar {
   /* Inherits .sidebar styles */
-  background: var(--panel);
+  background: var(--bg-secondary);
   z-index: 1001;
   pointer-events: auto;
   min-width: 230px;
@@ -329,7 +329,7 @@ textarea:focus {
   padding-left: 30px;
   border-radius: 8px;
   cursor: pointer;
-  color: var(--text);
+  color: var(--defualt);
   background: transparent;
   transition: all 0.2s;
   border-left: none;
@@ -358,7 +358,7 @@ textarea:focus {
 }
 
 .q-folder-header:hover .folder-chevron {
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .folder-chevron.open {
@@ -376,11 +376,12 @@ textarea:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 0.9rem;
+  color: var(--defualt);
 }
 
 .question-item-meta {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 /* Sidebar Resizer */
@@ -447,7 +448,7 @@ textarea:focus {
   gap: 0.5rem;
   padding: 6px 10px 4px 30px;
   cursor: pointer;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 0.9rem;
   font-weight: 500;
   transition: all 0.2s;
@@ -461,7 +462,7 @@ textarea:focus {
   width: 20px;
   height: 20px;
   transition: transform 0.2s;
-  color: var(--muted);
+  color: var(--defualt);
   flex-shrink: 0;
   margin-right: 1px;
 }
@@ -475,11 +476,12 @@ textarea:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--defualt);
 }
 
 .folder-count {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--defualt);
   padding: 2px 6px;
   background: var(--panel-2);
   border-radius: 99px;
@@ -517,11 +519,12 @@ body.theme-light .folder-count {
   transition: all 0.2s;
   border: 1px solid var(--border);
   background: var(--panel-2);
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .trash-btn:hover {
   background: var(--panel-hover);
+  color: var(--defualt);
 }
 
 .trash-btn.danger {
@@ -529,9 +532,6 @@ body.theme-light .folder-count {
   border-color: rgba(239, 68, 68, 0.3);
 }
 
-.trash-btn.danger:hover {
-  background: rgba(239, 68, 68, 0.1);
-}
 
 /* Multi-select styling */
 .question-item.selected {
@@ -2787,4 +2787,12 @@ body.theme-light .toolbar-search {
 
 body.theme-light .toolbar-search {
   background-color: transparent;
+}
+
+.search-results-header {
+  background-color: var(--bg-secondary);
+}
+
+.search-results-header h2 {
+  color: var(--defualt);
 }

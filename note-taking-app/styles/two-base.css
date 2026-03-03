@@ -542,7 +542,7 @@
 
 .pinned-note-item .pinned-note-icon {
   flex-shrink: 0;
-  color: var(--muted);
+  color: var(--defualt);
   width: 16px;
   height: 16px;
 }
@@ -552,6 +552,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--defualt);
 }
 
 .pinned-note-item.selected {

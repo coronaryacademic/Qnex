@@ -11,12 +11,12 @@
     justify-content: center;
     cursor: pointer;
     z-index: 9999;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--defualt);
     transition: all 0.2s ease;
 }
 
 .notif-center-trigger:hover {
-    color: rgba(255, 255, 255, 0.8);
+    color:var(--accent);
     transform: scale(1.1);
 }
 
@@ -203,7 +203,7 @@ body.dungeon-open .notif-pane {
 
 .notif-pane-header {
     padding: 16px 20px;
-    background: rgba(255, 255, 255, 0.01);
+    background:var(--bg-secondary);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     justify-content: space-between;
@@ -214,7 +214,7 @@ body.dungeon-open .notif-pane {
     margin: 0;
     font-size: 11px;
     font-weight: 600;
-    color: #ffffff;
+    color: var(--defualt);
     letter-spacing: 0.8px;
     text-transform: uppercase;
     opacity: 0.65;
@@ -223,7 +223,7 @@ body.dungeon-open .notif-pane {
 .clear-notifs-btn {
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--defualt);
     font-size: 10px;
     font-weight: 600;
     cursor: pointer;
@@ -247,6 +247,12 @@ body.dungeon-open .notif-pane {
     flex-direction: column;
     gap: 6px;
     scrollbar-width: none;
+    background-color: var(--bg-secondary);
+}
+
+.notif-item-time,
+.notif-item-message{
+    color: var(--defualt);
 }
 
 .notif-list::-webkit-scrollbar {
@@ -328,9 +334,15 @@ body.dungeon-open .notif-pane {
 .notif-item-time {
     font-size: 10px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.2);
     margin-top: 2px;
 }
+
+
+body.theme-light .notif-item.success {
+    background-color: rgb(221 221 221 / 6%);
+}
+
+
 
 .notif-empty {
     padding: 40px 20px;
