@@ -76,10 +76,18 @@
   transform: translateY(-50%);
 }
 
-.dungeon-image-group.collapsed .eye-off { display: block !important; }
-.dungeon-image-group.collapsed .eye-on { display: none !important; }
-.dungeon-image-group.expanded .eye-off { display: none !important; }
-.dungeon-image-group.expanded .eye-on { display: block !important; }
+.dungeon-image-group.collapsed .eye-off {
+  display: block !important;
+}
+.dungeon-image-group.collapsed .eye-on {
+  display: none !important;
+}
+.dungeon-image-group.expanded .eye-off {
+  display: none !important;
+}
+.dungeon-image-group.expanded .eye-on {
+  display: block !important;
+}
 
 .dungeon-image-group.expanded .question-image-container {
   max-height: 2000px;
@@ -823,7 +831,6 @@
   background: var(--bg-secondary);
 }
 
-
 body.theme-light .dungeon-q-box:nth-child(even),
 body.theme-light .dungeon-q-box:nth-child(odd) {
   color: black !important;
@@ -893,7 +900,6 @@ body.theme-light .dungeon-q-box.active.solved:nth-child(even) {
   background: #f0cc23 !important;
   color: var(--defualt);
 }
-
 
 .dungeon-q-box.active.revealed-state:nth-child(odd),
 .dungeon-q-box.active.revealed-state:nth-child(even) {
@@ -1075,7 +1081,7 @@ body.theme-light .dungeon-q-box.solved {
   display: block;
   text-align: left;
 }
- 
+
 .dungeon-explanation-panel.align-left {
   padding: 18px 80px 160px 80px;
 }
@@ -1335,7 +1341,9 @@ body.theme-light .dungeon-q-box.solved {
 
 /* Also handle toolbar submit button alignment */
 .dungeon-main-panel.align-center ~ .dungeon-footer #dungeonSubmitBlockBtn,
-.dungeon-explanation-panel.align-center ~ .dungeon-footer #dungeonSubmitBlockBtn {
+.dungeon-explanation-panel.align-center
+  ~ .dungeon-footer
+  #dungeonSubmitBlockBtn {
   margin-left: auto;
   margin-right: auto;
 }
@@ -1791,6 +1799,66 @@ body.theme-light .dungeon-q-box.solved {
 .dungeon-topbar-center {
   display: flex;
   align-items: center;
+}
+
+/* Topbar Nav (Prev/Next) - shown when floating toolbar is hidden */
+.dungeon-topbar-nav {
+  position: absolute;
+  right: 100%;
+  margin-right: 80px; /* Offset from center group icons */
+  display: flex;
+  align-items: center;
+  gap: 2px; /* Space between Prev and Next buttons themselves */
+  background: transparent;
+  border: none;
+  padding: 0;
+  animation: topbarNavIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dungeon-topbar-nav.hidden {
+  display: none;
+}
+
+@keyframes topbarNavIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dungeon-topbar-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.dungeon-topbar-nav-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.dungeon-topbar-nav-btn:active {
+  transform: scale(0.95);
+}
+
+.dungeon-topbar-nav-divider {
+  display: none;
 }
 
 /* Save Status */
@@ -2575,7 +2643,6 @@ body.theme-light .dungeon-search-wrapper {
   display: flex;
 }
 
-
 .lab-close-btn {
   background: transparent;
   border: none;
@@ -2632,7 +2699,6 @@ body.theme-light .dungeon-search-wrapper {
 .lab-group {
   border-bottom: 1px solid var(--border);
 }
-
 
 .lab-item {
   padding: 10px 16px;
@@ -3051,57 +3117,57 @@ body.theme-light .dungeon-search-wrapper {
 
 /* Inline Submit Button (shown when toolbar is hidden) */
 .dungeon-inline-submit-wrap {
-    margin-top: 20px;
-    margin-bottom: 0;
-    border-top: 1px solid var(--dungeon-border-dim);
-    display: flex;
-    width: 100%;
+  margin-top: 20px;
+  margin-bottom: 0;
+  border-top: 1px solid var(--dungeon-border-dim);
+  display: flex;
+  width: 100%;
 }
 
 .dungeon-inline-submit-wrap.align-left {
-    justify-content: flex-start;
+  justify-content: flex-start;
 }
 
 .dungeon-inline-submit-wrap.align-center {
-    justify-content: center;
+  justify-content: center;
 }
 
 .dungeon-inline-submit {
-    padding: 12px 28px; /* Identical padding */
-    background-color: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 18px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 120px;
-    text-align: center;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  padding: 12px 28px; /* Identical padding */
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dungeon-inline-submit:hover:not(:disabled) {
-    background-color: var(--accent);
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: var(--accent);
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .dungeon-inline-submit:active:not(:disabled) {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
 .dungeon-inline-submit.submitted,
 .dungeon-inline-submit:disabled {
-    padding: 12px 28px; /* Identical padding */
-    min-width: 120px;   /* Identical min-width */
-    color: #e2e8f0;
-    cursor: default;
-    box-shadow: none;
-    pointer-events: none;
-    opacity: 0.8;
-    font-size: 18px;
+  padding: 12px 28px; /* Identical padding */
+  min-width: 120px; /* Identical min-width */
+  color: #e2e8f0;
+  cursor: default;
+  box-shadow: none;
+  pointer-events: none;
+  opacity: 0.8;
+  font-size: 18px;
 }

@@ -201,6 +201,17 @@ export default class DungeonBase {
                   <div id="dungeonQuestionTitle" class="dungeon-question-title">Untitled Question</div>
                 </div>
                 <div class="dungeon-topbar-center">
+                  <div id="dungeonTopbarNav" class="dungeon-topbar-nav hidden">
+                    <button id="dungeonTopbarPrev" class="dungeon-topbar-nav-btn" title="Previous Question">
+                      <svg viewBox="0 0 45.86 37.3" style="width:32px;height:32px;transform:scaleX(-1);flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
+                      <span>Previous</span>
+                    </button>
+                    <div class="dungeon-topbar-nav-divider"></div>
+                    <button id="dungeonTopbarNext" class="dungeon-topbar-nav-btn" title="Next Question">
+                      <svg viewBox="0 0 45.86 37.3" style="width:32px;height:32px;flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
+                      <span>Next</span>
+                    </button>
+                  </div>
                 </div>
                 <div class="dungeon-topbar-right">
                   <button id="dungeonLabBtn" class="dungeon-topbar-btn" title="Lab Values">
@@ -1181,6 +1192,16 @@ export default class DungeonBase {
             });
         }
 
+        // Topbar Prev/Next nav buttons (visible when toolbar is hidden)
+        const topbarPrevBtn = document.getElementById('dungeonTopbarPrev');
+        const topbarNextBtn = document.getElementById('dungeonTopbarNext');
+        if (topbarPrevBtn) {
+            topbarPrevBtn.onclick = () => this.navPrev();
+        }
+        if (topbarNextBtn) {
+            topbarNextBtn.onclick = () => this.navNext();
+        }
+
         // Load saved states
         const savedSidebarState = localStorage.getItem('dungeonSidebarCollapsed');
         if (savedSidebarState === 'true') {
@@ -1311,6 +1332,12 @@ export default class DungeonBase {
             if (span) {
                 span.textContent = this.state.toolbarVisible ? 'Hide Toolbar' : 'Show Toolbar';
             }
+        }
+
+        // Show/hide topbar nav buttons (Prev/Next) when toolbar is hidden
+        const topbarNav = document.getElementById('dungeonTopbarNav');
+        if (topbarNav) {
+            topbarNav.classList.toggle('hidden', this.state.toolbarVisible);
         }
     }
 
