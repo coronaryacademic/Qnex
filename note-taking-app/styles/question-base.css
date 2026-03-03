@@ -150,7 +150,7 @@
 
 .question-header .icon-btn:hover {
   background: var(--panel-hover);
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .question-header .icon-btn:hover svg {

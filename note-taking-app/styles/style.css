@@ -1954,7 +1954,7 @@ body.fullscreen .sidebar-resizer {
 /* Topbar Button Hover Effects */
 .topbar .icon-btn:hover {
   background: var(--panel-hover);
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .topbar .icon-btn:hover svg {
