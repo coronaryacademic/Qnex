@@ -1169,7 +1169,7 @@ body.theme-light .menu-item + .menu-item::before {
   padding: 8px 36px 8px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--panel-2);
   color: var(--text);
   font-size: 14px;
   outline: none;
@@ -1179,10 +1179,17 @@ body.theme-light .menu-item + .menu-item::before {
 .sidebar-search input:focus {
   border-color: var(--accent);
   background: var(--panel);
+  color: var(--text);
+
+}
+
+.sidebar-search input:focus::placeholder {
+  color: var(--text);
+
 }
 
 .sidebar-search input::placeholder {
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .sidebar-search .clear-search {
@@ -1917,7 +1924,7 @@ body.fullscreen .sidebar-resizer {
 .icon-btn {
   background: transparent;
   border: none;
-  color: var(--muted);
+  color: var(--defualt);
   padding: 6px;
   border-radius: 6px;
   cursor: pointer;

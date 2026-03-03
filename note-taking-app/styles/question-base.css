@@ -48,7 +48,7 @@
 /* Ensure empty state SVG handles theming via currentColor */
 .question-empty-state svg {
   margin-bottom: 30px !important;
-  color: var(--muted);
+  color: var(--defualt);
   /* Default color */
   opacity: 0.3;
   transition: color 0.3s;
@@ -59,12 +59,12 @@
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .question-empty-state p {
   font-size: 0.95rem;
-  color: var(--muted);
+  color: var(--defualt);
   max-width: 400px;
   line-height: 1.5;
   margin: 0;
@@ -169,7 +169,7 @@
 
 #createSessionBtn.active {
   background: var(--panel-hover);
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 /* ... existing styles ... */
@@ -485,6 +485,10 @@ textarea:focus {
   border-radius: 99px;
 }
 
+body.theme-light .folder-count {
+  background:transparent;
+}
+
 .q-folder-content {
   padding-left: 1.2rem;
 }
@@ -607,7 +611,7 @@ textarea:focus {
     sans-serif;
   font-size: 15px;
   line-height: 1.8;
-  color: var(--text);
+  color: var(--defualt);
   background: var(--bg);
   outline: none;
   white-space: pre-wrap;
@@ -682,7 +686,7 @@ textarea:focus {
 /* Model Selector Styles */
 .model-selector {
   background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  color: var(--defualt);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px 8px;
@@ -928,7 +932,7 @@ div[data-tab-content="recent-sessions"].active {
 
 .session-title {
   font-weight: 600;
-  color: var(--text);
+  color: var(--defualt);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1211,12 +1215,12 @@ div[data-tab-content="recent-sessions"].active {
   font-size: 1.5rem;
   font-weight: 500;
   margin-bottom: 0.25rem;
-  color: var(--text);
+  color: var(--defualt);
   letter-spacing: -0.2px;
 }
 
 .stats-header p {
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 0.9rem;
   margin: 0;
 }
@@ -1362,8 +1366,14 @@ div[data-tab-content="recent-sessions"].active {
 
 .donut-track {
   fill: none;
-  stroke: var(--panel-2);
+  stroke: var(--bg-secondary);
   stroke-width: 10;
+}
+
+body.theme-light .stats-row-badge, 
+body.theme-light .donut-track {
+  stroke: #ffffff5e;
+  background-color: #ffffff5e;
 }
 
 .donut-fill {
@@ -1390,14 +1400,14 @@ div[data-tab-content="recent-sessions"].active {
 .donut-pct {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--defualt);
   line-height: 1;
   margin-top: -10px; /* Stronger optical adjustment */
 }
 
 .donut-sub {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--defualt);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
@@ -1464,7 +1474,7 @@ div[data-tab-content="recent-sessions"].active {
   transform: translateX(-50%);
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--defualt);
   opacity: 0.9;
 }
 
@@ -1474,7 +1484,7 @@ div[data-tab-content="recent-sessions"].active {
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--defualt);
   white-space: nowrap;
   font-weight: 500;
 }
@@ -1495,7 +1505,7 @@ div[data-tab-content="recent-sessions"].active {
 .stats-group-title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--defualt);
   margin-bottom: 0.5rem;
 }
 
@@ -1514,14 +1524,14 @@ div[data-tab-content="recent-sessions"].active {
 
 .stats-row-label {
   font-size: 0.95rem;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .stats-row-badge {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text);
-  background: var(--panel-2);
+  color: var(--defualt);
+  background: var(--bg-secondary);
   padding: 2px 8px;
   border-radius: 4px;
   min-width: 32px;
@@ -1797,7 +1807,7 @@ div[data-tab-content="recent-sessions"].active {
 }
 
 .toolbar-search svg {
-  color: var(--muted);
+  color: var(--defualt);
   opacity: 1 !important;
   pointer-events: none;
   flex-shrink: 0;
@@ -1826,7 +1836,7 @@ div[data-tab-content="recent-sessions"].active {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .sort-control select {
@@ -1849,10 +1859,14 @@ div[data-tab-content="recent-sessions"].active {
   padding: 2px;
 }
 
+body.theme-light .view-toggle-group {
+  background: transparent
+}
+
 .view-btn {
   background: transparent;
   border: none;
-  color: var(--muted);
+  color: var(--defualt);
   padding: 0 12px;
   height: 28px;
   font-size: 0.75rem;
@@ -1901,7 +1915,7 @@ div[data-tab-content="recent-sessions"].active {
 .session-title {
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--text);
+  color: var(--defualt);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -1912,7 +1926,7 @@ div[data-tab-content="recent-sessions"].active {
 
 .session-stats {
   font-size: 0.85rem;
-  color: var(--muted);
+  color: var(--defualt);
   white-space: nowrap;
   opacity: 0.8;
 }
@@ -1945,7 +1959,7 @@ div[data-tab-content="recent-sessions"].active {
 .standard-tool-btn {
   background: var(--panel-2);
   border: 1px solid var(--border);
-  color: var(--muted);
+  color: var(--defualt);
   padding: 0 10px;
   height: 28px;
   border-radius: 4px;
@@ -1958,9 +1972,13 @@ div[data-tab-content="recent-sessions"].active {
   transition: all 0.2s ease;
 }
 
+body.theme-light .standard-tool-btn {
+  background: transparent;
+}
+
 .standard-tool-btn:hover {
-  color: var(--text);
-  border-color: var(--muted);
+  color: var(--defualt);
+  border-color: var(--defualt);
   background: var(--panel-hover);
 }
 
@@ -2065,7 +2083,7 @@ div[data-tab-content="recent-sessions"].active {
 .tag-drop-menu {
   position: fixed;
   min-width: 180px;
-  background: var(--panel);
+  background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.18);
@@ -2087,7 +2105,7 @@ div[data-tab-content="recent-sessions"].active {
   border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
-  color: var(--text);
+  color: var(--defualt);
   transition: background 0.15s;
   user-select: none;
 }
@@ -2145,7 +2163,7 @@ div[data-tab-content="recent-sessions"].active {
 .ct-section-title {
   font-size: 0.82rem;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--defualt);
   text-transform: uppercase;
   letter-spacing: 0.6px;
   margin-bottom: 0.6rem;
@@ -2160,7 +2178,7 @@ div[data-tab-content="recent-sessions"].active {
 
 .ct-section-hint {
   font-size: 0.78rem;
-  color: var(--muted);
+  color: var(--defualt);
   margin: 0 auto 1rem !important;
   opacity: 0.75;
   text-align: center !important;
@@ -2214,7 +2232,7 @@ div[data-tab-content="recent-sessions"].active {
   background: var(--panel-2, rgba(0,0,0,0.04));
   border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -2272,7 +2290,7 @@ div[data-tab-content="recent-sessions"].active {
 .ct-dropdown {
   position: fixed;
   min-width: 220px;
-  background: var(--panel);
+  background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 4px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
@@ -2303,7 +2321,7 @@ div[data-tab-content="recent-sessions"].active {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.82rem;
-  color: var(--text);
+  color: var(--defualt);
   transition: background 0.12s;
   user-select: none;
 }
@@ -2327,7 +2345,7 @@ div[data-tab-content="recent-sessions"].active {
 .ct-dropdown-count {
   margin-left: auto;
   font-size: 0.7rem;
-  color: var(--muted);
+  color: var(--defualt);
   background: var(--panel-2);
   padding: 2px 8px;
   border-radius: 2px;
@@ -2369,7 +2387,7 @@ div[data-tab-content="recent-sessions"].active {
 .ct-option-label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--defualt);
   margin: 0 auto 8px !important;
   text-align: center !important;
 }
@@ -2381,7 +2399,7 @@ div[data-tab-content="recent-sessions"].active {
 
 .ct-option-hint {
   font-size: 0.73rem;
-  color: var(--muted);
+  color: var(--defualt);
   margin-top: 5px;
   opacity: 0.7;
 }
@@ -2402,11 +2420,11 @@ div[data-tab-content="recent-sessions"].active {
   border-radius: 4px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--defualt);
   cursor: pointer;
   transition: all 0.18s;
 }
-.ct-toggle-btn:hover { color: var(--text); }
+.ct-toggle-btn:hover { color: var(--defualt); }
 .ct-toggle-btn.ct-toggle-active {
   background: var(--accent);
   color: #fff;
@@ -2424,14 +2442,14 @@ div[data-tab-content="recent-sessions"].active {
 }
 
 .ct-qcount-max-label {
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 0.85rem;
   font-weight: 500;
 }
 
 .ct-qcount-max-label span {
   font-weight: 700;
-  color: var(--text);
+  color: var(--defualt);
   margin-left: 2px;
 }
 .ct-num-input {
@@ -2440,7 +2458,7 @@ div[data-tab-content="recent-sessions"].active {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 0.85rem;
   text-align: center;
   outline: none;
@@ -2472,13 +2490,13 @@ div[data-tab-content="recent-sessions"].active {
 .ct-stat-num {
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--defualt);
   line-height: 1;
 }
 .ct-stat-num.ct-stat-accent { color: var(--accent); }
 .ct-stat-label {
   font-size: 0.68rem;
-  color: var(--muted);
+  color: var(--defualt);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -2510,7 +2528,7 @@ div[data-tab-content="recent-sessions"].active {
   gap: 8px;
   padding: 7px 12px;
   font-size: 0.82rem;
-  color: var(--text);
+  color: var(--defualt);
   border-bottom: 1px solid var(--border);
   transition: background 0.12s;
 }
@@ -2586,7 +2604,7 @@ div[data-tab-content="recent-sessions"].active {
 }
 
 .ct-id-prefix-fix {
-  color: var(--muted);
+  color: var(--defualt);
   font-family: monospace;
   font-weight: 700;
   font-size: 0.85rem;
@@ -2761,4 +2779,12 @@ div[data-tab-content="recent-sessions"].active {
     font-size: 12px;
     border-radius: 6px;
     font-weight: 600;
+}
+
+body.theme-light .toolbar-search {
+  border-color: var(--settingsborder);
+}
+
+body.theme-light .toolbar-search {
+  background-color: transparent;
 }
