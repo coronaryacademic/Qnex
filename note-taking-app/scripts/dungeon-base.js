@@ -203,12 +203,12 @@ export default class DungeonBase {
                 <div class="dungeon-topbar-center">
                   <div id="dungeonTopbarNav" class="dungeon-topbar-nav hidden">
                     <button id="dungeonTopbarPrev" class="dungeon-topbar-nav-btn" title="Previous Question">
-                      <svg viewBox="0 0 45.86 37.3" style="width:32px;height:32px;transform:scaleX(-1);flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
+                      <svg viewBox="0 0 45.86 37.3" style="width:38px;height:38px;transform:scaleX(-1);flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
                       <span>Previous</span>
                     </button>
                     <div class="dungeon-topbar-nav-divider"></div>
                     <button id="dungeonTopbarNext" class="dungeon-topbar-nav-btn" title="Next Question">
-                      <svg viewBox="0 0 45.86 37.3" style="width:32px;height:32px;flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
+                      <svg viewBox="0 0 45.86 37.3" style="width:38px;height:38px;flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
                       <span>Next</span>
                     </button>
                   </div>
