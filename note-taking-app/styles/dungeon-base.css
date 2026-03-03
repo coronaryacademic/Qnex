@@ -2114,12 +2114,13 @@ body.theme-light .dungeon-inline-submit {
 .dungeon-calc-header span {
   font-weight: 500;
   font-size: 0.9rem;
+  color: var(--defualt);
 }
 
 .dungeon-calc-header button {
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--defualt);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -2130,17 +2131,18 @@ body.theme-light .dungeon-inline-submit {
 
 .dungeon-calc-header button:hover {
   background: rgba(var(--text-rgb, 128, 128, 128), 0.1);
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .dungeon-calc-display-container {
   padding: 12px;
-  background: var(--panel);
+  background: var(--bg-secondary);
 }
 
 .dungeon-calc-display {
   background: var(--bg);
   border: 1px solid var(--border);
+  color: var(--defualt);
   border-radius: 8px;
   padding: 8px 12px;
   text-align: right;
@@ -2155,6 +2157,7 @@ body.theme-light .dungeon-inline-submit {
   display: flex;
   padding: 0 12px 8px;
   gap: 8px;
+  background: var(--bg-secondary);
 }
 
 .dungeon-calc-mode-switch button {
@@ -2164,7 +2167,7 @@ body.theme-light .dungeon-inline-submit {
   padding: 4px;
   border-radius: 4px;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--defualt);
   cursor: pointer;
 }
 
@@ -2178,7 +2181,7 @@ body.theme-light .dungeon-inline-submit {
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   padding: 12px;
-  background: var(--panel);
+  background: var(--bg-secondary);
 }
 
 .dungeon-calc-keys.advanced-keys {
@@ -2197,7 +2200,7 @@ body.theme-light .dungeon-inline-submit {
   font-size: 1rem;
   cursor: pointer;
   background: var(--bg-hover);
-  color: var(--text);
+  color: var(--defualt);
   transition: all 0.1s;
 }
 
@@ -2490,14 +2493,14 @@ body.theme-light .dungeon-search-wrapper {
   border-radius: 16px;
   padding: 4px 12px;
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--defualt);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .lab-filter-chip:hover {
-  border-color: var(--text-muted);
-  color: var(--text);
+  border-color: var(--panel);
+  color: var(--defualt);
 }
 
 .lab-filter-chip.active {
@@ -2522,7 +2525,7 @@ body.theme-light .dungeon-search-wrapper {
   background: var(--panel-2);
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--defualt);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   position: sticky;
@@ -2542,21 +2545,6 @@ body.theme-light .dungeon-search-wrapper {
   border-bottom: none;
 }
 
-.lab-name {
-  font-weight: 500;
-  color: var(--text);
-  font-size: 0.9rem;
-  margin-right: 8px;
-}
-
-.lab-value {
-  font-family: "Roboto Mono", monospace;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  text-align: right;
-  flex-shrink: 0;
-}
-
 .dungeon-lab-sidebar.active {
   transform: translateX(0) !important;
 }
@@ -2572,12 +2560,6 @@ body.theme-light .dungeon-search-wrapper {
   display: flex;
 }
 
-.lab-sidebar-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text);
-}
 
 .lab-close-btn {
   background: transparent;
@@ -2621,7 +2603,7 @@ body.theme-light .dungeon-search-wrapper {
   left: 22px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-muted);
+  color: var(--defualt);
   pointer-events: none;
 }
 
@@ -2636,18 +2618,6 @@ body.theme-light .dungeon-search-wrapper {
   border-bottom: 1px solid var(--border);
 }
 
-.lab-group-header {
-  padding: 8px 16px;
-  background: var(--panel-2);
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
 
 .lab-item {
   padding: 10px 16px;
@@ -2663,7 +2633,7 @@ body.theme-light .dungeon-search-wrapper {
 
 .lab-name {
   font-weight: 500;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 0.9rem;
   margin-right: 8px;
 }
@@ -2671,7 +2641,7 @@ body.theme-light .dungeon-search-wrapper {
 .lab-value {
   font-family: "Roboto Mono", monospace;
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--defualt);
   text-align: right;
   flex-shrink: 0;
 }
@@ -2839,7 +2809,8 @@ body.theme-light .dungeon-search-wrapper {
   top: 80px;
   right: 24px;
   z-index: 2500;
-  background: var(--panel);
+  background: var(--bg-secondary);
+  color: var(--defualt);
   border: 1px solid var(--border);
   padding: 8px 14px;
   border-radius: 50px;
