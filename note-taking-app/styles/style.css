@@ -123,25 +123,25 @@ body {
 
 /* ── LIGHT THEME ── Warm off-white, slate accent, refined minimal ── */
 body.theme-light {
-  --bg: #f5f3ef;           /* Warm parchment background */
-  --panel: #ffffff;        /* Pure white panels */
+  --bg: #e9ecf5;           /* Warm parchment background */
+  --panel: #3a53a7 ;        /* Pure white panels */
   --panel-2: #f0ede8;      /* Warm secondary panels */
-  --text: #1c1917;         /* Almost-black warm text */
-  --muted: #000000fa;        /* Warm muted stone */
-  --accent: #4f46e5;       /* Indigo accent */
-  --accent-2: #6366f1;     /* Lighter indigo */
+  --text: #ffffff;         /* Almost-black warm text */
+  --muted: #dddddd;        /* Warm muted stone */
+  --accent: #3a53a7;       /* Indigo accent */
+  --accent-2: #3a53a7;     /* Lighter indigo */
   --border: #a2a2a2;       /* Warm soft border */
   --chip: #ede9e3;         /* Warm chip background */
   --shadow: 0 2px 16px rgba(28, 25, 23, 0.08), 0 1px 4px rgba(28, 25, 23, 0.04);
   --panel-hover: rgba(79, 70, 229, 0.06); /* Indigo tinted hover */
   --borderX: #d6d0c8;
   --boot: #1c1917;
-  --settingsborder: #d1cdc6;
+  --settingsborder: #8f8f8f;
   --bg-secondary: #ffffff;
-  --bg-primary: #f5f3ef;
+  --bg-primary: #e9ecf5;
   --success: #16a34a;
   --danger: #dc2626;
-  --defualt: #1c1917;
+  --defualt: #141016;
   --scrollbar-thumb: rgba(79, 70, 229, 0.18);
   --scrollbar-thumb-hover: #4f46e5;
 }
@@ -6324,3 +6324,6 @@ ol.editor-block {
 }
 
 
+.dungeon-sidebar-questions {
+  scrollbar-width: none;
+}

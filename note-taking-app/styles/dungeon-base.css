@@ -576,7 +576,7 @@
   position: fixed;
   top: 70px;
   right: 20px;
-  background: var(--panel);
+  background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px;
@@ -620,7 +620,7 @@
 .dungeon-toolbar-menu-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--defualt);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 6px 12px 4px 12px;
@@ -639,7 +639,7 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: var(--text);
+  color: var(--defualt);
   cursor: pointer;
   text-align: left;
   font-size: 0.9rem;
@@ -672,7 +672,7 @@
   width: 100%;
   padding: 8px;
   border-radius: 6px;
-  color: var(--text-muted);
+  color: var(--defualt);
 }
 
 .dungeon-menu-grid button:hover {
@@ -724,7 +724,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--panel);
+  background: var(--bg-secondary);
   border-right: 1px solid var(--border);
   z-index: -1;
   pointer-events: none;
@@ -792,6 +792,7 @@
   /* Fill sidebar width */
   height: 30px;
   border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   border-radius: 0;
   display: flex;
   align-items: center;
@@ -819,7 +820,17 @@
 
 /* Alternating Backgrounds (Zebra Formatting) */
 .dungeon-q-box:nth-child(odd) {
-  background: var(--panel);
+  background: var(--bg-secondary);
+}
+
+
+body.theme-light .dungeon-q-box:nth-child(even),
+body.theme-light .dungeon-q-box:nth-child(odd) {
+  color: black !important;
+}
+
+body.theme-light .dungeon-inline-submit {
+  background-color: #3a53a7;
 }
 
 .dungeon-q-box:nth-child(even) {
@@ -855,7 +866,7 @@
 
 /* Active with no state — keep original alternating colors */
 .dungeon-q-box.active:nth-child(odd) {
-  background: var(--panel) !important;
+  background: var(--bg-secondary) !important;
 }
 .dungeon-q-box.active:nth-child(even) {
   background: var(--panel-2) !important;
@@ -1988,7 +1999,7 @@
 .dungeon-theme-display {
   font-size: 0.9rem;
   font-weight: 500;
-  color: var(--text);
+  color: var(--defualt);
   text-transform: capitalize;
   user-select: none;
   min-width: 80px;
@@ -2239,6 +2250,14 @@
   pointer-events: auto;
 }
 
+body.theme-light .dungeon-search-wrapper.active {
+  border-color: var(--settingsborder);
+}
+
+body.theme-light .dungeon-search-wrapper {
+  background-color: transparent;
+}
+
 .dungeon-search-container {
   display: flex;
   align-items: center;
@@ -2417,7 +2436,7 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--defualt);
 }
 
 /* Close btn removed from HTML but keep style just in case */
