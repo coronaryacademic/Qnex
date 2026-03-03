@@ -885,7 +885,7 @@ window.startImportProcess = function () {
 
     const messageEl = document.createElement("p");
     messageEl.style.cssText =
-      "margin: 0 0 20px 0; color: var(--muted); font-size: 14px;";
+      "margin: 0 0 20px 0; color: var(--defualt); font-size: 14px;";
     messageEl.textContent = message;
 
     const buttonsContainer = document.createElement("div");
@@ -2254,7 +2254,7 @@ window.startImportProcess = function () {
         {
           text: "Cancel",
           bg: "var(--panel-2)",
-          color: "var(--text)",
+          color: "var(--defualt)",
           callback: () => resolve(false),
         },
         {
@@ -2305,7 +2305,7 @@ window.startImportProcess = function () {
 
       const titleEl = document.createElement("h3");
       titleEl.style.cssText =
-        "margin: 0 0 12px 0; color: var(--text); font-size: 18px;";
+        "margin: 0 0 12px 0; color: var(--default); font-size: 18px;";
       titleEl.textContent = title;
 
       const inp = document.createElement("input");

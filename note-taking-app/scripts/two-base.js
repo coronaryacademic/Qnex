@@ -7485,18 +7485,18 @@
     // Create dialog
     const dialog = document.createElement("div");
     dialog.style.cssText =
-      "background: var(--panel); border-radius: 12px; padding: 24px; min-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);";
+      "background: var(--bg-secondary); border-radius: 12px; padding: 24px; min-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);";
 
     // Title
     const title = document.createElement("h3");
     title.style.cssText =
-      "margin: 0 0 12px 0; color: var(--text); font-size: 18px;";
+      "margin: 0 0 12px 0; color: var(--defualt); font-size: 18px;";
     title.textContent = "Delete Notes";
 
     // Message
     const message = document.createElement("p");
     message.style.cssText =
-      "margin: 0 0 20px 0; color: var(--muted); font-size: 14px;";
+      "margin: 0 0 20px 0; color: var(--defualt); font-size: 14px;";
     message.textContent = `Delete ${count} selected note${count > 1 ? "s" : ""
       }?`;
 
@@ -7509,7 +7509,7 @@
     const cancelBtn = document.createElement("button");
     cancelBtn.textContent = "Cancel";
     cancelBtn.style.cssText =
-      "padding: 8px 16px; border: none; border-radius: 6px; background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 14px;";
+      "padding: 8px 16px; border: none; border-radius: 6px; background: var(--panel-2); color: var(--defualt); cursor: pointer; font-size: 14px;";
 
     // Delete button
     const deleteBtn = document.createElement("button");
