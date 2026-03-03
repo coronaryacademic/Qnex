@@ -2870,17 +2870,19 @@ body.theme-light .dungeon-search-wrapper {
   padding: 20px 24px 12px 24px;
   text-align: center;
   border-bottom: 1px solid var(--border);
+  background-color: var(--bg-secondary);
 }
 
 .dungeon-modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .dungeon-modal-body {
   padding: 20px 24px;
+  background-color: var(--bg-secondary);
 }
 
 .dungeon-results-summary {
@@ -2938,6 +2940,7 @@ body.theme-light .dungeon-search-wrapper {
   display: flex;
   justify-content: stretch;
   gap: 12px;
+  background-color: var(--bg-secondary);
 }
 
 .dungeon-btn {
@@ -2958,7 +2961,7 @@ body.theme-light .dungeon-search-wrapper {
 
 .dungeon-btn.secondary {
   background: var(--panel-2);
-  color: var(--text);
+  color: var(--defualt);
   border: 1px solid var(--border);
 }
 
