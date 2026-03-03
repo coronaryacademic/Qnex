@@ -310,7 +310,7 @@
             </svg>
           </div>
           <div class="workspace-empty-text" style="font-size: 1.3rem; font-weight: 600;">This folder is empty</div>
-          <div class="workspace-empty-hint" style="font-size: 0.95rem; color: var(--muted); text-align: center; max-width: 300px; line-height: 1.5;">
+          <div class="workspace-empty-hint" style="font-size: 0.95rem; color: var(--defualt); text-align: center; max-width: 300px; line-height: 1.5;">
             Right-click to add a new note or subfolder or to import, or navigate back home.
           </div>
         </div>

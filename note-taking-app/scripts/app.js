@@ -5239,21 +5239,21 @@ window.startImportProcess = function () {
                 <h2>Appearance</h2>
                 <div class="setting-group">
                   <h3>Theme</h3>
-                  <p style="margin-bottom: 1rem;">Choose your preferred visual style.</p>
+                  <p style="margin-bottom: 1rem; color: var(--defualt);">Choose your preferred visual style.</p>
                   <div class="theme-grid">
                     <div class="theme-card" data-theme="dark">
                       <div class="theme-preview">
                         <div class="sidebar-prev" style="background:#1a1a1a; border-right:1px solid #333;"></div>
                         <div class="main-prev" style="background:#111;"></div>
                       </div>
-                      <span class="theme-label">Dark</span>
+                      <span class="theme-label" style="color: var(--defualt);">Dark</span>
                     </div>
                     <div class="theme-card" data-theme="light">
                       <div class="theme-preview">
                         <div class="sidebar-prev" style="background:#ffffff; border-right:1px solid #e5e7eb;"></div>
                         <div class="main-prev" style="background:#e9e9e9;"></div>
                       </div>
-                      <span class="theme-label">Light</span>
+                      <span class="theme-label" style="color: var(--defualt);">Light</span>
                     </div>
                   </div>
                 </div>
@@ -5269,7 +5269,7 @@ window.startImportProcess = function () {
                      <div class="setting-info">
                       <h4>Local Folder</h4>
                       <p>Your notes are stored locally on your device.</p>
-                      <code id="data-dir-display" style="display:block; margin-top:4px; font-size: 12px; background:var(--bg-primary); padding:4px; border-radius:4px;">Loading path...</code>
+                      <code id="data-dir-display" style="display:block; margin-top:4px; font-size: 12px; background:var(--bg-primary); padding:4px; border-radius:4px; color: var(--defualt);">Drive D:/MyNotes</code>
                     </div>
                     <button id="openFileLocationBtn" class="settings-btn">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>

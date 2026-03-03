@@ -102,9 +102,15 @@
   color: var(--text-primary);
 }
 
+body.theme-light .settings-nav-btn.active {
+  background-color: var(--bg-secondary);
+  color: var(--defualt);
+}
+
+/* If your variables are always in :root, just drop body.theme-root */
 .settings-nav-btn.active {
-  background-color: var(--accent-bg);
-  color: var(--accent);
+  background-color: var(--bg);
+  color: var(--defualt);
 }
 
 .settings-nav-btn svg {
@@ -156,6 +162,7 @@
   margin-bottom: 2rem;
   border-bottom: 1px solid var(--settingsborder);
   padding-bottom: 1rem;
+  color: var(--defualt);
 }
 
 .setting-group {
@@ -170,6 +177,7 @@
   margin-top: 0;
   margin-bottom: 1rem;
   font-size: 1.1rem;
+  color: var(--defualt);
 }
 
 .setting-row {
@@ -192,12 +200,13 @@
 .setting-info h4 {
   margin: 0 0 4px 0;
   font-size: 1rem;
+  color: var(--defualt);
 }
 
 .setting-info p {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--text-primary);
+  color: var(--defualt);
 }
 
 /* Toggle Switch */
@@ -297,7 +306,7 @@ input:checked+.slider:before {
   border-radius: 6px;
   border: 1px solid var(--settingsborder);
   background-color: var(--bg-primary);
-  color: var(--text-primary);
+  color: var(--defualt);
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
@@ -312,7 +321,7 @@ input:checked+.slider:before {
 }
 
 .settings-btn.danger {
-  color: var(--text-primary);
+  color: var(--defualt);
   border-color: var(--settingsborder);
   background-color: #fef2f2;
 }

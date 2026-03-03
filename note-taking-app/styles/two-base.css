@@ -66,7 +66,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--text);
+  color: var(--defualt);
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
@@ -82,7 +82,7 @@
 .breadcrumb-path {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--defualt);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -138,7 +138,7 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  background: var(--panel);
+  background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -164,7 +164,7 @@
 .workspace-item-title {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text);
+  color: var(--defualt);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -172,7 +172,7 @@
 
 .workspace-item-meta {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 /* Selected state for workspace items */
@@ -1005,7 +1005,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--muted);
+  color: var(--defualt);
   gap: 1rem;
 }
 

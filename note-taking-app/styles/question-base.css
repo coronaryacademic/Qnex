@@ -811,7 +811,7 @@ body.theme-light .folder-count {
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: var(--muted); /* Default color matching theme */
+  color: var(--defualt); /* Default color matching theme */
   cursor: pointer;
   transition: all 0.2s;
   padding: 0;
@@ -819,7 +819,7 @@ body.theme-light .folder-count {
 
 .breadcrumb-actions .icon-btn:hover {
   background: var(--panel-hover);
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .breadcrumb-actions .icon-btn svg {
