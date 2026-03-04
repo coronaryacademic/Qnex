@@ -1446,10 +1446,15 @@ body.theme-light .dungeon-q-box.solved {
 }
 
 /* Only show grab cursor when in floating mode */
-.dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.docked-left):not(
+body.theme-light .dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.docked-left):not(
     .docked-right
   ) {
   cursor: grab;
+  background-color: white;
+  .dungeon-tool-btn {
+    color: black;
+  }
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.docked-left):not(
@@ -2905,6 +2910,7 @@ body.theme-light .dungeon-search-wrapper {
   align-items: center;
   gap: 8px;
   user-select: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .dungeon-modal-overlay {
