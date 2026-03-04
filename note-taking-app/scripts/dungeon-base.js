@@ -2432,32 +2432,35 @@ export default class DungeonBase {
         if (!this.state.highlightMode) return;
         if (type === 'option') return;
 
+        // Capture static information before the event object is recycled or cleared
+        const contextBox = e.currentTarget; 
+        const touchX = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
+        const touchY = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : null;
+
         // Use a small delay so iOS has time to finalize the selection range
-        // before we read it. Without this, getSelection() may still be empty
-        // at the moment touchend fires.
         setTimeout(() => {
             const selection = window.getSelection();
             const q = this.state.questions[this.state.currentIndex];
-            const contextBox = e.currentTarget; // set by the inline ontouchend handler
-
+            
             // Un-highlight: tap on existing highlight with no selection
-            if (!selection || selection.toString().length === 0) {
-                const target = document.elementFromPoint(
-                    e.changedTouches[0].clientX,
-                    e.changedTouches[0].clientY
-                );
-                if (target && target.classList.contains('highlight')) {
-                    this.pushHistoryState();
-                    const content = target.textContent;
-                    const parent = target.parentNode;
-                    const textNode = document.createTextNode(content);
-                    parent.replaceChild(textNode, target);
-                    parent.normalize();
-                    if (type === 'main' && contextBox) {
-                        q.text = contextBox.innerHTML;
+            const hasSelection = selection && selection.rangeCount > 0 && selection.toString().length > 0;
+            
+            if (!hasSelection) {
+                if (touchX !== null && touchY !== null) {
+                    const target = document.elementFromPoint(touchX, touchY);
+                    if (target && target.classList.contains('highlight')) {
+                        this.pushHistoryState();
+                        const content = target.textContent;
+                        const parent = target.parentNode;
+                        const textNode = document.createTextNode(content);
+                        parent.replaceChild(textNode, target);
+                        parent.normalize();
+                        if (type === 'main' && contextBox) {
+                            q.text = contextBox.innerHTML;
+                        }
+                        this.updateSaveStatus('unsaved');
+                        this.saveQuestionsToBackend();
                     }
-                    this.updateSaveStatus('unsaved');
-                    this.saveQuestionsToBackend();
                 }
                 return;
             }
@@ -2465,6 +2468,10 @@ export default class DungeonBase {
             // Add highlight: text is selected
             const range = selection.getRangeAt(0);
             if (!contextBox || !contextBox.contains(range.commonAncestorContainer)) return;
+
+            // Prevent double-highlighting if already highlighted in this block
+            if (range.commonAncestorContainer.nodeType === 1 && range.commonAncestorContainer.classList.contains('highlight')) return;
+            if (range.commonAncestorContainer.parentElement && range.commonAncestorContainer.parentElement.classList.contains('highlight')) return;
 
             this.pushHistoryState();
             const span = document.createElement('span');
@@ -2481,14 +2488,50 @@ export default class DungeonBase {
                 this.updateSaveStatus('unsaved');
                 this.saveQuestionsToBackend();
             } catch (err) {
-                console.warn('Touch highlight failed (crossing tags?):', err);
+                // If surroundContents fails (crosses tags), try a more robust approach
+                try {
+                    const content = range.extractContents();
+                    span.appendChild(content);
+                    range.insertNode(span);
+                    selection.removeAllRanges();
+                    if (type === 'main') {
+                        q.text = contextBox.innerHTML;
+                    }
+                    this.updateSaveStatus('unsaved');
+                    this.saveQuestionsToBackend();
+                } catch (err2) {
+                    console.warn('Touch highlight failed (even robust method):', err2);
+                }
             }
-        }, 80); // 80 ms is enough for iOS to settle the selection
+        }, 150); // Increased delay for iPad menu animations
     }
 
-    // Mobile touch support for highlighting (kept only for highlight-button fallback)
+    // Mobile touch support for highlighting
     initMobileHighlightSupport() {
-        // Highlight-button touchend fallback: lets user tap the toolbar button
+        // 1. selectionchange: The most reliable way on iPad to detect when selection "settles"
+        document.addEventListener('selectionchange', () => {
+            if (!this.state.highlightMode) return;
+
+            // Debounce so we don't highlight while they are still dragging handles
+            clearTimeout(this._selectionTimer);
+            this._selectionTimer = setTimeout(() => {
+                const selection = window.getSelection();
+                if (selection && selection.rangeCount > 0 && selection.toString().length > 3) {
+                    const range = selection.getRangeAt(0);
+                    // Find context box
+                    let node = range.commonAncestorContainer;
+                    if (node.nodeType !== 1) node = node.parentElement;
+                    const contextBox = node.closest('.dungeon-context-box');
+                    
+                    if (contextBox) {
+                        // Trigger highlight. We pass a fake event since we only need currentTarget
+                        this.handleHighlightTouch({ currentTarget: contextBox }, 'main');
+                    }
+                }
+            }, 600); // 600ms pause in selection changes
+        });
+
+        // 2. Highlight-button touchend fallback: lets user tap the toolbar button
         // after selecting text to apply the highlight (useful on all devices).
         const bindHighlightBtn = () => {
             const highlightBtn = document.querySelector('[data-tool="highlight"]');
