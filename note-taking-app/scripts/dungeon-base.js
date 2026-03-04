@@ -4527,34 +4527,52 @@ export default class DungeonBase {
 
         let isResizing = false;
 
-        resizer.addEventListener('mousedown', (e) => {
+        const startResize = () => {
             isResizing = true;
             resizer.classList.add('active');
             document.body.style.cursor = 'col-resize';
-            e.preventDefault();
-        });
+        };
 
-        document.addEventListener('mousemove', (e) => {
+        const doResize = (clientX) => {
             if (!isResizing) return;
-
             const wrapperRect = wrapper.getBoundingClientRect();
-            // Calculate from right because the explanation panel is on the right
-            const offsetRight = wrapperRect.right - e.clientX;
+            const offsetRight = wrapperRect.right - clientX;
             const percentage = (offsetRight / wrapperRect.width) * 100;
-
-            // Constrain between 20% and 70%
             if (percentage >= 20 && percentage <= 70) {
                 expPanel.style.width = `${percentage}%`;
             }
-        });
+        };
 
-        document.addEventListener('mouseup', () => {
+        const stopResize = () => {
             if (isResizing) {
                 isResizing = false;
                 resizer.classList.remove('active');
                 document.body.style.cursor = '';
             }
+        };
+
+        // Mouse events
+        resizer.addEventListener('mousedown', (e) => {
+            startResize();
+            e.preventDefault();
         });
+        document.addEventListener('mousemove', (e) => doResize(e.clientX));
+        document.addEventListener('mouseup', stopResize);
+
+        // Touch events (iPad / touchscreen)
+        resizer.addEventListener('touchstart', (e) => {
+            startResize();
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isResizing) return;
+            doResize(e.touches[0].clientX);
+            e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('touchend', stopResize);
+        document.addEventListener('touchcancel', stopResize);
     }
 
     initImageViewer() {

@@ -988,21 +988,62 @@ body.theme-light .dungeon-q-box.solved {
   overflow-y: auto;
   padding: 85px 65px 160px 117px;
   min-width: 300px;
+  /* Allow text selection for iPad highlighting */
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 .dungeon-split-resizer {
-  width: 4px;
+  width: 18px;
   height: 100%;
-  background: var(--border);
+  background: transparent;
   cursor: col-resize;
-  transition: background 0.2s;
   flex-shrink: 0;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  position: relative;
 }
 
-.dungeon-split-resizer:hover,
-.dungeon-split-resizer.active {
+/* Thin visible line */
+.dungeon-split-resizer::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 100%;
+  background: var(--border);
+  transition: background 0.2s;
+}
+
+/* Grip dots handle in the center */
+.dungeon-split-resizer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 36px;
+  border-radius: 4px;
+  background: var(--border);
+  box-shadow: 0 -10px 0 var(--border), 0 10px 0 var(--border);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.dungeon-split-resizer:hover::before,
+.dungeon-split-resizer.active::before {
   background: var(--accent);
+}
+
+.dungeon-split-resizer:hover::after,
+.dungeon-split-resizer.active::after {
+  background: var(--accent);
+  box-shadow: 0 -10px 0 var(--accent), 0 10px 0 var(--accent);
 }
 
 .dungeon-explanation-panel {
@@ -1013,6 +1054,9 @@ body.theme-light .dungeon-q-box.solved {
   overflow-y: auto;
   padding: 52px 40px 160px 40px;
   min-width: 250px;
+  /* Allow text selection for iPad highlighting */
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 .dungeon-explanation-panel.hidden {
@@ -1171,6 +1215,14 @@ body.theme-light .dungeon-q-box.solved {
   line-height: 1.6;
   margin-bottom: 30px;
   position: relative;
+  /* Touch-drag text selection on iPad */
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+.dungeon-context-box * {
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 .dungeon-context-box img {
