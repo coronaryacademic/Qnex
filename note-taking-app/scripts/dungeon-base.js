@@ -808,7 +808,79 @@ export default class DungeonBase {
             localStorage.setItem("dungeonToolbarPos", JSON.stringify(state));
         };
 
+        const onTouchStart = (e) => {
+            // Don't allow dragging if toolbar is docked
+            if (toolbar.classList.contains('docked-top') ||
+                toolbar.classList.contains('docked-bottom') ||
+                toolbar.classList.contains('docked-left') ||
+                toolbar.classList.contains('docked-right')) {
+                return;
+            }
+
+            if (e.target.closest('.dungeon-tool-btn')) return;
+            
+            isDragging = true;
+            const touch = e.touches[0];
+            startX = touch.clientX;
+            startY = touch.clientY;
+
+            const rect = toolbar.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+
+            toolbar.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
+        };
+
+        const onTouchMove = (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); // Prevent scrolling while dragging
+            const touch = e.touches[0];
+            const dx = touch.clientX - startX;
+            const dy = touch.clientY - startY;
+
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+
+            // Constraints
+            const sidebar = document.getElementById('dungeonSidebar');
+            const sidebarWidth = sidebar ? sidebar.offsetWidth : 0;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const rect = toolbar.getBoundingClientRect();
+            const tw = rect.width;
+            const th = rect.height;
+
+            if (newLeft < sidebarWidth) newLeft = sidebarWidth;
+            if (newLeft + tw > w) newLeft = w - tw;
+            if (newTop < 0) newTop = 0;
+            if (newTop + th > h) newTop = h - th;
+
+            toolbar.style.left = newLeft + 'px';
+            toolbar.style.top = newTop + 'px';
+        };
+
+        const onTouchEnd = () => {
+            isDragging = false;
+            toolbar.style.cursor = 'grab';
+            document.body.style.userSelect = '';
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onTouchEnd);
+
+            // Save Position
+            const state = {
+                left: toolbar.style.left,
+                top: toolbar.style.top,
+                vertical: toolbar.classList.contains('vertical')
+            };
+            localStorage.setItem("dungeonToolbarPos", JSON.stringify(state));
+        };
+
         toolbar.addEventListener('mousedown', onMouseDown);
+        toolbar.addEventListener('touchstart', onTouchStart, { passive: false });
 
         // 3. Rotation Logic (Manual Double Click for robustness)
         let lastClickTime = 0;
@@ -2354,96 +2426,94 @@ export default class DungeonBase {
         }
     }
 
-    // Mobile touch support for highlighting
+    // handleHighlightTouch: mirrors handleHighlight but for touch events on iPad.
+    // Called via ontouchend on the context box element.
+    handleHighlightTouch(e, type) {
+        if (!this.state.highlightMode) return;
+        if (type === 'option') return;
+
+        // Use a small delay so iOS has time to finalize the selection range
+        // before we read it. Without this, getSelection() may still be empty
+        // at the moment touchend fires.
+        setTimeout(() => {
+            const selection = window.getSelection();
+            const q = this.state.questions[this.state.currentIndex];
+            const contextBox = e.currentTarget; // set by the inline ontouchend handler
+
+            // Un-highlight: tap on existing highlight with no selection
+            if (!selection || selection.toString().length === 0) {
+                const target = document.elementFromPoint(
+                    e.changedTouches[0].clientX,
+                    e.changedTouches[0].clientY
+                );
+                if (target && target.classList.contains('highlight')) {
+                    this.pushHistoryState();
+                    const content = target.textContent;
+                    const parent = target.parentNode;
+                    const textNode = document.createTextNode(content);
+                    parent.replaceChild(textNode, target);
+                    parent.normalize();
+                    if (type === 'main' && contextBox) {
+                        q.text = contextBox.innerHTML;
+                    }
+                    this.updateSaveStatus('unsaved');
+                    this.saveQuestionsToBackend();
+                }
+                return;
+            }
+
+            // Add highlight: text is selected
+            const range = selection.getRangeAt(0);
+            if (!contextBox || !contextBox.contains(range.commonAncestorContainer)) return;
+
+            this.pushHistoryState();
+            const span = document.createElement('span');
+            span.className = 'highlight';
+            try {
+                range.surroundContents(span);
+                selection.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.selectNodeContents(span);
+                selection.addRange(newRange);
+                if (type === 'main') {
+                    q.text = contextBox.innerHTML;
+                }
+                this.updateSaveStatus('unsaved');
+                this.saveQuestionsToBackend();
+            } catch (err) {
+                console.warn('Touch highlight failed (crossing tags?):', err);
+            }
+        }, 80); // 80 ms is enough for iOS to settle the selection
+    }
+
+    // Mobile touch support for highlighting (kept only for highlight-button fallback)
     initMobileHighlightSupport() {
-        // Check if we're on a mobile device
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        if (!isMobile) return;
-
-        // Add touch event listeners for mobile highlighting
-        document.addEventListener('touchstart', (e) => {
-            // Only handle touches in context box when highlight mode is active
-            if (!this.state.highlightMode) return;
-            
-            const contextBox = e.target.closest('.dungeon-context-box');
-            if (!contextBox) return;
-            
-            // Store touch start position
-            this.touchStartX = e.touches[0].clientX;
-            this.touchStartY = e.touches[0].clientY;
-            this.touchStartTime = Date.now();
-            this.isLongPress = false;
-        });
-
-        document.addEventListener('touchend', (e) => {
-            if (!this.state.highlightMode) return;
-            
-            const contextBox = e.target.closest('.dungeon-context-box');
-            if (!contextBox) return;
-            
-            // Check if it was a long press (for highlighting)
-            const touchDuration = Date.now() - this.touchStartTime;
-            const touchEndX = e.changedTouches[0].clientX;
-            const touchEndY = e.changedTouches[0].clientY;
-            const touchDistance = Math.sqrt(
-                Math.pow(touchEndX - this.touchStartX, 2) + 
-                Math.pow(touchEndY - this.touchStartY, 2)
-            );
-            
-            // If it was a long press (500ms+) with minimal movement, trigger highlight
-            if (touchDuration > 500 && touchDistance < 10) {
-                e.preventDefault();
-                this.isLongPress = true;
-                
-                // Get the current selection
-                const selection = window.getSelection();
-                if (selection.toString().length > 0) {
-                    // Apply highlight to the selection
-                    setTimeout(() => {
-                        this.handleHighlight(e, 'main');
-                        this.showNotification("Text highlighted!", "success");
-                    }, 100);
-                } else {
-                    // Show a hint to user to select text first
-                    this.showNotification("Select text first, then long press to highlight", "info");
-                }
+        // Highlight-button touchend fallback: lets user tap the toolbar button
+        // after selecting text to apply the highlight (useful on all devices).
+        const bindHighlightBtn = () => {
+            const highlightBtn = document.querySelector('[data-tool="highlight"]');
+            if (highlightBtn && !highlightBtn._touchBound) {
+                highlightBtn._touchBound = true;
+                highlightBtn.addEventListener('touchend', (e) => {
+                    if (!this.state.highlightMode) return;
+                    const selection = window.getSelection();
+                    if (selection && selection.toString().length > 0) {
+                        e.preventDefault();
+                        // Find the context box the selection is inside
+                        const range = selection.getRangeAt(0);
+                        const contextBox = range.commonAncestorContainer.nodeType === 1
+                            ? range.commonAncestorContainer.closest('.dungeon-context-box')
+                            : range.commonAncestorContainer.parentElement.closest('.dungeon-context-box');
+                        if (!contextBox) return;
+                        const fakeEvent = { currentTarget: contextBox, target: contextBox, changedTouches: e.changedTouches };
+                        this.handleHighlightTouch(fakeEvent, 'main');
+                    }
+                });
             }
-        });
-
-        // Also add a fallback: if user selects text and then taps highlight button
-        const highlightBtn = document.querySelector('[data-tool="highlight"]');
-        if (highlightBtn) {
-            highlightBtn.addEventListener('touchend', (e) => {
-                if (!this.state.highlightMode) return;
-                
-                const selection = window.getSelection();
-                if (selection.toString().length > 0) {
-                    e.preventDefault();
-                    this.handleHighlight(e, 'main');
-                    this.showNotification("Text highlighted!", "success");
-                }
-            });
-        }
-
-        // Prevent default touch behavior on context box when in highlight mode
-        document.addEventListener('touchmove', (e) => {
-            if (!this.state.highlightMode) return;
-            
-            const contextBox = e.target.closest('.dungeon-context-box');
-            if (!contextBox) return;
-            
-            // Allow normal scrolling, but track if we're selecting text
-            const touchDistance = Math.sqrt(
-                Math.pow(e.touches[0].clientX - this.touchStartX, 2) + 
-                Math.pow(e.touches[0].clientY - this.touchStartY, 2)
-            );
-            
-            // If movement is minimal, we might be trying to select text
-            if (touchDistance < 5) {
-                // Don't prevent default - let text selection work
-            }
-        });
+        };
+        // Try immediately and after a short delay in case toolbar renders late
+        bindHighlightBtn();
+        setTimeout(bindHighlightBtn, 1000);
     }
 
     saveQuestionsToBackend() {
@@ -2899,6 +2969,23 @@ export default class DungeonBase {
                     floatingWrap.style.top = startTop + 'px';
                     e.preventDefault();
                 });
+
+                floatingWrap.addEventListener('touchstart', (e) => {
+                    isDragging = true;
+                    const touch = e.touches[0];
+                    startX = touch.clientX;
+                    startY = touch.clientY;
+                    const rect = floatingWrap.getBoundingClientRect();
+                    startLeft = rect.left;
+                    startTop = rect.top;
+                    floatingWrap.style.cursor = 'grabbing';
+                    floatingWrap.style.right = 'auto';
+                    floatingWrap.style.left = startLeft + 'px';
+                    floatingWrap.style.top = startTop + 'px';
+                    // We don't preventDefault here to allow scrolling if they just tap, 
+                    // but we do in touchmove.
+                });
+
                 document.addEventListener('mousemove', (e) => {
                     if (!isDragging) return;
                     let newLeft = startLeft + e.clientX - startX;
@@ -2915,10 +3002,34 @@ export default class DungeonBase {
                     floatingWrap.style.left = newLeft + 'px';
                     floatingWrap.style.top  = newTop + 'px';
                 });
-                document.addEventListener('mouseup', () => {
+
+                document.addEventListener('touchmove', (e) => {
+                    if (!isDragging) return;
+                    e.preventDefault(); // Prevent scrolling while dragging
+                    const touch = e.touches[0];
+                    let newLeft = startLeft + touch.clientX - startX;
+                    let newTop = startTop + touch.clientY - startY;
+
+                    // Constraints
+                    const rect = floatingWrap.getBoundingClientRect();
+                    const maxX = window.innerWidth - rect.width;
+                    const maxY = window.innerHeight - rect.height;
+
+                    newLeft = Math.max(0, Math.min(newLeft, maxX));
+                    newTop = Math.max(0, Math.min(newTop, maxY));
+
+                    floatingWrap.style.left = newLeft + 'px';
+                    floatingWrap.style.top  = newTop + 'px';
+                }, { passive: false });
+
+                const stopDrag = () => {
                     isDragging = false;
                     if (floatingWrap) floatingWrap.style.cursor = 'grab';
-                });
+                };
+
+                document.addEventListener('mouseup', stopDrag);
+                document.addEventListener('touchend', stopDrag);
+                document.addEventListener('touchcancel', stopDrag);
             }
             // Move timerEl to floatingWrap
             const timerParent = timerEl.closest('.dungeon-stat-item');
@@ -3207,6 +3318,47 @@ export default class DungeonBase {
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
             });
+
+            // Touch support for iPad sidebar resizing
+            handle.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const startX = touch.clientX;
+                const startWidth = this.el.sidebar.offsetWidth;
+                this.el.sidebar.style.transition = 'none';
+                const main = document.querySelector('.dungeon-main');
+                if (main) main.style.transition = 'none';
+                const toolbar = document.getElementById('dungeonToolbar');
+                if (toolbar) toolbar.style.transition = 'none';
+
+                const onTouchMove = (ev) => {
+                    ev.preventDefault();
+                    const newWidth = startWidth + (ev.touches[0].clientX - startX);
+                    if (newWidth >= 50 && newWidth <= 300) {
+                        this.el.sidebar.style.width = newWidth + 'px';
+                        if (main) {
+                            main.style.left = (this.state.toolbarPosition === 'left')
+                                ? (newWidth + 50) + 'px'
+                                : newWidth + 'px';
+                        }
+                        if (this.state.toolbarPosition === 'left' && toolbar) {
+                            toolbar.style.left = newWidth + 'px';
+                        }
+                    }
+                };
+
+                const onTouchEnd = () => {
+                    localStorage.setItem("dungeonSidebarWidth", parseInt(this.el.sidebar.style.width));
+                    this.el.sidebar.style.transition = '';
+                    if (main) main.style.transition = '';
+                    if (toolbar) toolbar.style.transition = '';
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', onTouchEnd);
+                };
+
+                document.addEventListener('touchmove', onTouchMove, { passive: false });
+                document.addEventListener('touchend', onTouchEnd);
+            }, { passive: false });
 
             this.el.sidebar.appendChild(handle);
         }
@@ -4056,7 +4208,7 @@ export default class DungeonBase {
 
         let html = `
     <!-- Context Box (Image/Code) -->
-    <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event, 'main')">
+    <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event, 'main')" ontouchend="window.DungeonBase.handleHighlightTouch(event, 'main')">
            ${window.Markdown ? window.Markdown.render(q.text || q.body || q.content || "No question details.") : (q.text || q.body || q.content || "No question details.")}
     </div>
 
