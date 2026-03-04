@@ -2240,6 +2240,25 @@ body.theme-light .standard-tool-btn {
   user-select: none;
 }
 
+body.theme-light .ct-id-search-wrap {
+  background-color: #ffffff5e;
+}
+body.theme-light .ct-cat-btn {
+  background-color: #ffffff5e;
+}
+body.theme-light .ct-num-input {
+  background-color: #ffffff5e;
+}
+body.theme-light .ct-toggle-group {
+  background-color: #ffffff5e;
+}
+body.theme-light .ct-preview-stats {
+  background-color: #ffffff5e;
+}
+body.theme-light .ct-preview-list {
+  background-color: #ffffff5e;
+}
+
 .ct-cat-btn:hover {
   border-color: var(--accent);
   background: rgba(var(--accent-rgb), 0.06);
