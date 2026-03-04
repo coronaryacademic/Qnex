@@ -3968,8 +3968,13 @@ Question tag ID:
 
             // Tag ID (New Numeric System)
             if (tagIdIdx !== -1) {
-                const tagIdStr = chunk.substring(tagIdIdx + "Question tag ID:".length).trim().split('\n')[0];
+                const tagIdRaw = chunk.substring(tagIdIdx + "Question tag ID:".length).trim().split('\n')[0];
+                // Support optional topic after comma: "1.1.0.0.7731, Stroke"
+                const commaSplit = tagIdRaw.split(',');
+                const tagIdStr = commaSplit[0].trim();
+                const topicText = commaSplit[1] ? commaSplit[1].trim() : '';
                 q.spId = "QNX-" + tagIdStr;
+                if (topicText) q.spTopic = topicText;
                 const derivedTags = this._ctGetTagsFromNumericId(tagIdStr);
                 if (derivedTags) {
                     q.tags = derivedTags;
@@ -4847,37 +4852,60 @@ Provide exactly four options labeled (A), (B), (C), (D).
 MARK ONLY ONE CORRECT ANSWER WITH AN ASTERISK LIKE *(B). EVERY QUESTION MUST HAVE AN ASTERISK.
 Randomize which letter is correct.
 ${hasTags ? "DO NOT include the 'Question tag ID' field as the user has already specified the tags." : "The final field MUST be 'Question tag ID' with the numeric code."}
-The explanation must justify why the correct option is correct and briefly explain why the others are wrong.
-No extra blank lines inside a question.
+The explanation MUST follow this exact structure with a BLANK LINE between each section:
+1. A paragraph explaining why the CORRECT answer is correct (no label, just text).
+[blank line]
+2. One paragraph per wrong option, each starting with its bold label: **(Choice X)** followed by the explanation.
+[blank line between each Choice paragraph]
+3. A final bold label **Educational objective:** followed by one concise sentence.
 Separate multiple questions with one blank line only.
+
+TAG ID FORMAT: The tag ID line supports an optional topic label after a comma:
+Question tag ID:
+<numeric_id>, <Topic label>
+Example: 1.1.0.0.7731, Stroke
+If there is no specific topic, omit the comma and topic. Do NOT make up a topic — only include it when it is a precise, well-known clinical topic.
 
 Template to follow exactly:
 Question title: <brief title>
 Question context: <clinical vignette ending with a ? lead-in question>
-![Image Description](https://upload.wikimedia.org/wikipedia/commons/...)
 Question options:
 (A) <indirect option description>
 (B) <indirect option description>
 (C) <indirect option description>
 (D) <indirect option description>
 Question explanation:
-<explanation text including optional images if helpful>
-${hasTags ? "" : "Question tag ID:\n<numeric_id>"}
+<Paragraph explaining why the correct answer is correct.>
+
+**(Choice X)** <Explanation of why this wrong option is incorrect.>
+
+**(Choice X)** <Explanation of why this wrong option is incorrect.>
+
+**(Choice X)** <Explanation of why this wrong option is incorrect.>
+
+**Educational objective:** <One concise sentence summarizing the key takeaway.>
+${hasTags ? "" : "Question tag ID:\n<numeric_id>, <Topic>"}
 
 Example of correct formatting (Use this as the fallback formatting guide):
 
-Question title: Knee Trauma Complication
-Question context: A 19-year-old male is brought to the emergency department after injuring his left knee in a motor vehicle accident. Physical examination reveals a moderate level of pain over the leg but no motor or sensory deficits. An x-ray of the left leg shows several small fractures in the distal femur and proximal tibia. After thorough evaluation he is placed in a cast that spans the length of his entire leg. At a follow-up appointment 4 days later he is unable to evert and dorsiflex the left foot but the pain has diminished. Which of the following most likely explains these findings?
-![Common Peroneal Nerve Path](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Placeholder_LC.svg/1200px-Placeholder_LC.svg.png)
+Question title: Cast-Induced Nerve Palsy
+Question context: A 19-year-old male is brought to the emergency department after injuring his left knee in a motor vehicle accident. Physical examination reveals moderate pain over the leg but no motor or sensory deficits. An x-ray shows several small fractures in the distal femur and proximal tibia. He is placed in a full-leg cast. At follow-up 4 days later he is unable to evert and dorsiflex the left foot but the pain has diminished. Which of the following most likely explains these findings?
 Question options:
-(A) A nerve was injured in the motor vehicle accident
-(B) Limb compartment syndrome
-(C) Medial tibial stress syndrome
-*(D) A nerve was compressed
+*(A) A nerve entrapped at the lateral knee was compressed by external fixation
+(B) Prolonged vascular insufficiency to the anterior compartment
+(C) Traction injury to the sciatic nerve during the accident
+(D) Pressure-induced ischemia of the deep posterior compartment
 Question explanation:
-This patient developed a common fibular (peroneal) nerve palsy due to compression by a tight-fitting leg cast. The common fibular nerve wraps around the neck of the fibula, making it highly susceptible to external compression. Injury results in foot drop (inability to dorsiflex) and loss of foot eversion. Option (A) is incorrect as he had no deficits initially. Compartment syndrome (B) presents with severe pain out of proportion to exam, but his pain diminished.
-Question tag ID:
-1.4.1.0.1234
+This patient developed common fibular (peroneal) nerve palsy due to compression by a tight-fitting leg cast. The nerve wraps around the neck of the fibula, making it highly vulnerable to external compression. Injury results in foot drop (inability to dorsiflex) and loss of eversion — exactly what this patient developed after cast placement with no initial deficit.
+
+**(Choice B)** Vascular insufficiency would cause ischemic pain and tissue necrosis, not painless motor loss. His pain actually diminished, making an ischemic cause very unlikely.
+
+**(Choice C)** A traction injury to the sciatic nerve would have caused deficits immediately at the scene, not 4 days later after cast application.
+
+**(Choice D)** Deep posterior compartment syndrome presents with severe, worsening pain and sensory loss in the sole of the foot — not foot drop and eversion loss.
+
+**Educational objective:** Common fibular nerve compression at the fibular neck, often from a tight cast or prolonged external pressure, causes foot drop and loss of foot eversion.
+${hasTags ? "" : "Question tag ID:\n3.1.0.0.4721, Common Fibular Nerve Palsy"}
 `;
     },
 

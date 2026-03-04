@@ -1050,7 +1050,6 @@ body.theme-light .dungeon-q-box.solved {
   width: 40%; /* Default width */
   height: 100%;
   background: var(--bg);
-  border-left: 1px solid var(--border);
   overflow-y: auto;
   padding: 52px 40px 160px 40px;
   min-width: 250px;

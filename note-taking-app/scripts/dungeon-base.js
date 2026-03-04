@@ -4142,7 +4142,7 @@ export default class DungeonBase {
                 ? (answer.isCorrect ? "Correct!" : "Incorrect")
                 : "Answer Revealed";
 
-            // Build tag row from spId
+            // Build tag row from spId + optional spTopic
             let tagsHtml = '';
             if (q.spId && window.QuestionBase && typeof window.QuestionBase._ctGetTagsFromNumericId === 'function') {
                 const tags = window.QuestionBase._ctGetTagsFromNumericId(q.spId);
@@ -4150,7 +4150,8 @@ export default class DungeonBase {
                     const items = [];
                     if (tags.subject && tags.subject[0]) items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${tags.subject[0]}</span><span class="dungeon-expl-tag-label">Subject</span></div>`);
                     if (tags.system  && tags.system[0])  items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${tags.system[0]}</span><span class="dungeon-expl-tag-label">System</span></div>`);
-                    const topic = (tags.major && tags.major[0]) || (tags.minor && tags.minor[0]);
+                    // Topic: prefer explicit spTopic, then fall back to major/minor
+                    const topic = q.spTopic || (tags.major && tags.major[0]) || (tags.minor && tags.minor[0]);
                     if (topic) items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${topic}</span><span class="dungeon-expl-tag-label">Topic</span></div>`);
                     if (items.length > 0) tagsHtml = `<div class="dungeon-explanation-tags">${items.join('')}</div>`;
                 }
