@@ -22,7 +22,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 1.1rem;
   text-align: center;
   background: var(--bg);
@@ -188,7 +188,7 @@
 }
 
 .question-title-input::placeholder {
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .question-body {
@@ -208,7 +208,7 @@
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--defualt);
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -296,7 +296,7 @@ textarea:focus {
 
 .option-delete-btn {
   opacity: 0;
-  color: var(--muted);
+  color: var(--defualt);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -352,7 +352,7 @@ textarea:focus {
   width: 20px;
   /* Increased size as requested */
   height: 20px;
-  color: var(--muted);
+  color: var(--defualt);
   transition: transform 0.2s ease;
   margin-right: 4px;
 }
@@ -421,7 +421,7 @@ textarea:focus {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--defualt);
   letter-spacing: 0.5px;
   pointer-events: none;
 }
@@ -431,7 +431,7 @@ textarea:focus {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--defualt);
   letter-spacing: 0.5px;
   margin-top: 10px;
 }
@@ -722,7 +722,7 @@ body.theme-light .folder-count {
 
 #sessionInput:empty::before {
   content: attr(placeholder);
-  color: var(--muted);
+  color: var(--defualt);
   opacity: 0.5;
   pointer-events: none;
   display: block;
@@ -746,7 +746,7 @@ body.theme-light .folder-count {
 }
 
 #sessionInput::placeholder {
-  color: var(--muted);
+  color: var(--defualt);
   opacity: 0.7;
 }
 
@@ -1138,7 +1138,7 @@ div[data-tab-content="recent-sessions"].active {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: var(--muted);
+  color: var(--defualt);
   text-align: center;
   position: absolute;
   top: 52%;
@@ -1265,7 +1265,7 @@ div[data-tab-content="recent-sessions"].active {
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--defualt);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -1299,7 +1299,7 @@ div[data-tab-content="recent-sessions"].active {
 
 .placeholder-text {
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--defualt);
   margin-top: 1rem;
   font-style: italic;
 }
@@ -1609,7 +1609,7 @@ body.theme-light .donut-track {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--defualt);
   margin-bottom: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1742,7 +1742,7 @@ body.theme-light .donut-track {
   padding: 8px 20px;
   border: 1px solid var(--border);
   background: transparent;
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 0.9rem;
   font-weight: 500;
   border-radius: 6px;
@@ -2194,7 +2194,7 @@ body.theme-light .standard-tool-btn {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -2360,7 +2360,7 @@ body.theme-light .standard-tool-btn {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s;
@@ -2517,7 +2517,7 @@ body.theme-light .standard-tool-btn {
   align-items: center;
   justify-content: center;
   min-height: 160px;
-  color: var(--muted);
+  color: var(--defualt);
   font-size: 0.82rem;
   text-align: center;
   padding: 20px;
@@ -2546,7 +2546,7 @@ body.theme-light .standard-tool-btn {
 .ct-preview-more {
   padding: 8px 12px;
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--defualt);
   text-align: center;
   font-style: italic;
 }
@@ -2564,7 +2564,7 @@ body.theme-light .standard-tool-btn {
 }
 .ct-start-summary {
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--defualt);
   line-height: 1.5;
   flex: 1;
   min-width: 120px;
@@ -2627,7 +2627,7 @@ body.theme-light .standard-tool-btn {
 .ct-id-clear {
   background: transparent;
   border: none;
-  color: var(--muted);
+  color: var(--defualt);
   cursor: pointer;
   font-size: 1.1rem;
   line-height: 1;
@@ -2672,7 +2672,7 @@ body.theme-light .standard-tool-btn {
 /* Dungeon Topbar SP ID */
 .dungeon-spid {
     font-family: monospace;
-    color: var(--muted);
+    color: var(--defualt);
     font-size: 0.8rem;
     font-weight: 500;
     margin-right: 12px;
@@ -2758,7 +2758,7 @@ body.theme-light .standard-tool-btn {
     align-items: center;
     justify-content: center;
     width: 20px;
-    color: var(--muted);
+    color: var(--defualt);
 }
 
 .folder-select-item .title {

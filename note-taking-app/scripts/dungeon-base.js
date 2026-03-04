@@ -203,12 +203,12 @@ export default class DungeonBase {
                 <div class="dungeon-topbar-center">
                   <div id="dungeonTopbarNav" class="dungeon-topbar-nav hidden">
                     <button id="dungeonTopbarPrev" class="dungeon-topbar-nav-btn" title="Previous Question">
-                      <svg viewBox="0 0 45.86 37.3" style="width:38px;height:38px;transform:scaleX(-1);flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
+                      <svg viewBox="0 0 45.86 37.3" style="width:48px;height:48px;transform:scaleX(-1);flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
                       <span>Previous</span>
                     </button>
                     <div class="dungeon-topbar-nav-divider"></div>
                     <button id="dungeonTopbarNext" class="dungeon-topbar-nav-btn" title="Next Question">
-                      <svg viewBox="0 0 45.86 37.3" style="width:38px;height:38px;flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
+                      <svg viewBox="0 0 45.86 37.3" style="width:48px;height:48px;flex-shrink:0"><g><polygon fill="currentColor" points="9.94,9.4 35.92,18.88 9.94,27.9"></polygon><polygon fill="#5490CC" points="10.63,12.31 10.59,24.96 30.31,18.88"></polygon></g></svg>
                       <span>Next</span>
                     </button>
                   </div>
@@ -2594,8 +2594,9 @@ export default class DungeonBase {
         this._timerInitialMs = (timerMode === 'up') ? (q.timerElapsed || 0) : null;
         
         // Stop 'up' timer from ticking if question is answered, committed (exam), or revealed
-        const isAnswered = this.state.answers.has(q.id) || q.submittedAnswer;
-        if (timerMode === 'up' && (isAnswered || q.revealed)) {
+        const answer = this.state.answers.get(q.id);
+        const isAnswered = (answer && answer.submitted && (q._tutorMode !== false || answer.timerStopped)) || q.revealed;
+        if (timerMode === 'up' && isAnswered) {
             this.updateTimerDisplay(q.timerElapsed || 0);
             return; 
         }
@@ -4065,6 +4066,7 @@ export default class DungeonBase {
         const options = q.options || [];
         const currentSel = this.state.selectedOption; // Valid only if not submitted
         const submittedSel = isSubmitted ? answer.selectedId : null;
+        const lastSubmittedId = isSubmitted ? answer.lastSubmittedId : null;
 
         options.forEach((opt, idx) => {
             let classes = "dungeon-radio-option";
@@ -4118,12 +4120,16 @@ export default class DungeonBase {
             const isSubmittedBtn = (answer && answer.submitted) || isRevealed;
             const alignClass = this.state.contentAlignment === 'center' ? 'align-center' : 'align-left';
             
+            // Allow re-submission in Exam mode if choice changed from manual submit
+            const isChanged = currentSel && lastSubmittedId && String(currentSel) !== String(lastSubmittedId);
+            const canSubmit = !isSubmittedBtn || (isExamMode && isChanged && !isLocked);
+
             html += `
                 <div class="dungeon-inline-submit-wrap ${alignClass}">
-                    <button class="dungeon-inline-submit ${isSubmittedBtn ? 'submitted' : ''}" 
-                            onclick="${isSubmittedBtn ? '' : 'window.DungeonBase.handleSubmit()'}"
-                            ${isSubmittedBtn ? 'disabled' : ''}>
-                        ${isSubmittedBtn ? 'Submitted' : 'Submit Answer'}
+                    <button class="dungeon-inline-submit ${isSubmittedBtn && !isChanged ? 'submitted' : ''}" 
+                            onclick="${canSubmit ? 'window.DungeonBase.handleSubmit()' : ''}"
+                            ${canSubmit ? '' : 'disabled'}>
+                        ${isSubmittedBtn && !isChanged ? 'Submitted' : (isChanged ? 'Re-Submit' : 'Submit Answer')}
                     </button>
                 </div>
             `;
@@ -4189,7 +4195,7 @@ export default class DungeonBase {
         if (q.crossedOutOptionIds && q.crossedOutOptionIds.includes(String(optionId))) return; // Prevent selection if crossed out
         const answer = this.state.answers.get(q.id);
 
-        if (answer && answer.submitted) return; // Locked
+        if (answer && answer.submitted && q._tutorMode !== false) return; // Locked only in Tutor
 
         this.pushHistoryState();
 
@@ -4205,7 +4211,8 @@ export default class DungeonBase {
                     submitted: true,
                     selectedId: this.state.selectedOption,
                     isCorrect,
-                    examCommitted: true // Saved silently, timer still running
+                    timerStopped: false, // Don't stop timer on silent click
+                    examCommitted: true
                 };
                 this.state.answers.set(q.id, answerData);
                 q.submittedAnswer = answerData;
@@ -4313,7 +4320,9 @@ export default class DungeonBase {
         const answerData = {
             submitted: true,
             selectedId: this.state.selectedOption,
-            isCorrect: isCorrect
+            isCorrect: isCorrect,
+            timerStopped: true, // Stop timer on manual submit
+            lastSubmittedId: this.state.selectedOption // Record what was manually submitted
         };
 
         this.state.answers.set(q.id, answerData);

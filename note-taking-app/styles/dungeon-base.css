@@ -1848,6 +1848,10 @@ body.theme-light .dungeon-q-box.solved {
   white-space: nowrap;
 }
 
+.dungeon-topbar-nav-btn span {
+  margin-top: -8px;
+}
+
 .dungeon-topbar-nav-btn:hover {
   background: var(--hover);
   color: var(--text);
