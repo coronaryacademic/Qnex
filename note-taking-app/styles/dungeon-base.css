@@ -1106,6 +1106,14 @@ body.theme-light .dungeon-q-box.solved {
   font-size: 1.15rem;
 }
 
+.dungeon-question-container.font-small .dungeon-expl-tag-value {
+  font-size: 1.1rem;
+}
+
+.dungeon-question-container.font-small .dungeon-expl-tag-label {
+  font-size: 0.9rem;
+}
+
 .dungeon-question-container.font-medium .dungeon-context-box,
 .dungeon-question-container.font-medium .dungeon-context-box h1,
 .dungeon-question-container.font-medium .dungeon-context-box h2,
@@ -1120,6 +1128,14 @@ body.theme-light .dungeon-q-box.solved {
   font-size: 1.35rem;
 }
 
+.dungeon-question-container.font-medium .dungeon-expl-tag-value {
+  font-size: 1.3rem;
+}
+
+.dungeon-question-container.font-medium .dungeon-expl-tag-label {
+  font-size: 1.05rem;
+}
+
 .dungeon-question-container.font-large .dungeon-context-box,
 .dungeon-question-container.font-large .dungeon-context-box h1,
 .dungeon-question-container.font-large .dungeon-context-box h2,
@@ -1132,6 +1148,14 @@ body.theme-light .dungeon-q-box.solved {
 
 .dungeon-question-container.font-large .dungeon-radio-option {
   font-size: 1.55rem;
+}
+
+.dungeon-question-container.font-large .dungeon-expl-tag-value {
+  font-size: 1.55rem;
+}
+
+.dungeon-question-container.font-large .dungeon-expl-tag-label {
+  font-size: 1.2rem;
 }
 
 /* Question Header - Removed, now in topbar */
@@ -1394,6 +1418,40 @@ body.theme-light .dungeon-q-box.solved {
   to {
     opacity: 1;
   }
+}
+
+/* Explanation Tag Row */
+.dungeon-explanation-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  margin-top: 44px;
+  padding-top: 50px;
+  border-top: 1px solid var(--settingsborder);
+  justify-content: flex-start;
+}
+
+.dungeon-main-panel.align-center .dungeon-explanation-tags,
+.dungeon-explanation-panel.align-center .dungeon-explanation-tags {
+  justify-content: center;
+}
+
+.dungeon-expl-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dungeon-expl-tag-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--defualt);
+}
+
+.dungeon-expl-tag-label {
+  font-size: 0.95rem;
+  color: var(--defualt);
+  opacity: 0.5;
 }
 
 /* RIGHT SIDEBAR (Tools + Nav) */
@@ -1856,6 +1914,12 @@ body.theme-light .dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.dock
 
 .dungeon-topbar-nav-btn span {
   margin-top: -8px;
+}
+
+/* In dark theme, override the hardcoded blue inner-arrow fill to gray.
+   Light theme retains the original #5490CC color. */
+body:not(.theme-light) .dungeon-topbar-nav-btn svg polygon:last-child {
+  fill: #8a8a8a !important;
 }
 
 .dungeon-topbar-nav-btn:hover {
