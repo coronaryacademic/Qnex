@@ -4906,6 +4906,25 @@ This patient developed common fibular (peroneal) nerve palsy due to compression 
 
 **Educational objective:** Common fibular nerve compression at the fibular neck, often from a tight cast or prolonged external pressure, causes foot drop and loss of foot eversion.
 ${hasTags ? "" : "Question tag ID:\n3.1.0.0.4721, Common Fibular Nerve Palsy"}
+
+Question title: IV tPA Contraindication After Hip Replacement
+Question context: A 78-year-old woman is brought to the emergency department 7 days after undergoing a left hip replacement surgery. During her morning physical therapy session, she abruptly develops aphasia and right-sided hemiparesis. She has a history of COPD and suffered a right occipital ischemic stroke 4 months ago. Her medications include aspirin and enoxaparin. Head CT shows no acute hemorrhage or early ischemic changes. Which of the following is a contraindication to administering IV tPA in this patient?
+Question options:
+*(A) Major surgical procedure performed within the past 14 days
+(B) Ischemic stroke occurring more than 90 days prior to presentation
+(C) Patient age exceeding 75 years
+(D) Prior episode of upper gastrointestinal bleeding more than 21 days ago
+Question explanation:
+IV tPA (alteplase) is contraindicated in patients who have undergone major surgery within the preceding 14 days, because thrombolysis in the perioperative period carries a significant risk of serious bleeding at the surgical site. This patient had a hip replacement 7 days ago, placing her well within this 14-day exclusion window. Among all the choices, this is the only absolute contraindication to IV tPA in this case.
+
+**(Choice B)** A prior ischemic stroke is a contraindication only if it occurred within the past 3 months (90 days). This patient's stroke was 4 months ago (~120 days), which falls outside the exclusion window and is therefore NOT a contraindication.
+
+**(Choice C)** Advanced age (e.g., >80 years) is listed as a relative consideration in some guidelines, but age alone is not an absolute contraindication to IV tPA. At 78 years old, this patient's age does not preclude treatment.
+
+**(Choice D)** A history of gastrointestinal bleeding is a contraindication only if it occurred within the past 21 days. Bleeding more than 21 days prior is not an absolute contraindication, and thus does not apply here.
+
+**Educational objective:** Major surgery within 14 days is an absolute contraindication to IV tPA; prior ischemic stroke >3 months ago, age alone, and remote GI bleeding (>21 days) are not absolute contraindications.
+${hasTags ? "" : "Question tag ID:\n1.1.0.0.5892, Stroke management and treatment"}
 `;
     },
 
