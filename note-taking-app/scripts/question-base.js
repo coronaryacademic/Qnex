@@ -4254,7 +4254,7 @@ Question tag ID:
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 1.5rem; opacity: 0.3;">
                         <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
                     </svg>
-                    <p style="color: var(--muted); font-size: 1.1rem; max-width: 400px; margin: 0 auto; line-height: 1.6; text-align: center;">${msg}</p>
+                    <p style="color: var(--defualt); font-size: 1.1rem; max-width: 400px; margin: 0 auto; line-height: 1.6; text-align: center;">${msg}</p>
                 </div>
             `;
             return;

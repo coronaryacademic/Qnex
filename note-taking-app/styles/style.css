@@ -3805,7 +3805,7 @@ body.debug-borders div {
 .btn {
   background: transparent;
   border: 1px solid var(--borderX);
-  color: var(--text);
+  color: var(--defualt);
   padding: 6px 10px;
   border-radius: 8px;
   cursor: pointer;
@@ -4357,7 +4357,7 @@ body.debug-borders div {
 
 .todo-item.completed .todo-text {
   text-decoration: line-through;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .todo-item.completing {
@@ -4397,7 +4397,7 @@ body.debug-borders div {
 }
 
 .todo-drag-handle {
-  color: var(--muted);
+  color: var(--defualt);
   cursor: grab;
   padding: 4px;
   font-size: 12px;
@@ -4448,7 +4448,7 @@ body.debug-borders div {
 
 .todo-text {
   flex: 1;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 15px;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -4457,7 +4457,7 @@ body.debug-borders div {
 .todo-edit {
   background: transparent;
   border: none;
-  color: var(--muted);
+  color: var(--defualt);
   cursor: pointer !important;
   padding: 4px 8px;
   border-radius: 6px;
@@ -4498,6 +4498,7 @@ body.debug-borders div {
 .todo-delete svg {
   width: 14px;
   height: 14px;
+  color: var(--defualt);
 }
 
 .todo-input {
@@ -4514,7 +4515,7 @@ body.debug-borders div {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
-  color: var(--text);
+  color: var(--defualt);
   font-size: 14px;
   margin-bottom: 12px;
 }

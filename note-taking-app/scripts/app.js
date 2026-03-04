@@ -8507,7 +8507,7 @@ window.startImportProcess = function () {
       cancelBtn.className = "todo-cancel";
       cancelBtn.title = "Cancel";
       cancelBtn.style.cssText =
-        "padding: 6px 10px; background: var(--panel-2); color: var(--text); border: none; border-radius: 4px; cursor: pointer; margin-left: 4px; display: flex; align-items: center; justify-content: center;";
+        "padding: 6px 10px; background: var(--panel-2); color: var(--defualt); border: none; border-radius: 4px; cursor: pointer; margin-left: 4px; display: flex; align-items: center; justify-content: center;";
 
       // Save function
       const saveEdit = async () => {

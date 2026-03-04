@@ -1615,8 +1615,8 @@ body.theme-light .dungeon-q-box.solved {
 }
 
 .dungeon-tool-btn:hover {
-  background: var(--panel-hover);
-  color: var(--accent);
+  background: rgba(202, 202, 202, 0.186);
+  color: var(--text);
 }
 
 .dungeon-tool-btn.disabled {
