@@ -4853,7 +4853,7 @@ ${this.state.aiImageMode ? `5. AI IMAGE ENHANCEMENT (CRITICAL):
 6. TAG ID FORMAT: The tag ID line supports an optional topic label after a comma:
 Question tag ID:
 <numeric_id>, <Topic label>
-Example: 1&3.1.0.0.7731, Atrial Fibrillation (Pathology & Cardiology)
+Example: 1&3.1.0.0.7731, Atrial Fibrillation
 If there is no specific topic, omit the comma and topic. Do NOT make up a topic — only include it when it is a precise, well-known clinical topic.
 ${examplesPrompt}
 
@@ -4930,7 +4930,7 @@ IV tPA (alteplase) is contraindicated in patients who have undergone major surge
 **(Choice D)** A history of gastrointestinal bleeding is a contraindication only if it occurred within the past 21 days. Bleeding more than 21 days prior is not an absolute contraindication, and thus does not apply here.
 
 **Educational objective:** Major surgery within 14 days is an absolute contraindication to IV tPA; prior ischemic stroke >3 months ago, age alone, and remote GI bleeding (>21 days) are not absolute contraindications.
-${hasTags ? "" : "Question tag ID:\n1&4.1.0.0.5892, Stroke management and treatment (Pathology & Physiology)"}
+${hasTags ? "" : "Question tag ID:\n1&4.1.0.0.5892, Stroke management and treatment"}
 `;
     },
 
