@@ -122,7 +122,7 @@
 /* Footer Note Button (Special toggle) */
 .footer-note-btn {
   background: transparent;
-  color: var(--defualt);
+  color: var(--text);
   width: 32px;
   height: 32px;
   padding: 0;
