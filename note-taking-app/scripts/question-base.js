@@ -1186,12 +1186,18 @@ Generate a professional title for this study session.`;
             cats.forEach((cat, i) => {
                 const valStr = parts[i];
                 if (valStr && valStr !== '0') {
-                    const id = parseInt(valStr);
-                    if (id > 0 && this.CT_TAG_OPTIONS[cat][id - 1]) {
-                        tags[cat].push(this.CT_TAG_OPTIONS[cat][id - 1]);
-                    }
+                    // Support multiple IDs joined by & (e.g. 1&3)
+                    const idsToProcess = valStr.includes('&') ? valStr.split('&') : [valStr];
+                    idsToProcess.forEach(v => {
+                        const id = parseInt(v);
+                        if (id > 0 && this.CT_TAG_OPTIONS[cat][id - 1]) {
+                            tags[cat].push(this.CT_TAG_OPTIONS[cat][id - 1]);
+                        }
+                    });
                 }
             });
+            // The rest is salt
+            tags.salt = parts.slice(4).join('.');
             return tags;
         }
 
@@ -1223,7 +1229,6 @@ Generate a professional title for this study session.`;
                 id = oneDigit;
                 consumed = 1;
             } else {
-                // If it's a 0 or out of range, skip at least 1 digit to avoid getting stuck
                 consumed = 1;
             }
             
@@ -1234,6 +1239,7 @@ Generate a professional title for this study session.`;
             remaining = remaining.substring(consumed);
         }
         
+        tags.salt = remaining;
         return tags;
     },
 
@@ -4860,10 +4866,11 @@ The explanation MUST follow this exact structure with a BLANK LINE between each 
 3. A final bold label **Educational objective:** followed by one concise sentence.
 Separate multiple questions with one blank line only.
 
-TAG ID FORMAT: The tag ID line supports an optional topic label after a comma:
+6. MULTI-SUBJECTS: If a question covers multiple subjects or systems, use an ampersand (&) in the numeric ID part (e.g. 1&3.4.0.0.SALT for Pathology & Anatomy).
+7. TAG ID FORMAT: The tag ID line supports an optional topic label after a comma:
 Question tag ID:
 <numeric_id>, <Topic label>
-Example: 1.1.0.0.7731, Stroke
+Example: 1&3.1.0.0.7731, Atrial Fibrillation (Pathology & Cardiology)
 If there is no specific topic, omit the comma and topic. Do NOT make up a topic — only include it when it is a precise, well-known clinical topic.
 
 Template to follow exactly:
@@ -4938,6 +4945,7 @@ ${hasTags ? "" : "Question tag ID:\n1.1.0.0.5892, Stroke management and treatmen
 
         let text = "\nNUMERIC TAGGING SYSTEM (Question tag ID):\n";
         text += "Generate a numeric ID with 5 components separated by dots: SubjectID.SystemID.MajorID.MinorID.RandomSalt\n";
+        text += "If a question spans multiple subjects or systems, you can join their IDs with an ampersand (&). Example: '1&3.0.0.0.1234' for Pathology and Anatomy.\n";
         text += "If a category doesn't apply, use 0. Do NOT skip components. Always provide 4 tag parts + 1 random salt (0-9999).\n\n";
 
         categories.forEach(cat => {

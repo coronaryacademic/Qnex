@@ -568,7 +568,7 @@ export default class DungeonBase {
                     <div class="dungeon-tool-btn" data-tool="note" title="Add Note">
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </div>
-                    <div class="dungeon-tool-btn" data-tool="submit" title="Submit Answer">
+                    <div class="dungeon-tool-btn" data-tool="submit" title="Submit">
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                     <div class="dungeon-tool-btn" data-tool="highlight" title="Highlight Mode">
@@ -1624,17 +1624,19 @@ export default class DungeonBase {
         const q = this.state.questions[this.state.currentIndex];
         const titleEl = document.getElementById('dungeonQuestionTitle');
         if (titleEl && q) {
-            const numericId = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '');
+            const rawId = (q.spId || '');
+            const displayId = (rawId.includes('.')) ? rawId.split('.').pop() : (rawId.replace('QNX-', '').replace(/[-.]/g, '') || 'N/A');
+            
             titleEl.innerHTML = `
                 <div class="dungeon-title-line">Title: ${q.title || 'Untitled Question'}</div>
-                <div class="dungeon-id-line" title="Click to copy ID">Question Id: <span class="id-value">${numericId || 'N/A'}</span></div>
+                <div class="dungeon-id-line" title="Click to copy ID">Question Id: <span class="id-value">${displayId}</span></div>
             `;
 
             // Add Click to Copy functionality
             const idLine = titleEl.querySelector('.dungeon-id-line');
-            if (idLine && numericId) {
+            if (idLine && rawId) {
                 idLine.onclick = () => {
-                    navigator.clipboard.writeText(numericId).then(() => {
+                    navigator.clipboard.writeText(rawId).then(() => {
                         const originalColor = idLine.style.color;
                         idLine.style.color = 'var(--success)';
                         setTimeout(() => {
@@ -4324,7 +4326,7 @@ export default class DungeonBase {
                     <button class="dungeon-inline-submit ${isSubmittedBtn && !isChanged ? 'submitted' : ''}" 
                             onclick="${canSubmit ? 'window.DungeonBase.handleSubmit()' : ''}"
                             ${canSubmit ? '' : 'disabled'}>
-                        ${isSubmittedBtn && !isChanged ? 'Submitted' : (isChanged ? 'Re-Submit' : 'Submit Answer')}
+                        ${isSubmittedBtn && !isChanged ? 'Submitted' : (isChanged ? 'Re-Submit' : 'Submit')}
                     </button>
                 </div>
             `;
@@ -4340,11 +4342,16 @@ export default class DungeonBase {
             // Build tag row from spId + optional spTopic
             let tagsHtml = '';
             if (q.spId && window.QuestionBase && typeof window.QuestionBase._ctGetTagsFromNumericId === 'function') {
-                const tags = window.QuestionBase._ctGetTagsFromNumericId(q.spId);
+                const tags = window.QuestionBase._ctGetTagsFromNumericId(q.spId || q.id);
                 if (tags) {
                     const items = [];
-                    if (tags.subject && tags.subject[0]) items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${tags.subject[0]}</span><span class="dungeon-expl-tag-label">Subject</span></div>`);
-                    if (tags.system  && tags.system[0])  items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${tags.system[0]}</span><span class="dungeon-expl-tag-label">System</span></div>`);
+                    // Joins multiple subjects/systems with &
+                    if (tags.subject && tags.subject.length > 0) {
+                        items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${tags.subject.join(' & ')}</span><span class="dungeon-expl-tag-label">Subject</span></div>`);
+                    }
+                    if (tags.system  && tags.system.length > 0) {
+                        items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${tags.system.join(' & ')}</span><span class="dungeon-expl-tag-label">System</span></div>`);
+                    }
                     // Topic: prefer explicit spTopic, then fall back to major/minor
                     const topic = q.spTopic || (tags.major && tags.major[0]) || (tags.minor && tags.minor[0]);
                     if (topic) items.push(`<div class="dungeon-expl-tag"><span class="dungeon-expl-tag-value">${topic}</span><span class="dungeon-expl-tag-label">Topic</span></div>`);
