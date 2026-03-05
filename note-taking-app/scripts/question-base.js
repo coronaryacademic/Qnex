@@ -4842,13 +4842,19 @@ CRITICAL REQUIREMENTS:
 1. The "Question context" field MUST end with a clear question (lead-in question). NEVER end it with a period.
 2. YOU MUST MARK THE CORRECT ANSWER WITH AN ASTERISK (*) PLACED IMMEDIATELY BEFORE THE OPTION LABEL (e.g., *(B) or *(C)). DO NOT FORGET THE ASTERISK. THIS IS MANDATORY FOR EVERY QUESTION.
 ${hasTags ? "" : `3. You MUST provide a "Question tag ID" using the numeric taxonomy below.\n${this._ctGetNumericTaxonomyPrompt()}`}
-4. MAKE OPTIONS INDIRECT: Instead of straightforward diagnoses, the answer choices should describe the underlying mechanism, a secondary consequence, or anatomic path.
+4. MULTI-SUBJECTS (CRITICAL): If a question covers multiple subjects or systems, you MUST join their IDs with an ampersand (&) in the numeric ID part. Example: '1&3.0.0.0.1234' for Pathology and Anatomy. Do not omit the other components.
+5. MAKE OPTIONS INDIRECT: Instead of straightforward diagnoses, the answer choices should describe the underlying mechanism, a secondary consequence, or anatomic path.
 ${this.state.aiImageMode ? `5. AI IMAGE ENHANCEMENT (CRITICAL):
 - **PREFER IMGUR**: Always prefer **Imgur** (i.imgur.com) as your primary source. It is the most reliable for this application.
 - **PMC LAST RESORT**: Use **NIH/PMC** (ncbi.nlm.nih.gov/pmc) ONLY if you cannot find a suitable image on Imgur.
 - **STRICT ANTI-HALLUCINATION**: Do NOT guess URLs. Many PMC direct image paths (e.g., .../bin/nihms-f1.jpg) are complex and often 404. If you aren't 100% sure of the EXACT direct image URL from your search results, provide ZERO images.
 - **FORBIDDEN**: Never use Wikipedia/Wikimedia.
 - **FORMAT**: Use standard markdown: ![Description](https://i.imgur.com/real_id.png).` : ""}
+6. TAG ID FORMAT: The tag ID line supports an optional topic label after a comma:
+Question tag ID:
+<numeric_id>, <Topic label>
+Example: 1&3.1.0.0.7731, Atrial Fibrillation (Pathology & Cardiology)
+If there is no specific topic, omit the comma and topic. Do NOT make up a topic — only include it when it is a precise, well-known clinical topic.
 ${examplesPrompt}
 
 Formatting rules are strict:
@@ -4865,13 +4871,6 @@ The explanation MUST follow this exact structure with a BLANK LINE between each 
 [blank line between each Choice paragraph]
 3. A final bold label **Educational objective:** followed by one concise sentence.
 Separate multiple questions with one blank line only.
-
-6. MULTI-SUBJECTS: If a question covers multiple subjects or systems, use an ampersand (&) in the numeric ID part (e.g. 1&3.4.0.0.SALT for Pathology & Anatomy).
-7. TAG ID FORMAT: The tag ID line supports an optional topic label after a comma:
-Question tag ID:
-<numeric_id>, <Topic label>
-Example: 1&3.1.0.0.7731, Atrial Fibrillation (Pathology & Cardiology)
-If there is no specific topic, omit the comma and topic. Do NOT make up a topic — only include it when it is a precise, well-known clinical topic.
 
 Template to follow exactly:
 Question title: <brief title>
@@ -4931,7 +4930,7 @@ IV tPA (alteplase) is contraindicated in patients who have undergone major surge
 **(Choice D)** A history of gastrointestinal bleeding is a contraindication only if it occurred within the past 21 days. Bleeding more than 21 days prior is not an absolute contraindication, and thus does not apply here.
 
 **Educational objective:** Major surgery within 14 days is an absolute contraindication to IV tPA; prior ischemic stroke >3 months ago, age alone, and remote GI bleeding (>21 days) are not absolute contraindications.
-${hasTags ? "" : "Question tag ID:\n1.1.0.0.5892, Stroke management and treatment"}
+${hasTags ? "" : "Question tag ID:\n1&4.1.0.0.5892, Stroke management and treatment (Pathology & Physiology)"}
 `;
     },
 
