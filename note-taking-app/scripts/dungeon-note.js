@@ -166,7 +166,7 @@ class DungeonNote {
         };
 
         header.addEventListener('mousedown', onMouseDownDrag);
-        header.addEventListener('touchstart', onMouseDownDrag, { passive: true });
+        header.addEventListener('touchstart', onMouseDownDrag, { passive: false });
 
         // Resize Logic
         let isResizing = false;
@@ -174,32 +174,55 @@ class DungeonNote {
 
         const onMouseDownResize = (e) => {
             isResizing = true;
-            startX = e.clientX;
-            startY = e.clientY;
+            this.el.classList.add('resizing');
+            
+            // Support both mouse and touch
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            
+            startX = clientX;
+            startY = clientY;
             const rect = this.el.getBoundingClientRect();
             startW = rect.width;
             startH = rect.height;
 
-            document.addEventListener('mousemove', onMouseMoveResize);
-            document.addEventListener('mouseup', onMouseUpResize);
+            if (e.type.startsWith('mouse')) {
+                document.addEventListener('mousemove', onMouseMoveResize);
+                document.addEventListener('mouseup', onMouseUpResize);
+            } else {
+                document.addEventListener('touchmove', onMouseMoveResize, { passive: false });
+                document.addEventListener('touchend', onMouseUpResize);
+            }
             e.preventDefault();
         };
 
         const onMouseMoveResize = (e) => {
             if (!isResizing) return;
-            const dw = e.clientX - startX;
-            const dh = e.clientY - startY;
+            
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            
+            const dw = clientX - startX;
+            const dh = clientY - startY;
             this.el.style.width = Math.max(200, startW + dw) + 'px';
             this.el.style.height = Math.max(150, startH + dh) + 'px';
+            
+            if (e.type.startsWith('touch')) {
+                e.preventDefault();
+            }
         };
 
         const onMouseUpResize = () => {
             isResizing = false;
+            this.el.classList.remove('resizing');
             document.removeEventListener('mousemove', onMouseMoveResize);
             document.removeEventListener('mouseup', onMouseUpResize);
+            document.removeEventListener('touchmove', onMouseMoveResize);
+            document.removeEventListener('touchend', onMouseUpResize);
         };
 
         resizer.addEventListener('mousedown', onMouseDownResize);
+        resizer.addEventListener('touchstart', onMouseDownResize, { passive: false });
 
         // Actions
         closeBtn.onclick = () => this.destroy();
