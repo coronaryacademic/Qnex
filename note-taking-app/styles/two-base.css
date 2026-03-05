@@ -705,7 +705,7 @@
   position: absolute;
   top: calc(100% + 0.5rem);
   right: 0;
-  background: var(--panel);
+  background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem;
@@ -730,7 +730,7 @@
 .toolbar-options-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--defualt);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 0.5rem;
@@ -772,7 +772,7 @@
 }
 
 .toolbar-position-btn svg {
-  fill: var(--text);
+  fill: var(--defualt);
 }
 
 .toolbar-position-btn.active svg {
@@ -781,7 +781,7 @@
 
 /* Light theme override */
 [data-theme="light"] .toolbar-position-btn svg {
-  fill: var(--text);
+  fill: var(--defualt);
 }
 
 [data-theme="light"] .toolbar-position-btn.active svg {
@@ -813,7 +813,7 @@
 }
 
 .toolbar-align-btn svg {
-  stroke: var(--text);
+  stroke: var(--defualt);
 }
 
 .toolbar-align-btn.active svg {
@@ -822,7 +822,7 @@
 
 /* Light theme override */
 [data-theme="light"] .toolbar-align-btn svg {
-  stroke: var(--text);
+  stroke: var(--defualt);
 }
 
 [data-theme="light"] .toolbar-align-btn.active svg {
