@@ -1574,10 +1574,23 @@ Generate a professional title for this study session.`;
                 // Pick a display tag
                 const allTags = [...(q.tags?.system || []), ...(q.tags?.subject || [])];
                 const tagLabel = allTags[0] || '';
-                const displayId = (q.spId || '').replace('QNX-', '').replace(/-/g, '');
+                
+                // Extract SALT part for display
+                let displaySalt = q.tags?.salt;
+                if (!displaySalt && q.spId) {
+                    const clean = q.spId.replace('QNX-', '');
+                    if (clean.includes('.')) {
+                        const parts = clean.split('.');
+                        // Salt is after the 4th segment in 1.1.0.0.SALT format
+                        displaySalt = parts.slice(4).join('.');
+                    } else {
+                        displaySalt = clean;
+                    }
+                }
+
                 item.innerHTML = `
                     <div class="ct-preview-title-row">
-                        <span class="ct-preview-spid">${q.tags?.salt || displayId || '????'}</span>
+                        <span class="ct-preview-spid">${displaySalt || '????'}</span>
                         <span class="ct-preview-title">${q.title || 'Untitled'}</span>
                     </div>
                     ${tagLabel ? `<span class="ct-item-tag">${tagLabel}</span>` : ''}
