@@ -1443,12 +1443,14 @@ Generate a professional title for this study session.`;
             // Support multiple IDs (union of results)
             const queryTerms = idQuery.split(/[\s,]+/)
                 .filter(term => term.trim().length > 0)
-                .map(term => term.replace('QNX-', '').replace(/[-.]/g, ''));
+                .map(term => term.replace('QNX-', '').replace(/[-.]/g, '').toUpperCase());
 
             return this.state.questions.filter(q => {
                 const qNumericPart = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
-                // Return true if the question ID starts with ANY of the query terms (prefix matching)
-                return queryTerms.some(term => qNumericPart.startsWith(term));
+                const qSaltPart = (q.tags?.salt || '').replace(/[-.]/g, '').toUpperCase();
+                
+                // Return true if the question ID or SALT part starts with ANY of the query terms (prefix matching)
+                return queryTerms.some(term => qNumericPart.startsWith(term) || (qSaltPart && qSaltPart.includes(term)));
             });
         }
 
@@ -1513,7 +1515,14 @@ Generate a professional title for this study session.`;
 
                 terms.forEach(term => {
                     const clean = term.replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
-                    if (allQIds.includes(clean)) {
+                    // Match against full numeric ID OR salt part
+                    const found = this.state.questions.some(q => {
+                        const qNumericPart = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
+                        const qSaltPart = (q.tags?.salt || '').replace(/[-.]/g, '').toUpperCase();
+                        return qNumericPart === clean || qSaltPart === clean;
+                    });
+
+                    if (found) {
                         validTerms.push(term);
                     } else {
                         invalidTerms.push(term);
@@ -1568,7 +1577,7 @@ Generate a professional title for this study session.`;
                 const displayId = (q.spId || '').replace('QNX-', '').replace(/-/g, '');
                 item.innerHTML = `
                     <div class="ct-preview-title-row">
-                        <span class="ct-preview-spid">${displayId || '????'}</span>
+                        <span class="ct-preview-spid">${q.tags?.salt || displayId || '????'}</span>
                         <span class="ct-preview-title">${q.title || 'Untitled'}</span>
                     </div>
                     ${tagLabel ? `<span class="ct-item-tag">${tagLabel}</span>` : ''}

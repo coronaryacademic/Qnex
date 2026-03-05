@@ -120,21 +120,40 @@ class DungeonNote {
             if (e.target.closest('.dungeon-note-btn')) return;
             isDragging = true;
             this.el.classList.add('dragging');
-            startX = e.clientX;
-            startY = e.clientY;
+            
+            // Support both mouse and touch
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            
+            startX = clientX;
+            startY = clientY;
             startLeft = parseInt(this.el.style.left);
             startTop = parseInt(this.el.style.top);
 
-            document.addEventListener('mousemove', onMouseMoveDrag);
-            document.addEventListener('mouseup', onMouseUpDrag);
+            if (e.type.startsWith('mouse')) {
+                document.addEventListener('mousemove', onMouseMoveDrag);
+                document.addEventListener('mouseup', onMouseUpDrag);
+            } else {
+                document.addEventListener('touchmove', onMouseMoveDrag, { passive: false });
+                document.addEventListener('touchend', onMouseUpDrag);
+            }
         };
 
         const onMouseMoveDrag = (e) => {
             if (!isDragging) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
+            
+            const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+            
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+            
             this.el.style.left = (startLeft + dx) + 'px';
             this.el.style.top = (startTop + dy) + 'px';
+            
+            if (e.type.startsWith('touch')) {
+                e.preventDefault(); // Prevent scrolling while dragging
+            }
         };
 
         const onMouseUpDrag = () => {
@@ -142,9 +161,12 @@ class DungeonNote {
             this.el.classList.remove('dragging');
             document.removeEventListener('mousemove', onMouseMoveDrag);
             document.removeEventListener('mouseup', onMouseUpDrag);
+            document.removeEventListener('touchmove', onMouseMoveDrag);
+            document.removeEventListener('touchend', onMouseUpDrag);
         };
 
         header.addEventListener('mousedown', onMouseDownDrag);
+        header.addEventListener('touchstart', onMouseDownDrag, { passive: true });
 
         // Resize Logic
         let isResizing = false;

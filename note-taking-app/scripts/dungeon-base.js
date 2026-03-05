@@ -439,6 +439,13 @@ export default class DungeonBase {
                   <div class="dungeon-footer-right">
                       <span id="dungeonSaveStatus" class="dungeon-save-status saved">Saved</span>
                       
+                      <button id="dungeonNoteBtn" class="dungeon-reveal-btn footer-note-btn hidden" title="Add Note">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                      </button>
+
                       <button id="dungeonSuspendBtn" class="dungeon-reveal-btn" title="Suspend Block (Resume Later)">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                       </button>
@@ -460,6 +467,8 @@ export default class DungeonBase {
 
                       <button id="dungeonSubmitBlockBtn" class="dungeon-reveal-btn submit-block-svg" title="Submit Block & See Results">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11"/></svg>
+                      </button>
+
                       </button>
 
                       <button id="dungeonClearBtn" class="dungeon-reveal-btn" title="Clear Answer" style="display: none;">
@@ -692,6 +701,17 @@ export default class DungeonBase {
         const clearBtn = document.getElementById('dungeonClearBtn');
         if (clearBtn) {
             clearBtn.onclick = () => this.clearAnswer();
+        }
+
+        // Footer Note Button
+        const footerNoteBtn = document.getElementById('dungeonNoteBtn');
+        if (footerNoteBtn) {
+            footerNoteBtn.onclick = () => {
+                const q = this.state.questions[this.state.currentIndex];
+                if (q) {
+                    new window.DungeonNote(this, q.id);
+                }
+            };
         }
     }
 
@@ -1410,6 +1430,26 @@ export default class DungeonBase {
         const topbarNav = document.getElementById('dungeonTopbarNav');
         if (topbarNav) {
             topbarNav.classList.toggle('hidden', this.state.toolbarVisible);
+        }
+
+        // Toggle Footer Note Button visibility (Show when toolbar is hidden)
+        const footerNoteBtn = document.getElementById('dungeonNoteBtn');
+        if (footerNoteBtn) {
+            if (!this.state.toolbarVisible) {
+                footerNoteBtn.style.display = 'flex';
+                // Small delay to allow reflow before animation
+                setTimeout(() => footerNoteBtn.classList.add('visible'), 10);
+                footerNoteBtn.classList.remove('hidden');
+            } else {
+                footerNoteBtn.classList.remove('visible');
+                // Hide after animation finishes
+                setTimeout(() => {
+                    if (this.state.toolbarVisible) {
+                        footerNoteBtn.style.display = 'none';
+                        footerNoteBtn.classList.add('hidden');
+                    }
+                }, 300);
+            }
         }
     }
 

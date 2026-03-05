@@ -118,6 +118,43 @@
 }
 
 /* Remove old stats from sidebar if they exist */
-.dungeon-sidebar-stats {
+
+/* Footer Note Button (Special toggle) */
+.footer-note-btn {
+  background: transparent;
+  color: var(--defualt);
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 8px;
+  border: none;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: scale(0.8) translateY(10px);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.footer-note-btn.visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.footer-note-btn.hidden {
   display: none !important;
+}
+
+.footer-note-btn:hover {
+  background: var(--accent-hover);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.footer-note-btn:active {
+  transform: translateY(0) scale(0.96);
 }
