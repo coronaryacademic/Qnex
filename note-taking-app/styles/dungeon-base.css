@@ -1101,8 +1101,8 @@ body.theme-light .dungeon-q-box.solved {
 .dungeon-main-panel.align-center .dungeon-context-box,
 .dungeon-explanation-panel.align-center .dungeon-context-box {
   text-align: center; /* Center the question/title text */
-  width: 175%; /* Match the default context-box width */
-  margin-left: -37.5%; /* Center it: pull back by half the extra width ((175-100)/2) */
+  width: 120%; /* Match the default context-box width */
+  margin-left: -10%; /* Center it: pull back by half the extra width ((175-100)/2) */
 }
 
 .dungeon-main-panel.align-center .dungeon-options-list {
@@ -1206,7 +1206,7 @@ body.theme-light .dungeon-q-box.solved {
 
 /* The Big Rectangle (Image/Code/Context) */
 .dungeon-context-box {
-  width: 175%;
+  width: 120%;
   min-height: auto;
   display: block;
   color: var(--defualt);
