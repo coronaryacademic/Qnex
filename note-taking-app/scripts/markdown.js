@@ -402,6 +402,75 @@
     return html;
   }
 
+  // --- Block-based Markdown to HTML Converter ---
+  function toHTMLBlocks(text) {
+    if (!text) return '<p><br></p>';
+    
+    const uid = () => 'b' + Math.random().toString(36).substr(2, 9);
+    const lines = text.split(/\r?\n/);
+    let htmlBlocks = '';
+    let currentList = null;
+
+    const parseInline = (t) => {
+        return t.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/__(.*?)__/g, '<b>$1</b>')
+                .replace(/\*(.*?)\*/g, '<i>$1</i>')
+                .replace(/_(.*?)_/g, '<i>$1</i>')
+                .replace(/~~(.*?)~~/g, '<strike>$1</strike>');
+    };
+
+    const closeList = () => {
+        if (currentList) {
+            htmlBlocks += `<${currentList.tag} data-block-id="${uid()}">${currentList.html}</${currentList.tag}>`;
+            currentList = null;
+        }
+    };
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        
+        // 1. Headers
+        if (/^#\s/.test(line)) {
+            closeList();
+            htmlBlocks += `<h1 data-block-id="${uid()}">${parseInline(line.replace(/^#\s/, ''))}</h1>`;
+        } else if (/^##\s/.test(line)) {
+            closeList();
+            htmlBlocks += `<h2 data-block-id="${uid()}">${parseInline(line.replace(/^##\s/, ''))}</h2>`;
+        } else if (/^###\s/.test(line)) {
+            closeList();
+            htmlBlocks += `<h3 data-block-id="${uid()}">${parseInline(line.replace(/^###\s/, ''))}</h3>`;
+        } 
+        // 2. Blockquotes
+        else if (/^>\s/.test(line)) {
+            closeList();
+            htmlBlocks += `<blockquote data-block-id="${uid()}">${parseInline(line.replace(/^>\s/, ''))}</blockquote>`;
+        }
+        // 3. Lists
+        else if (/^([-*]|\d+\.)\s/.test(trimmed)) {
+            const isOrdered = /^\d+\.\s/.test(trimmed);
+            const tag = isOrdered ? 'ol' : 'ul';
+            const content = parseInline(trimmed.replace(/^([-*]|\d+\.)\s/, ''));
+            
+            if (currentList && currentList.tag === tag) {
+                currentList.html += `<li data-block-id="${uid()}">${content}</li>`;
+            } else {
+                closeList();
+                currentList = { tag, html: `<li data-block-id="${uid()}">${content}</li>` };
+            }
+        }
+        // 4. Paragraphs
+        else if (trimmed) {
+            closeList();
+            htmlBlocks += `<p data-block-id="${uid()}">${parseInline(line)}</p>`;
+        } else {
+            closeList();
+        }
+    });
+
+    closeList();
+    return htmlBlocks || '<p><br></p>';
+  }
+
   // Expose markdown utilities globally for existing code to use
   window.Markdown = {
     parseMarkdownTable,
@@ -409,6 +478,7 @@
     parseFrontmatter,
     escapeHtmlForMarkdown,
     render,
+    toHTMLBlocks,
   };
 
   // Initialize header behavior on DOM ready (or immediately if DOM is already loaded)

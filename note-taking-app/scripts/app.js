@@ -1,4 +1,4 @@
-﻿import fileSystemService from "./file-system-service.js";
+import fileSystemService from "./file-system-service.js";
 import { medicalIcons, getIcon } from "./medical-icons.js";
 import { BlockEditor } from "./editor-core.js";
 
@@ -700,7 +700,7 @@ window.startImportProcess = function () {
               const newNote = {
                 id: uid(),
                 title: data.title || path.split("/").pop().replace(".md", ""),
-                contentHtml: window.Markdown.escapeHtmlForMarkdown(content),
+                contentHtml: window.Markdown.toHTMLBlocks(content),
                 tags: data.tags ? (typeof data.tags === 'string' ? data.tags.split(",").map(t => t.trim()) : data.tags) : [],
                 createdAt: data.createdAt || new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
@@ -756,7 +756,7 @@ window.startImportProcess = function () {
           const newNote = {
             id: uid(),
             title: data.title || file.name.replace(".md", ""),
-            contentHtml: window.Markdown.escapeHtmlForMarkdown(content),
+            contentHtml: window.Markdown.toHTMLBlocks(content),
             tags: data.tags ? (Array.isArray(data.tags) ? data.tags : data.tags.split(",").map(t => t.trim())) : [],
             createdAt: data.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
