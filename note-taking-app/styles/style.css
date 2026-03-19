@@ -2170,7 +2170,7 @@ body.fullscreen .sidebar-resizer {
 
 .editor-menu-list .label {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--defualt);
   padding: 4px 8px;
   font-weight: 500;
 }
@@ -2207,7 +2207,7 @@ body.fullscreen .sidebar-resizer {
 
 .font-controls-menu .font-size-label {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--defualt);
   min-width: 40px;
 }
 
