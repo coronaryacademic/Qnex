@@ -60,8 +60,8 @@ export class BlockEditor {
         }
     });
 
-    // 3. Assign IDs to all blocks
-    this._allBlocks().forEach(block => {
+    // 3. Assign IDs to all blocks (P, UL, OL, H1, etc.)
+    Array.from(this.container.children).forEach(block => {
       if (!block.dataset.blockId) {
         block.dataset.blockId = this._uid();
       }
@@ -145,6 +145,7 @@ export class BlockEditor {
     if (!block) return;
 
     if (e.key === 'Enter') {
+      if (block.tagName === 'LI') return; // Allow browser to handle native list continuation (1, 2, 3...)
       this._handleEnter(e, block);
     } else if (e.key === 'Backspace') {
       this._handleBackspace(e, block);
@@ -290,15 +291,14 @@ export class BlockEditor {
   }
 
   _convertToList(block, listTag) {
-    const text = block.textContent.replace(/^[-*]\s|^\d+\.\s/, '');
-    const list = document.createElement(listTag);
-    const li = document.createElement('li');
-    li.dataset.blockId = this._uid();
-    li.textContent = text;
-    list.appendChild(li);
-    block.replaceWith(list);
-    this._focusEnd(li);
-    this._onInput();
+    this._restoreSelection();
+    const cmd = listTag === 'ul' ? 'insertUnorderedList' : 'insertOrderedList';
+    document.execCommand(cmd, false, null);
+    
+    requestAnimationFrame(() => {
+        this._ensureStructure();
+        this._onInput();
+    });
   }
 
   _insertHr(block) {
@@ -328,22 +328,30 @@ export class BlockEditor {
   }
 
   applyBlockAction(type) {
+    this._restoreSelection();
+    
+    if (type === 'ul' || type === 'ol') {
+      const cmd = type === 'ul' ? 'insertUnorderedList' : 'insertOrderedList';
+      document.execCommand(cmd, false, null);
+      requestAnimationFrame(() => {
+          this._ensureStructure();
+          this._onInput();
+      });
+      return;
+    }
+
     const block = this._blockAtCursor() || this._lastFocusBlock;
     if (!block) return;
 
     const tag = block.tagName.toLowerCase();
     
-    // Toggle logic
-    if (tag === type || (tag === 'li' && block.closest(type))) {
+    // Toggle logic for headings/quotes
+    if (tag === type) {
       this._convertBlock(block, 'p');
       return;
     }
 
-    if (type === 'ul' || type === 'ol') {
-      this._convertToList(block, type);
-    } else {
-      this._convertBlock(block, type);
-    }
+    this._convertBlock(block, type);
   }
 
   // ─── Block Logic ─────────────────────────────────────────────────────────────
@@ -494,7 +502,7 @@ export class BlockEditor {
   // ─── Utilities ───────────────────────────────────────────────────────────────
 
   _allBlocks() {
-    return Array.from(this.container.children).filter(el => el.dataset && el.dataset.blockId);
+    return Array.from(this.container.children);
   }
 
   _blockAtCursor() {

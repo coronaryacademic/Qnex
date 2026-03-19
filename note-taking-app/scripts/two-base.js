@@ -3307,23 +3307,16 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="20" y2="12"></line></svg>
         </button>
         <button class="icon-btn" data-action="highlight" title="Highlight text" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-3"/><polygon points="16 2 22 8 11 19 5 19 5 13 16 2"/></svg>
-          <span style="position:absolute;bottom:3px;left:4px;right:4px;height:3px;background:#ffe066;border-radius:1px;"></span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" stroke="none" class="bi bi-highlighter" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.096.644a2 2 0 0 1 2.791.036l1.433 1.433a2 2 0 0 1 .035 2.791l-.413.435-8.07 8.995a.5.5 0 0 1-.372.166h-3a.5.5 0 0 1-.234-.058l-.412.412A.5.5 0 0 1 2.5 15h-2a.5.5 0 0 1-.354-.854l1.412-1.412A.5.5 0 0 1 1.5 12.5v-3a.5.5 0 0 1 .166-.372l8.995-8.07zm-.115 1.47L2.727 9.52l3.753 3.753 7.406-8.254zm3.585 2.17.064-.068a1 1 0 0 0-.017-1.396L13.18 1.387a1 1 0 0 0-1.396-.018l-.068.065zM5.293 13.5 2.5 10.707v1.586L3.707 13.5z"/></svg>
         </button>
       </div>
 
       <div class="toolbar-divider"></div>
 
       <div class="toolbar-group">
-        <button class="icon-btn" data-action="h1" title="Heading 1" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12h8m-8 6V6m8 12V6m5 6h4m-2-6v12"></path></svg>
-        </button>
-        <button class="icon-btn" data-action="h2" title="Heading 2" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12h8m-8 6V6m8 12V6m9 12h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1"></path></svg>
-        </button>
-        <button class="icon-btn" data-action="h3" title="Heading 3" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12h8m-8 6V6m8 12V6m5.5 4.5c.7-1.3 2.5-1.3 3.3 0 .3.6.1 1.2-.5 1.5l-1.3.3.3 1.3 1.3-.3c.6-.3.8-.9.5-1.5-.7-1.3-2.5-1.3-3.3 0"></path><path d="M17.5 15.5c.7-1.3 2.5-1.3 3.3 0 .3.6.1 1.2-.5 1.5l-1.3.3.3 1.3 1.3-.3c.6-.3.8-.9.5-1.5-.7-1.3-2.5-1.3-3.3 0"></path></svg>
-        </button>
+        <button class="icon-btn" data-action="h1" title="Heading 1" onmousedown="event.preventDefault()" style="font-weight: 800; font-size: 14px; color: var(--defualt); width: 28px;">H<span style="font-size: 0.75em; margin-left: 0.5px;">1</span></button>
+        <button class="icon-btn" data-action="h2" title="Heading 2" onmousedown="event.preventDefault()" style="font-weight: 800; font-size: 14px; color: var(--defualt); width: 28px;">H<span style="font-size: 0.75em; margin-left: 0.5px;">2</span></button>
+        <button class="icon-btn" data-action="h3" title="Heading 3" onmousedown="event.preventDefault()" style="font-weight: 800; font-size: 14px; color: var(--defualt); width: 28px;">H<span style="font-size: 0.75em; margin-left: 0.5px;">3</span></button>
       </div>
 
       <div class="toolbar-divider"></div>
@@ -3344,10 +3337,10 @@
 
       <div class="toolbar-group">
         <button class="icon-btn" data-action="ul" title="Bullet List" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-7v2h14V6H7z"/></svg>
         </button>
         <button class="icon-btn" data-action="ol" title="Numbered List" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-1v2h14v-2H7zm0 7h14v-2H7v2zm0-14v2h14V6H7z"/></svg>
         </button>
       </div>
 
@@ -8318,7 +8311,17 @@
       const editorEl = TwoBaseState.currentEditorElement;
       if (!editorEl) { console.warn("No active editor for action:", action); return; }
       editorEl.focus();
-      document.execCommand(action, false, null);
+      
+      let cmd = action;
+      let arg = null;
+      if (action === "ul") cmd = "insertUnorderedList";
+      else if (action === "ol") cmd = "insertOrderedList";
+      else if (["h1", "h2", "h3"].includes(action)) {
+        cmd = "formatBlock";
+        arg = (action === "p") ? "p" : action.toUpperCase();
+      } else if (action === "strikethrough") cmd = "strikeThrough";
+      
+      document.execCommand(cmd, false, arg);
       return;
     }
 
