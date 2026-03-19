@@ -23,6 +23,8 @@ export class BlockEditor {
     this._isInternalChange = false;
 
     this._init(initialContent);
+    // Ensure browser uses semantic tags for formatting
+    document.execCommand('styleWithCSS', false, false);
   }
 
   // ─── Initialization ──────────────────────────────────────────────────────────
@@ -145,6 +147,10 @@ export class BlockEditor {
     if (!block) return;
 
     if (e.key === 'Enter') {
+      if (e.shiftKey && block.tagName === 'LI') {
+        this._handleTab(e, block);
+        return;
+      }
       if (block.tagName === 'LI') return; // Allow browser to handle native list continuation (1, 2, 3...)
       this._handleEnter(e, block);
     } else if (e.key === 'Backspace') {
@@ -271,7 +277,12 @@ export class BlockEditor {
   _handleTab(e, block) {
     e.preventDefault();
     if (e.shiftKey) {
-      document.execCommand('outdent', false, null);
+      // If we are at the top level of a list and outdenting, convert back to paragraph
+      if (block.tagName === 'LI' && block.parentElement.parentElement === this.container) {
+          document.execCommand('outdent', false, null);
+      } else {
+          document.execCommand('outdent', false, null);
+      }
     } else {
       document.execCommand('indent', false, null);
     }
@@ -288,14 +299,13 @@ export class BlockEditor {
     const text = block.textContent || '';
     
     const triggers = [
-      { pattern: /^#\s/,    action: () => this._convertBlock(block, 'h1') },
-      { pattern: /^##\s/,   action: () => this._convertBlock(block, 'h2') },
-      { pattern: /^###\s/,  action: () => this._convertBlock(block, 'h3') },
-      { pattern: /^>\s/,    action: () => this._convertBlock(block, 'blockquote') },
-      { pattern: /^- \s/,   action: () => this._convertToList(block, 'ul') },
-      { pattern: /^\* \s/,  action: () => this._convertToList(block, 'ul') },
-      { pattern: /^1\. \s/, action: () => this._convertToList(block, 'ol') },
-      { pattern: /^---\s$/, action: () => this._insertHr(block) },
+      { pattern: /^#\s$/,    action: () => this._convertBlockWithCleanup(block, 'h1', /^#\s/) },
+      { pattern: /^##\s$/,   action: () => this._convertBlockWithCleanup(block, 'h2', /^##\s/) },
+      { pattern: /^###\s$/,  action: () => this._convertBlockWithCleanup(block, 'h3', /^###\s/) },
+      { pattern: /^>\s$/,    action: () => this._convertBlockWithCleanup(block, 'blockquote', /^>\s/) },
+      { pattern: /^([*-])\s$/, action: () => this._convertToListWithCleanup(block, 'ul', /^([*-])\s/) },
+      { pattern: /^1\.\s$/,  action: () => this._convertToListWithCleanup(block, 'ol', /^1\.\s/) },
+      { pattern: /^---\s$/,  action: () => this._insertHr(block) },
     ];
 
     for (const { pattern, action } of triggers) {
@@ -305,8 +315,6 @@ export class BlockEditor {
       }
     }
 
-    // Inline shortcuts: bold, italic, underline
-    // We check for patterns like **text** and transform them if a space was just pressed
     this._handleInlineMarkdown(block);
   }
 
@@ -324,8 +332,21 @@ export class BlockEditor {
     this._onInput();
   }
 
-  _convertToList(block, listTag) {
-    this._restoreSelection();
+  _convertToListWithCleanup(block, listTag, pattern) {
+    // If we're already in a list, hitting the shortcut again should indent (create sub-bullet)
+    if (block.tagName === 'LI') {
+        block.textContent = block.textContent.replace(pattern, '');
+        this._handleTab({ preventDefault: () => {} }, block);
+        return;
+    }
+
+    // 1. Remove the shortcut text
+    block.textContent = block.textContent.replace(pattern, '');
+    
+    // 2. Select the (now empty or partially empty) block
+    this._focusStart(block);
+    
+    // 3. Apply the list command
     const cmd = listTag === 'ul' ? 'insertUnorderedList' : 'insertOrderedList';
     document.execCommand(cmd, false, null);
     

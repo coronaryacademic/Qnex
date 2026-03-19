@@ -3047,7 +3047,7 @@ body.fullscreen .sidebar-resizer {
 
 /* Default is centered layout */
 .editor .content.editable:not(.layout-full) {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding-left: 60px;
   padding-right: 60px;
@@ -3488,7 +3488,7 @@ body.fullscreen [data-action="fullscreen"] svg {
   transform: rotate(180deg);
 }
 
-/* Bullet point spacing and markers */
+/* Bullet point spacing and markers — using highly specific selectors */
 .editor .content.editable ul li,
 .editor .content.editable ol li {
   margin-bottom: 8px;
@@ -3496,16 +3496,25 @@ body.fullscreen [data-action="fullscreen"] svg {
 }
 
 .editor .content.editable ul {
-  list-style-type: disc;
+  list-style-type: disc !important;
 }
 
 .editor .content.editable ul ul {
-  list-style-type: circle;
+  list-style-type: circle !important;
   margin-top: 4px;
 }
 
 .editor .content.editable ul ul ul {
-  list-style-type: square;
+  list-style-type: square !important;
+}
+
+/* Ensure nested markers apply even if browser nests differently */
+.editor .content.editable li ul {
+  list-style-type: circle !important;
+}
+
+.editor .content.editable li li ul {
+  list-style-type: square !important;
 }
 
 .editor .content.editable ul ul li,
