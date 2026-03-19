@@ -2128,7 +2128,9 @@ body.fullscreen .sidebar-resizer {
   /* Chrome, Safari, Opera */
 }
 
-.editor-menu.open .editor-menu-list {
+/* Menu opened via parent class (legacy) OR directly on the list (new JS) */
+.editor-menu.open .editor-menu-list,
+.editor-menu-list.open {
   display: block;
 }
 
@@ -5726,8 +5728,57 @@ body.theme-aero .folder-item:hover {
   max-width: 100%;
   overflow-wrap: break-word;
   word-wrap: break-word;
-  /* ol counter resets here */
   counter-reset: ol-counter;
+  position: relative; /* Required for placeholder ::before */
+}
+
+/* ── Block typography (new BlockEditor: plain tags, no .editor-block class) ── */
+.block-editor > p,
+.block-editor > h1,
+.block-editor > h2,
+.block-editor > h3,
+.block-editor > h4,
+.block-editor > blockquote,
+.block-editor > ul,
+.block-editor > ol {
+  min-height: 1.4em;
+  outline: none;
+  padding: 1px 0;
+  margin: 0 0 0.15em 0;
+  position: relative;
+}
+
+.block-editor > h1 { font-size: 2em;   font-weight: 700; margin: 0.3em 0 0.2em; line-height: 1.25; }
+.block-editor > h2 { font-size: 1.5em; font-weight: 600; margin: 0.25em 0 0.15em; line-height: 1.3; }
+.block-editor > h3 { font-size: 1.2em; font-weight: 600; margin: 0.2em 0 0.1em; line-height: 1.3; }
+
+.block-editor > blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 14px;
+  color: var(--muted);
+  font-style: italic;
+  margin: 0.3em 0;
+}
+
+.block-editor > ul,
+.block-editor > ol {
+  padding-left: 1.6em;
+  margin: 0.15em 0;
+}
+
+.block-editor li {
+  min-height: 1.4em;
+  outline: none;
+  padding: 1px 0;
+  position: relative;
+}
+
+.block-editor > p { margin: 0 0 0.1em; }
+
+.block-editor > hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.5em 0;
 }
 
 .editor-block {
@@ -5763,13 +5814,25 @@ body.theme-aero .folder-item:hover {
   padding: 0 1px;
 }
 
-/* Placeholders */
-.editor-block.empty-block::before {
+/* Placeholder — shown on the editor container when it has exactly one empty <p> */
+.block-editor[data-placeholder]:has(> p:only-child:empty)::before,
+.block-editor[data-placeholder]:has(> p:only-child > br:only-child)::before {
   content: attr(data-placeholder);
-  color: var(--muted);
+  color: rgba(128,128,128,0.55);
   pointer-events: none;
   position: absolute;
-  opacity: 0.5;
+  top: 0;
+  left: 0;
+  padding: inherit;
+  font-size: inherit;
+  font-family: inherit;
+  user-select: none;
+}
+
+/* Hide old per-block placeholder in case any lingering empty-block classes exist */
+.editor-block.empty-block::before {
+  content: '' !important;
+  display: none !important;
 }
 
 /* Typography overrides for blocks */
@@ -6253,7 +6316,7 @@ ol.editor-block {
 
 .note-search-stats {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--defualt);
   padding: 0 12px;
   white-space: nowrap;
 }
@@ -6274,7 +6337,7 @@ ol.editor-block {
 .note-search-btn {
   background: transparent;
   border: none;
-  color: var(--muted);
+  color: var(--defualt);
   padding: 4px;
   border-radius: 4px;
   cursor: pointer;

@@ -3351,19 +3351,7 @@
         </button>
       </div>
 
-      <div class="toolbar-divider"></div>
 
-      <div class="toolbar-group">
-        <button class="icon-btn" data-action="sketch" title="Insert Drawing" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        </button>
-        <button class="icon-btn" data-action="table" title="Insert Table" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>
-        </button>
-        <button class="icon-btn" data-action="removeFormat" title="Clear Formatting" onmousedown="event.preventDefault()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.29 21.07L10.5 14.28l-6.92 6.92c-.39.39-1.02.39-1.41 0a.9959.9959 0 0 1 0-1.41l6.92-6.92-6.69-6.69c-.39-.39-.39-1.02 0-1.41l1.41-1.41c.39-.39 1.02-.39 1.41 0l6.69 6.69 6.69-6.69c.39-.39 1.02-.39 1.41 0l1.41 1.41c.39.39.39 1.02 0 1.41l-6.69 6.69 6.92 6.92c.39.39.39 1.02 0 1.41l-1.41 1.41c-.39.39-1.02.39-1.41 0z"></path></svg>
-        </button>
-      </div>
 
       <div class="toolbar-divider"></div>
 
@@ -3389,14 +3377,32 @@
 
     if (intSplit) {
       intSplit.onclick = (e) => {
-        const extBtn = document.getElementById("splitNoteBtn");
-        if (extBtn) extBtn.click();
+        e.preventDefault();
+        e.stopPropagation();
+        if (el.splitNoteBtn && el.splitNoteBtn.classList.contains("disabled")) return;
+        if (TwoBaseState.splitView) {
+          toggleSplitView();
+          return;
+        }
+        const existingMenu = document.querySelector(".split-menu");
+        if (existingMenu) {
+          existingMenu.remove();
+          return;
+        }
+        // Temporarily swap el.splitNoteBtn so showSplitMenu positions correctly
+        const origBtn = el.splitNoteBtn;
+        el.splitNoteBtn = intSplit;
+        showSplitMenu(e);
+        el.splitNoteBtn = origBtn;
       };
     }
     if (intSearch) {
       intSearch.onclick = (e) => {
-        const extBtn = document.getElementById("toggleNoteSearchBtn");
-        if (extBtn) extBtn.click();
+        e.preventDefault();
+        if (el.noteSearchContainer) {
+          const isHidden = el.noteSearchContainer.classList.contains("hidden");
+          toggleNoteSearch(isHidden);
+        }
       };
     }
 
@@ -3416,67 +3422,7 @@
       };
     }
 
-    // Add click handlers for toolbar buttons
-    toolbar.onclick = (e) => {
-      const btn = e.target.closest("button[data-action]");
-      if (!btn) return;
-
-      const action = btn.dataset.action;
-      const blockEditor = TwoBaseState.currentEditor;
-
-      if (!blockEditor) {
-        // Fallback for non-block editor if needed, but primary path should use blockEditor
-        const contentElement = TwoBaseState.currentEditorElement;
-        if (!contentElement) return;
-        contentElement.focus();
-        document.execCommand(action);
-        return;
-      }
-
-      if (action === "undo") {
-        blockEditor.undo();
-      } else if (action === "redo") {
-        blockEditor.redo();
-      } else if (action === "bold") {
-        blockEditor.applyInlineAction("bold");
-      } else if (action === "italic") {
-        blockEditor.applyInlineAction("italic");
-      } else if (action === "underline") {
-        blockEditor.applyInlineAction("underline");
-      } else if (action === "strikethrough") {
-        blockEditor.applyInlineAction("strikeThrough");
-      } else if (action === "h1") {
-        blockEditor.applyBlockAction("h1");
-      } else if (action === "h2") {
-        blockEditor.applyBlockAction("h2");
-      } else if (action === "h3") {
-        blockEditor.applyBlockAction("h3");
-      } else if (action === "justifyLeft") {
-        blockEditor.applyInlineAction("justifyLeft");
-      } else if (action === "justifyCenter") {
-        blockEditor.applyInlineAction("justifyCenter");
-      } else if (action === "justifyRight") {
-        blockEditor.applyInlineAction("justifyRight");
-      } else if (action === "ul") {
-        blockEditor.applyBlockAction("ul");
-      } else if (action === "ol") {
-        blockEditor.applyBlockAction("ol");
-      } else if (action === "highlight") {
-        blockEditor.applyInlineAction("backColor", "#ffe066");
-      } else if (action === "removeFormat") {
-        blockEditor.applyInlineAction("removeFormat");
-      } else if (action === "table") {
-        if (typeof window.insertTablePlaceholder === "function") {
-          window.insertTablePlaceholder();
-        } else {
-          const curBlock = blockEditor._blockForEl(blockEditor._blockElAtCursor());
-          const tableHTML = `<table class="note-table" style="border-collapse: collapse; width: 100%; margin: 1rem 0;"><tbody><tr><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td></tr><tr><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td></tr></tbody></table>`;
-          blockEditor.insertBlock("table", tableHTML, curBlock?.id ?? null);
-        }
-      } else if (action === "sketch") {
-        blockEditor.insertSketch();
-      }
-    };
+    // Toolbar interaction is handled via delegation in initToolbarDelegation()
   }
 
   function switchActiveNote(noteId) {
@@ -8376,7 +8322,6 @@
       return;
     }
 
-    // Dispatch to public BlockEditor API
     if (action === "undo") {
       blockEditor.undo();
     } else if (action === "redo") {
@@ -8385,20 +8330,12 @@
       blockEditor.applyInlineAction(action);
     } else if (action === "strike" || action === "strikethrough") {
       blockEditor.applyInlineAction("strikeThrough");
-    } else if (action === "removeFormat") {
-      blockEditor.applyInlineAction("removeFormat");
     } else if (["justifyLeft", "justifyCenter", "justifyRight"].includes(action)) {
       blockEditor.applyInlineAction(action);
     } else if (["h1", "h2", "h3", "ul", "ol"].includes(action)) {
       blockEditor.applyBlockAction(action);
     } else if (action === "highlight") {
       blockEditor.applyInlineAction("backColor", "#ffe066");
-    } else if (action === "table") {
-      const curBlock = blockEditor._blockForEl(blockEditor._blockElAtCursor());
-      const tableHTML = `<table class="note-table" style="border-collapse: collapse; width: 100%; margin: 1rem 0;"><tbody><tr><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem; min-width:80px;">Cell</td></tr><tr><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td><td style="border: 1px solid var(--border); padding: 0.5rem;">Cell</td></tr></tbody></table>`;
-      blockEditor.insertBlock("table", tableHTML, curBlock?.id ?? null);
-    } else if (action === "sketch") {
-      blockEditor.insertSketch();
     }
   }
 

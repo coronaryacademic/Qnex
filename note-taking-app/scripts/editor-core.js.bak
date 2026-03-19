@@ -1,0 +1,941 @@
+/**
+ * BlockEditor — Ground-Up Rewrite
+ *
+ * Design principles:
+ * - DOM is the source of truth; model is derived, not authoritative
+ * - Undo/redo stores full innerHTML snapshots (simple + reliable)
+ * - Placeholder via CSS only (no per-block JS toggling)
+ * - Markdown shortcuts: fire on spacebar only, strip prefix from textContent
+ * - Backspace: let browser handle mid-block; JS handles merges at block boundary
+ * - No custom ArrowUp/Down (let browser handle cursor movement)
+ * - applyInlineAction restores focus before execCommand via mousedown prevention
+ */
+export class BlockEditor {
+  constructor(container, initialContent = '', onChange = () => {}) {
+    this.container = container;
+    this.onChange = onChange;
+
+    // Undo/redo
+    this._undoStack  = [];
+    this._redoStack  = [];
+    this._undoTimer  = null;
+
+    // Track last focused block so toolbar can restore selection
+    this._lastFocusBlock = null;
+
+    // Saved selection for toolbar actions
+    this._savedRange = null;
+
+    this._init(initialContent);
+  }
+
+  // ─── Init ────────────────────────────────────────────────────────────────────
+
+  _init(content) {
+    this.container.setAttribute('data-placeholder', 'Start typing…');
+
+    // Load content or start with a blank paragraph
+    if (content && content.trim()) {
+      this.container.innerHTML = content;
+    } else {
+      this.container.innerHTML = '';
+    }
+
+    this._ensureContent();
+    this._assignBlockIds();
+    this._bindEvents();
+    this._saveUndo();
+  }
+
+  /** Guarantee there is at least one editable child block */
+  _ensureContent() {
+    const children = [...this.container.children].filter(
+      el => el.tagName !== 'TEMPLATE'
+    );
+    if (children.length === 0) {
+      const p = document.createElement('p');
+      p.innerHTML = '<br>';
+      this.container.appendChild(p);
+    }
+  }
+
+  /** Give every direct-child block a data-block-id if missing */
+  _assignBlockIds() {
+    this._allBlockEls().forEach(el => {
+      if (!el.dataset.blockId) el.dataset.blockId = this._uid();
+      // Also assign IDs to li items
+      if (el.tagName === 'UL' || el.tagName === 'OL') {
+        el.querySelectorAll('li').forEach(li => {
+          if (!li.dataset.blockId) li.dataset.blockId = this._uid();
+        });
+      }
+    });
+  }
+
+  _uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  // ─── Event Binding ───────────────────────────────────────────────────────────
+
+  _bindEvents() {
+    const c = this.container;
+
+    c.addEventListener('keydown',     this._onKeyDown.bind(this));
+    c.addEventListener('input',       this._onInput.bind(this));
+    c.addEventListener('click',       this._onClick.bind(this));
+    c.addEventListener('focusin',     this._onFocusIn.bind(this));
+    c.addEventListener('mousedown',   this._onMouseDown.bind(this));
+    c.addEventListener('contextmenu', this._onContextMenu.bind(this));
+  }
+
+  _onFocusIn(e) {
+    const block = e.target.closest('[data-block-id]');
+    if (block) this._lastFocusBlock = block;
+  }
+
+  _onMouseDown() {
+    // Capture selection state just before any click might clear it
+    // (toolbar buttons call preventDefault so this won't fire for them)
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        this._savedRange = sel.getRangeAt(0).cloneRange();
+      }
+    });
+  }
+
+  _onClick(e) {
+    // Clicking empty space below last block → focus last block
+    if (e.target === this.container) {
+      const last = this._allBlockEls().pop();
+      if (last) this._focusEnd(last);
+    }
+  }
+
+  _onInput() {
+    this._ensureContent();
+    this._assignBlockIds();
+    this._triggerChange();
+    this._scheduleUndo();
+  }
+
+  _onKeyDown(e) {
+    // Pass Ctrl+F to browser
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') return;
+
+    // Keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      if (!e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); this.undo(); return; }
+      if (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z')) {
+        e.preventDefault(); this.redo(); return;
+      }
+      if (e.key.toLowerCase() === 'b') { e.preventDefault(); this.applyInlineAction('bold'); return; }
+      if (e.key.toLowerCase() === 'i') { e.preventDefault(); this.applyInlineAction('italic'); return; }
+      if (e.key.toLowerCase() === 'u') { e.preventDefault(); this.applyInlineAction('underline'); return; }
+      // Let other Ctrl combos through
+      return;
+    }
+
+    const blockEl = this._blockElAtCursor();
+    if (!blockEl) return;
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      this._handleEnter(blockEl);
+    } else if (e.key === 'Backspace') {
+      this._handleBackspace(e, blockEl);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      this._handleTab(e, blockEl);
+    } else if (e.key === ' ') {
+      // Check markdown triggers after browser inserts the space
+      requestAnimationFrame(() => {
+        const el = this._blockElAtCursor();
+        if (el) this._checkMarkdown(el);
+      });
+    }
+  }
+
+  // ─── Enter ───────────────────────────────────────────────────────────────────
+
+  _handleEnter(blockEl) {
+    const tag = blockEl.tagName.toLowerCase();
+
+    // Empty list item → exit list, create paragraph
+    if (tag === 'li' && !blockEl.textContent.trim()) {
+      const list = blockEl.closest('ul, ol');
+      const p = this._makeP();
+      list.after(p);
+      blockEl.remove();
+      if (!list.querySelector('li')) list.remove();
+      this._focusStart(p);
+      this._onInput();
+      return;
+    }
+
+    // Split the block at cursor
+    const { before, after } = this._splitAtCursor(blockEl);
+
+    let newEl;
+    if (tag === 'li') {
+      newEl = document.createElement('li');
+      newEl.dataset.blockId = this._uid();
+      newEl.innerHTML = after || '<br>';
+      blockEl.innerHTML = before || '<br>';
+      blockEl.after(newEl);
+    } else {
+      // For headings, block quote → continue as paragraph
+      newEl = this._makeP();
+      newEl.innerHTML = after || '<br>';
+      blockEl.innerHTML = before || '<br>';
+      blockEl.after(newEl);
+    }
+
+    this._focusStart(newEl);
+    this._onInput();
+  }
+
+  /** Split a contenteditable element at the current selection cursor */
+  _splitAtCursor(el) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return { before: el.innerHTML, after: '' };
+
+    const range = sel.getRangeAt(0);
+
+    // Before range
+    const beforeRange = document.createRange();
+    beforeRange.setStart(el, 0);
+    beforeRange.setEnd(range.startContainer, range.startOffset);
+
+    // After range
+    const afterRange = document.createRange();
+    afterRange.setStart(range.endContainer, range.endOffset);
+    afterRange.setEndAfter(el.lastChild || el);
+
+    const before = this._rangeToHtml(beforeRange);
+    const after  = this._rangeToHtml(afterRange);
+
+    return { before, after };
+  }
+
+  _rangeToHtml(range) {
+    const div = document.createElement('div');
+    div.appendChild(range.cloneContents());
+    const html = div.innerHTML;
+    return html === '<br>' ? '' : html;
+  }
+
+  // ─── Backspace ───────────────────────────────────────────────────────────────
+
+  _handleBackspace(e, blockEl) {
+    // Only intercept if cursor is at very start of the block
+    if (!this._cursorAtStart(blockEl)) return;
+
+    const prev = this._prevBlock(blockEl);
+
+    // First block with empty content → just prevent deleting the block
+    if (!prev) {
+      if (!blockEl.textContent.trim()) e.preventDefault();
+      return;
+    }
+
+    e.preventDefault();
+
+    // Empty current block → delete it and move to end of previous
+    if (!blockEl.textContent.trim()) {
+      const focusTarget = prev;
+      blockEl.remove();
+      this._focusEnd(focusTarget);
+      this._onInput();
+      return;
+    }
+
+    // Merge current block content into previous block
+    const curContent = blockEl.innerHTML.replace(/^<br>/, '');
+    if (prev.innerHTML === '<br>' || prev.innerHTML === '') {
+      prev.innerHTML = curContent;
+    } else {
+      // Append after existing content
+      const frag = document.createElement('span');
+      frag.innerHTML = curContent;
+      // Insert a marker to restore cursor
+      const marker = document.createElement('span');
+      marker.id = '_merge_marker';
+      frag.prepend(marker);
+      prev.appendChild(frag);
+    }
+
+    blockEl.remove();
+    this._focusEnd(prev);
+
+    // Clean up merge marker
+    const marker = document.getElementById('_merge_marker');
+    if (marker) marker.remove();
+
+    this._onInput();
+  }
+
+  // ─── Tab ─────────────────────────────────────────────────────────────────────
+
+  _handleTab(e, blockEl) {
+    const tag = blockEl.tagName.toLowerCase();
+
+    if (e.shiftKey) {
+      // Shift+Tab: dedent → convert li to p
+      if (tag === 'li') {
+        const list = blockEl.closest('ul, ol');
+        const p = this._makeP();
+        p.innerHTML = blockEl.innerHTML;
+        list.after(p);
+        blockEl.remove();
+        if (!list.querySelector('li')) list.remove();
+        this._focusEnd(p);
+        this._onInput();
+      }
+    } else {
+      // Tab: indent → convert p to ul li
+      if (tag === 'p' || tag === 'h1' || tag === 'h2' || tag === 'h3') {
+        const ul = document.createElement('ul');
+        const li = document.createElement('li');
+        li.dataset.blockId = blockEl.dataset.blockId || this._uid();
+        li.innerHTML = blockEl.innerHTML;
+        ul.appendChild(li);
+        blockEl.replaceWith(ul);
+        this._focusEnd(li);
+        this._onInput();
+      }
+    }
+  }
+
+  // ─── Markdown Shortcuts ──────────────────────────────────────────────────────
+
+  _checkMarkdown(blockEl) {
+    const text = blockEl.textContent || '';
+
+    const rules = [
+      { prefix: '# ',    convert: () => this._convertBlockTo(blockEl, 'h1') },
+      { prefix: '## ',   convert: () => this._convertBlockTo(blockEl, 'h2') },
+      { prefix: '### ',  convert: () => this._convertBlockTo(blockEl, 'h3') },
+      { prefix: '> ',    convert: () => this._convertBlockTo(blockEl, 'blockquote') },
+      { prefix: '- ',    convert: () => this._convertBlockToList(blockEl, 'ul') },
+      { prefix: '* ',    convert: () => this._convertBlockToList(blockEl, 'ul') },
+      { prefix: '1. ',   convert: () => this._convertBlockToList(blockEl, 'ol') },
+      { prefix: '---',   convert: () => this._insertHr(blockEl) },
+    ];
+
+    for (const rule of rules) {
+      if (text.startsWith(rule.prefix)) {
+        rule.convert();
+        return;
+      }
+    }
+  }
+
+  _convertBlockTo(blockEl, tag) {
+    const text = blockEl.textContent;
+    const prefixLen = this._markdownPrefixFor(tag);
+    const innerText = text.slice(prefixLen);
+
+    const newEl = document.createElement(tag);
+    newEl.dataset.blockId = blockEl.dataset.blockId || this._uid();
+    // Keep existing inline formatting if any; use textContent strip for safety
+    newEl.textContent = innerText;
+    blockEl.replaceWith(newEl);
+    this._focusEnd(newEl);
+    this._onInput();
+  }
+
+  _convertBlockToList(blockEl, listTag) {
+    const text = blockEl.textContent;
+    const prefixLen = text.startsWith('1. ') ? 3 : 2;
+    const innerText = text.slice(prefixLen);
+
+    const list = document.createElement(listTag);
+    const li   = document.createElement('li');
+    li.dataset.blockId = blockEl.dataset.blockId || this._uid();
+    li.textContent = innerText;
+    list.appendChild(li);
+    blockEl.replaceWith(list);
+    this._focusEnd(li);
+    this._onInput();
+  }
+
+  _insertHr(blockEl) {
+    const hr = document.createElement('hr');
+    blockEl.innerHTML = '<br>';
+    blockEl.before(hr);
+    this._focusStart(blockEl);
+    this._onInput();
+  }
+
+  _markdownPrefixFor(tag) {
+    const map = { h1: 2, h2: 3, h3: 4, blockquote: 2 };
+    return map[tag] || 2;
+  }
+
+  // ─── Undo / Redo ─────────────────────────────────────────────────────────────
+
+  _saveUndo() {
+    const snap = this.container.innerHTML;
+    const top  = this._undoStack[this._undoStack.length - 1];
+    if (top === snap) return; // No change
+    this._undoStack.push(snap);
+    if (this._undoStack.length > 100) this._undoStack.shift();
+    this._redoStack = [];
+  }
+
+  _scheduleUndo() {
+    clearTimeout(this._undoTimer);
+    this._undoTimer = setTimeout(() => this._saveUndo(), 400);
+  }
+
+  _applySnapshot(snap) {
+    this.container.innerHTML = snap;
+    this._ensureContent();
+    this._assignBlockIds();
+    this._triggerChange();
+  }
+
+  undo() {
+    clearTimeout(this._undoTimer);
+    this._saveUndo(); // Commit any pending undo before popping
+    if (this._undoStack.length <= 1) return;
+    const current = this._undoStack.pop();
+    this._redoStack.push(current);
+    this._applySnapshot(this._undoStack[this._undoStack.length - 1]);
+  }
+
+  redo() {
+    if (!this._redoStack.length) return;
+    const snap = this._redoStack.pop();
+    this._undoStack.push(snap);
+    this._applySnapshot(snap);
+  }
+
+  // ─── Public: Inline Actions (Toolbar / Keyboard) ─────────────────────────────
+
+  applyInlineAction(action, value = null) {
+    // Restore focus to editor so execCommand works
+    const target = this._lastFocusBlock;
+    if (target) {
+      target.focus();
+      // Restore saved selection if we have one
+      if (this._savedRange) {
+        try {
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(this._savedRange);
+        } catch (_) {}
+      }
+    }
+
+    if (action === 'undo') { this.undo(); return; }
+    if (action === 'redo') { this.redo(); return; }
+
+    document.execCommand(action, false, value ?? null);
+
+    setTimeout(() => {
+      this._triggerChange();
+      this._scheduleUndo();
+      // Update saved range after formatting
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) this._savedRange = sel.getRangeAt(0).cloneRange();
+    }, 0);
+  }
+
+  // ─── Public: Block Actions (Toolbar H1, UL, etc.) ────────────────────────────
+
+  applyBlockAction(type) {
+    const blockEl = this._blockElAtCursor() || this._lastFocusBlock;
+    if (!blockEl) return;
+
+    const tag = blockEl.tagName.toLowerCase();
+
+    // Toggle: if already that type → convert back to paragraph
+    const typeTagMap = { h1: 'h1', h2: 'h2', h3: 'h3', quote: 'blockquote', blockquote: 'blockquote' };
+    const sameType =
+      tag === type ||
+      (type === 'ul' && tag === 'ul') ||
+      (type === 'ol' && tag === 'ol') ||
+      (typeTagMap[type] && tag === typeTagMap[type]);
+
+    if (sameType) {
+      // Unwrap to paragraph
+      if (tag === 'li') {
+        const list = blockEl.closest('ul, ol');
+        const p = this._makeP();
+        p.innerHTML = blockEl.innerHTML;
+        list.after(p);
+        blockEl.remove();
+        if (!list.querySelector('li')) list.remove();
+        this._focusEnd(p);
+      } else {
+        this._convertBlockTo(blockEl, 'p');
+      }
+      return;
+    }
+
+    if (type === 'ul') {
+      // If currently a li in an ol → retype to ul
+      const parentList = blockEl.closest('ol');
+      if (parentList) {
+        const ul = document.createElement('ul');
+        ul.innerHTML = parentList.innerHTML;
+        parentList.replaceWith(ul);
+        this._focusEnd(ul.lastElementChild || ul);
+        this._onInput();
+        return;
+      }
+      this._convertBlockToList(blockEl, 'ul');
+    } else if (type === 'ol') {
+      const parentList = blockEl.closest('ul');
+      if (parentList) {
+        const ol = document.createElement('ol');
+        ol.innerHTML = parentList.innerHTML;
+        parentList.replaceWith(ol);
+        this._focusEnd(ol.lastElementChild || ol);
+        this._onInput();
+        return;
+      }
+      this._convertBlockToList(blockEl, 'ol');
+    } else if (typeTagMap[type]) {
+      this._convertBlockTo(blockEl, typeTagMap[type]);
+    } else if (type === 'p') {
+      this._convertBlockTo(blockEl, 'p');
+    }
+  }
+
+  // ─── Public: Insert Utilities ─────────────────────────────────────────────────
+
+  insertBlock(type, content, afterBlockId = null) {
+    let newEl;
+
+    if (['table', 'image', 'sketch', 'div', 'hr'].includes(type)) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = content || '';
+      newEl = tmp.firstElementChild;
+      if (!newEl) { newEl = document.createElement('div'); newEl.innerHTML = content || ''; }
+    } else {
+      newEl = document.createElement(type === 'ul' ? 'ul' : type === 'ol' ? 'ol' : type);
+      newEl.innerHTML = content || '<br>';
+    }
+
+    if (!newEl) return null;
+    newEl.dataset.blockId = this._uid();
+
+    if (afterBlockId) {
+      const ref = this.container.querySelector(`[data-block-id="${afterBlockId}"]`);
+      if (ref) {
+        ref.after(newEl);
+        this._focusEnd(newEl);
+        this._onInput();
+        return newEl;
+      }
+    }
+
+    this.container.appendChild(newEl);
+    this._focusEnd(newEl);
+    this._onInput();
+    return newEl;
+  }
+
+  insertSketch() {
+    const curBlock = this._blockElAtCursor() || this._lastFocusBlock;
+    const sketchContainer = document.createElement('div');
+    sketchContainer.className = 'sketch-container';
+    sketchContainer.dataset.blockId = this._uid();
+    sketchContainer.contentEditable = 'false';
+
+    this._initSketch(sketchContainer, {});
+
+    if (curBlock) {
+      curBlock.after(sketchContainer);
+    } else {
+      this.container.appendChild(sketchContainer);
+    }
+
+    // Add a paragraph after the sketch for continued writing
+    const nextP = this._makeP();
+    sketchContainer.after(nextP);
+
+    this._onInput();
+    this._focusStart(nextP);
+  }
+
+  focus() {
+    const all = this._allBlockEls();
+    const last = all[all.length - 1];
+    if (last) {
+      const li = last.tagName === 'UL' || last.tagName === 'OL'
+        ? last.lastElementChild
+        : last;
+      if (li) this._focusEnd(li);
+    }
+  }
+
+  refresh() {
+    this._ensureContent();
+    this._assignBlockIds();
+  }
+
+  // ─── Serialization ────────────────────────────────────────────────────────────
+
+  getHTML() {
+    const clone = this.container.cloneNode(true);
+
+    // Strip block IDs (they are runtime only)
+    clone.querySelectorAll('[data-block-id]').forEach(el => el.removeAttribute('data-block-id'));
+
+    // Normalize empty blocks: <p><br></p> → <p></p>
+    clone.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, blockquote').forEach(el => {
+      if (el.innerHTML === '<br>') el.innerHTML = '';
+    });
+
+    // Remove fully empty blocks (but keep single <p> if that's all there is)
+    const allBlocks = [...clone.children];
+    if (allBlocks.length > 1) {
+      allBlocks.forEach(el => {
+        if (!el.textContent.trim() && !el.querySelector('img, table, canvas, .sketch-container')) {
+          el.remove();
+        }
+      });
+    }
+
+    return clone.innerHTML;
+  }
+
+  // ─── Right-Click Context Menu ────────────────────────────────────────────────
+
+  _onContextMenu(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const sel  = window.getSelection();
+    const hasText = sel && !sel.isCollapsed;
+
+    const items = [];
+
+    if (hasText) {
+      items.push(
+        { label: 'Bold',             action: () => document.execCommand('bold') },
+        { label: 'Italic',           action: () => document.execCommand('italic') },
+        { label: 'Underline',        action: () => document.execCommand('underline') },
+        { label: 'Highlight',        action: () => document.execCommand('backColor', false, '#ffe066') },
+        { separator: true },
+        { label: 'Copy',             action: () => document.execCommand('copy') },
+        { label: 'Cut',              action: () => document.execCommand('cut') },
+        { separator: true },
+        { label: 'Clear Formatting', action: () => document.execCommand('removeFormat') }
+      );
+    } else {
+      items.push(
+        { label: 'Paste',      action: () => document.execCommand('paste') },
+        { label: 'Select All', action: () => document.execCommand('selectAll') }
+      );
+    }
+
+    // Block-level options
+    const blockEl = this._blockElAtCursor() || this._lastFocusBlock;
+    if (blockEl) {
+      items.push({ separator: true });
+      const tag = blockEl.tagName.toLowerCase();
+      if (tag !== 'h1') items.push({ label: 'Heading 1', action: () => this.applyBlockAction('h1') });
+      if (tag !== 'h2') items.push({ label: 'Heading 2', action: () => this.applyBlockAction('h2') });
+      if (tag !== 'h3') items.push({ label: 'Heading 3', action: () => this.applyBlockAction('h3') });
+      if (tag !== 'blockquote') items.push({ label: 'Quote Block', action: () => this.applyBlockAction('blockquote') });
+      items.push({ separator: true });
+      items.push({ label: 'Bullet List',   action: () => this.applyBlockAction('ul') });
+      items.push({ label: 'Numbered List', action: () => this.applyBlockAction('ol') });
+      items.push({ separator: true });
+      items.push({ label: 'Insert Table',   action: () => this._insertDefaultTable() });
+      items.push({ label: 'Insert Drawing', action: () => this.insertSketch() });
+    }
+
+    this._showContextMenu(e.clientX, e.clientY, items);
+  }
+
+  _insertDefaultTable() {
+    const tableHTML = `
+      <table class="note-table" style="border-collapse:collapse;width:100%;margin:1rem 0;">
+        <tbody>
+          <tr>
+            <td style="border:1px solid var(--border);padding:0.5rem;min-width:80px;"></td>
+            <td style="border:1px solid var(--border);padding:0.5rem;min-width:80px;"></td>
+            <td style="border:1px solid var(--border);padding:0.5rem;min-width:80px;"></td>
+          </tr>
+          <tr>
+            <td style="border:1px solid var(--border);padding:0.5rem;"></td>
+            <td style="border:1px solid var(--border);padding:0.5rem;"></td>
+            <td style="border:1px solid var(--border);padding:0.5rem;"></td>
+          </tr>
+        </tbody>
+      </table>`.trim();
+
+    const curBlock = this._blockElAtCursor() || this._lastFocusBlock;
+    this.insertBlock('table', tableHTML, curBlock?.dataset?.blockId ?? null);
+  }
+
+  _showContextMenu(x, y, items) {
+    // Remove any existing context menu
+    document.querySelectorAll('.editor-context-menu').forEach(m => m.remove());
+
+    const menu = document.createElement('div');
+    menu.className = 'editor-context-menu';
+    Object.assign(menu.style, {
+      position: 'fixed',
+      left:     x + 'px',
+      top:      y + 'px',
+      background:   'var(--bg-secondary)',
+      border:       '1px solid var(--border)',
+      borderRadius: '8px',
+      padding:      '4px',
+      zIndex:       '9999',
+      boxShadow:    '0 8px 24px rgba(0,0,0,0.35)',
+      minWidth:     '170px',
+      userSelect:   'none',
+    });
+
+    items.forEach(item => {
+      if (item.separator) {
+        const hr = document.createElement('div');
+        hr.style.cssText = 'height:1px;background:var(--border);margin:4px 0;';
+        menu.appendChild(hr);
+        return;
+      }
+
+      const btn = document.createElement('button');
+      btn.textContent = item.label;
+      Object.assign(btn.style, {
+        display:      'block',
+        width:        '100%',
+        padding:      '7px 12px',
+        background:   'none',
+        border:       'none',
+        color:        'var(--text)',
+        cursor:       'pointer',
+        textAlign:    'left',
+        fontSize:     '13px',
+        borderRadius: '6px',
+        transition:   'background 0.1s',
+      });
+      btn.addEventListener('mouseenter', () => btn.style.background = 'var(--panel-hover)');
+      btn.addEventListener('mouseleave', () => btn.style.background = 'none');
+      btn.addEventListener('mousedown', e2 => {
+        e2.preventDefault();
+        item.action();
+        menu.remove();
+      });
+      menu.appendChild(btn);
+    });
+
+    document.body.appendChild(menu);
+
+    // Adjust so menu doesn't overflow viewport
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      if (rect.right  > window.innerWidth)  menu.style.left = (x - rect.width)  + 'px';
+      if (rect.bottom > window.innerHeight) menu.style.top  = (y - rect.height) + 'px';
+    });
+
+    // Close on outside click or Escape
+    const close = (ev) => {
+      if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', close, true); }
+    };
+    document.addEventListener('mousedown', close, true);
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { menu.remove(); }
+    }, { once: true });
+  }
+
+  // ─── Block Helpers ────────────────────────────────────────────────────────────
+
+  _allBlockEls() {
+    // Returns direct children of the container (top-level blocks)
+    return [...this.container.children].filter(el => el.tagName !== 'TEMPLATE');
+  }
+
+  _blockElAtCursor() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+
+    let node = sel.anchorNode;
+    if (!node) return null;
+
+    const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+    if (!el) return null;
+
+    // Walk up to find a direct child of the container with data-block-id
+    // (could be a <li> inside a <ul> or <ol>)
+    let cur = el;
+    while (cur && cur !== this.container) {
+      if (cur.dataset && cur.dataset.blockId) return cur;
+      cur = cur.parentElement;
+    }
+
+    return null;
+  }
+
+  _prevBlock(blockEl) {
+    // If it's a list item, prev in list or prev sibling list
+    const parentList = blockEl.closest('ul, ol');
+    if (parentList) {
+      const prevLi = blockEl.previousElementSibling;
+      if (prevLi) return prevLi;
+      // No prev li → go to element before the list
+      return parentList.previousElementSibling;
+    }
+    return blockEl.previousElementSibling;
+  }
+
+  _cursorAtStart(el) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    const range = sel.getRangeAt(0);
+    if (!range.collapsed) return false;
+    if (range.startOffset !== 0) return false;
+
+    // Walk up to ensure we're on the first text node chain
+    let node = sel.anchorNode;
+    while (node && node !== el) {
+      if (node.previousSibling) return false;
+      node = node.parentNode;
+    }
+    return true;
+  }
+
+  _makeP(content = '<br>') {
+    const p = document.createElement('p');
+    p.dataset.blockId = this._uid();
+    p.innerHTML = content;
+    return p;
+  }
+
+  _focusEnd(el) {
+    if (!el || !el.isConnected) return;
+    // If it's a list, focus the last li
+    if (el.tagName === 'UL' || el.tagName === 'OL') {
+      el = el.lastElementChild || el;
+    }
+    el.focus();
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
+  }
+
+  _focusStart(el) {
+    if (!el || !el.isConnected) return;
+    if (el.tagName === 'UL' || el.tagName === 'OL') {
+      el = el.firstElementChild || el;
+    }
+    el.focus();
+    try {
+      const range = document.createRange();
+      range.setStart(el, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
+  }
+
+  // ─── Sketch Block ─────────────────────────────────────────────────────────────
+
+  _initSketch(container, block) {
+    let canvas = container.querySelector('canvas');
+    if (!canvas) {
+      container.innerHTML = `
+        <div class="sketch-toolbar">
+          <button data-tool="pencil" class="active" title="Pencil">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </button>
+          <button data-tool="highlighter" title="Highlighter">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+          </button>
+          <button data-tool="eraser" title="Eraser">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.4 5.4c1 1 1 2.5 0 3.4L13 21Z"/><path d="m22 21-10-10"/></svg>
+          </button>
+          <div class="divider"></div>
+          <button data-tool="clear" title="Clear All">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        </div>
+        <canvas width="800" height="400"></canvas>
+      `;
+      canvas = container.querySelector('canvas');
+    }
+
+    const ctx = canvas.getContext('2d');
+    let drawing = false, lx = 0, ly = 0, tool = 'pencil';
+
+    const toolbar = container.querySelector('.sketch-toolbar');
+    toolbar.addEventListener('click', ev => {
+      const btn = ev.target.closest('button');
+      if (!btn) return;
+      if (btn.dataset.tool === 'clear') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this._saveSketch(container, canvas, block);
+        return;
+      }
+      tool = btn.dataset.tool;
+      toolbar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+
+    const pos = ev => {
+      const r = canvas.getBoundingClientRect();
+      return {
+        x: (ev.clientX - r.left) * (canvas.width  / r.width),
+        y: (ev.clientY - r.top)  * (canvas.height / r.height),
+      };
+    };
+
+    canvas.addEventListener('mousedown', ev => { drawing = true; const p = pos(ev); [lx, ly] = [p.x, p.y]; });
+    canvas.addEventListener('mousemove', ev => {
+      if (!drawing) return;
+      const p = pos(ev);
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(p.x, p.y);
+      switch (tool) {
+        case 'pencil':
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = '#000'; ctx.lineWidth = 2; break;
+        case 'highlighter':
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.strokeStyle = 'rgba(255,230,0,0.4)'; ctx.lineWidth = 20; break;
+        case 'eraser':
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.lineWidth = 20; break;
+      }
+      ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.stroke();
+      [lx, ly] = [p.x, p.y];
+    });
+    window.addEventListener('mouseup', () => {
+      if (drawing) { drawing = false; this._saveSketch(container, canvas, block); }
+    });
+
+    // Restore saved drawing
+    const data = container.dataset.initialData;
+    if (data) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0); img.src = data; }
+  }
+
+  _saveSketch(container, canvas, block) {
+    const url = canvas.toDataURL();
+    container.dataset.initialData = url;
+    if (block) block.content = container.outerHTML;
+    this._triggerChange();
+  }
+
+  // ─── Change Notification ──────────────────────────────────────────────────────
+
+  _triggerChange() {
+    this.onChange(this.getHTML());
+  }
+}

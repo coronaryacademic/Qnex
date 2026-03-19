@@ -645,7 +645,7 @@
 
 .note-toolbar .icon-btn:hover {
   background: var(--hover) !important;
-  color: var(--text);
+  color: var(--defualt);
 }
 
 .note-toolbar .icon-btn.active {

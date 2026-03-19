@@ -3468,17 +3468,17 @@ window.startImportProcess = function () {
   function buildEditor(note) {
     const node = el.templates.editor.content.firstElementChild.cloneNode(true);
     node.dataset.noteId = note.id;
-    const title = node.querySelector(".title");
-    const titleStatus = node.querySelector(".title-status");
-    const headerTags = node.querySelector(".header-tags");
-    const content = node.querySelector(".content");
-    const settingsBtn = node.querySelector('[data-action="settings"]');
-    const settingsDropdown = node.querySelector(".settings-dropdown");
-    const folderSel = node.querySelector(".folder-dropdown");
-    const chipsWrap = node.querySelector(".tags-dropdown.chips");
-    const tagInput = node.querySelector(".tag-input-dropdown");
 
-    // Initialize BlockEditor
+    const title            = node.querySelector(".title");
+    const titleStatus      = node.querySelector(".title-status");
+    const headerTags       = node.querySelector(".header-tags");
+    const content          = node.querySelector(".content");
+    const settingsDropdown = node.querySelector(".settings-dropdown");
+    const folderSel        = node.querySelector(".folder-dropdown");
+    const chipsWrap        = node.querySelector(".tags-dropdown.chips");
+    const tagInput         = node.querySelector(".tag-input-dropdown");
+
+    // ── BlockEditor ───────────────────────────────────────────────────────────
     const editor = new BlockEditor(
       content,
       note.contentHtml || note.content || "",
@@ -3489,230 +3489,246 @@ window.startImportProcess = function () {
     );
     node._blockEditor = editor;
 
-    // Restore saved note settings
-    // 1. Restore font size
-    if (note.fontSize) {
-      content.style.fontSize = note.fontSize + "px";
-      const fontSizeLabel = node.querySelector(".font-size-label");
-      if (fontSizeLabel) fontSizeLabel.textContent = note.fontSize + "px";
-    }
+    // ── Restore saved note settings ───────────────────────────────────────────
 
-    // 2. Restore font family
+    // 1. Font size
+    const savedFontSize = note.fontSize || 16;
+    content.style.fontSize = savedFontSize + "px";
+    const fontSizeLabel = node.querySelector(".font-size-label");
+    if (fontSizeLabel) fontSizeLabel.textContent = savedFontSize + "px";
+
+    // 2. Font family
     if (note.fontFamily) {
       content.style.fontFamily = note.fontFamily;
-      const fontFamilySelect = node.querySelector(".font-family-select");
-      if (fontFamilySelect) fontFamilySelect.value = note.fontFamily;
+      const fontFamilySelectEl = node.querySelector(".font-family-select");
+      if (fontFamilySelectEl) fontFamilySelectEl.value = note.fontFamily;
     }
 
-    // 3. Restore layout mode
-    if (note.layoutMode === "full") {
-      content.classList.add("layout-full");
-      content.classList.remove("layout-centered");
-      const layoutLabel = node.querySelector(".layout-label");
-      if (layoutLabel) layoutLabel.textContent = "Full-width Layout";
-    } else {
-      content.classList.add("layout-centered");
-      content.classList.remove("layout-full");
-    }
+    // 3. Layout mode
+    const isFullLayout = note.layoutMode === "full";
+    content.classList.toggle("layout-full",     isFullLayout);
+    content.classList.toggle("layout-centered", !isFullLayout);
+    const layoutLabelEl = node.querySelector(".layout-label");
+    if (layoutLabelEl) layoutLabelEl.textContent = isFullLayout ? "Full-width Layout" : "Centered Layout";
 
-    // 4. Restore lock status
+    // 4. Read-only / lock
     if (note.isReadOnly) {
-      if (content) {
-        content.contentEditable = "false";
-        content.classList.add("read-only");
-      }
-
-      // Add lock icon
-      const lockIcon = document.createElement("span");
-      lockIcon.className = "lock-icon";
-      lockIcon.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-        </svg>
-      `;
-      lockIcon.style.marginRight = "8px";
-      lockIcon.style.color = "#f59e0b";
-      lockIcon.style.display = "inline-flex";
-      lockIcon.style.alignItems = "center";
+      content.contentEditable = "false";
+      content.classList.add("read-only");
+      const lockLabelEl = node.querySelector(".lock-label");
+      if (lockLabelEl) lockLabelEl.textContent = "Unlock Note (Ctrl+L)";
 
       const titleWithTags = node.querySelector(".title-with-tags");
       if (titleWithTags) {
+        const lockIcon = document.createElement("span");
+        lockIcon.className = "lock-icon";
+        lockIcon.title = "Note is locked";
+        lockIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+        lockIcon.style.cssText = "margin-right:6px;display:inline-flex;align-items:center;flex-shrink:0;";
         titleWithTags.insertBefore(lockIcon, titleWithTags.firstChild);
       }
     }
 
+    // ── Date display ──────────────────────────────────────────────────────────
     function syncDates() {
-      // Restore date display in header
       if (titleStatus) {
         titleStatus.textContent = note.updatedAt
-          ? `${fmt(note.updatedAt)}`
-          : note.createdAt
-            ? `${fmt(note.createdAt)}`
-            : "";
+          ? fmt(note.updatedAt)
+          : note.createdAt ? fmt(note.createdAt) : "";
       }
     }
 
     title.value = note.title || "";
-
-    // folders
     renderFolderOptions(folderSel, note.folderId);
-
-    // tags (chips UI)
-    function renderChips() {
-      chipsWrap.innerHTML = "";
-      headerTags.innerHTML = "";
-      (note.tags || []).forEach((t, idx) => {
-        const chip = document.createElement("span");
-        chip.className = "chip";
-        chip.innerHTML = `<span>${escapeHtml(
-          t
-        )}</span><span class="x" title="Remove">Ã—</span>`;
-        chip.querySelector(".x").addEventListener("click", () => {
-          note.tags.splice(idx, 1);
-          saveNote();
-          renderChips();
-        });
-        chipsWrap.appendChild(chip);
-
-        // Also add to header
-        const headerChip = document.createElement("span");
-        headerChip.className = "header-tag";
-        headerChip.textContent = t;
-        headerTags.appendChild(headerChip);
-      });
-    }
-    if (!Array.isArray(note.tags)) note.tags = [];
-    renderChips();
-    tagInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === ",") {
-        e.preventDefault();
-        const v = tagInput.value.trim();
-        if (!v) return;
-        if (!note.tags.includes(v)) note.tags.push(v);
-        tagInput.value = "";
-        saveNote();
-        renderChips();
-      }
-    });
     syncDates();
 
-    // Manual save system to eliminate lag
-    let hasUnsavedChanges = false;
-    let autoSaveTimer = null;
+    // ── Tags (chips) system ───────────────────────────────────────────────────
+    if (!Array.isArray(note.tags)) note.tags = [];
 
-    function updateSaveStatus(saved = false) {
-      if (saved) {
-        showToast("Note saved and synced", "success", 2000);
-      } else {
-        showToast("Unsaved changes", "info", 2000);
-      }
+    function renderChips() {
+      if (chipsWrap)  chipsWrap.innerHTML  = "";
+      if (headerTags) headerTags.innerHTML = "";
+
+      note.tags.forEach((tag) => {
+        if (chipsWrap) {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.innerHTML = `<span>${escapeHtml(tag)}</span><span class="x" title="Remove">&times;</span>`;
+          chip.querySelector(".x").addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            note.tags = note.tags.filter(t => t !== tag);
+            saveNote();
+            renderChips();
+          });
+          chipsWrap.appendChild(chip);
+        }
+        if (headerTags) {
+          const hc = document.createElement("span");
+          hc.className = "header-tag";
+          hc.textContent = tag;
+          headerTags.appendChild(hc);
+        }
+      });
     }
 
+    renderChips();
+
+    if (tagInput) {
+      tagInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === ",") {
+          e.preventDefault();
+          const v = tagInput.value.trim().replace(/,$/, "");
+          if (v && !note.tags.includes(v)) {
+            note.tags.push(v);
+            saveNote();
+            renderChips();
+          }
+          tagInput.value = "";
+        } else if (e.key === "Backspace" && !tagInput.value && note.tags.length) {
+          note.tags.pop();
+          saveNote();
+          renderChips();
+        }
+      });
+    }
+
+    // ── Save tracking ─────────────────────────────────────────────────────────
+    let hasUnsavedChanges = false;
+
     function saveNote() {
-      console.log("ðŸ’¾ saveNote() called for note:", note.id);
-      note.updatedAt = new Date().toISOString();
+      note.updatedAt   = new Date().toISOString();
       note.contentHtml = editor.getHTML();
       saveNotes();
       syncDates();
-      // DISABLED: These cause navigation back to base layer in TwoBase architecture
-      // renderSidebar();
-      // refreshOpenTabs(note.id);
       refreshWindowTitle(note.id);
       hasUnsavedChanges = false;
-      updateSaveStatus(true);
-      console.log("âœ… Save complete, status updated");
+      showToast("Note saved", "success", 1500);
     }
 
-    // Expose saveNote on the node for external access (e.g., two-base.js)
     node._saveNote = saveNote;
 
     function markUnsaved() {
       hasUnsavedChanges = true;
-      updateSaveStatus(false);
     }
 
-    // Link: markUnsaved is used by title input and editor changes
+    title.addEventListener("input", () => { note.title = title.value; markUnsaved(); });
 
-    title.addEventListener("input", () => {
-      note.title = title.value;
-      markUnsaved();
-    });
-
-    // Ctrl+S to save manually
+    // Ctrl+S
     content.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-        e.preventDefault();
-        e.stopPropagation(); // Stop propagation to prevent global handlers
-        console.log("ðŸ“ Ctrl+S detected in editor for note:", note.id);
-        saveNote();
-        // Visual feedback
-        if (typeof AudioFX !== "undefined" && AudioFX.playComplete) {
-          AudioFX.playComplete();
-        }
-        return;
+        e.preventDefault(); e.stopPropagation(); saveNote();
       }
     });
 
-    // Preserve existing paste logic for images/tables but refresh editor
-    content.addEventListener("paste", async (e) => {
-      // Allow default paste or existing handlers to run first
-      // Then refresh editor state
-      setTimeout(() => {
-        editor.refresh();
-        note.contentHtml = editor.getHTML();
-        markUnsaved();
-      }, 100);
+    // Paste refresh
+    content.addEventListener("paste", () => {
+      setTimeout(() => { editor.refresh(); note.contentHtml = editor.getHTML(); markUnsaved(); }, 150);
     });
 
-    // Folder selection
+    // Folder
     if (folderSel) {
-      folderSel.addEventListener("change", () => {
-        note.folderId = folderSel.value || null;
+      folderSel.addEventListener("change", () => { note.folderId = folderSel.value || null; saveNote(); });
+    }
+
+    // ── Hamburger menu ────────────────────────────────────────────────────────
+    const editorMenuBtn  = node.querySelector(".editor-menu-btn");
+    const editorMenuList = node.querySelector(".editor-menu-list");
+    let menuOpen = false;
+
+    if (editorMenuBtn && editorMenuList) {
+      editorMenuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuOpen = !menuOpen;
+        editorMenuList.classList.toggle("open", menuOpen);
+        if (settingsDropdown && menuOpen) settingsDropdown.style.display = "none";
+      });
+      document.addEventListener("click", (e) => {
+        if (menuOpen && !editorMenuList.contains(e.target) && e.target !== editorMenuBtn) {
+          menuOpen = false; editorMenuList.classList.remove("open");
+        }
+      });
+      editorMenuList.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    // ── Font size ─────────────────────────────────────────────────────────────
+    const fontDecrBtn = node.querySelector('[data-action="font-decrease"]');
+    const fontIncrBtn = node.querySelector('[data-action="font-increase"]');
+    const fontLabel   = node.querySelector(".font-size-label");
+
+    function getFontSize() { return parseInt(content.style.fontSize, 10) || 16; }
+    function setFontSize(sz) {
+      sz = Math.min(40, Math.max(10, sz));
+      content.style.fontSize = sz + "px";
+      if (fontLabel) fontLabel.textContent = sz + "px";
+      note.fontSize = sz; markUnsaved();
+    }
+    if (fontDecrBtn) fontDecrBtn.addEventListener("click", (e) => { e.stopPropagation(); setFontSize(getFontSize() - 2); });
+    if (fontIncrBtn) fontIncrBtn.addEventListener("click", (e) => { e.stopPropagation(); setFontSize(getFontSize() + 2); });
+
+    // ── Font family ───────────────────────────────────────────────────────────
+    const fontFamilySelect = node.querySelector(".font-family-select");
+    if (fontFamilySelect) {
+      fontFamilySelect.addEventListener("change", () => {
+        content.style.fontFamily = fontFamilySelect.value;
+        note.fontFamily = fontFamilySelect.value; markUnsaved();
+      });
+    }
+
+    // ── Layout toggle ─────────────────────────────────────────────────────────
+    const layoutBtn = node.querySelector('[data-action="toggle-layout"]');
+    if (layoutBtn) {
+      layoutBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isFull = content.classList.toggle("layout-full");
+        content.classList.toggle("layout-centered", !isFull);
+        note.layoutMode = isFull ? "full" : "centered";
+        const lbl = layoutBtn.querySelector(".layout-label");
+        if (lbl) lbl.textContent = isFull ? "Full-width Layout" : "Centered Layout";
+        markUnsaved();
+      });
+    }
+
+    // ── Lock note ─────────────────────────────────────────────────────────────
+    const lockBtn = node.querySelector('[data-action="lock-note"]');
+    if (lockBtn) {
+      lockBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        note.isReadOnly = !note.isReadOnly;
+        content.contentEditable = note.isReadOnly ? "false" : "true";
+        content.classList.toggle("read-only", note.isReadOnly);
+        const lbl = lockBtn.querySelector(".lock-label");
+        if (lbl) lbl.textContent = note.isReadOnly ? "Unlock Note (Ctrl+L)" : "Lock Note (Ctrl+L)";
+        if (editorMenuList) editorMenuList.classList.remove("open");
         saveNote();
       });
-    } else {
-      console.warn("folderSel not found in editor template");
     }
 
-    // Settings dropdown toggle
-    if (settingsBtn && settingsDropdown) {
-      let settingsOpen = false;
-      settingsBtn.addEventListener("click", (e) => {
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "l" && node.contains(document.activeElement)) {
+        e.preventDefault(); lockBtn && lockBtn.click();
+      }
+    });
+
+    // ── Folder & Tags (inside menu) ───────────────────────────────────────────
+    const folderTagsBtn = node.querySelector('[data-action="folder-tags"]');
+    let settingsOpen = false;
+
+    if (folderTagsBtn && settingsDropdown) {
+      folderTagsBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        console.log("ðŸ“ Folder & Tags button clicked");
-
-        // Close the editor menu
-        const editorMenu = node.querySelector(".editor-menu");
-        if (editorMenu) {
-          editorMenu.classList.remove("open");
-        }
-
+        if (editorMenuList) editorMenuList.classList.remove("open");
+        menuOpen = false;
         settingsOpen = !settingsOpen;
-        if (settingsOpen) {
-          settingsDropdown.style.display = "block";
-          console.log("âœ… Dropdown shown");
-        } else {
-          settingsDropdown.style.display = "none";
-          console.log("âŒ Dropdown hidden");
+        settingsDropdown.style.display = settingsOpen ? "block" : "none";
+      });
+      document.addEventListener("click", (e) => {
+        if (settingsOpen && !settingsDropdown.contains(e.target) && e.target !== folderTagsBtn) {
+          settingsOpen = false; settingsDropdown.style.display = "none";
         }
       });
-
-      // Close settings dropdown when clicking outside
-      document.addEventListener("click", () => {
-        if (settingsOpen) {
-          settingsOpen = false;
-          settingsDropdown.style.display = "none";
-        }
-      });
-
-      settingsDropdown.addEventListener("click", (e) => {
-        e.stopPropagation();
-      });
+      settingsDropdown.addEventListener("click", (e) => e.stopPropagation());
     }
 
-    // left/right open buttons removed in new split model
-    // open-window, split-note, and fullscreen buttons have been removed from the templatewindow
     return node;
   }
   window.buildEditor = buildEditor; // Expose globally for two-base.js

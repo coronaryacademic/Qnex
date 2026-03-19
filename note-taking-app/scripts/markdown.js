@@ -386,8 +386,12 @@
     // Handle bold: **text**
     html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
-    // Handle italic: *text*
+    // Handle underline: __text__
+    html = html.replace(/__(.*?)__/g, "<u>$1</u>");
+
+    // Handle italic: *text* or _text_
     html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+    html = html.replace(/_([^_].*?)_/g, "<em>$1</em>");
 
     // Handle links: [text](url)
     html = html.replace(/\[((?:[^\]]|\\\])+)\]\(((?:[^()]|\([^()]*\))+)\)/g, '<a href="$2" target="_blank">$1</a>');
