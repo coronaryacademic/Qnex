@@ -158,11 +158,136 @@ export class BlockEditor {
   }
 
   _onPaste(e) {
-    // Allow standard paste for now, but ensure structure after
-    requestAnimationFrame(() => {
-        this._ensureStructure();
-        this._triggerChange();
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+
+    // Check if it's likely Markdown or just multiple lines
+    const isMarkdown = /[#*_\-]/.test(text) || text.includes('\n');
+    
+    if (isMarkdown) {
+        e.preventDefault();
+        const blocks = this._parseMarkdownToBlocks(text);
+        this._insertMarkdownBlocks(blocks);
+    } else {
+        // Standard paste for simple text
+        requestAnimationFrame(() => {
+            this._ensureStructure();
+            this._triggerChange();
+        });
+    }
+  }
+
+  _parseMarkdownToBlocks(text) {
+    const lines = text.split(/\r?\n/);
+    const blocks = [];
+    let currentList = null;
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed && !currentList) {
+            // Empty line between non-list blocks
+            return;
+        }
+
+        // 1. Headers
+        if (/^#\s/.test(line)) {
+            blocks.push({ type: 'h1', html: this._parseInlineMarkdown(line.replace(/^#\s/, '')) });
+            currentList = null;
+        } else if (/^##\s/.test(line)) {
+            blocks.push({ type: 'h2', html: this._parseInlineMarkdown(line.replace(/^##\s/, '')) });
+            currentList = null;
+        } else if (/^###\s/.test(line)) {
+            blocks.push({ type: 'h3', html: this._parseInlineMarkdown(line.replace(/^###\s/, '')) });
+            currentList = null;
+        } 
+        // 2. Blockquotes
+        else if (/^>\s/.test(line)) {
+            blocks.push({ type: 'blockquote', html: this._parseInlineMarkdown(line.replace(/^>\s/, '')) });
+            currentList = null;
+        }
+        // 3. Lists
+        else if (/^([-*]|\d+\.)\s/.test(trimmed)) {
+            const isOrdered = /^\d+\.\s/.test(trimmed);
+            const tag = isOrdered ? 'ol' : 'ul';
+            const content = this._parseInlineMarkdown(trimmed.replace(/^([-*]|\d+\.)\s/, ''));
+            
+            if (currentList && currentList.type === tag) {
+                currentList.items.push(content);
+            } else {
+                currentList = { type: tag, items: [content] };
+                blocks.push(currentList);
+            }
+        }
+        // 4. Paragraphs
+        else if (trimmed) {
+            blocks.push({ type: 'p', html: this._parseInlineMarkdown(line) });
+            currentList = null;
+        } else {
+            currentList = null;
+        }
     });
+
+    return blocks;
+  }
+
+  _parseInlineMarkdown(text) {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/__(.*?)__/g, '<b>$1</b>')
+        .replace(/\*(.*?)\*/g, '<i>$1</i>')
+        .replace(/_(.*?)_/g, '<i>$1</i>')
+        .replace(/~~(.*?)~~/g, '<strike>$1</strike>');
+  }
+
+  _insertMarkdownBlocks(blocks) {
+    const startBlock = this._blockAtCursor() || this._lastFocusBlock;
+    if (!startBlock) {
+        // Just append to end
+        blocks.forEach(b => {
+            if (b.items) {
+                const list = document.createElement(b.type);
+                list.dataset.blockId = this._uid();
+                b.items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.dataset.blockId = this._uid();
+                    li.innerHTML = item;
+                    list.appendChild(li);
+                });
+                this.container.appendChild(list);
+            } else {
+                this.container.appendChild(this._createBlock(b.type, b.html));
+            }
+        });
+    } else {
+        // Insert after current block
+        let ref = startBlock;
+        blocks.forEach(b => {
+            let next;
+            if (b.items) {
+                next = document.createElement(b.type);
+                next.dataset.blockId = this._uid();
+                b.items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.dataset.blockId = this._uid();
+                    li.innerHTML = item;
+                    next.appendChild(li);
+                });
+            } else {
+                next = this._createBlock(b.type, b.html);
+            }
+            ref.after(next);
+            ref = next;
+        });
+        
+        // If the start block was empty paragraph, remove it
+        if (startBlock.tagName === 'P' && !startBlock.textContent.trim()) {
+            startBlock.remove();
+        }
+    }
+    
+    this._ensureStructure();
+    this._triggerChange();
+    this._saveSnapshot();
   }
 
   // ─── Input Handlers ──────────────────────────────────────────────────────────
@@ -233,19 +358,16 @@ export class BlockEditor {
 
   _handleTab(e, block) {
     e.preventDefault();
-    const tag = block.tagName.toLowerCase();
-
     if (e.shiftKey) {
-      // Dedent
-      if (tag === 'li') {
-        this.applyBlockAction('p');
-      }
+      document.execCommand('outdent', false, null);
     } else {
-      // Indent
-      if (tag === 'p' || tag === 'li') {
-        this.applyBlockAction(tag === 'p' ? 'ul' : 'ul'); // Simplification for now
-      }
+      document.execCommand('indent', false, null);
     }
+    // Sync structure after indentation
+    requestAnimationFrame(() => {
+        this._ensureStructure();
+        this._onInput();
+    });
   }
 
   // ─── Markdown Shortcuts ──────────────────────────────────────────────────────

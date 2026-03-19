@@ -3488,11 +3488,24 @@ body.fullscreen [data-action="fullscreen"] svg {
   transform: rotate(180deg);
 }
 
-/* Bullet point spacing */
+/* Bullet point spacing and markers */
 .editor .content.editable ul li,
 .editor .content.editable ol li {
   margin-bottom: 8px;
   line-height: 1.8;
+}
+
+.editor .content.editable ul {
+  list-style-type: disc;
+}
+
+.editor .content.editable ul ul {
+  list-style-type: circle;
+  margin-top: 4px;
+}
+
+.editor .content.editable ul ul ul {
+  list-style-type: square;
 }
 
 .editor .content.editable ul ul li,
