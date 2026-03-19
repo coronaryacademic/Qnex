@@ -367,7 +367,7 @@
   justify-content: center;
   flex-shrink: 0;
   cursor: pointer;
-  color: var(--muted);
+  color: var(--defualt);
 }
 
 .note-tab-menu-btn {
@@ -383,7 +383,7 @@
   justify-content: center;
   flex-shrink: 0;
   cursor: pointer;
-  color: var(--muted);
+  color: var(--defualt);
   opacity: 0;
   pointer-events: none;
   z-index: 2;
