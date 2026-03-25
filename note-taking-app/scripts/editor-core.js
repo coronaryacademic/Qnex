@@ -125,7 +125,8 @@ export class BlockEditor {
     
     this._ensureStructure();
     this._triggerChange();
-    this._scheduleSnapshot();
+    // Save immediately so every typed character is its own undo step
+    this._saveSnapshot();
   }
 
   _onKeyDown(e) {
@@ -147,6 +148,8 @@ export class BlockEditor {
     if (!block) return;
 
     if (e.key === 'Enter') {
+      // Snapshot before structural change so undo steps are word-granular
+      this._saveSnapshot();
       if (e.shiftKey && block.tagName === 'LI') {
         this._handleTab(e, block);
         return;
@@ -154,11 +157,14 @@ export class BlockEditor {
       if (block.tagName === 'LI') return; // Allow browser to handle native list continuation (1, 2, 3...)
       this._handleEnter(e, block);
     } else if (e.key === 'Backspace') {
+      // Snapshot before merge/delete so each backspace-merge is its own undo step
+      this._saveSnapshot();
       this._handleBackspace(e, block);
     } else if (e.key === 'Tab') {
+      this._saveSnapshot();
       this._handleTab(e, block);
     } else if (e.key === ' ') {
-      // Check for markdown shortcuts after the space is handled (using requestAnimationFrame)
+      // _onInput will snapshot after the space is inserted; just check markdown
       requestAnimationFrame(() => this._checkMarkdownShortcuts(block));
     }
   }
@@ -459,17 +465,19 @@ export class BlockEditor {
   // ─── Undo / Redo ─────────────────────────────────────────────────────────────
 
   _saveSnapshot() {
-    const state = this.container.innerHTML;
-    if (this._undoStack.length > 0 && this._undoStack[this._undoStack.length - 1] === state) return;
-    
-    this._undoStack.push(state);
+    const html = this.container.innerHTML;
+    const last = this._undoStack[this._undoStack.length - 1];
+    if (last && last.html === html) return;
+
+    this._undoStack.push({ html, sel: this._getSelectionPath() });
     if (this._undoStack.length > 50) this._undoStack.shift();
     this._redoStack = [];
   }
 
   _scheduleSnapshot() {
     clearTimeout(this._undoTimer);
-    this._undoTimer = setTimeout(() => this._saveSnapshot(), 500);
+    // 1500 ms idle debounce — word-boundary snapshots already handle the common case
+    this._undoTimer = setTimeout(() => this._saveSnapshot(), 1500);
   }
 
   undo() {
@@ -486,12 +494,78 @@ export class BlockEditor {
     this._applySnapshot(snapshot);
   }
 
-  _applySnapshot(html) {
+  _applySnapshot(snapshot) {
     this._isInternalChange = true;
-    this.container.innerHTML = html;
+    this.container.innerHTML = snapshot.html;
     this._ensureStructure();
     this._isInternalChange = false;
     this._triggerChange();
+
+    // Restore cursor to where it was when this snapshot was taken.
+    // Defer one animation frame so the browser finishes processing focus
+    // before we try to apply the selection range.
+    if (snapshot.sel) {
+      this.container.focus();
+      const sel = snapshot.sel;
+      requestAnimationFrame(() => this._restoreSelectionFromPath(sel));
+    }
+  }
+
+  // ─── Cursor Path Serialization ────────────────────────────────────────────────
+
+  /** Serialize current selection as child-index paths so it survives innerHTML replacement */
+  _getSelectionPath() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    const range = sel.getRangeAt(0);
+    if (!this.container.contains(range.startContainer)) return null;
+    return {
+      startPath:   this._nodeToPath(range.startContainer),
+      startOffset: range.startOffset,
+      endPath:     this._nodeToPath(range.endContainer),
+      endOffset:   range.endOffset,
+    };
+  }
+
+  /** Walk from node up to container, recording child indices */
+  _nodeToPath(node) {
+    const path = [];
+    while (node && node !== this.container) {
+      const parent = node.parentNode;
+      if (!parent) return null;
+      path.unshift(Array.from(parent.childNodes).indexOf(node));
+      node = parent;
+    }
+    return path;
+  }
+
+  /** Follow a path of child indices from the container to reach the original node */
+  _pathToNode(path) {
+    if (!path) return null;
+    let node = this.container;
+    for (const idx of path) {
+      if (!node.childNodes[idx]) return null;
+      node = node.childNodes[idx];
+    }
+    return node;
+  }
+
+  /** Restore a previously serialized selection */
+  _restoreSelectionFromPath(selData) {
+    if (!selData) return;
+    const startNode = this._pathToNode(selData.startPath);
+    const endNode   = this._pathToNode(selData.endPath);
+    if (!startNode || !endNode) return;
+    try {
+      const maxStart = startNode.nodeType === Node.TEXT_NODE ? startNode.textContent.length : startNode.childNodes.length;
+      const maxEnd   = endNode.nodeType   === Node.TEXT_NODE ? endNode.textContent.length   : endNode.childNodes.length;
+      const range = document.createRange();
+      range.setStart(startNode, Math.min(selData.startOffset, maxStart));
+      range.setEnd(endNode,     Math.min(selData.endOffset,   maxEnd));
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) { /* selection restoration is best-effort */ }
   }
 
   // ─── Selection Helpers ───────────────────────────────────────────────────────
