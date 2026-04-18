@@ -813,6 +813,7 @@ window.startImportProcess = function () {
     settingsBtn: document.getElementById("settingsBtn"),
     workspaceSplit: document.getElementById("workspaceSplit"),
     noteBase: document.getElementById("noteBase"),
+    sidebarOpenPdfBtn: document.getElementById("sidebarOpenPdfBtn"),
     // New Settings Page Elements
     settingsOverlay: document.getElementById("settingsOverlay"),
     closeSettingsBtn: document.getElementById("closeSettingsBtn"),
@@ -4248,6 +4249,14 @@ window.startImportProcess = function () {
 
   // Events
   el.newNoteBtn.addEventListener("click", newNote);
+  
+  if (el.sidebarOpenPdfBtn) {
+    el.sidebarOpenPdfBtn.addEventListener("click", () => {
+      if (window.PDFViewer) {
+        window.PDFViewer.open();
+      }
+    });
+  }
 
   // Sidebar action menu toggle
   const sidebarActionBtn = document.getElementById("sidebarActionBtn");

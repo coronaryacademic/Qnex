@@ -42,6 +42,14 @@ try {
     // Check if running in Electron
     isElectron: true,
 
+    // PDF
+    pdfOpenDialog: () => ipcRenderer.invoke('pdf:open-dialog'),
+    pdfReadFile: (filePath) => ipcRenderer.invoke('pdf:read-file', filePath),
+    pdfReadAnnotations: (filePath) => ipcRenderer.invoke('pdf:read-annotations', filePath),
+    pdfSaveAnnotations: (filePath, data) => ipcRenderer.invoke('pdf:save-annotations', filePath, data),
+    pdfGetRecent: () => ipcRenderer.invoke('pdf:get-recent'),
+    pdfSaveRecent: (data) => ipcRenderer.invoke('pdf:save-recent', data),
+
     // Startup Logs
     getStartupLogs: () => ipcRenderer.invoke('app:getStartupLogs'),
     onStartupLog: (callback) => ipcRenderer.on('startup-log', (_event, value) => callback(value)),

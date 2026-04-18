@@ -1159,6 +1159,59 @@ function startServer3002() {
   }
 }
 
+// PDF IPC Handlers
+const { dialog } = require('electron');
+
+ipcMain.handle('pdf:open-dialog', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+    });
+    if (result.canceled) return null;
+    return result.filePaths[0];
+});
+
+ipcMain.handle('pdf:read-file', async (event, filePath) => {
+    try {
+        const data = await fs.readFile(filePath);
+        return data.toString('base64');
+    } catch (err) {
+        console.error("Error reading PDF file:", err);
+        throw err;
+    }
+});
+
+ipcMain.handle('pdf:read-annotations', async (event, filePath) => {
+    const annotPath = filePath + '.annot.json';
+    try {
+        const data = await fs.readFile(annotPath, 'utf8');
+        return JSON.parse(data);
+    } catch (err) {
+        return []; // Return empty if no annotations exist
+    }
+});
+
+ipcMain.handle('pdf:save-annotations', async (event, filePath, annotations) => {
+    const annotPath = filePath + '.annot.json';
+    try {
+        await fs.writeFile(annotPath, JSON.stringify(annotations, null, 2), 'utf8');
+        return { success: true };
+    } catch (err) {
+        console.error("Error saving annotations:", err);
+        return { success: false, error: err.message };
+    }
+});
+
+ipcMain.handle('pdf:get-recent', async () => {
+    const recentPath = path.join(dataDir, 'settings', 'recent_pdfs.json');
+    return await readFile(recentPath, []);
+});
+
+ipcMain.handle('pdf:save-recent', async (event, recentList) => {
+    const recentPath = path.join(dataDir, 'settings', 'recent_pdfs.json');
+    return await writeFile(recentPath, recentList);
+});
+
 // IPC Handlers for additional features
 ipcMain.handle('app:getStartupLogs', () => {
   return startupLogs;

@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="styles/dungeon-note.css">
   <link rel="stylesheet" href="styles/toast.css">
   <link rel="stylesheet" href="styles/notif-center.css">
+  <link rel="stylesheet" href="styles/pdf-viewer.css">
   <!-- Startup and reload sounds removed -->
   <style>
     /* View Options Menu */
@@ -173,6 +174,16 @@
                 <line x1="10" y1="9" x2="8" y2="9"></line>
               </svg>
               Question Bank
+            </button>
+            <button class="menu-item" id="sidebarOpenPdfBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M16 13H8"></path>
+                <path d="M16 17H8"></path>
+                <path d="M10 9H8"></path>
+              </svg>
+              PDF Viewer
             </button>
           </div>
         </div>
@@ -507,7 +518,124 @@
         </div>
       </section>
 
+      <!-- PDF BASE: Fullscreen overlay for viewing and annotating PDFs -->
+      <section class="pdf-base hidden" id="pdfBase">
+
+        <!-- TOP BAR: Back + File Name + Page Nav + Zoom -->
+        <div class="pdf-topbar">
+          <div class="pdf-topbar-left">
+            <button id="pdfBackBtn" class="pdf-icon-btn" title="Back to Workspace">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div class="pdf-file-info">
+              <span id="pdfFileName" class="pdf-filename">No file open</span>
+              <span id="pdfFilePath" class="pdf-filepath"></span>
+            </div>
+          </div>
+
+          <div class="pdf-topbar-center">
+            <button id="pdfPrevPage" class="pdf-nav-btn" title="Previous Page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div class="pdf-page-box">
+              <input type="number" id="pdfPageInput" value="1" min="1">
+              <span class="pdf-page-sep">of</span>
+              <span id="pdfTotalPages">0</span>
+            </div>
+            <button id="pdfNextPage" class="pdf-nav-btn" title="Next Page">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+
+            <div class="pdf-topbar-divider"></div>
+
+            <button id="pdfZoomOut" class="pdf-nav-btn" title="Zoom Out">&#8722;</button>
+            <span id="pdfZoomLevel" class="pdf-zoom-text">100%</span>
+            <button id="pdfZoomIn" class="pdf-nav-btn" title="Zoom In">+</button>
+            <button id="pdfFitWidth" class="pdf-nav-btn pdf-fit-btn" title="Fit to Width">Fit</button>
+          </div>
+
+          <div class="pdf-topbar-right">
+            <button id="pdfToggleLayers" class="pdf-layers-btn" title="Annotations and Bookmarks panel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"></path><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"></path><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"></path></svg>
+              Layers
+            </button>
+          </div>
+        </div>
+
+        <!-- TOOLS BAR: Labeled tool strip below the top bar -->
+        <div class="pdf-toolbar">
+          <div class="pdf-tool-group">
+            <span class="pdf-tool-label">Tool</span>
+            <button id="pdfToolCursor" class="pdf-labeled-tool active" data-tool="cursor">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path></svg>
+              Select
+            </button>
+            <button id="pdfToolHighlight" class="pdf-labeled-tool" data-tool="highlight">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"></path><path d="m22 12-4.6-4.6a2 2 0 0 0-2.8 0l-5.2 5.2a2 2 0 0 0 0 2.8l4.6 4.6a2 2 0 0 0 2.8 0l5.2-5.2a2 2 0 0 0 0-2.8z"></path></svg>
+              Highlight
+            </button>
+            <button id="pdfToolText" class="pdf-labeled-tool" data-tool="text">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+              Add Text
+            </button>
+            <button id="pdfToolBookmark" class="pdf-labeled-tool" data-tool="bookmark">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>
+              Bookmark Page
+            </button>
+          </div>
+
+          <div class="pdf-tool-divider"></div>
+
+          <div class="pdf-tool-group" id="highlightColors">
+            <span class="pdf-tool-label">Highlight Color</span>
+            <button class="pdf-color-swatch active" data-color="yellow" style="background:#facc15;" title="Yellow"></button>
+            <button class="pdf-color-swatch" data-color="cyan" style="background:#22d3ee;" title="Cyan"></button>
+            <button class="pdf-color-swatch" data-color="lime" style="background:#86efac;" title="Green"></button>
+            <button class="pdf-color-swatch" data-color="pink" style="background:#f9a8d4;" title="Pink"></button>
+            <button class="pdf-color-swatch" data-color="orange" style="background:#fb923c;" title="Orange"></button>
+          </div>
+
+          <div class="pdf-tool-divider"></div>
+
+          <div class="pdf-tool-group">
+            <button id="pdfOpenBtn" class="pdf-labeled-tool pdf-open-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              Open PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- MAIN WORKSPACE -->
+        <div class="pdf-main-container">
+          <div id="pdfViewer" class="pdf-viewer-container tool-cursor">
+            <div id="pdfEmptyState" class="pdf-empty-state">
+              <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path>
+              </svg>
+              <h3>No PDF Open</h3>
+              <p>Click <strong>Open PDF</strong> in the toolbar above, or use PDF Viewer from the sidebar menu.</p>
+            </div>
+          </div>
+
+          <!-- LAYERS PANEL (slide in from right) -->
+          <aside id="pdfLayersPanel" class="pdf-layers-panel hidden">
+            <div class="layers-header">
+              <h3>Annotations</h3>
+              <button id="pdfCloseLayers" class="pdf-icon-btn" title="Close panel">&#xd7;</button>
+            </div>
+            <div class="layers-tabs">
+              <button class="layer-tab active" data-tab="annotations">Annotations</button>
+              <button class="layer-tab" data-tab="bookmarks">Bookmarks</button>
+            </div>
+            <div id="pdfAnnotationsList" class="layers-content"></div>
+            <div id="pdfBookmarksList" class="layers-content hidden"></div>
+          </aside>
+        </div>
+      </section>
       <!-- QUESTION BASE: Fullscreen overlay for creating MCQs -->
+
       <section class="question-base hidden" id="questionBase">
         <aside class="sidebar question-sidebar" id="questionSidebar">
           <!-- Sidebar Header -->
@@ -2483,6 +2611,7 @@
   <script src="scripts/custom-features.js"></script>
   <script src="scripts/note-font-handler.js"></script>
   <script src="scripts/dungeon-note.js"></script>
+  <script src="scripts/pdf-viewer.js"></script>
   <script type="module">
     import DungeonBase from './scripts/dungeon-base.js';
     window.DungeonBase = new DungeonBase();

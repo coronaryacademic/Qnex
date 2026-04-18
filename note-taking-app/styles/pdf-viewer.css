@@ -1,0 +1,472 @@
+/* ====================================================
+   PDF VIEWER — Styles
+   Uses --defualt, --accent, --bg-secondary, --border
+   ==================================================== */
+
+/* Section container */
+.pdf-base {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--defualt);
+  z-index: 1500;
+  font-family: inherit;
+}
+.pdf-base.hidden { display: none; }
+
+/* ── Top bar ─────────────────────────────────────── */
+.pdf-topbar {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.pdf-topbar-left,
+.pdf-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+.pdf-topbar-right { justify-content: flex-end; }
+
+.pdf-topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Back / icon button */
+.pdf-icon-btn {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: var(--defualt);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: background 0.15s;
+}
+.pdf-icon-btn:hover { background: var(--hover); }
+
+/* File info */
+.pdf-file-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-left: 4px;
+}
+.pdf-filename {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--defualt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.pdf-filepath {
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Nav buttons (prev/next, zoom +/-) */
+.pdf-nav-btn {
+  height: 30px;
+  min-width: 30px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--defualt);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+  gap: 4px;
+}
+.pdf-nav-btn:hover { background: var(--hover); border-color: var(--accent); }
+.pdf-fit-btn { padding: 0 10px; font-size: 0.78rem; letter-spacing: 0.02em; }
+
+.pdf-topbar-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+/* Page box */
+.pdf-page-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--defualt);
+}
+.pdf-page-box input {
+  width: 44px;
+  text-align: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--defualt);
+  border-radius: 5px;
+  padding: 3px 4px;
+  font-size: 0.85rem;
+}
+.pdf-page-box input::-webkit-inner-spin-button { display: none; }
+.pdf-page-sep { color: var(--muted); font-size: 0.8rem; }
+#pdfTotalPages { color: var(--muted); }
+
+/* Zoom text */
+.pdf-zoom-text {
+  min-width: 42px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--defualt);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Layers button in topbar */
+.pdf-layers-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--defualt);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.pdf-layers-btn:hover,
+.pdf-layers-btn.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Tool bar ─────────────────────────────────────── */
+.pdf-toolbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.pdf-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.pdf-tool-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.pdf-tool-divider {
+  width: 1px;
+  height: 26px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* Labeled tool buttons */
+.pdf-labeled-tool {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--defualt);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.pdf-labeled-tool:hover {
+  background: var(--hover);
+  border-color: var(--border);
+}
+.pdf-labeled-tool.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* Open PDF gets a slightly more visible treatment */
+.pdf-open-btn {
+  border-color: var(--border);
+}
+.pdf-open-btn:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Highlight color swatches */
+.pdf-color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  outline: none;
+}
+.pdf-color-swatch:hover { transform: scale(1.2); }
+.pdf-color-swatch.active {
+  border-color: var(--defualt);
+  transform: scale(1.15);
+  box-shadow: 0 0 0 1px var(--bg);
+}
+
+/* ── Main workspace ───────────────────────────────── */
+.pdf-main-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: #141414;
+}
+
+.pdf-viewer-container {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 20px;
+  scroll-behavior: smooth;
+}
+
+/* Cursor variations when tool is active */
+.pdf-viewer-container.tool-cursor { cursor: default; }
+.pdf-viewer-container.tool-highlight { cursor: crosshair; }
+.pdf-viewer-container.tool-text { cursor: text; }
+.pdf-viewer-container.tool-bookmark { cursor: pointer; }
+
+/* ── Pages ────────────────────────────────────────── */
+.pdf-page-wrapper {
+  position: relative;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+  background: white;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.pdf-page-canvas { display: block; }
+
+/* ── Annotation layer ─────────────────────────────── */
+.annotation-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.annotation-layer > * { pointer-events: auto; }
+
+/* Highlight rectangle */
+.annot-highlight {
+  position: absolute;
+  mix-blend-mode: multiply;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.2s, outline 0.1s;
+}
+.annot-highlight:hover {
+  opacity: 0.8;
+  outline: 2px solid rgba(0,0,0,0.4);
+}
+
+/* Text box overlay */
+.annot-text-box {
+  position: absolute;
+  min-width: 60px;
+  min-height: 22px;
+  padding: 3px 6px;
+  background: rgba(255, 255, 180, 0.85);
+  color: #111;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  cursor: move;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.annot-text-box:hover { border-color: rgba(0,0,0,0.3); }
+.annot-text-box:focus {
+  outline: none;
+  border-color: #f59e0b;
+  cursor: text;
+}
+
+/* Bookmark flag */
+.annot-bookmark {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 26px;
+  height: 36px;
+  background: #ef4444;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 5px;
+  cursor: pointer;
+  box-shadow: -2px 2px 6px rgba(0,0,0,0.3);
+  transition: transform 0.15s;
+}
+.annot-bookmark:hover { transform: scale(1.08); }
+
+/* ── Layers panel ─────────────────────────────────── */
+.pdf-layers-panel {
+  width: 280px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.pdf-layers-panel.hidden { display: none; }
+
+.layers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.layers-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--defualt);
+}
+
+.layers-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.layer-tab {
+  flex: 1;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.layer-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.layer-tab:hover { color: var(--defualt); }
+
+.layers-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.layers-content.hidden { display: none; }
+
+.layer-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background: var(--bg);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.layer-item:hover { background: var(--hover); border-color: var(--border); }
+
+.layer-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.layer-item-type {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: var(--muted);
+}
+.layer-item-page {
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+.layer-item-text {
+  font-size: 0.82rem;
+  color: var(--defualt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Empty state ──────────────────────────────────── */
+.pdf-empty-state {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 360px;
+  padding: 40px;
+}
+.pdf-empty-state svg { opacity: 0.35; }
+.pdf-empty-state h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--defualt);
+  margin: 0;
+}
+.pdf-empty-state p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
+.pdf-empty-state strong { color: var(--defualt); }
