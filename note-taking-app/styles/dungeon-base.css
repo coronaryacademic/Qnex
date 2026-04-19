@@ -989,8 +989,8 @@ body.theme-light .dungeon-q-box.solved {
   padding: 85px 65px 160px 117px;
   min-width: 300px;
   /* Allow text selection for iPad highlighting */
-  -webkit-user-select: text !important;
   user-select: text !important;
+  padding-bottom: 152px !important; /* Ensure last questions are not hidden behind footer */
 }
 
 .dungeon-split-resizer {
@@ -1082,11 +1082,7 @@ body.theme-light .dungeon-q-box.solved {
 .dungeon-explanation-panel.align-center {
   display: block;
   text-align: center;
-  padding: 55px 65px 160px 90px; /* Symmetrical padding */
-}
-
-.dungeon-explanation-panel.align-center {
-  padding: 25px 62px 160px 90px; /* Keep panel's vertical padding */
+  padding: 55px 65px 160px 90px; /* Symmetrical padding as requested */
 }
 
 .dungeon-main-panel.align-center .dungeon-question-container,
@@ -1231,12 +1227,41 @@ body.theme-light .dungeon-q-box.solved {
   margin: 10px auto;
 }
 
-.highlight {
-  background-color: #ffeb3b;
-  color: #000000;
+.highlight,
+.highlight-yellow,
+.highlight-green,
+.highlight-blue,
+.highlight-pink,
+.highlight-orange {
   display: inline;
-  padding: 0 2px;
+  padding: 0; /* No padding to prevent layout shifts */
   border-radius: 2px;
+  color: #000000;
+  vertical-align: baseline;
+}
+
+/* Fluorescent Saturated Colors */
+.highlight, .highlight-yellow { background-color: hsl(60, 100%, 65%); }
+.highlight-green  { background-color: hsl(120, 100%, 75%); }
+.highlight-blue   { background-color: hsl(190, 100%, 75%); }
+.highlight-pink   { background-color: hsl(320, 100%, 75%); }
+.highlight-orange { background-color: hsl(35, 100%, 70%); }
+
+/* Prevent margin gaps from content tags like <p> using Markdown */
+.dungeon-context-box p,
+.dungeon-radio-text p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.dungeon-context-box p:first-child,
+.dungeon-radio-text p:first-child {
+  margin-top: 0;
+}
+
+.dungeon-context-box p:last-child,
+.dungeon-radio-text p:last-child {
+  margin-bottom: 0;
 }
 
 .dungeon-context-box img {
@@ -1606,6 +1631,21 @@ body.theme-light .dungeon-toolbar:not(.docked-top):not(.docked-bottom):not(.dock
   /* Force non-draggable cursor */
   z-index: 2000;
   /* Above sidebar */
+}
+
+/* Highlighter Color Selection Buttons */
+.hl-color-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.hl-color-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.1);
+}
+
+.hl-color-btn.active {
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
 }
 
 .dungeon-toolbar.docked-top {

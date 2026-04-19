@@ -27,6 +27,7 @@ const QuestionBase = {
         selectedTagMajors: [],
         selectedTagMinors: [],
         ctPreviewExpanded: false,
+        ctStarredOnly: false,
         aiImageMode: false, // Default to disabled
     },
 
@@ -1135,7 +1136,7 @@ Generate a professional title for this study session.`;
 
         // Toggle dashboard-active class on emptyState for proper scrolling/layout
         if (this.el.emptyState) {
-            if (tabName === 'statistics' || tabName === 'recent-sessions' || tabName === 'create-test') {
+            if (tabName === 'statistics' || tabName === 'recent-sessions' || tabName === 'create-test' || tabName === 'medical-library') {
                 this.el.emptyState.classList.add('dashboard-active');
             } else {
                 this.el.emptyState.classList.remove('dashboard-active');
@@ -1145,6 +1146,11 @@ Generate a professional title for this study session.`;
         // Special handling for recent sessions tab
         if (tabName === 'recent-sessions') {
             this.renderRecentSessions();
+        }
+
+        // Special handling for medical library tab
+        if (tabName === 'medical-library') {
+            this.renderMedicalLibrary();
         }
 
         // Special handling for statistics tab
@@ -1435,27 +1441,42 @@ Generate a professional title for this study session.`;
 
     _ctGetFiltered() {
         const { subject, system, major, minor } = this._ctSel;
+        const starredOnly = document.querySelector('#ctStarredGroup .ct-toggle-active')?.dataset.val === 'on';
         
         // ID-based selection check
         const idInput = document.getElementById('ctIdSearch');
         const idQuery = idInput ? idInput.value.trim().toUpperCase() : '';
+
+        let pool = this.state.questions;
+        if (starredOnly) {
+            pool = pool.filter(q => q.starred);
+        }
+
         if (idQuery) {
             // Support multiple IDs (union of results)
             const queryTerms = idQuery.split(/[\s,]+/)
                 .filter(term => term.trim().length > 0)
                 .map(term => term.replace('QNX-', '').replace(/[-.]/g, '').toUpperCase());
 
-            return this.state.questions.filter(q => {
-                const qNumericPart = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
-                const qSaltPart = (q.tags?.salt || '').replace(/[-.]/g, '').toUpperCase();
+            return pool.filter(q => {
+                const qSpId = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
                 
-                // Return true if the question ID or SALT part starts with ANY of the query terms (prefix matching)
-                return queryTerms.some(term => qNumericPart.startsWith(term) || (qSaltPart && qSaltPart.includes(term)));
+                // Extract clean salt for strict matching
+                let qSaltRaw = q.tags?.salt;
+                if (!qSaltRaw && q.spId) {
+                    const clean = q.spId.replace('QNX-', '');
+                    const parts = clean.split('.');
+                    qSaltRaw = parts.length > 4 ? parts.slice(4).join('.') : clean;
+                }
+                const qSalt = (qSaltRaw || '').replace(/[-.]/g, '').toUpperCase();
+
+                // Return true only if the query term EXACTLY matches the full ID or the salt
+                return queryTerms.some(term => term === qSpId || term === qSalt);
             });
         }
 
         const noFilter = subject.size === 0 && system.size === 0 && major.size === 0 && minor.size === 0;
-        return this.state.questions.filter(q => {
+        return pool.filter(q => {
             const tags = q.tags || {};
             // Only include questions that have at least one tag
             const hasAnyTag = Object.values(tags).flat().length > 0;
@@ -1469,6 +1490,32 @@ Generate a professional title for this study session.`;
             };
             return ok(subject, 'subject') && ok(system, 'system') && ok(major, 'major') && ok(minor, 'minor');
         });
+    },
+
+    renderMedicalLibrary() {
+        const grid = document.getElementById('medicalLibraryGrid');
+        if (!grid) return;
+
+        // For now, the library is empty as requested
+        const libraryItems = []; 
+
+        if (libraryItems.length === 0) {
+            grid.innerHTML = `
+                <div class="ml-empty-state" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; min-height: 50vh; text-align: center; color: var(--defualt); opacity: 0.8;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 20px; opacity: 0.3;">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px;">Your Library is Empty</h3>
+                    <p style="font-size: 0.95rem; max-width: 400px; line-height: 1.5; margin: 0 auto;">
+                        This tab will host your clinical references, guidelines, and study materials once they are added.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        // Logic for rendering actual items would go here in the future
     },
 
     renderCTPreview() {
@@ -1517,9 +1564,17 @@ Generate a professional title for this study session.`;
                     const clean = term.replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
                     // Match against full numeric ID OR salt part
                     const found = this.state.questions.some(q => {
-                        const qNumericPart = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
-                        const qSaltPart = (q.tags?.salt || '').replace(/[-.]/g, '').toUpperCase();
-                        return qNumericPart === clean || qSaltPart === clean;
+                        const qSpId = (q.spId || '').replace('QNX-', '').replace(/[-.]/g, '').toUpperCase();
+                        
+                        let qSaltRaw = q.tags?.salt;
+                        if (!qSaltRaw && q.spId) {
+                            const cleanSpId = q.spId.replace('QNX-', '');
+                            const parts = cleanSpId.split('.');
+                            qSaltRaw = parts.length > 4 ? parts.slice(4).join('.') : cleanSpId;
+                        }
+                        const qSalt = (qSaltRaw || '').replace(/[-.]/g, '').toUpperCase();
+
+                        return clean === qSpId || clean === qSalt;
                     });
 
                     if (found) {

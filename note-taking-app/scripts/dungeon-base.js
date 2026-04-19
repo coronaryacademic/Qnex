@@ -8,6 +8,7 @@ export default class DungeonBase {
             answers: new Map(), // id -> { isCorrect: boolean, selectedId: string, submitted: boolean }
             selectedOption: null, // Temporary selection before submit
             sidebarCollapsed: false,
+            activeHighlightColor: 'yellow', // Default highlighter color
             toolbarVisible: true,
             toolbarPosition: 'floating', // 'floating', 'top', 'bottom', 'left', 'right'
             unsavedChanges: false,
@@ -308,6 +309,17 @@ export default class DungeonBase {
                     </svg>
                     <span>Floating Clock</span>
                   </button>
+                </div>
+                <div class="dungeon-toolbar-menu-divider"></div>
+                <div class="dungeon-toolbar-menu-section">
+                  <div class="dungeon-toolbar-menu-label">Highlighter Color</div>
+                  <div class="dungeon-menu-grid five-col highlighter-colors" style="grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                    <button class="hl-color-btn active" data-color="yellow" title="Yellow" style="background: hsl(60, 100%, 65%); width: 28px; height: 28px; border-radius: 6px; border: 2px solid white; cursor: pointer;"></button>
+                    <button class="hl-color-btn" data-color="green" title="Green" style="background: hsl(120, 100%, 75%); width: 28px; height: 28px; border-radius: 6px; border: 2px solid transparent; cursor: pointer;"></button>
+                    <button class="hl-color-btn" data-color="blue" title="Blue" style="background: hsl(190, 100%, 75%); width: 28px; height: 28px; border-radius: 6px; border: 2px solid transparent; cursor: pointer;"></button>
+                    <button class="hl-color-btn" data-color="pink" title="Pink" style="background: hsl(320, 100%, 75%); width: 28px; height: 28px; border-radius: 6px; border: 2px solid transparent; cursor: pointer;"></button>
+                    <button class="hl-color-btn" data-color="orange" title="Orange" style="background: hsl(35, 100%, 70%); width: 28px; height: 28px; border-radius: 6px; border: 2px solid transparent; cursor: pointer;"></button>
+                  </div>
                 </div>
                 <div class="dungeon-toolbar-menu-divider"></div>
                 <div class="dungeon-toolbar-menu-section">
@@ -1089,6 +1101,12 @@ export default class DungeonBase {
         const toolbarOptionsBtn = document.getElementById('dungeonToolbarOptions');
         const toolbarMenu = document.getElementById('dungeonToolbarMenu');
 
+        if (!toolbarOptionsBtn || !toolbarMenu) return;
+
+        // Prevent duplicate listeners if initTopbar is called again
+        if (toolbarOptionsBtn.dataset.initialized) return;
+        toolbarOptionsBtn.dataset.initialized = "true";
+
         const splitViewToggle = document.getElementById('dungeonSplitViewToggle');
         if (splitViewToggle) {
             splitViewToggle.onclick = (e) => {
@@ -1138,17 +1156,38 @@ export default class DungeonBase {
             // Topbar buttons position
             toolbarMenu.querySelectorAll('button[data-topbar-position]').forEach(btn => {
                 btn.onclick = () => {
-                    const position = btn.dataset.topbarPosition;
-                    this.setTopbarButtonsPosition(position);
+                    const pos = btn.dataset.topbarPosition;
+                    this.setTopbarButtonsPosition(pos);
                 };
             });
 
-            // Content Alignment buttons
-            toolbarMenu.querySelectorAll('button[data-alignment]').forEach(btn => {
+            // Highlighter Color selection
+            toolbarMenu.querySelectorAll('.hl-color-btn').forEach(btn => {
                 btn.onclick = (e) => {
                     e.stopPropagation();
-                    const alignment = btn.dataset.alignment;
-                    this.setContentAlignment(alignment);
+                    const color = btn.dataset.color;
+                    this.state.activeHighlightColor = color;
+                    this.state.highlightMode = true; // Auto-enable highlight mode when a color is chosen
+                    
+                    // Update active state icons in menu
+                    toolbarMenu.querySelectorAll('.hl-color-btn').forEach(b => {
+                        const isActive = b.dataset.color === color;
+                        b.classList.toggle('active', isActive);
+                        b.style.borderColor = isActive ? 'white' : 'transparent';
+                        b.style.transform = isActive ? 'scale(1.15)' : 'scale(1)';
+                        b.style.boxShadow = isActive ? '0 0 8px rgba(255,255,255,0.4)' : 'none';
+                    });
+
+                    // Update main toolbar icon state
+                    this.renderToolbarState();
+                };
+            });
+
+            // Content alignment buttons
+            toolbarMenu.querySelectorAll('button[data-alignment]').forEach(btn => {
+                btn.onclick = () => {
+                    const align = btn.dataset.alignment;
+                    this.setContentAlignment(align);
                 };
             });
 
@@ -2412,7 +2451,10 @@ export default class DungeonBase {
 
         // 1. Un-Highlight (Clicking existing highlight)
         if (selection.toString().length === 0) {
-            if (e.target.classList.contains('highlight')) {
+            const isHighlight = e.target.classList.contains('highlight') || 
+                               Array.from(e.target.classList).some(c => c.startsWith('highlight-'));
+            
+            if (isHighlight) {
                 this.pushHistoryState(); // Snapshot before change
                 
                 const content = e.target.textContent;
@@ -2443,7 +2485,8 @@ export default class DungeonBase {
             this.pushHistoryState(); // Snapshot before change
 
             const span = document.createElement("span");
-            span.className = "highlight";
+            const colorClass = this.state.activeHighlightColor === 'yellow' ? 'highlight' : `highlight-${this.state.activeHighlightColor}`;
+            span.className = colorClass;
             try {
                 range.surroundContents(span);
 
@@ -2488,7 +2531,10 @@ export default class DungeonBase {
             if (!hasSelection) {
                 if (touchX !== null && touchY !== null) {
                     const target = document.elementFromPoint(touchX, touchY);
-                    if (target && target.classList.contains('highlight')) {
+                    const isHighlight = target && (target.classList.contains('highlight') || 
+                                       Array.from(target.classList).some(c => c.startsWith('highlight-')));
+                    
+                    if (isHighlight) {
                         this.pushHistoryState();
                         const content = target.textContent;
                         const parent = target.parentNode;
@@ -2515,7 +2561,8 @@ export default class DungeonBase {
 
             this.pushHistoryState();
             const span = document.createElement('span');
-            span.className = 'highlight';
+            const colorClass = this.state.activeHighlightColor === 'yellow' ? 'highlight' : `highlight-${this.state.activeHighlightColor}`;
+            span.className = colorClass;
             try {
                 range.surroundContents(span);
                 selection.removeAllRanges();
@@ -3170,12 +3217,16 @@ export default class DungeonBase {
             }
             
             if (totalEl) {
+                const current = this.state.currentIndex + 1;
+                const total = this.state.questions.length;
+                
                 if (showTotalOnly) {
-                    const current = this.state.currentIndex + 1;
-                    totalEl.textContent = `${current}/${this.state.questions.length}`;
+                    totalEl.textContent = `${current}/${total}`;
                 } else {
                     const attempted = correct + wrong;
-                    totalEl.textContent = `${attempted}/${this.state.questions.length}`;
+                    // For Question Progress: Show navigation index (current/total)
+                    // The title of this element is "Question Progress"
+                    totalEl.textContent = `${current}/${total}`;
                 }
             }
             
@@ -3738,6 +3789,12 @@ export default class DungeonBase {
             window.DungeonNote.destroyAll();
         }
         this.currentNote = null;
+
+        // Restore QBank Tabs to ensure they are properly visible and styled
+        if (window.QuestionBase && typeof window.QuestionBase.switchTab === "function") {
+            const lastTab = window.QuestionBase.state.lastActiveTab || "main";
+            window.QuestionBase.switchTab(lastTab);
+        }
     }
 
     render() {
@@ -4302,6 +4359,8 @@ export default class DungeonBase {
         const currentSel = this.state.selectedOption; // Valid only if not submitted
         const submittedSel = isSubmitted ? answer.selectedId : null;
         const lastSubmittedId = isSubmitted ? answer.lastSubmittedId : null;
+
+
 
         options.forEach((opt, idx) => {
             let classes = "dungeon-radio-option";

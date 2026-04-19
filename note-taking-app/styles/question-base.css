@@ -2637,7 +2637,6 @@ body.theme-light .ct-preview-list {
   flex: 1;
   background: transparent;
   border: none;
-  color: var(--text);
   font-size: 0.82rem;
   padding: 6px 0;
   outline: none;
@@ -2814,4 +2813,157 @@ body.theme-light .toolbar-search {
 
 .search-results-header h2 {
   color: var(--defualt);
+}
+
+/* Medical Library Styles */
+.ml-page {
+  padding-bottom: 2rem;
+}
+
+.ml-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.ml-category-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.ml-category-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  background: var(--panel-hover);
+}
+
+.ml-category-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.ml-category-card:hover::before {
+  opacity: 1;
+}
+
+.ml-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ml-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ml-card-title-group h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ml-card-title-group p {
+  margin: 4px 0 0 0;
+  font-size: 0.85rem;
+  color: var(--defualt);
+}
+
+.ml-card-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ml-link-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--defualt);
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.ml-link-item:hover {
+  background: var(--panel-hover);
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.2);
+  transform: translateX(4px);
+}
+
+.ml-link-item svg {
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+.ml-card-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.ml-stats {
+  font-size: 0.8rem;
+  color: var(--defualt);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ml-more-btn {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ml-more-btn:hover {
+  text-decoration: underline;
+}
+
+/* Light theme adaptations */
+body.theme-light .ml-category-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+body.theme-light .ml-link-item {
+  background: var(--bg-secondary);
 }

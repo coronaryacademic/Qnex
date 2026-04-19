@@ -764,6 +764,13 @@
                   </svg>
                   Recent Sessions
                 </button>
+                <button class="qbank-tab" data-tab="medical-library">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                  Medical Library
+                </button>
               </div>
               
               <input type="text" id="questionTitleInput" placeholder="Select a question or create new"
@@ -1042,6 +1049,18 @@
                             <div class="ct-option-hint" id="ctQcountHint" style="display: none;">10 of — available</div>
                           </div>
 
+                          <!-- Starred Selection -->
+                          <div class="ct-option-row">
+                            <div class="ct-option-label">
+                              Starred Only
+                            </div>
+                            <div class="ct-toggle-group" id="ctStarredGroup">
+                              <button class="ct-toggle-btn" data-val="on">On</button>
+                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
+                            </div>
+                            <div class="ct-option-hint">Include only questions you've starred</div>
+                          </div>
+
                           <!-- Timer -->
                           <div class="ct-option-row">
                             <div class="ct-option-label">
@@ -1210,6 +1229,21 @@
                   
                   <div id="recentSessionsList" class="recent-sessions-grid">
                     <!-- Sessions rendered here -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Medical Library Tab Content -->
+              <div class="tab-content" data-tab-content="medical-library">
+                <div class="statistics-container ml-page">
+                  <div class="stats-header">
+                    <div class="stats-title-group">
+                      <h2>Medical Library</h2>
+                      <p>Your centralized repository for clinical references and study guides</p>
+                    </div>
+                  </div>
+                  <div class="ml-grid" id="medicalLibraryGrid">
+                    <!-- Categories will be rendered here -->
                   </div>
                 </div>
               </div>
