@@ -755,6 +755,13 @@ body.theme-light .folder-count {
   display: flex;
   gap: 8px;
   align-items: center;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+ }
+
+.qbank-tab-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .qbank-tab {
@@ -773,6 +780,7 @@ body.theme-light .folder-count {
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .qbank-tab svg {

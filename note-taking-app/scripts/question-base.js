@@ -44,6 +44,7 @@ const QuestionBase = {
         optionsContainer: null,
         addOptionBtn: null,
         saveBtn: null,
+        deleteBtn: null,
         newBtn: null,
         backBtn: null,
         openBtn: null,
@@ -150,6 +151,7 @@ const QuestionBase = {
         this.el.toggleSidebarBtn = document.getElementById("toggleQuestionSidebarBtn");
 
         this.el.saveBtn = document.getElementById("saveQuestionBtn");
+        this.el.deleteBtn = document.getElementById("deleteQuestionBtn");
         this.el.newBtn = document.getElementById("questionActionBtn");
         this.el.backBtn = document.getElementById("backToMainFromQuestions");
         this.el.backBtnHeader = document.getElementById("backToMainFromQuestionsHeader");
@@ -432,6 +434,7 @@ const QuestionBase = {
         });
 
         if (this.el.saveBtn) this.el.saveBtn.addEventListener("click", () => this.saveCurrentQuestion());
+        if (this.el.deleteBtn) this.el.deleteBtn.addEventListener("click", () => this.deleteCurrentQuestion());
 
         // Auto-save title on change
         if (this.el.titleInput) {
@@ -819,6 +822,26 @@ const QuestionBase = {
         }).catch(err => console.warn('[QuestionBase] Failed to save sessions to server:', err));
     },
 
+    removeDeletedQuestionReferences(questionIds) {
+        const deletedIds = new Set(questionIds);
+        let changed = false;
+
+        this.state.recentSessions = this.state.recentSessions.map(session => {
+            if (!Array.isArray(session.questions)) return session;
+
+            const questions = session.questions.filter(question => !deletedIds.has(question.id));
+            if (questions.length === session.questions.length) return session;
+
+            changed = true;
+            return { ...session, questions };
+        });
+
+        if (changed) {
+            this.saveRecentSessions();
+            this.renderRecentSessions();
+        }
+    },
+
     async loadData(suppressWarning = false) {
         console.log('[QuestionBase] loadData() called');
         
@@ -856,8 +879,8 @@ const QuestionBase = {
             }
         } catch (e) {}
 
-        // --- INTELLIGENT MERGE / PICK ---
-        // We want to use the one with the MOST questions if we're in a "lost data" situation
+        // The active server is the source of truth. Choosing the largest copy
+        // can resurrect questions that were intentionally deleted.
         let bestData = serverData;
         
         const getCount = (d) => {
@@ -870,13 +893,13 @@ const QuestionBase = {
         const electronCount = getCount(electronData);
         const localCount = getCount(localData);
 
-        if (electronCount > serverCount) {
+        if (!serverData && electronCount > serverCount) {
             console.log('[QuestionBase] Electron data is more complete. Using Electron.');
             bestData = electronData;
         }
         
         const currentBestCount = getCount(bestData);
-        if (localCount > currentBestCount) {
+        if (!serverData && localCount > currentBestCount) {
             console.log('[QuestionBase] localStorage is more complete. Using local.');
             bestData = localData;
         }
@@ -1034,7 +1057,7 @@ Generate a professional title for this study session.`;
 
         // 2. Electron Persistence (File System)
         if (typeof window.Storage !== 'undefined' && window.Storage.saveQuestions) {
-            window.Storage.saveQuestions(data);
+            await window.Storage.saveQuestions(data);
         }
 
         // 3. Server Persistence (Source of Truth)
@@ -2504,6 +2527,10 @@ Rules:
             this.el.saveBtn.disabled = false;
             this.el.saveBtn.style.display = "";
         }
+        if (this.el.deleteBtn) {
+            this.el.deleteBtn.disabled = false;
+            this.el.deleteBtn.style.display = "";
+        }
 
 
         // Clear and rebuild options
@@ -3110,6 +3137,15 @@ Rules:
             this.el.titleInput.placeholder = "Select a question or create new";
         }
         if (this.el.saveBtn) this.el.saveBtn.disabled = true;
+        if (this.el.deleteBtn) {
+            this.el.deleteBtn.disabled = true;
+            this.el.deleteBtn.style.display = "none";
+        }
+    },
+
+    async deleteCurrentQuestion() {
+        if (!this.activeQuestionId) return;
+        await this.handleContextAction("delete", this.activeQuestionId, "question");
     },
 
     async deleteSelectedItems() {
@@ -3136,7 +3172,8 @@ Rules:
             }
 
             this.state.selectedItems.clear();
-            this.saveData();
+            this.removeDeletedQuestionReferences(selectedIds);
+            await this.saveData();
             this.syncEditorDeletion(selectedIds);
             if (typeof window.updateTrashButton === "function") window.updateTrashButton();
         };
@@ -3179,7 +3216,8 @@ Rules:
 
                     this.state.questions.splice(qIndex, 1);
                     if (this.activeQuestionId === id) this.resetEditor();
-                    this.saveData();
+                    this.removeDeletedQuestionReferences([id]);
+                    await this.saveData();
                     this.syncEditorDeletion([id]);
                     if (typeof window.updateTrashButton === "function") window.updateTrashButton();
                 };

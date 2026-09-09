@@ -27,13 +27,11 @@ const captureLog = (type, args) => {
 
     // Send to backend bridge if it's an error or warning
     if (type === 'error' || type === 'warn') {
-       // Force absolute URL for logging if we are on a dev port (3000, 3002, 5173, etc)
+       // Send logs to the server selected by the file-system service.
        let backendUrl = window.API_BASE_URL;
        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
        
-       if (isLocal && window.location.port !== '3001') {
-          backendUrl = `${window.location.protocol}//${window.location.hostname}:3001/api`;
-       } else if (!backendUrl) {
+       if (!backendUrl) {
           backendUrl = '/api';
        }
        
@@ -5376,6 +5374,13 @@ window.startImportProcess = function () {
                     </div>
                     <button id="clearAllBtn" class="settings-btn danger" >Delete Everything</button>
                   </div>
+                  <div class="setting-row" style="border-bottom: none;">
+                    <div class="setting-info">
+                      <h4 style="color: #dc2626;">Reset Question Bank</h4>
+                      <p>Permanently delete every question, folder, session, trash item, and cached copy.</p>
+                    </div>
+                    <button id="resetQuestionBankBtn" class="settings-btn danger">Reset Question Bank</button>
+                  </div>
                 </div>
               </div>
 
@@ -6120,6 +6125,52 @@ window.startImportProcess = function () {
         } catch (e) {
           console.error("Error in delete everything:", e);
           modalAlert("Error deleting data: " + e.message);
+        }
+      });
+    }
+
+    const resetQuestionBankBtn = document.getElementById("resetQuestionBankBtn");
+    if (resetQuestionBankBtn) {
+      resetQuestionBankBtn.addEventListener("click", async () => {
+        const firstConfirm = await modalConfirm(
+          "Reset the entire Question Bank? All questions, folders, sessions, trash, and cached copies will be permanently deleted."
+        );
+        if (!firstConfirm) return;
+        const typed = await modalPrompt(
+          "Type RESET to confirm deleting the entire Question Bank.",
+          "Confirmation",
+          ""
+        );
+        if (typed !== "RESET") {
+          modalAlert("Reset cancelled. You must type RESET exactly.");
+          return;
+        }
+
+        try {
+          await fileSystemService.resetQuestionBank();
+          localStorage.removeItem("app-questions");
+          localStorage.removeItem("active-recall-recent-sessions");
+          localStorage.removeItem("question-base-state");
+
+          if (window.QuestionBase) {
+            window.QuestionBase.state.questions = [];
+            window.QuestionBase.state.folders = [];
+            window.QuestionBase.state.recentSessions = [];
+            window.QuestionBase.state.selectedItems.clear();
+            window.QuestionBase.resetEditor();
+            window.QuestionBase.renderSidebar();
+          }
+
+          if (window.state) {
+            window.state.questions = [];
+            window.state.folders = [];
+            window.state.trash = [];
+          }
+          if (typeof window.updateTrashButton === "function") window.updateTrashButton();
+          modalAlert("Question Bank reset successfully.");
+        } catch (error) {
+          console.error("[Settings] Question Bank reset failed:", error);
+          modalAlert(`Question Bank reset failed: ${error.message}`);
         }
       });
     }
@@ -7920,6 +7971,7 @@ window.startImportProcess = function () {
   window.state = state;
   window.enableSplit = enableSplit;
   window.escapeHtml = escapeHtml; // Make available for two-base.js
+  window.getIcon = getIcon; // Make available for two-base.js
 
   // Redirect openInPane to two-base system
   window.openInPane = function (noteId, side) {

@@ -12,9 +12,8 @@ class FileSystemService {
     this.retryDelay = 1000;
     this.isOffline = false; // Track connectivity state to prevent console spam
 
-    // Auto-discover which port is active
-    this.readyPromise = null;
-    this.init();
+    // Auto-discover which port is active once, then share the result.
+    this.readyPromise = this.init();
   }
 
   async waitForReady() {
@@ -285,7 +284,11 @@ class FileSystemService {
       console.error("Error saving questions:", error);
       throw error;
     }
-  }
+    }
+
+    async resetQuestionBank() {
+    return this.makeRequest("/questions/reset", { method: "DELETE" });
+    }
 
   // IMAGE OPERATIONS
   async uploadImage(imageName, base64Data) {

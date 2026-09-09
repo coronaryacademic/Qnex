@@ -424,6 +424,17 @@ function createServer() {
     res.json({ success: true });
   });
 
+  expressApp.get('/api/sessions', async (req, res) => {
+    const sessionsFile = path.join(NOTES_BASE_DIR, 'settings', 'sessions.json');
+    res.json(await fs.pathExists(sessionsFile) ? await fs.readJson(sessionsFile) : []);
+  });
+
+  expressApp.post('/api/sessions', async (req, res) => {
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'settings'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'settings', 'sessions.json'), req.body, { spaces: 2 });
+    res.json({ success: true });
+  });
+
   expressApp.get('/api/tasks', async (req, res) => {
     const f = path.join(NOTES_BASE_DIR, 'tasks', 'tasks.json');
     res.json(await fs.pathExists(f) ? await fs.readJson(f) : []);
@@ -443,6 +454,15 @@ function createServer() {
     await fs.ensureDir(path.join(NOTES_BASE_DIR, 'questions'));
     await fs.writeJson(path.join(NOTES_BASE_DIR, 'questions', 'questions.json'), req.body, { spaces: 2 });
     log(`[SERVER] Saved questions: ${req.body.questions?.length || 0} questions, ${req.body.folders?.length || 0} folders`);
+    res.json({ success: true });
+  });
+  expressApp.delete('/api/questions/reset', async (req, res) => {
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'questions'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'questions', 'questions.json'), { questions: [], folders: [] }, { spaces: 2 });
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'settings'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'settings', 'sessions.json'), [], { spaces: 2 });
+    await fs.ensureDir(path.join(NOTES_BASE_DIR, 'trash'));
+    await fs.writeJson(path.join(NOTES_BASE_DIR, 'trash', 'trash.json'), [], { spaces: 2 });
     res.json({ success: true });
   });
 
@@ -478,10 +498,13 @@ function startServer() {
 
 // Stop the embedded server
 function stopServer() {
-  if (server) {
-    server.close();
+  if (!server) return;
+
+  const serverToClose = server;
+  server = null;
+  serverToClose.close(() => {
     log('Embedded server stopped');
-  }
+  });
 }
 
 function createWindow() {
@@ -605,4 +628,3 @@ ipcMain.handle('window:close', () => {
 ipcMain.handle('window:isMaximized', () => {
   return mainWindow ? mainWindow.isMaximized() : false;
 });
-
