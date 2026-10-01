@@ -800,6 +800,8 @@ const QuestionBase = {
             }
         }
         this.renderRecentSessions();
+        await window.MedicalLibrary?.loadSummaries();
+        if (!this.activeQuestionId) this.switchTab(this.state.lastActiveTab || 'main');
     },
 
 
@@ -1133,6 +1135,11 @@ Generate a professional title for this study session.`;
         }
 
         this.state.lastActiveTab = tabName;
+        this.el.editor?.classList.add('hidden');
+        if (this.el.emptyState) {
+            this.el.emptyState.classList.remove('hidden');
+            this.el.emptyState.style.display = 'flex';
+        }
 
         // Update tab button states
         document.querySelectorAll('.qbank-tab').forEach(btn => {
@@ -1159,7 +1166,7 @@ Generate a professional title for this study session.`;
 
         // Toggle dashboard-active class on emptyState for proper scrolling/layout
         if (this.el.emptyState) {
-            if (tabName === 'statistics' || tabName === 'recent-sessions' || tabName === 'create-test' || tabName === 'medical-library') {
+            if (['main','statistics','recent-sessions','create-test','medical-library','bank-search','medical-reference','flagged','notebook','qbank-settings','qbank-reset'].includes(tabName)) {
                 this.el.emptyState.classList.add('dashboard-active');
             } else {
                 this.el.emptyState.classList.remove('dashboard-active');
@@ -1167,6 +1174,12 @@ Generate a professional title for this study session.`;
         }
 
         // Special handling for recent sessions tab
+        window.QBankWorkspace?.syncSidebar();
+        if (['create-test', 'recent-sessions', 'statistics', 'bank-search', 'flagged', 'notebook', 'qbank-settings','qbank-reset'].includes(tabName) && window.QBankWorkspace) {
+            window.QBankWorkspace.render(tabName);
+            return;
+        }
+        if (tabName === 'main') window.QBankDashboard?.renderMain();
         if (tabName === 'recent-sessions') {
             this.renderRecentSessions();
         }
@@ -1516,29 +1529,8 @@ Generate a professional title for this study session.`;
     },
 
     renderMedicalLibrary() {
-        const grid = document.getElementById('medicalLibraryGrid');
-        if (!grid) return;
-
-        // For now, the library is empty as requested
-        const libraryItems = []; 
-
-        if (libraryItems.length === 0) {
-            grid.innerHTML = `
-                <div class="ml-empty-state" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; min-height: 50vh; text-align: center; color: var(--defualt); opacity: 0.8;">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 20px; opacity: 0.3;">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                    </svg>
-                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px;">Your Library is Empty</h3>
-                    <p style="font-size: 0.95rem; max-width: 400px; line-height: 1.5; margin: 0 auto;">
-                        This tab will host your clinical references, guidelines, and study materials once they are added.
-                    </p>
-                </div>
-            `;
-            return;
-        }
-
-        // Logic for rendering actual items would go here in the future
+        if (!window.MedicalLibrary) return;
+        return window.MedicalLibrary.renderPromise = window.MedicalLibrary.render();
     },
 
     renderCTPreview() {
@@ -2609,7 +2601,7 @@ Rules:
 
         // 2. Starred
         const starred = this.state.questions.filter(q => q.starred);
-        this.renderSection("Starred", starred, "star", "No starred questions");
+        this.renderSection("Flagged Questions", starred, "star", "No flagged questions");
 
         // 3. Folders
         this.renderFoldersSection();
@@ -2679,7 +2671,7 @@ Rules:
 
         let icon = "";
         if (iconType === "star") {
-            icon = `<svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+            icon = `<svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg>`;
         } else if (iconType === "list") {
             // Use Notebook/Page with lines icon for "All Questions"
             icon = `<svg class="section-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><line x1="8" y1="7" x2="16" y2="7"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`;
@@ -2907,7 +2899,7 @@ Rules:
         el.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="${q.starred ? "gold" : "none"}" stroke="${q.starred ? "gold" : "currentColor"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           ${q.starred
-                ? '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>'
+                ? '<path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5 4-9-4-14 0"/>'
                 : '<circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>'}
         </svg>
         <div class="question-item-title">${(q.title && q.title.trim() !== "") ? q.title : "Untitled Question"}</div>
@@ -3064,9 +3056,9 @@ Rules:
                 </button>
                 <button class="ctx-btn" data-action="star">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="${isStarred ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        <path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5 4-9-4-14 0"/>
                     </svg>
-                    ${isStarred ? "Unstar" : "Star"}
+                    ${isStarred ? "Remove flag" : "Flag question"}
                 </button>
             </div>
           `;
@@ -3076,11 +3068,11 @@ Rules:
              <div class="ctx-section">
                  <button class="ctx-btn" data-action="unstar-all">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                      Unstar All
+                      Remove All Flags
                  </button>
                  <button class="ctx-btn" data-action="unstar-others">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-                      Unstar Others
+                      Remove Other Flags
                  </button>
              </div>
              `;
@@ -4351,6 +4343,10 @@ Question tag ID:
     },
 
     renderRecentSessions() {
+        if (window.QBankWorkspace) {
+            if (this.state.lastActiveTab === 'recent-sessions') window.QBankWorkspace.render('recent-sessions');
+            return;
+        }
         const list = this.el.recentSessionsList;
         if (!list) return;
 
@@ -4391,7 +4387,7 @@ Question tag ID:
             if (this.state.recentSessionsSort === "newest") return new Date(b.date).getTime() - new Date(a.date).getTime();
             if (this.state.recentSessionsSort === "oldest") return new Date(a.date).getTime() - new Date(b.date).getTime();
             if (this.state.recentSessionsSort === "name") return (a.title || "").localeCompare(b.title || "");
-            if (this.state.recentSessionsSort === "questions") return (b.questions?.length || 0) - (a.questions?.length || 0);
+            if (this.state.recentSessionsSort === "questions") return (b.count || b.questions?.length || 0) - (a.count || a.questions?.length || 0);
             return 0;
         });
 
@@ -4402,7 +4398,7 @@ Question tag ID:
                 <div class="session-title" title="${session.title || "Untitled Session"}">${session.title || "Untitled Session"}</div>
                 
                 <div class="session-stats">
-                    ${new Date(session.date).toLocaleDateString()} • ${session.questions?.length || 0} Questions
+                    ${new Date(session.date).toLocaleDateString()} • ${session.count || session.questions?.length || 0} Questions
                 </div>
 
                 <div class="session-actions">
@@ -4414,6 +4410,7 @@ Question tag ID:
             `;
 
             // Action Binding - Absolute Simplicity
+            if (session.library) card.querySelector('.edit-btn').hidden = true;
             card.querySelector(".resume-session-btn").onclick = () => this.resumeSession(session.id);
             card.querySelector(".reset-btn").onclick = (e) => {
                 e.stopPropagation();
@@ -4438,6 +4435,7 @@ Question tag ID:
 
     async renderStatistics(forceSync = false) {
         if (!this.el.statTotalQuestions) return;
+        if (window.QBankDashboard) return window.QBankDashboard.renderStatistics();
 
         if (forceSync && this.el.syncStatsBtn) {
             const originalHtml = this.el.syncStatsBtn.innerHTML;
@@ -4572,6 +4570,7 @@ Question tag ID:
 
     deleteSession(id, event) {
         if (event) event.stopPropagation();
+        if (this.state.recentSessions.find(s => s.id === id)?.library) return window.MedicalLibrary.remove(id);
 
         if (confirm("Delete this session record and its folder?")) {
             const session = this.state.recentSessions.find(s => s.id === id);
@@ -4591,6 +4590,7 @@ Question tag ID:
     resumeSession(id) {
         const session = this.state.recentSessions.find(s => s.id === id);
         if (!session) return;
+        if (session.library) return window.MedicalLibrary.resume(id);
 
         // PRIORITIZE MASTER STATE: Load questions from the folderId first
         // This ensures answers saved to the backend are loaded correctly.
@@ -4617,6 +4617,7 @@ Question tag ID:
     resetSession(id) {
         const session = this.state.recentSessions.find(s => s.id === id);
         if (!session) return;
+        if (session.library) return window.MedicalLibrary.reset(id);
 
         if (!confirm(`Are you sure you want to reset all question statuses in "${session.title || 'this session'}"? This cannot be undone.`)) {
             return;

@@ -29,7 +29,7 @@ const NOTES_BASE_DIR = process.platform === 'win32'
   : '/media/momen/New Volume/MyNotes';
 const UNCATEGORIZED_DIR_NAME = 'Uncategorized';
 const META_FILE = '.folder-meta.json';
-const SYSTEM_DIRS = ['trash', 'settings', 'backups', '.git', 'node_modules', 'tasks', 'questions', 'notes', 'folders', 'images'];
+const SYSTEM_DIRS = ['trash', 'settings', 'backups', '.git', 'node_modules', 'tasks', 'questions', 'notes', 'folders', 'images', 'library-sessions'];
 
 // Ensure base directory exists
 fs.ensureDirSync(NOTES_BASE_DIR);
@@ -185,6 +185,7 @@ function createServer() {
 
   expressApp.use(express.json({ limit: '50mb' }));
   expressApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  require('../server/medical-library').mountMedicalLibrary(expressApp, NOTES_BASE_DIR);
 
   // --- MIGRATION LOGIC REMOVED ---
 

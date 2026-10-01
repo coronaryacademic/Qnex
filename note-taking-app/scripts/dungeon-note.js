@@ -12,7 +12,7 @@ class DungeonNote {
         
         // New properties for session-wide scope
         this.isSessionWide = false;
-        this.sessionId = dungeon.state.sessionId;
+        this.sessionId = dungeon.state.associatedSessionId || dungeon.state.sessionId || ('question-' + this.questionId);
         this.isViewMode = false; // Toggle between Edit (Textarea) and View (Rendered)
 
         this.el = null;
@@ -29,9 +29,15 @@ class DungeonNote {
         notes.forEach(note => note.destroy());
     }
 
+    noteId() {
+        const source = String(this.isSessionWide ? this.sessionId : this.questionId);
+        const safe = /[<>:"/\\|?*]/.test(source) ? 'encoded-' + Array.from(new TextEncoder().encode(source), b => b.toString(16).padStart(2,'0')).join('') : source;
+        return `dungeon_note_${this.isSessionWide ? 'session_' : ''}${safe}`;
+    }
+
     init(initialText) {
         // Stable ID system - link note to the specific question by default
-        const noteId = `dungeon_note_${this.questionId}`;
+        const noteId = this.noteId();
         
         const html = `
             <div id="${noteId}" class="dungeon-note-window" style="left: ${window.innerWidth / 2 - 160}px; top: ${window.innerHeight / 2 - 100}px;">
@@ -47,7 +53,7 @@ class DungeonNote {
                     </div>
                 </div>
                 <div class="dungeon-note-body">
-                    <textarea class="dungeon-note-textarea" placeholder="Write your thoughts here...">${initialText}</textarea>
+                    <textarea class="dungeon-note-textarea" placeholder="Write your thoughts here..."></textarea>
                     <div class="dungeon-note-preview"></div>
                     <div class="dungeon-note-loading">
                         <div class="dungeon-note-spinner"></div>
@@ -89,6 +95,7 @@ class DungeonNote {
         document.body.insertAdjacentHTML('beforeend', html);
         this.el = document.getElementById(noteId);
         this.textarea = this.el.querySelector('.dungeon-note-textarea');
+        this.textarea.value = initialText;
         this.previewEl = this.el.querySelector('.dungeon-note-preview');
         this.loadingEl = this.el.querySelector('.dungeon-note-loading');
 
@@ -354,15 +361,13 @@ class DungeonNote {
     }
 
     async loadFromBackend() {
-        const noteId = this.isSessionWide 
-            ? `dungeon_note_session_${this.sessionId}`
-            : `dungeon_note_${this.questionId}`;
+        const noteId = this.noteId();
 
         if (this.loadingEl) this.loadingEl.classList.add('active');
 
         try {
             if (window.Storage && window.Storage.loadNotes) {
-                const notes = await window.Storage.loadNotes();
+                const notes = window.QBankWorkspace ? await window.QBankWorkspace.loadNotes() : await window.Storage.loadNotes();
                 const existingNote = notes.find(n => n.id === noteId);
 
                 // Always clear first when switching scope
@@ -395,9 +400,7 @@ class DungeonNote {
             ? 'Session Note' 
             : `Dungeon Note - Q${this.questionIndex + 1} (${this.question.title || 'Untitled'})`;
             
-        const noteId = this.isSessionWide 
-            ? `dungeon_note_session_${this.sessionId}`
-            : `dungeon_note_${this.questionId}`;
+        const noteId = this.noteId();
 
         try {
             if (window.Storage && window.Storage.saveNote) {
@@ -414,6 +417,7 @@ class DungeonNote {
                     content: text,
                     contentHtml: text,
                     type: 'dungeon-note',
+                    bank: this.question.source?.bank || null,
                     questionId: this.isSessionWide ? null : this.questionId,
                     questionIndex: this.questionIndex,
                     sessionId: this.sessionId,
@@ -425,7 +429,8 @@ class DungeonNote {
                     date: now
                 };
 
-                await window.Storage.saveNote(noteId, noteData);
+                if (window.QBankWorkspace) await window.QBankWorkspace.saveNote(noteData);
+                else await window.Storage.saveNote(noteId, noteData);
                 
                 console.log(`[DungeonNote] Save completed for ${noteId}`);
 

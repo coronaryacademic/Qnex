@@ -18,6 +18,8 @@
   <link rel="stylesheet" href="styles/notif-center.css">
   <link rel="stylesheet" href="styles/pdf-viewer.css">
   <link rel="stylesheet" href="styles/html-viewer.css">
+  <link rel="stylesheet" href="styles/medical-library.css">
+  <link rel="stylesheet" href="styles/qbank-workspace.css">
   <!-- Startup and reload sounds removed -->
   <style>
     /* View Options Menu */
@@ -898,8 +900,8 @@
                 </button>
                 <button class="qbank-tab" data-tab="medical-library">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13z"></path>
-                    <path d="M12 7v7M8.5 10.5h7"></path>
+                    <path d="M12 5.5C9 3.5 5 3.5 2 5v15c3-1.5 7-1.5 10 .5 3-2 7-2 10-.5V5c-3-1.5-7-1.5-10 .5Z" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M12 5.5v15M5 8.5l4 1M5 12l4 1M15 9.5l4-1M15 13l4-1" stroke-linecap="round" stroke-linejoin="round"></path>
                   </svg>
                   Medical Library
                 </button>
@@ -955,13 +957,7 @@
             <div class="empty-state-content" id="emptyStateContentViewer">
               <!-- Main Tab Content -->
               <div class="tab-content active" data-tab-content="main">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                </svg>
-                <h3>No Question Selected</h3>
-                <p>Select a question from the sidebar to view details, or create a new one.</p>
+                <div id="qbankMainDashboard" class="statistics-container ml-library qbank-overview" aria-live="polite"></div>
               </div>
 
               <!-- Statistics Tab Content -->
@@ -1190,13 +1186,13 @@
                           <!-- Starred Selection -->
                           <div class="ct-option-row">
                             <div class="ct-option-label">
-                              Starred Only
+                              Flagged Only
                             </div>
                             <div class="ct-toggle-group" id="ctStarredGroup">
                               <button class="ct-toggle-btn" data-val="on">On</button>
                               <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
                             </div>
-                            <div class="ct-option-hint">Include only questions you've starred</div>
+                            <div class="ct-option-hint">Include only questions you've flagged</div>
                           </div>
 
                           <!-- Timer -->
@@ -1376,8 +1372,8 @@
                 <div class="statistics-container ml-page">
                   <div class="stats-header">
                     <div class="stats-title-group">
-                      <h2>Medical Library</h2>
-                      <p>Your centralized repository for clinical references and study guides</p>
+                      <h2>Qbank Library</h2>
+                      <p>Choose a question bank and build your next test</p>
                     </div>
                   </div>
                   <div class="ml-grid" id="medicalLibraryGrid">
@@ -2780,6 +2776,9 @@
   <script src="scripts/two-base.js"></script>
   <script src="scripts/two-base-persistence.js"></script>
   <script src="scripts/question-base.js?v=3"></script>
+  <script src="scripts/medical-library.js"></script>
+  <script src="scripts/qbank-dashboard.js"></script>
+  <script src="scripts/qbank-workspace.js"></script>
   <script src="scripts/custom-features.js"></script>
   <script src="scripts/note-font-handler.js"></script>
   <script src="scripts/dungeon-note.js"></script>

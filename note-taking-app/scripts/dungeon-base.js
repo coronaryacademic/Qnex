@@ -194,10 +194,7 @@ export default class DungeonBase {
               <div id="dungeonTopbar" class="dungeon-topbar">
                 <div class="dungeon-topbar-left">
                   <button id="dungeonSidebarToggle" class="dungeon-topbar-btn" title="Toggle Sidebar">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="9" y1="3" x2="9" y2="21"></line>
-                    </svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                   </button>
                   <div id="dungeonQuestionTitle" class="dungeon-question-title">Untitled Question</div>
                 </div>
@@ -581,8 +578,8 @@ export default class DungeonBase {
                     <div id="dungeonToolUndo" class="dungeon-tool-btn" title="Undo (Ctrl+Z)">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
                     </div>
-                    <div class="dungeon-tool-btn" data-tool="star" title="Star Question">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    <div class="dungeon-tool-btn" data-tool="star" title="Flag question">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg>
                     </div>
                     <div class="dungeon-tool-btn" data-tool="note" title="Add Note">
                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -694,6 +691,7 @@ export default class DungeonBase {
             timerEl.style.cursor = 'pointer';
             timerEl.title = 'Click to reset timer';
             timerEl.onclick = () => {
+                if (this.state.questions[this.state.currentIndex]?.contentFormat === 'medos-html') return;
                 this.timerStart = Date.now();
                 this.updateTimerDisplay(0);
             };
@@ -995,6 +993,7 @@ export default class DungeonBase {
             questionId: q.id,
             questionIndex: this.state.currentIndex,
             text: q.text,
+            richText: q.richText,
             crossedOutOptionIds: q.crossedOutOptionIds ? [...q.crossedOutOptionIds] : [],
             selectedOption: this.state.selectedOption,
             answer: this.state.answers.has(q.id) ? JSON.parse(JSON.stringify(this.state.answers.get(q.id))) : null
@@ -1020,6 +1019,7 @@ export default class DungeonBase {
 
         // Restore state
         q.text = stateSnapshot.text;
+        if (q.contentFormat === 'medos-html') q.richText = stateSnapshot.richText;
         q.crossedOutOptionIds = [...stateSnapshot.crossedOutOptionIds];
         
         if (stateSnapshot.answer) {
@@ -1705,8 +1705,9 @@ export default class DungeonBase {
             const displayId = (rawId.includes('.')) ? rawId.split('.').pop() : (rawId.replace('QNX-', '').replace(/[-.]/g, '') || 'N/A');
             
             titleEl.innerHTML = `
-                <div class="dungeon-title-line">Title: ${q.title || 'Untitled Question'}</div>
-                <div class="dungeon-id-line" title="Click to copy ID">Question Id: <span class="id-value">${displayId}</span></div>
+                <div class="dungeon-title-line">Item ${this.state.currentIndex + 1} of ${this.state.questions.length}</div>
+                <div class="dungeon-id-line" title="Click to copy ID">Question ID: <span class="id-value">${displayId}</span></div>
+                <button class="dungeon-question-flag" type="button" title="Flag question" aria-label="Flag question" onclick="document.querySelector('.dungeon-tool-btn[data-tool=star]')?.click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5-4-9-4-14 0"/></svg><span>Flag</span></button>
             `;
 
             // Add Click to Copy functionality
@@ -2437,6 +2438,7 @@ export default class DungeonBase {
         }
 
         this.renderSidebar(); // Update Dungeon Sidebar instantly
+        if (q.contentFormat === 'medos-html') { this.saveQuestionsToBackend(); return; }
         this.updateSaveStatus('saved');
     }
 
@@ -2466,7 +2468,8 @@ export default class DungeonBase {
 
                 // Persist Removal
                 if (type === 'main') {
-                    q.text = e.currentTarget.innerHTML;
+                    if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, e.currentTarget);
+                    else q.text = e.currentTarget.innerHTML;
                 }
 
                 this.updateSaveStatus('unsaved');
@@ -2498,7 +2501,8 @@ export default class DungeonBase {
 
                 // Persist Addition
                 if (type === 'main') {
-                    q.text = e.currentTarget.innerHTML;
+                    if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, e.currentTarget);
+                    else q.text = e.currentTarget.innerHTML;
                 }
 
                 this.updateSaveStatus('unsaved');
@@ -2542,7 +2546,8 @@ export default class DungeonBase {
                         parent.replaceChild(textNode, target);
                         parent.normalize();
                         if (type === 'main' && contextBox) {
-                            q.text = contextBox.innerHTML;
+                            if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, contextBox);
+                            else q.text = contextBox.innerHTML;
                         }
                         this.updateSaveStatus('unsaved');
                         this.saveQuestionsToBackend();
@@ -2570,7 +2575,8 @@ export default class DungeonBase {
                 newRange.selectNodeContents(span);
                 selection.addRange(newRange);
                 if (type === 'main') {
-                    q.text = contextBox.innerHTML;
+                    if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, contextBox);
+                    else q.text = contextBox.innerHTML;
                 }
                 this.updateSaveStatus('unsaved');
                 this.saveQuestionsToBackend();
@@ -2582,7 +2588,8 @@ export default class DungeonBase {
                     range.insertNode(span);
                     selection.removeAllRanges();
                     if (type === 'main') {
-                        q.text = contextBox.innerHTML;
+                        if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, contextBox);
+                        else q.text = contextBox.innerHTML;
                     }
                     this.updateSaveStatus('unsaved');
                     this.saveQuestionsToBackend();
@@ -2648,6 +2655,11 @@ export default class DungeonBase {
 
     saveQuestionsToBackend() {
         this.updateSaveStatus('saving');
+        if (this.state.associatedSessionId?.startsWith('medos-')) {
+            return window.MedicalLibrary.saveDungeonSession(this).catch(error => {
+                console.error('[Dungeon] Library session save failed:', error);
+            });
+        }
 
         // 1. Force sync ALL questions in the current session back to QuestionBase
         if (window.QuestionBase && window.QuestionBase.state) {
@@ -2792,6 +2804,11 @@ export default class DungeonBase {
         // Initialize tracker for stopTimer()
         this._timerQuestion = q;
         this._timerInitialMs = (timerMode === 'up') ? (q.timerElapsed || 0) : null;
+        const savedBlockRemaining = q.contentFormat === 'medos-html' && timerScope === 'session' ? (q._blockRemainingMs ?? timerSecs * 1000) : timerSecs * 1000;
+        if (q.contentFormat === 'medos-html' && timerMode === 'down' && timerScope === 'session') {
+            this.sessionTimerStart = Date.now();
+            this._timerInitialMs = savedBlockRemaining;
+        }
         
         // Stop 'up' timer from ticking if question is answered, committed (exam), or revealed
         const answer = this.state.answers.get(q.id);
@@ -2849,7 +2866,7 @@ export default class DungeonBase {
             this.updateTimerDisplay(q.timerElapsed || 0);
         } else if (timerMode === 'down') {
             const initialRemaining = timerScope === 'session' 
-                ? (timerSecs * 1000) - (Date.now() - this.sessionTimerStart)
+                ? savedBlockRemaining - (Date.now() - this.sessionTimerStart)
                 : (timerSecs * 1000);
             this.updateTimerDisplay(Math.max(0, initialRemaining));
         }
@@ -2862,7 +2879,7 @@ export default class DungeonBase {
                 this.lastTimerMs = (q.timerElapsed || 0) + elapsedSinceRender;
             } else {
                 // Down + Session scope
-                this.lastTimerMs = Math.max(0, (timerSecs * 1000) - (now - this.sessionTimerStart));
+                this.lastTimerMs = Math.max(0, savedBlockRemaining - (now - this.sessionTimerStart));
             }
 
             if (timerMode === 'down' && this.lastTimerMs <= 0) {
@@ -2895,6 +2912,7 @@ export default class DungeonBase {
         }
         this.renderSidebar();
         this.renderQuestion();
+        if (q.contentFormat === 'medos-html') this.saveQuestionsToBackend();
     }
 
     handleTimeUp() {
@@ -2915,6 +2933,10 @@ export default class DungeonBase {
             }
         });
 
+        if (this.state.questions.some(q => q.contentFormat === 'medos-html')) {
+            this.state.isBlockRevealed = true;
+            this.saveQuestionsToBackend();
+        }
         const stats = this.calculateStats();
         this.showTimeUpDialog(stats);
     }
@@ -2983,6 +3005,14 @@ export default class DungeonBase {
 
         // Save remaining/elapsed time to the CORRECT question (tracked at start)
         const q = this._timerQuestion;
+        if (q?.contentFormat === 'medos-html' && q._timerMode === 'down') {
+            const elapsed = Math.max(0, Math.min(now - this.timerStart, this._timerInitialMs ?? now - this.timerStart));
+            q.timerElapsed = (q.timerElapsed || 0) + elapsed;
+            if (q._timerScope === 'session') {
+                const remaining = Math.max(0, (this._timerInitialMs ?? q._timerSecs * 1000) - elapsed);
+                this.state.questions.forEach(item => { item._blockRemainingMs = remaining; });
+            }
+        }
         if (q && !q._timedOut) {
             const elapsed = now - this.timerStart;
             if (q._timerMode === 'up') {
@@ -3363,6 +3393,10 @@ export default class DungeonBase {
         let changed = false;
 
         // 1. Remove all highlight spans from the main text
+        if (q.contentFormat === 'medos-html') {
+            window.MedicalLibrary.clearHighlights(q);
+            changed = true;
+        }
         if (q.text && q.text.includes('class="highlight"')) {
             q.text = q.text.replace(/<span class="highlight">(.*?)<\/span>/g, '$1');
             changed = true;
@@ -3688,6 +3722,7 @@ export default class DungeonBase {
             this.state.isBlockRevealed = true;
         }
         
+        this.stopTimer();
         // Finalize scoring
         const stats = this.calculateStats();
         stats.percentage = this.state.questions.length > 0 ? Math.round((stats.correct / this.state.questions.length) * 100) : 0;
@@ -3735,6 +3770,7 @@ export default class DungeonBase {
                 await this.saveQuestionsToBackend();
                 
                 // Also update the session record itself if possible
+                if (this.state.associatedSessionId.startsWith('medos-')) return;
                 const sessionsStr = localStorage.getItem("active-recall-recent-sessions");
                 if (sessionsStr) {
                     const sessions = JSON.parse(sessionsStr);
@@ -3783,6 +3819,7 @@ export default class DungeonBase {
         document.body.classList.remove("dungeon-open");
         this.el.container.classList.add("hidden");
         this.stopTimer();
+        if (this.state.associatedSessionId?.startsWith('medos-')) this.saveQuestionsToBackend();
 
         // Cleanup any active sticky notes
         if (window.DungeonNote && window.DungeonNote.destroyAll) {
@@ -3931,7 +3968,9 @@ export default class DungeonBase {
             // Star Indicator
             if (q.starred || q.isStarred) {
                 const star = document.createElement('div');
-                star.className = 'dungeon-starred-indicator';
+                star.className = 'dungeon-flagged-indicator';
+                star.title = 'Flagged question';
+                star.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg>';
                 box.appendChild(star);
                 box.style.position = 'relative'; // Ensure relative for abs star
             }
@@ -4349,7 +4388,7 @@ export default class DungeonBase {
         let html = `
     <!-- Context Box (Image/Code) -->
     <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event, 'main')" ontouchend="window.DungeonBase.handleHighlightTouch(event, 'main')">
-           ${window.Markdown ? window.Markdown.render(q.text || q.body || q.content || "No question details.") : (q.text || q.body || q.content || "No question details.")}
+           ${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'question') : (window.Markdown ? window.Markdown.render(q.text || q.body || q.content || "No question details.") : (q.text || q.body || q.content || "No question details."))}
     </div>
 
     <div class="dungeon-options-list">
@@ -4401,13 +4440,16 @@ export default class DungeonBase {
         <div class="${classes}">
             <div class="dungeon-radio-circle" onclick="${isLocked ? '' : `window.DungeonBase.handleSelectOption('${opt.id}')`}" style="${isLocked ? 'cursor:default;opacity:0.6;' : ''}"></div>
             <div class="dungeon-radio-text" onclick="${isLocked ? '' : `window.DungeonBase.handleStrikeOption(event, this)`}" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')" style="${isLocked ? 'user-select:none;' : ''}">
-                <span style="margin-right: 8px;">(${letter})</span>${window.Markdown ? window.Markdown.render(opt.text || "Option") : (opt.text || "Option")}
+                <span class="dungeon-option-letter">(${letter})</span>${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'option', opt) : (window.Markdown ? window.Markdown.render(opt.text || "Option") : (opt.text || "Option"))}
             </div>
         </div>
       `;
         });
 
         html += `</div>`; // End options
+        if (isSubmitted) {
+            html += `<div class="dungeon-answer-status ${answer.isCorrect ? 'correct' : 'incorrect'}" role="status">${answer.isCorrect ? 'Correct' : 'Incorrect'}</div>`;
+        }
 
         // Inline Submit Button (shown when toolbar is hidden)
         if (!this.state.toolbarVisible) {
@@ -4433,7 +4475,7 @@ export default class DungeonBase {
         let explHtml = '';
         if (showExplanation) {
             const explanationTitle = isSubmitted
-                ? (answer.isCorrect ? "Correct!" : "Incorrect")
+                ? (answer.isCorrect ? "Correct" : "Incorrect")
                 : "Answer Revealed";
 
             // Build tag row from spId + optional spTopic
@@ -4459,7 +4501,7 @@ export default class DungeonBase {
             explHtml = `
          <div class="dungeon-explanation">
              <h3>${explanationTitle}</h3>
-             <p>${window.Markdown ? window.Markdown.render(q.explanation || "No explanation provided.") : (q.explanation || "No explanation provided.")}</p>
+             <div>${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'explanation') : (window.Markdown ? window.Markdown.render(q.explanation || "No explanation provided.") : (q.explanation || "No explanation provided."))}</div>
              ${tagsHtml}
          </div>
       `;
@@ -4665,7 +4707,11 @@ export default class DungeonBase {
         }
 
         // Sync with global stats
-        window.fileSystemService.makeRequest('/stats', {
+        if (q.contentFormat === 'medos-html' && changeType && previousAnswer.selectedId !== answerData.selectedId) {
+            q.answerChanges ||= {};
+            q.answerChanges[changeType] = (q.answerChanges[changeType] || 0) + 1;
+        }
+        if (q.contentFormat !== 'medos-html') window.fileSystemService.makeRequest('/stats', {
             method: 'POST',
             body: JSON.stringify({ 
                 type: isCorrect ? 'correct' : 'incorrect',
@@ -4677,12 +4723,11 @@ export default class DungeonBase {
         }).catch(err => console.error("Failed to sync stats:", err));
 
         this.updateSaveStatus('unsaved');
-        this.saveQuestionsToBackend();
-        
         // Stop timer for Tutor mode (always) OR for 'up' mode in Exam mode
         if (q._tutorMode !== false || q._timerMode === 'up') {
             this.stopTimer();
         }
+        this.saveQuestionsToBackend();
         
         this.render(); // Update sidebar and content
     }

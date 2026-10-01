@@ -295,7 +295,7 @@ input[type=number] {
 .sidebar button {
   background: transparent;
   color: var(--defualt);
-  padding: 6px 10px;
+  padding: 6px 5px;
   padding-left: 30px;
   border-radius: 8px;
   cursor: pointer;

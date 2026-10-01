@@ -42,6 +42,7 @@ fs.ensureDirSync(path.join(NOTES_BASE_DIR, "questions"));
 // notes, folders, images will be created on demand if needed, but not forced here
 
 // Serve images statically
+require('./medical-library').mountMedicalLibrary(app, NOTES_BASE_DIR);
 app.use("/api/images", express.static(path.join(NOTES_BASE_DIR, "images")));
 
 // Health check endpoint

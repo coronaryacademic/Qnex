@@ -158,16 +158,16 @@
 }
 
 /* Manual Session Button Specific Hover */
-#createSessionBtn:hover {
+.question-header #createSessionBtn:hover {
   background: var(--panel-hover);
   color: var(--accent);
 }
 
-#createSessionBtn:hover svg {
+.question-header #createSessionBtn:hover svg {
   transform: scale(1.05);
 }
 
-#createSessionBtn.active {
+.question-header #createSessionBtn.active {
   background: var(--panel-hover);
   color: var(--defualt);
 }

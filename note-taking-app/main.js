@@ -830,6 +830,7 @@ function startServer3002() {
     const cors = require('cors');
     expressApp.use(cors());
     expressApp.use(bodyParser.json({ limit: '50mb' }));
+    require('./server/medical-library').mountMedicalLibrary(expressApp, dataDir);
     
     expressApp.get('/api/health', (req, res) => {
       res.json({
