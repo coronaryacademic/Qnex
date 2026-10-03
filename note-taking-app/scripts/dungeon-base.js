@@ -401,7 +401,7 @@ export default class DungeonBase {
               
               <!-- Footer (Bottom Header) -->
               <div id="dungeonFooter" class="dungeon-footer">
-                  <div class="dungeon-footer-left">
+                  <div class="dungeon-footer-left"><span class="dungeon-block-clock">Block Time Elapsed: <span id="dungeonBlockElapsed">00:00:00</span></span>
                       <div class="dungeon-stat-item" title="Time Elapsed">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                           <span id="dungeonTimer" style="font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums;">00:00</span>
@@ -457,17 +457,6 @@ export default class DungeonBase {
 
                       <button id="dungeonSuspendBtn" class="dungeon-reveal-btn" title="Suspend Block (Resume Later)">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-                      </button>
-
-                      <button id="dungeonRevealBtn" class="dungeon-reveal-btn" title="Reveal Answer">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M9 18h6"></path>
-                              <path d="M10 22h4"></path>
-                              <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"></path>
-                          </svg>
-                          <svg class="reveal-cross" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none; position: absolute;">
-                              <line x1="4" y1="4" x2="20" y2="20"></line>
-                          </svg>
                       </button>
 
                       <button id="dungeonEndBlockBtn" class="dungeon-reveal-btn" title="End Block (Finish Early)">
@@ -679,6 +668,16 @@ export default class DungeonBase {
     }
 
     initFooter() {
+        const right=document.querySelector('.dungeon-footer-right');
+        if (right && !document.getElementById('dungeonMedicalLibraryBtn')) {
+            const b=document.createElement('button'); b.id='dungeonMedicalLibraryBtn'; b.className='dungeon-reveal-btn'; b.title='Medical Library';
+            b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M16 6h4v15H8v-2M7 7h6M7 11h6M7 15h4"/></svg><span>Medical Library</span>';
+            b.onclick=()=>this.showNotification('Medical Library — Coming soon','info');right.prepend(b);
+        }
+        for(const [id,label] of [['dungeonNoteBtn','Note'],['dungeonSuspendBtn','Suspend'],['dungeonEndBlockBtn','End Block'],['dungeonSubmitBlockBtn','Submit Block']]) {
+            const b=document.getElementById(id);if(b&&!b.querySelector('.dungeon-footer-label')){const span=document.createElement('span');span.className='dungeon-footer-label';span.textContent=label;b.append(span);}
+        }
+
         // Bind Reveal Button
         const revealBtn = document.getElementById('dungeonRevealBtn');
         if (revealBtn) {
@@ -1698,18 +1697,51 @@ export default class DungeonBase {
         }
     }
     updateQuestionTitle() {
+        for (const id of ['dungeonSidebarToggle','dungeonSearchToggle','dungeonToolbarOptions','dungeonCloseBtn']) {
+            const button = document.getElementById(id);
+            button?.querySelector('.dungeon-header-label')?.remove();
+            button?.classList.remove('dungeon-header-labeled');
+        }
+        for (const [id, label] of [['dungeonLabBtn','Lab Values'], ['dungeonCalcBtn','Calculator']]) {
+            const button = document.getElementById(id);
+            if (button && !button.querySelector('.dungeon-header-label')) {
+                const caption = document.createElement('span');
+                caption.className = 'dungeon-header-label'; caption.textContent = label;
+                button.append(caption); button.classList.add('dungeon-header-labeled');
+                button.setAttribute('aria-label', label);
+            }
+        }
+        const sidebar = document.getElementById('dungeonSidebar');
+        if (sidebar && this._layoutSidebar !== sidebar) {
+            this._sidebarLayoutObserver?.disconnect();
+            this._sidebarClassObserver?.disconnect();
+            this._layoutSidebar = sidebar;
+            const sync = () => {
+                const width = sidebar.classList.contains('collapsed') ? 0 : sidebar.offsetWidth;
+                for (const id of ['dungeonTopbar', 'dungeonFooter']) {
+                    document.getElementById(id)?.style.setProperty('left', width + 'px', 'important');
+                }
+            };
+            this._sidebarLayoutObserver = new ResizeObserver(sync);
+            this._sidebarLayoutObserver.observe(sidebar);
+            this._sidebarClassObserver = new MutationObserver(sync);
+            this._sidebarClassObserver.observe(sidebar, { attributes:true, attributeFilter:['class'] });
+            sync();
+        }
         const q = this.state.questions[this.state.currentIndex];
         const titleEl = document.getElementById('dungeonQuestionTitle');
         if (titleEl && q) {
-            const rawId = (q.spId || '');
+            const rawId = String(q.source?.questionId ?? q.spId ?? q.id ?? '');
             const displayId = (rawId.includes('.')) ? rawId.split('.').pop() : (rawId.replace('QNX-', '').replace(/[-.]/g, '') || 'N/A');
             
             titleEl.innerHTML = `
                 <div class="dungeon-title-line">Item ${this.state.currentIndex + 1} of ${this.state.questions.length}</div>
                 <div class="dungeon-id-line" title="Click to copy ID">Question ID: <span class="id-value">${displayId}</span></div>
-                <button class="dungeon-question-flag" type="button" title="Flag question" aria-label="Flag question" onclick="document.querySelector('.dungeon-tool-btn[data-tool=star]')?.click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V4m0 0c5-4 9 4 14 0v10c-5-4-9-4-14 0"/></svg><span>Flag</span></button>
+                <button class="dungeon-question-flag" type="button" title="Mark question" aria-label="Mark question" aria-pressed="${Boolean(q.starred || q.isStarred)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 3h9l1 3h7v12h-9l-1-3H6v7H4z"/></svg><span>Mark</span></button>
             `;
 
+            titleEl.querySelector('.id-value').textContent = q.source?.questionId ?? displayId;
+            titleEl.querySelector('.dungeon-question-flag').onclick = () => this.toggleStar();
             // Add Click to Copy functionality
             const idLine = titleEl.querySelector('.dungeon-id-line');
             if (idLine && rawId) {
@@ -2417,9 +2449,10 @@ export default class DungeonBase {
         if (!q) return;
 
         // Update local state (standardize on 'starred' to match QuestionBase)
-        q.starred = !q.starred;
+        q.starred = !(q.starred || q.isStarred);
         // remove legacy isStarred if present to avoid confusion
         delete q.isStarred;
+        this.updateQuestionTitle();
 
         this.renderToolbarState();
 
@@ -3033,6 +3066,14 @@ export default class DungeonBase {
     }
 
     updateTimerDisplay(ms) {
+        const blockClock=document.getElementById('dungeonBlockElapsed');
+        if(blockClock){
+            const saved=this.state.questions.reduce((sum,q)=>sum+(Number(q.timerElapsed)||0),0);
+            const live=this.timerInterval && this.timerStart ? Math.max(0,Date.now()-this.timerStart) : 0;
+            const seconds=Math.floor((saved+live)/1000);
+            blockClock.textContent=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
+        }
+
         this.lastTimerMs = ms;
         const timerEl = document.getElementById('dungeonTimer');
         if (!timerEl) return;
@@ -3578,6 +3619,7 @@ export default class DungeonBase {
 
         // Keyboard nav
         document.addEventListener("keydown", (e) => {
+            if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
             if (this.el.container.classList.contains("hidden")) return;
 
             const searchWrapper = document.getElementById('dungeonSearchWrapper');
@@ -3949,6 +3991,8 @@ export default class DungeonBase {
                 box.classList.add("active");
             }
 
+            const statusIcon = box.classList.contains("correct") ? "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z\"/></svg>" : box.classList.contains("wrong") ? "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z\"/></svg>" : "";
+            if (statusIcon) content = '<span class="dungeon-result-icon">'+statusIcon+'</span>'+content;
             box.title = q.title || `Question ${index + 1}`;
 
             // Timed-out indicator: crossed clock SVG
@@ -4434,22 +4478,20 @@ export default class DungeonBase {
                 classes += " crossed-out";
             }
 
-            const letter = String.fromCharCode(65 + idx); // 65 is 'A'
+            const letter = String.fromCharCode(65 + idx);
+            const optionPercent = opt.percent ?? (opt.isCorrect ? q.answerStats?.percent_correct : null); // 65 is 'A'
 
             html += `
         <div class="${classes}">
             <div class="dungeon-radio-circle" onclick="${isLocked ? '' : `window.DungeonBase.handleSelectOption('${opt.id}')`}" style="${isLocked ? 'cursor:default;opacity:0.6;' : ''}"></div>
             <div class="dungeon-radio-text" onclick="${isLocked ? '' : `window.DungeonBase.handleStrikeOption(event, this)`}" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')" style="${isLocked ? 'user-select:none;' : ''}">
-                <span class="dungeon-option-letter">(${letter})</span>${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'option', opt) : (window.Markdown ? window.Markdown.render(opt.text || "Option") : (opt.text || "Option"))}
+                <span class="dungeon-option-letter">${letter}.</span>${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'option', opt) : (window.Markdown ? window.Markdown.render(opt.text || "Option") : (opt.text || "Option"))}
             </div>
         </div>
       `;
         });
 
         html += `</div>`; // End options
-        if (isSubmitted) {
-            html += `<div class="dungeon-answer-status ${answer.isCorrect ? 'correct' : 'incorrect'}" role="status">${answer.isCorrect ? 'Correct' : 'Incorrect'}</div>`;
-        }
 
         // Inline Submit Button (shown when toolbar is hidden)
         if (!this.state.toolbarVisible) {
@@ -4500,7 +4542,8 @@ export default class DungeonBase {
 
             explHtml = `
          <div class="dungeon-explanation">
-             <h3>${explanationTitle}</h3>
+             <div class="dungeon-feedback ${isSubmitted ? (answer.isCorrect ? 'correct' : 'incorrect') : ''}" role="status"><div><strong>${explanationTitle}</strong><small>Correct answer</small><span>${options.map((o,i) => o.isCorrect ? String.fromCharCode(65+i) : '').filter(Boolean).join(', ') || '—'}</span></div><div class="dungeon-feedback-metric"><svg class="dungeon-feedback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21h18M6 18v-5M12 18V5M18 18V9"/></svg><span>${q.answerStats?.percent_correct == null ? '—' : Number(q.answerStats.percent_correct) + '%'}</span><small>Answered correctly</small></div><div class="dungeon-feedback-metric"><svg class="dungeon-feedback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>${Math.floor((q.timerElapsed || 0)/60000)} min, ${Math.floor((q.timerElapsed || 0)/1000)%60} secs</span><small>Time spent</small></div></div>
+             <h3>Explanation</h3>
              <div>${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'explanation') : (window.Markdown ? window.Markdown.render(q.explanation || "No explanation provided.") : (q.explanation || "No explanation provided."))}</div>
              ${tagsHtml}
          </div>

@@ -9,6 +9,9 @@
   };
   const Dashboard = {
     mainRevision: 0, statsRevision: 0, brandTimer: null,
+    withTimeout(promise, ms = 8000) {
+      return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('The question-bank service took too long to respond. Check the MedOS folder or restart Qnex.')), ms))]);
+    },
     metrics(stats) {
       const attempted = stats.correct + stats.incorrect;
       const usage = stats.totalQuestions ? Math.min(100, 100 * stats.used / stats.totalQuestions) : 0;
@@ -19,10 +22,10 @@
     },
     async context() {
       const lib = window.MedicalLibrary;
-      await lib.saveQueue;
-      const [profile, catalog] = await Promise.all([
+      await this.withTimeout(lib.saveQueue);
+      const [profile, catalog] = await this.withTimeout(Promise.all([
         lib.api('/profile'), lib.banks.length ? Promise.resolve({ banks: lib.banks }) : lib.api('/catalog')
-      ]);
+      ]));
       lib.banks = catalog.banks;
       lib.profile = profile;
         lib.currentBank = profile.currentBank;
@@ -30,7 +33,7 @@
       // A saved choice always wins; first-time users see the chooser instead of
       // silently being assigned a question bank.
       const bank = lib.banks.find(item => item.key === profile.currentBank);
-      const stats = bank ? await lib.api('/statistics?bank=' + encodeURIComponent(bank.key)) : null;
+      const stats = bank ? await this.withTimeout(lib.api('/statistics?bank=' + encodeURIComponent(bank.key))) : null;
       return { bank, stats, profile };
     },
     selector() {
@@ -52,8 +55,28 @@
         const m = stats && this.metrics(stats);
         mount.innerHTML = `<header class="qd-main-header"><div class="qd-welcome"><h2>Welcome Mo'men</h2><span>${escape(bank?.label || 'Your study dashboard')}</span></div><div class="qd-actions"><button id="qdBrowse" class="ml-library-btn qd-icon-action" title="Browse Qbank library" aria-label="Browse Qbank library">${icon('<path d="M2 7v8a3 3 0 0 0 6 0V7M11 7l2 11 3-8 3 8 3-11"/>')}</button><button id="qdMedical" class="ml-library-btn qd-icon-action" title="Medical Library — Coming soon" aria-label="Medical Library">${icon('<path d="M12 5.5C9 3.5 5 3.5 2 5v15c3-1.5 7-1.5 10 .5 3-2 7-2 10-.5V5c-3-1.5-7-1.5-10 .5ZM12 5.5v15"/>')}</button>${bank ? '<button id="qdPractice" class="ml-library-btn primary qd-icon-action" title="Create test" aria-label="Create test">'+icon('<path d="m8 4 12 8-12 8z"/>')+'</button><button id="qdStats" class="ml-library-btn qd-icon-action" title="View Statistics" aria-label="View Statistics">'+icon('<path d="M5 20v-6M12 20V4M19 20V10"/>')+'</button>' : ''}</div></header>
           <p id="qdMessage" class="qd-message" role="status" hidden></p>
-          ${stats ? `<div class="qd-cards">${this.card('Question Score', m.score, 'Correct', 'score')}${this.card('QBank Usage', m.usageLabel, `${stats.used.toLocaleString()} / ${stats.totalQuestions.toLocaleString()} Used`, 'usage')}${this.card('Test Count', m.completion, `${stats.completed} / ${stats.created} Completed`, 'tests')}</div><div class="qd-footnote">Score uses the latest saved answer for each question.</div>` : '<div class="ml-library-empty">Choose a bank in the sidebar to see your study activity.</div>'}`;
+          ${stats ? `<div class="qd-cards">${this.card('Question Score', m.score, 'Correct', 'score')}${this.card('QBank Usage', m.usageLabel, `${stats.used.toLocaleString()} / ${stats.totalQuestions.toLocaleString()} Used`, 'usage')}${this.card('Test Count', m.completion, `${stats.completed} / ${stats.created} Completed`, 'tests')}</div>` : '<div class="ml-library-empty">Choose a bank in the sidebar to see your study activity.</div>'}`;
         mount.insertAdjacentHTML('beforeend','<section class="qd-brand-panel" aria-label="Qnex visual rotation"><div class="qd-brand-copy"><span class="qd-brand-credit">© 2026 · Qnex X.50</span></div><div class="qd-brand-art"><img class="qd-brand-slide active" src="assets/qnex-brand/artwork-hd.png" alt="Abstract Qnex artwork" width="2048" height="1024" loading="lazy"><img class="qd-brand-slide" src="assets/qnex-brand/xray.png" alt="Chest X-ray" width="2048" height="1024" loading="lazy"><img class="qd-brand-slide" src="assets/qnex-brand/mri.png" alt="MRI scan" width="2048" height="1024" loading="lazy"></div></section>');
+        const recent = document.createElement('section'); recent.className='qd-recent';
+        recent.innerHTML='<h3>Recent sessions</h3><div class="qd-recent-list">Loading sessions…</div>';
+        mount.querySelector('.qd-brand-panel').before(recent);
+        window.MedicalLibrary.api('/sessions').then(sessions => {
+          if (revision !== this.mainRevision || !recent.isConnected) return;
+          const latest = sessions.filter(s => !bank || s.bank === bank.key).sort((a,b) => new Date(b.updatedAt || b.date)-new Date(a.updatedAt || a.date)).slice(0,3);
+          const list=recent.querySelector('.qd-recent-list'); list.textContent='';
+          if (!latest.length) list.textContent='No recent sessions yet.';
+          latest.forEach(session => {
+            const button=document.createElement('button'); button.type='button'; button.className='qd-recent-session';
+            const title=document.createElement('strong'); title.textContent=session.title;
+            const detail=document.createElement('small'); detail.textContent=(session.answered || 0)+' / '+session.count+' answered';
+            const resume=document.createElement('span'); resume.className='qd-recent-resume'; resume.setAttribute('aria-hidden','true');
+            resume.title=session.completed ? 'Review session' : 'Resume session'; resume.setAttribute('aria-label',resume.title+' — '+session.title);
+            resume.innerHTML=icon('<path d="m9 5 7 7-7 7"/>');
+            button.setAttribute('aria-label',resume.title+' — '+session.title);
+            button.append(title,detail,resume); button.onclick=async()=>{if(button.disabled)return;button.disabled=true;try{await window.MedicalLibrary.resume(session.id);}catch(error){window.showToast?.(error.message,'error');}finally{button.disabled=false;}};
+            list.append(button);
+          });
+        }).catch(()=>{if(recent.isConnected)recent.querySelector('.qd-recent-list').textContent='Unable to load recent sessions.';});
         const brandSlides = [...mount.querySelectorAll('.qd-brand-slide')]; let brandIndex = 0;
         this.brandTimer = setInterval(() => { brandSlides[brandIndex]?.classList.remove('active'); brandIndex = (brandIndex + 1) % brandSlides.length; brandSlides[brandIndex]?.classList.add('active'); }, 7000);
         document.getElementById('qdMedical').onclick = () => window.QuestionBase.switchTab('medical-reference');

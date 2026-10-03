@@ -3348,3 +3348,69 @@ body.theme-light .dungeon-search-wrapper {
   opacity: 0.8;
   font-size: 18px;
 }
+#dungeonQuestionTitle { display:grid; grid-template-columns:auto auto; column-gap:16px; margin-right:12px; overflow:visible; }
+#dungeonQuestionTitle .dungeon-title-line { grid-column:1; grid-row:1; }
+#dungeonQuestionTitle .dungeon-id-line { grid-column:1; grid-row:2; }
+#dungeonQuestionTitle .dungeon-question-flag { grid-column:2; grid-row:1 / 3; display:flex; align-items:center; gap:6px; align-self:stretch; background:transparent; color:inherit; border:0; border-left:1px solid currentColor; padding:0 12px; font:inherit; font-size:12px; cursor:pointer; }
+#dungeonQuestionTitle .dungeon-question-flag { border-left-color:#aeb7c7; }
+#dungeonQuestionTitle .dungeon-question-flag[aria-pressed="true"] > svg,
+#dungeonQuestionTitle .dungeon-question-flag[aria-pressed="true"] > span { color:#ffba36; }
+#dungeonSidebar .dungeon-q-box { box-sizing:border-box; width:100%; height:34px; flex-shrink:0; border-right:0 !important; box-shadow:none; border-color:var(--border); color:var(--defualt); transition:background .15s; }
+#dungeonSidebar .dungeon-q-box:nth-child(odd) { background:var(--panel) !important; }
+#dungeonSidebar .dungeon-q-box:nth-child(even) { background:var(--panel-2) !important; }
+body.theme-light #dungeonSidebar .dungeon-q-box:nth-child(odd) { background:#fff !important; }
+body.theme-light #dungeonSidebar .dungeon-q-box:nth-child(even) { background:#f0f1f2 !important; }
+#dungeonSidebar .dungeon-q-box.active:nth-child(n) { width:100%; background:#5793c9 !important; color:#fff !important; }
+body.theme-light #dungeonSidebar .dungeon-q-box.active:nth-child(n) { background:#d5e5f7 !important; color:#111827 !important; box-shadow:inset 3px 0 #3a53a7; }
+body.theme-light #dungeonSidebar .dungeon-q-box.active .q-number { color:#111827; }
+body.theme-light #dungeonSidebar .dungeon-flagged-indicator { color:#996300; }
+#dungeonSidebar .dungeon-q-box::before { opacity:1; font-size:18px; }
+#dungeonSidebar .dungeon-q-box.correct::before { content:"✓"; color:#07963c; }
+#dungeonSidebar .dungeon-q-box.wrong::before { content:"×"; color:#f22222; font-size:24px; }
+#dungeonSidebar .dungeon-box-status { font-family:inherit; font-weight:400; }
+#dungeonSidebar .active .dungeon-box-status { font-weight:700; }
+#dungeonSidebar .dungeon-flagged-indicator svg { fill:currentColor; }
+#dungeonSidebar { top:0 !important; bottom:0 !important; }
+#dungeonSidebar .dungeon-sidebar-questions { min-height:0; padding-right:0; margin-right:0; overflow-x:hidden; overflow-y:auto; }
+.dungeon-feedback { display:flex; flex-wrap:wrap; align-items:center; gap:24px; padding:16px 20px; border:1px solid var(--border); border-left:3px solid #7996b2; background:transparent; box-shadow:none; border-radius:4px; margin-bottom:24px; color:var(--defualt); }
+.dungeon-feedback > div:first-child { margin-right:auto; }
+.dungeon-feedback small { display:block; margin:6px 0; font-size:12px; color:var(--text-muted); }
+.dungeon-feedback.correct { border-color:var(--border); border-left-color:#129447; }
+.dungeon-feedback.incorrect { border-color:var(--border); border-left-color:#ef3038; }
+.dungeon-feedback.correct strong { color:#129447; }
+.dungeon-feedback.incorrect strong { color:#ef3038; }
+.dungeon-feedback strong { display:block; font-weight:500; }
+.dungeon-radio-text { min-width:0; flex:1; }
+.dungeon-option-percent { font-size:11px; color:var(--text-muted); align-self:center; }
+.dungeon-explanation .ml-rich-content a,
+.dungeon-explanation a { color:#2e66b8 !important; text-decoration:underline !important; text-decoration-thickness:1px; text-underline-offset:2px; cursor:pointer; }
+body.theme-light .dungeon-explanation .ml-rich-content a,
+body.theme-light .dungeon-explanation a { color:#1459a6 !important; }
+body:not(.theme-light) .dungeon-explanation .ml-rich-content a { color:#79aaf0 !important; }
+#dungeonSidebar .dungeon-q-box.correct::before,
+#dungeonSidebar .dungeon-q-box.wrong::before { content:none; }
+.dungeon-result-icon { position:absolute; left:8px; top:50%; transform:translateY(-50%); width:20px; height:20px; }
+.dungeon-result-icon svg { display:block; width:100%; height:100%; }
+.correct .dungeon-result-icon { color:#07963c; }
+.wrong .dungeon-result-icon { color:#f22222; }
+.dungeon-feedback-metric { display:grid; grid-template-columns:24px auto; column-gap:10px; align-items:center; }
+.dungeon-feedback-metric .dungeon-feedback-icon { width:24px; height:24px; grid-row:1 / 3; color:#7c91aa; }
+.dungeon-feedback-metric small { grid-column:2; }
+#dungeonFooter .dungeon-reveal-btn { width:auto; min-width:68px; padding:4px 10px; height:48px; flex-direction:column; gap:4px; font-size:10px; color:inherit; }
+#dungeonFooter #dungeonNoteBtn { display:flex !important; }
+#dungeonMedicalLibraryBtn { order:1; }
+#dungeonNoteBtn { order:2; }
+#dungeonEndBlockBtn, #dungeonSubmitBlockBtn { order:3; }
+#dungeonSuspendBtn { order:4; }
+#dungeonFooter .dungeon-footer-left > .dungeon-stat-item { display:none; }
+.dungeon-block-clock { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
+#dungeonTopbar .dungeon-header-labeled { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px; width:auto; min-width:44px; height:48px; padding:4px 6px; }
+#dungeonTopbar .dungeon-header-label { font-size:10px; line-height:1.2; white-space:nowrap; font-weight:500; }
+#dungeonTopbar .dungeon-header-labeled svg { flex-shrink:0; }
+#dungeonTopbar { gap:12px; }
+@media(max-width:900px) { #dungeonTopbar { overflow-x:auto; } #dungeonTopbar .dungeon-topbar-left, #dungeonTopbar .dungeon-topbar-right { flex-shrink:0; } }
+body.theme-light .dungeon-feedback { background:transparent; color:#111; }
+body.theme-light .dungeon-feedback small { color:#45556b; }
+body.theme-light .dungeon-feedback-icon { color:#61758d; }
+body.theme-light .dungeon-feedback.incorrect strong { color:#c91f2b; }
+body.theme-light .dungeon-feedback.correct strong { color:#087b36; }

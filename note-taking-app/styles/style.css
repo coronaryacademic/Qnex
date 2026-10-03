@@ -6439,3 +6439,9 @@ ol.editor-block {
 .search-result-title {
   color: var(--defualt) !important;
 }
+/* Native disclosure markers use the same outline chevron as app navigation. */
+summary { list-style:none; }
+summary::-webkit-details-marker { display:none; }
+summary::marker { content:''; }
+summary:not(:has(svg)):not(.qw-system summary)::before { content:''; display:inline-block; width:16px; height:16px; margin-right:8px; vertical-align:-2px; background:currentColor; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 5 7 7-7 7' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 5 7 7-7 7' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
+details[open] > summary:not(:has(svg)):not(.qw-system summary)::before { transform:rotate(90deg); }

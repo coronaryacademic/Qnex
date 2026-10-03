@@ -197,7 +197,7 @@ body.theme-light .ml-library { --ml-muted: #000; --ml-surface: #fff; --ml-text: 
 .dungeon-explanation { color:#e5e7eb; }
 body.theme-light .dungeon-explanation,
 body.theme-light .dungeon-explanation :is(p,div,span,font,center,li,td,th,strong,b,em,i,blockquote) { color:#253044; }
-body.theme-light .dungeon-explanation a { color:#355faf; }
+body.theme-light .dungeon-explanation a { color:#1459a6; }
 .dungeon-question-container .dungeon-explanation .ml-rich-content :is(p,div,span,font,center,li,td,th) { font-size:inherit; }
 .ml-media-unavailable { display:block; padding:14px; border:1px solid var(--border); border-radius:6px; font-size:.8em; color:inherit; }
 .ml-media-unavailable button { color:var(--accent); border:0; background:transparent; cursor:pointer; font:inherit; text-decoration:underline; }
@@ -206,7 +206,9 @@ body.theme-light .dungeon-explanation a { color:#355faf; }
 .ml-rich-content table { border-collapse: collapse; max-width: 100%; font-size: .95em; }
 .ml-rich-content th, .ml-rich-content td { border: 1px solid var(--border, #666); padding: 8px 12px; }
 .ml-rich-content .ml-table-scroll { overflow-x: auto; }
-.ml-rich-content a { color: var(--accent, #7894ff); text-decoration: underline; }
+.ml-rich-content a { color:#2e66b8; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:2px; cursor:pointer; }
+body.theme-light .ml-rich-content a { color:#1459a6; }
+body:not(.theme-light) .ml-rich-content a { color:#79aaf0; }
 .ml-rich-content figure { margin: 16px 0; }
 .ml-rich-content .ml-unsupported { color: var(--muted, #aaa); font-size: 13px; }
 @media (max-width: 620px) { .ml-library-fields { grid-template-columns: 1fr; } .ml-library-form { padding: 16px; } }

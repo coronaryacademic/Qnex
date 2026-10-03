@@ -500,6 +500,7 @@ const QuestionBase = {
 
         // Delete key handler for multi-selection
         document.addEventListener("keydown", (e) => {
+            if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
             // Only handle if question base is visible
             if (!this.el.base || this.el.base.classList.contains("hidden")) return;
 

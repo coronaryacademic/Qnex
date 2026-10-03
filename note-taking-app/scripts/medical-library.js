@@ -328,7 +328,9 @@
         }
         for (const attr of ['src', 'href']) {
           if (!el.hasAttribute(attr)) continue;
-          const safe = url(el.getAttribute(attr));
+          const rawValue = el.getAttribute(attr).trim();
+          const safeLink = attr === 'href' && !/^(?:javascript:|data:)/i.test(rawValue) ? rawValue : null;
+          const safe = url(rawValue) || safeLink;
           if (safe) el.setAttribute(attr, safe);
           else { el.removeAttribute(attr); if (el.tagName === 'A') el.title = 'This reference is not available in Qnex yet.'; }
         }
@@ -346,7 +348,11 @@
       // Some banks use filename links (or a standalone filename) for figures.
       // Display those in place instead of leaving the filename in the explanation.
       template.content.querySelectorAll('a[href]').forEach(anchor => {
-        if (!anchor.querySelector('img,video,audio')) anchor.replaceWith(makeMedia(anchor.href, anchor.textContent.trim()));
+        const href = anchor.getAttribute('href') || '';
+        if (!anchor.querySelector('img,video,audio') && mediaExtension.test(href)) {
+          const mediaSrc = url(href) || anchor.href;
+          anchor.replaceWith(makeMedia(mediaSrc, anchor.textContent.trim()));
+        }
       });
       const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
       const textNodes = []; while (walker.nextNode()) textNodes.push(walker.currentNode);

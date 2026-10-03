@@ -235,3 +235,38 @@ body.theme-light .qd-reset-warning { background:#fdefef; color:#000; }
 #questionSidebar > .qw-bank-head { padding:8px 16px 12px; gap:0; }
 #questionSidebar .qw-bank-head button#qwBankSwitch { background-image:none; padding:10px 12px; margin:0; font-size:13px; }
 #questionSidebar .qw-nav { padding-top:12px; }
+.qd-recent { margin-top:22px; }
+.question-empty-state .qd-recent h3 { font-size:15px; margin:0 0 12px; color:var(--defualt); }
+.qd-recent-list { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; width:100%; }
+.qd-recent-session { display:flex; flex-direction:column; gap:8px; text-align:left; padding:14px 16px; background:var(--panel); color:var(--defualt); border:1px solid var(--border); border-radius:10px; cursor:pointer; min-width:0; }
+.qd-recent-session strong { font-size:14px; overflow:hidden; text-overflow:ellipsis; max-width:100%; white-space:nowrap; }
+.qd-recent-session small { font-size:12px; opacity:.75; }
+.qd-recent-session:hover { border-color:var(--accent); }
+#qbankMainDashboard .qd-recent-session { width:100%; display:flex; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 24px; padding:16px 18px; background:transparent; color:var(--defualt); border:1px solid var(--border); border-radius:8px; box-shadow:none; }
+#qbankMainDashboard .qd-recent-session:hover { background:rgba(103,137,219,.08); border-color:var(--accent); }
+#qbankMainDashboard .qd-recent-session strong { white-space:normal; overflow-wrap:anywhere; }
+body.theme-light #qbankMainDashboard .qd-recent-session { background:#fff; color:#111827; }
+@media(max-width:700px){.qd-recent-list{grid-template-columns:1fr;}}
+#qbankMainDashboard .qd-recent-session { cursor:pointer; }
+#qbankMainDashboard .qd-recent-session:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+#qbankMainDashboard .qd-recent-session strong { margin-right:auto; }
+#qbankMainDashboard .qd-recent-resume { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:36px; height:36px; padding:6px; border:0; background:transparent; box-shadow:none; color:var(--defualt); cursor:pointer; }
+#qbankMainDashboard .qd-recent-resume svg { width:22px; height:22px; margin:0; }
+#qbankMainDashboard .qd-recent-resume:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+body.theme-light #qbankMainDashboard .qd-recent-session,
+body.theme-light #qbankMainDashboard .qd-recent-session small,
+body.theme-light #qbankMainDashboard .qd-recent-resume,
+body.theme-light .ml-library .qw-segments button { color:#000; opacity:1; }
+body.theme-light .ml-library .qw-tabs button { color:#000; }
+#qbankMainDashboard .qd-recent { margin-top:16px; }
+#qbankMainDashboard .qd-recent-list { gap:6px; }
+#qbankMainDashboard .qd-recent-session { padding:7px 12px; gap:6px 14px; border-radius:6px; }
+#qbankMainDashboard .qd-recent-session strong { font-size:13px; font-weight:500; }
+#qbankMainDashboard .qd-recent-session small { font-size:12px; }
+#qbankMainDashboard .qd-recent-resume { width:28px; height:28px; padding:4px; }
+.qw-flag-group { border:1px solid var(--border); border-radius:8px; margin:12px 0; overflow:hidden; }
+.qw-flag-group > summary { padding:12px 16px; cursor:pointer; font-weight:600; }
+.qw-flag-group > summary small { margin-left:12px; font-weight:400; opacity:.75; }
+.qw-flag-group .qw-search-row { width:100%; padding:12px 16px; background:transparent; color:var(--defualt); text-align:left; }
+body.theme-light .qw-flag-group { background:#fff; color:#000; }
+body.theme-light .qw-flag-group .qw-search-row { color:#000; }
