@@ -19,7 +19,9 @@
   <link rel="stylesheet" href="styles/pdf-viewer.css">
   <link rel="stylesheet" href="styles/html-viewer.css">
   <link rel="stylesheet" href="styles/medical-library.css">
-  <link rel="stylesheet" href="styles/qbank-workspace.css">
+  <link rel="stylesheet" href="styles/qbank-workspace.css?v=cqb-update-20261005">
+  <link rel="stylesheet" href="styles/amboss-dungeon.css">
+  <link rel="stylesheet" href="styles/bau-dungeon.css">
   <!-- Startup and reload sounds removed -->
   <style>
     /* View Options Menu */
@@ -93,30 +95,11 @@
   <!-- Modern System Loader -->
   <div id="appLoader" class="app-loader">
     <div class="loader-content">
-      <div class="loader-header">
-        <div class="loader-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
-        </div>
-        <div class="loader-title">
-          <h1>Qnex</h1>
-          <span>APP BOOT</span>
-        </div>
+      <div class="qnex-boot-logo" aria-label="Qnex" role="img">
+        <span class="qnex-morph-q" aria-hidden="true"><span class="qnex-font-q">Q</span><span class="qnex-boot-circle"><span>A</span><span>B</span><span>C</span><span>D</span></span></span><span class="qnex-word-tail" aria-hidden="true"><span class="qnex-ne">ne</span><span class="qnex-x">x</span><span class="qnex-boot-dot">.</span></span>
       </div>
-
-      <div class="loader-status-bar">
-        <div id="loaderProgress" class="loader-progress"></div>
-      </div>
-
-      <div id="loaderTerminal" class="loader-terminal">
-        <div class="terminal-line info">Initialize system core...</div>
-      </div>
-
+      <p id="qnexBootStatus" class="qnex-boot-status" role="status">Loading data…</p>
+      <div id="loaderProgress" hidden></div><div id="loaderTerminal" hidden></div>
       <button id="loaderRetryBtn">RETRY CONNECTION</button>
     </div>
   </div>
@@ -763,7 +746,7 @@
           
           <!-- Sandboxed Iframe Viewer -->
           <div class="html-viewer-frame-container">
-            <iframe id="htmlViewerFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+            <iframe id="htmlViewerFrame" sandbox="allow-scripts"></iframe>
           </div>
         </div>
       </section>
@@ -2477,6 +2460,8 @@
   </template>
 
   <!-- File System Service initialization -->
+  <script src="scripts/offline-catalog.js"></script>
+  <script src="scripts/offline-workspace.js"></script>
   <script type="module">
     import fileSystemService from "./scripts/file-system-service.js";
 
@@ -2776,9 +2761,11 @@
   <script src="scripts/two-base.js"></script>
   <script src="scripts/two-base-persistence.js"></script>
   <script src="scripts/question-base.js?v=3"></script>
-  <script src="scripts/medical-library.js"></script>
-  <script src="scripts/qbank-dashboard.js"></script>
+  <script src="scripts/medical-library.js?v=cqb-update-20261005"></script>
+  <script src="scripts/qbank-dashboard.js?v=cqb-update-20261005"></script>
   <script src="scripts/qbank-workspace.js"></script>
+  <script src="scripts/amboss-icons.js"></script>
+  <script src="scripts/qbank-profile.js"></script>
   <script src="scripts/custom-features.js"></script>
   <script src="scripts/note-font-handler.js"></script>
   <script src="scripts/dungeon-note.js"></script>

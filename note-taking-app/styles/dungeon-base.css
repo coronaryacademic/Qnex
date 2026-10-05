@@ -1350,6 +1350,85 @@ body.theme-light .dungeon-q-box.solved {
   line-height: 1.5;
   font-weight: 500;
 }
+
+.dungeon-base > #dungeonImageViewer { position:absolute; inset:auto; }
+#dungeonImageViewer #viewerImage[hidden] { display:none; }
+#dungeonImageViewer.showing-exhibit .viewer-toolbar-wrap { display:none; }
+#dungeonImageViewer.showing-exhibit .viewer-content { overflow:auto; padding:80px 24px 24px; box-sizing:border-box; align-items:flex-start; }
+.viewer-exhibit { border-radius:8px; padding:16px; width:fit-content; max-width:100%; box-sizing:border-box; margin:0 auto; }
+.viewer-exhibit .ml-rich-content { color:inherit; font-size:16px; line-height:1.6; }
+.viewer-exhibit .ml-rich-content img { max-width:100%; height:auto; }
+
+/* Floating figure window, contained by the dungeon. */
+#dungeonImageViewer {
+  --viewer-surface:#25272b;
+  --viewer-header:#2d3035;
+  --viewer-text:#edf0f4;
+  --viewer-border:#484d56;
+  background:var(--viewer-surface); color:var(--viewer-text);
+  font-family:"Segoe UI",Arial,sans-serif;
+  width:min(860px,calc(100% - 32px)); height:min(650px,calc(100% - 48px));
+  border:1px solid var(--viewer-border); border-radius:12px;
+  box-shadow:0 18px 60px rgba(0,0,0,.3); overflow:hidden;
+  align-items:stretch; justify-content:flex-start; box-sizing:border-box;
+}
+body.theme-light #dungeonImageViewer {
+  --viewer-surface:#fff; --viewer-header:#f5f5f6;
+  --viewer-text:#252b36; --viewer-border:#d0d3d9;
+}
+#dungeonImageViewer .viewer-header {
+  position:relative; inset:auto; width:100%; min-height:48px;
+  padding:8px 12px 8px 18px; box-sizing:border-box; flex-shrink:0;
+  background:var(--viewer-header); border-bottom:1px solid var(--viewer-border);
+  gap:8px; cursor:move; touch-action:none; user-select:none;
+}
+#dungeonImageViewer .viewer-title { color:var(--viewer-text); margin-right:auto; font-size:13px; font-weight:600; letter-spacing:0; }
+#dungeonImageViewer :is(.viewer-close-btn,.viewer-fit-btn) {
+  width:30px; height:30px; flex-shrink:0; border:0; border-radius:6px;
+  background:transparent; color:var(--viewer-text); cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; font-size:20px;
+}
+#dungeonImageViewer :is(.viewer-close-btn,.viewer-fit-btn):hover { background:var(--viewer-border); transform:none; }
+#dungeonImageViewer button:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+#dungeonImageViewer .viewer-content { flex:1; min-height:0; height:auto; padding:16px; box-sizing:border-box; }
+#dungeonImageViewer #viewerImage { max-width:100%; max-height:100%; box-shadow:none; }
+#dungeonImageViewer .viewer-toolbar-wrap { position:relative; inset:auto; transform:none; padding:8px 22px 12px; flex-shrink:0; }
+#dungeonImageViewer .viewer-toolbar { justify-content:center; flex-wrap:wrap; gap:4px; border-radius:8px; box-shadow:none; background:var(--viewer-header); border-color:var(--viewer-border); padding:4px; backdrop-filter:none; }
+#dungeonImageViewer :is(.viewer-tool-btn,.zoom-level) { color:var(--viewer-text); }
+#dungeonImageViewer .viewer-tool-btn:hover { background:var(--viewer-border); }
+#dungeonImageViewer.showing-exhibit .viewer-content { padding:12px; overflow:auto; cursor:auto; align-items:flex-start; }
+#dungeonImageViewer .viewer-exhibit { color:var(--viewer-text); background:transparent; padding:4px; }
+#dungeonImageViewer .viewer-exhibit .ml-rich-content { font-size:14px; line-height:1.45; }
+#dungeonImageViewer .viewer-exhibit table { width:auto; max-width:100%; font-size:14px; line-height:1.45; }
+#dungeonImageViewer .viewer-exhibit :is(td,th) { border-color:var(--viewer-border); padding:8px 12px; vertical-align:top; }
+#dungeonImageViewer .viewer-exhibit :is(td,th,p,div,span,font,li) { color:inherit; font-size:inherit; line-height:inherit; }
+#dungeonImageViewer .viewer-exhibit .ml-table-scroll { margin:0; }
+#dungeonImageViewer .viewer-resize-handle { position:absolute; right:0; bottom:0; width:20px; height:20px; cursor:nwse-resize; touch-action:none; z-index:10003; }
+#dungeonImageViewer .viewer-resize-handle::after { content:''; position:absolute; right:5px; bottom:5px; width:8px; height:8px; border-right:2px solid var(--viewer-border); border-bottom:2px solid var(--viewer-border); }
+#dungeonImageViewer .viewer-window-controls { display:flex; gap:4px; align-items:center; }
+#dungeonImageViewer .viewer-window-icon { width:18px; height:18px; display:inline-flex; color:var(--viewer-text); }
+#dungeonImageViewer .viewer-window-icon svg { width:18px; height:18px; }
+#dungeonImageViewer .viewer-close-btn:hover { background:#b42318; color:#fff; }
+#dungeonImageViewer.maximized .viewer-resize-handle { display:none; }
+.dungeon-base .viewer-minimized-dock { position:absolute; bottom:20px; left:20px; z-index:10000; background:#2d3035; color:#edf0f4; border:1px solid #484d56; border-radius:8px; padding:10px 16px; font-size:13px; cursor:pointer; box-shadow:0 4px 16px #0003; }
+body.theme-light .dungeon-base .viewer-minimized-dock { background:#fff; color:#252b36; border-color:#d0d3d9; }
+.viewer-minimized-dock[hidden] { display:none; }
+.dungeon-options-list.has-choice-table { padding:0; border-bottom-width:2px; }
+.dungeon-choice-table-scroll { overflow-x:auto; width:100%; }
+.dungeon-choice-table { border-collapse:collapse; width:100%; font-size:clamp(14px,.85em,18px); line-height:1.45; }
+.dungeon-choice-table th { text-align:center; font-weight:600; padding:12px 16px; border-bottom:1px solid var(--border,#888); }
+.dungeon-choice-table tr.dungeon-radio-option { display:table-row; padding:0; }
+.dungeon-choice-table :is(td,th) { font-size:inherit; line-height:inherit; }
+.dungeon-choice-table td.dungeon-radio-text { display:table-cell; padding:14px 16px; text-align:center; vertical-align:middle; width:auto; }
+.dungeon-choice-table :is(p,div,span,font,strong,b) { font-size:inherit; line-height:inherit; margin:0; }
+.dungeon-choice-table td.dungeon-choice-select { padding:14px 12px; white-space:nowrap; width:68px; vertical-align:middle; cursor:pointer; }
+.dungeon-choice-table .dungeon-radio-circle { display:inline-flex; margin:0 10px 0 0; vertical-align:middle; }
+.dungeon-choice-table .dungeon-option-letter { display:inline; vertical-align:middle; }
+.dungeon-choice-table td.dungeon-choice-select:focus-visible { outline:2px solid var(--accent); outline-offset:-3px; }
+.dungeon-choice-table { color:var(--defualt); }
+.dungeon-choice-table :is(th,.dungeon-option-letter) { color:var(--defualt); }
+#dungeonImageViewer .viewer-exhibit tr:nth-child(even) td { background:var(--viewer-header); }
+#dungeonImageViewer .viewer-exhibit th { background:var(--viewer-header); font-weight:600; }
 .dungeon-option-letter { flex:0 0 auto; margin:0; }
 .dungeon-radio-text > p { margin:0; }
 .dungeon-answer-status { margin:16px 20px 4px; padding:12px 16px; border-left:3px solid currentColor; font-weight:700; }
@@ -3414,3 +3493,13 @@ body.theme-light .dungeon-feedback small { color:#45556b; }
 body.theme-light .dungeon-feedback-icon { color:#61758d; }
 body.theme-light .dungeon-feedback.incorrect strong { color:#c91f2b; }
 body.theme-light .dungeon-feedback.correct strong { color:#087b36; }
+
+/* Stable loading contrast, independent of inherited card text colors. */
+body .dungeon-loading-screen { --loading-bg:#171b20; --loading-text:#edf2f7; --loading-track:#3a4654; --loading-accent:#91a8ff; background:var(--loading-bg); color:var(--loading-text); }
+body.theme-light .dungeon-loading-screen,
+body .amboss-dungeon:not(.qa-dark) .dungeon-loading-screen { --loading-bg:#f3f5f9; --loading-text:#233044; --loading-track:#d5ddea; --loading-accent:#4056b5; }
+body .amboss-dungeon.qa-dark .dungeon-loading-screen { --loading-bg:#171b20; --loading-text:#edf2f7; --loading-track:#3a4654; --loading-accent:#91a8ff; }
+body .dungeon-loading-content { gap:22px; padding:32px; text-align:center; }
+body .dungeon-loading-spinner { width:42px; height:42px; border:3px solid var(--loading-track); border-top-color:var(--loading-accent); }
+body .dungeon-loading-text { color:var(--loading-text); font-size:20px; font-weight:600; line-height:1.4; animation:none; opacity:1; }
+@media (prefers-reduced-motion:reduce) { body .dungeon-loading-spinner { animation:none; } }

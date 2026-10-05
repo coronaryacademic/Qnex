@@ -4,3 +4,32 @@ dist/
 .DS_Store
 Thumbs.db
 server/.env
+
+# Local credentials; keep shareable configuration templates.
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Imported question content stays local; the hosted UI uses offline-catalog.js.
+/content/bau/
+
+# PDF extraction, OCR, audit reports and generated test screenshots.
+/reports/
+
+# Local sessions, profiles and library paths.
+library-sessions/
+settings/medical-library.json
+settings/qbank-profile.json
+
+# Runtime caches and generated build/test output.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.tmp
+*.temp

@@ -4,6 +4,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { createInterface } = require('readline');
 const { randomUUID } = require('crypto');
+const bauLibrary = require('./bau-library');
 
 class MedosReader {
   constructor(root) { this.root = root; this.pending = new Map(); this.sequence = 0; }
@@ -21,7 +22,7 @@ class MedosReader {
         const message = JSON.parse(line), pending = this.pending.get(message.id);
         if (!pending) return;
         clearTimeout(pending.timer); this.pending.delete(message.id);
-        message.error ? pending.reject(new Error(message.error)) : pending.resolve(message.result);
+        if (message.error) { const error=new Error(message.error);error.status=message.status || 400;pending.reject(error); } else pending.resolve(message.result);
       } catch { /* The reader redirects non-protocol output to stderr. */ }
     });
     const failed = error => {
@@ -36,13 +37,14 @@ class MedosReader {
     child.stdin.on('error', () => {});
   }
   request(args) {
+    if (String(args.bank || '').startsWith('bau-')) return Promise.resolve().then(() => bauLibrary.dispatch(args));
     this.start();
     return new Promise((resolve, reject) => {
       const id = ++this.sequence;
       const timer = setTimeout(() => this.close(), 120000);
       this.pending.set(id, { resolve, reject, timer });
       this.child.stdin.write(JSON.stringify({ ...args, id }) + '\n');
-    });
+    }).then(result => args.action==='catalog' ? {...result,banks:[...result.banks,...bauLibrary.catalog()]} : result);
   }
   close() {
     const child = this.child;
@@ -165,11 +167,17 @@ function mountMedicalLibrary(app, dataDir) {
   }
   const route = fn => async (req, res) => {
     try { await init(); await fn(req, res); }
-    catch (error) { res.status(400).json({ error: error.message }); }
+    catch (error) { res.status(Number.isInteger(error.status) && error.status>=400 && error.status<=599 ? error.status : 400).json({ error: error.message }); }
   };
   app.get('/api/medical-library/catalog', route(async (req, res) => {
     catalog = await reader.request({ action: 'catalog' });
     res.json({ ...catalog, root });
+  }));
+  app.get('/api/medical-library/archive', route(async (req, res) => {
+    res.json(await reader.request({ action: 'archive' }));
+  }));
+  app.get('/api/medical-library/archive/question', route(async (req, res) => {
+    res.json(await reader.request({ action: 'archive_detail', bank: req.query.bank, qid: req.query.qid }));
   }));
   app.get('/api/medical-library/profile', route(async (req, res) => {
     await writes.catch(() => {}); res.json(profile);
@@ -189,9 +197,24 @@ function mountMedicalLibrary(app, dataDir) {
     res.json({ ...bankStatistics(await readSessions(), bank, info.count), label: info.label });
   }));
   app.post('/api/medical-library/reset-progress', route(async (req, res) => {
-    const bank = String(req.body.bank || ''); await knownBank(bank);
+    const scope = req.body.scope || 'current';
+    if (!['current', 'all'].includes(scope)) throw new Error('Invalid reset scope.');
+    const bank = String(req.body.bank || '');
+    if (scope === 'current') await knownBank(bank);
     await serialized(async () => {
-      const next = { ...profile, generations: { ...profile.generations, [bank]: generation(bank) + 1 } };
+      const banks = new Set(scope === 'current' ? [bank] : Object.keys(profile.generations));
+      if (scope === 'all') {
+        if (profile.currentBank) banks.add(profile.currentBank);
+        for (const item of catalog?.banks || []) banks.add(item.key);
+        const files = await fs.readdir(directory).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+        for (const file of files.filter(name => /^medos-[a-f0-9-]{36}\.json$/.test(name))) {
+          const session = JSON.parse(await fs.readFile(path.join(directory, file), 'utf8'));
+          if (session.bank) banks.add(session.bank);
+        }
+      }
+      const generations = { ...profile.generations };
+      for (const key of banks) generations[key] = generation(key) + 1;
+      const next = { ...profile, generations };
       await atomic(profilePath, next); profile = next;
     });
     res.json(profile);
@@ -225,14 +248,14 @@ function mountMedicalLibrary(app, dataDir) {
       const folderId = 'ml-sub-' + encodeURIComponent(subject);
       return {
         id: `medos:${bank}:${q.id}`,
-        spId: `QNX-${q.id}`,
+        spId: q.displayId || `QNX-${q.id}`,
         title: q.title || `${info.label} · #${q.id}`,
         text: `Question #${q.id} (${q.subject || 'General'} · ${q.system || 'General'})`,
         explanation: '',
         starred: false,
         folderId,
         library: true,
-        source: { bank, questionId: q.id },
+        source: { bank, questionId: q.id, displayId:q.displayId, aliases:q.aliases },
         tags: {
           subject: q.subject ? [q.subject] : [],
           system: q.system ? [q.system] : [],
@@ -258,6 +281,10 @@ function mountMedicalLibrary(app, dataDir) {
   }));
   app.post('/api/medical-library/questions', route(async (req, res) => {
     res.json(await reader.request({ ...req.body, action: 'questions' }));
+  }));
+  app.get('/api/medical-library/exhibit/:bank/:qid/:exhibitId', route(async (req, res) => {
+    if (!/^\d{3,8}$/.test(req.params.exhibitId)) throw new Error('Invalid exhibit ID.');
+    res.json(await reader.request({ action: 'exhibit', ...req.params }));
   }));
   app.get('/api/medical-library/media/:bank/:qid/:name', route(async (req, res) => {
     const key = JSON.stringify([root, req.params.bank, req.params.qid, req.params.name]);
@@ -317,7 +344,7 @@ function mountMedicalLibrary(app, dataDir) {
   }));
   app.put('/api/medical-library/sessions/:id', route(async (req, res) => {
     const session = req.body;
-    if (session.id !== req.params.id || !Array.isArray(session.questions) || !session.questions.length || session.questions.length > 100 ||
+    if (session.id !== req.params.id || !Array.isArray(session.questions) || !session.questions.length ||
         session.questions.some(q => !q.source || q.source.bank !== session.bank)) throw new Error('Invalid library session data.');
     await serialized(async () => {
       if ((session.generation || 0) !== generation(session.bank)) throw new Error('This bank was reset. Start a new session to save progress.');

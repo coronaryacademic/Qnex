@@ -3,130 +3,40 @@
 // Global UI elements
 let topbar, sidebar, footer;
 
-// Show loading spinner on startup
-// Show loader and perform system check
-window.addEventListener("load", async () => {
-  const loader = document.getElementById("appLoader");
-  const retryBtn = document.getElementById("loaderRetryBtn");
-  const progressBar = document.getElementById("loaderProgress");
-  const loaderTerminal = document.getElementById("loaderTerminal");
-  const loaderHeader = loader?.querySelector(".loader-header");
-
-  // Check if this is a reload (not first load)
-  const isReload = sessionStorage.getItem("appLoaded") === "true";
-
-  if (isReload && loader) {
-    // Simple reload - just show spinner matching app theme
-    loader.style.background = "var(--bg)"; // Use app background color
-    loader.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
-        <div class="simple-spinner" style="
-          width: 48px;
-          height: 48px;
-          border: 4px solid var(--border);
-          border-top-color: var(--accent);
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        "></div>
-        <div class="simple-loader-text" style="color: var(--muted); font-size: 14px;">Loading...</div>
-      </div>
-      <style>
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      </style>
-    `;
-
-    // Hide after a short delay (server should be ready)
-    setTimeout(() => {
-      loader.classList.add("hidden");
-    }, 500);
-    return;
-  }
-
-  // First load - show full boot sequence
-  sessionStorage.setItem("appLoaded", "true");
-
-  if (loader && window.electronAPI && window.electronAPI.isElectron) {
-    let progress = 0;
-    const updateProgress = (val) => {
-      progress = Math.min(val, 90); // Cap at 90 until verified
-      if (progressBar) progressBar.style.width = `${progress}%`;
-    };
-
-    // Retry handler
-    if (retryBtn) {
-      retryBtn.addEventListener("click", () => window.location.reload());
-    }
-
-    // Server check loop
-    let attempts = 0;
-    const maxAttempts = 30; // 15 seconds
-
-    updateProgress(30);
-
-    const checkServer = async () => {
-      try {
-        // Only advance progress here if we are below 90%
-        if (progress < 90) updateProgress(progress + 2);
-
-        const isAvailable = await window.fileSystemService.isAvailable();
-        if (isAvailable) {
-          // Server is ready! 
-          // But wait for logs to finish typing
-          if (window.typingActive || (window.logQueueLength && window.logQueueLength > 0)) {
-            // Logs still active, hold at 95%
-            if (progressBar) progressBar.style.width = '95%';
-            return false; // Keep the loop running
-          }
-
-          // Success & Logs Done!
-          if (progressBar) {
-            progressBar.style.width = '100%';
-            progressBar.style.boxShadow = '0 0 20px #10b981';
-          }
-
-          setTimeout(() => {
-            loader.classList.add("hidden");
-            console.log("✓ System boot complete");
-          }, 800);
-          return true;
-        }
-      } catch (e) {
-        // Failed
-      }
-      return false;
-    };
-
-    const interval = setInterval(async () => {
-      attempts++;
-      const success = await checkServer();
-
-      if (success) {
-        clearInterval(interval);
-      } else if (attempts >= maxAttempts) {
-        clearInterval(interval);
-        // Show failure
-        if (loaderTerminal) {
-          const errLine = document.createElement('div');
-          errLine.className = 'terminal-line error';
-          errLine.textContent = 'CRITICAL: FS Server unresponsive.';
-          loaderTerminal.appendChild(errLine);
-        }
-        if (progressBar) {
-          progressBar.classList.add('error');
-          progressBar.style.width = '100%';
-        }
-        if (retryBtn) retryBtn.style.display = 'block';
-      }
-    }, 500);
-
-  } else if (loader) {
-    // Web version fallback
-    setTimeout(() => loader.classList.add("hidden"), 500);
+// Keep the branded boot screen until the selected bank's initial data is ready.
+window.addEventListener('load', async () => {
+  const loader = document.getElementById('appLoader');
+  if (!loader) return;
+  const wordTail = loader.querySelector('.qnex-word-tail');
+  loader.style.setProperty('--qnex-ne-width', loader.querySelector('.qnex-ne').getBoundingClientRect().width + 'px');
+  loader.style.setProperty('--qnex-q-travel', (wordTail.getBoundingClientRect().width / 2) + 'px');
+  const status = document.getElementById('qnexBootStatus');
+  const setStatus = async message => {
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) await status.animate([{opacity:1},{opacity:0,transform:'translateY(-3px)'}],{duration:100,fill:'forwards'}).finished;
+    status.textContent = message;
+    status.getAnimations().forEach(animation => animation.cancel());
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) status.animate([{opacity:0,transform:'translateY(3px)'},{opacity:1,transform:'none'}],{duration:160});
+  };
+  const retry = document.getElementById('loaderRetryBtn');
+  retry.onclick = () => window.location.reload();
+  try {
+    const animationReady = new Promise(resolve => setTimeout(resolve, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 3800));
+    await setStatus('Connecting to local data…');
+    await window.fileSystemService.waitForReady();
+    await window.MedicalLibrary.preloadWorkspace(setStatus);
+    await setStatus('Preparing dashboard…');
+    await window.QBankDashboard.renderMain();
+    await animationReady;
+    await setStatus('Workspace ready');
+    await new Promise(resolve => setTimeout(resolve, 200));
+    loader.classList.add('hidden');
+  } catch (error) {
+    if(window.fileSystemService?.isOffline){window.QnexOffline?.notice();loader.classList.add('hidden');return;}
+    status.textContent = 'Your workspace could not finish loading. Please try again.';
+    retry.style.display = 'block';
+    console.warn('Workspace preparation failed:', error.message);
   }
 });
-
 // Fullscreen functionality
 let isFullscreen = false;
 let currentFontSize = 16;

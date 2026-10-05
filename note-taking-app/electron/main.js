@@ -6,6 +6,17 @@ const fs = require('fs-extra');
 const { v4: uuidv4 } = require('uuid');
 const matter = require('gray-matter');
 
+ipcMain.handle('qbank:create-pdf', async (_event, html) => {
+  if (typeof html !== 'string' || html.length > 20000000) throw new Error('Invalid PDF content.');
+  const printWindow = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: false } });
+  printWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  try {
+    await printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    const pdf = await printWindow.webContents.printToPDF({ printBackground: true, pageSize: 'A4', margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 } });
+    return new Uint8Array(pdf);
+  } finally { printWindow.destroy(); }
+});
+
 // Internal logging for "Debug Log" feature
 const startupLogs = [];
 function log(message) {
@@ -467,6 +478,15 @@ function createServer() {
     res.json({ success: true });
   });
 
+  // The renderer sends warnings and errors to the selected backend, including Electron.
+  expressApp.post('/api/logs', (req, res) => {
+    const { type, message } = req.body || {};
+    if (!['error', 'warn', 'info'].includes(type) || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Invalid log entry.' });
+    }
+    log(`[Frontend ${type.toUpperCase()}] ${message.slice(0, 20000)}`);
+    res.sendStatus(200);
+  });
   expressApp.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'Physical FS Server v3.0 AI mode integration' }));
 
   return expressApp;

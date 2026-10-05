@@ -203,10 +203,32 @@ body.theme-light .dungeon-explanation a { color:#1459a6; }
 .ml-media-unavailable button { color:var(--accent); border:0; background:transparent; cursor:pointer; font:inherit; text-decoration:underline; }
 .ml-rich-content img, .ml-rich-content video { max-width: 100%; height: auto; border-radius: 6px; }
 .ml-rich-content audio { max-width: 100%; }
+.ml-voice-notes { margin:0 0 18px; padding:10px 14px; border:1px solid var(--border,#777); border-radius:8px; }
+.ml-rich-content .ml-voice-heading,
+.dungeon-question-container .dungeon-explanation .ml-rich-content .ml-voice-heading { font:600 13px/1.4 "Segoe UI",sans-serif; margin-bottom:6px; color:inherit; }
+.ml-voice-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; padding:3px 0; }
+.ml-rich-content .ml-voice-row > span,
+.dungeon-question-container .dungeon-explanation .ml-rich-content .ml-voice-row > span { font:400 12px/1.4 "Segoe UI",sans-serif; min-width:42px; }
+.ml-voice-row audio { width:300px; max-width:100%; height:32px; color-scheme:dark; }
+.ml-rich-content audio.ml-inline-voice { display:block; width:360px; max-width:100%; height:36px; margin:8px 0 18px; color-scheme:dark; }
+body.theme-light .ml-rich-content audio.ml-inline-voice { color-scheme:light; }
+body.theme-light .ml-voice-row audio { color-scheme:light; }
 .ml-rich-content table { border-collapse: collapse; max-width: 100%; font-size: .95em; }
 .ml-rich-content th, .ml-rich-content td { border: 1px solid var(--border, #666); padding: 8px 12px; }
-.ml-rich-content .ml-table-scroll { overflow-x: auto; }
+.ml-rich-content .ml-table-scroll { overflow-x: auto; max-width:100%; margin:16px 0; }
+.dungeon-question-container .ml-rich-content .ml-table-scroll table { width:auto; max-width:100%; font-size:clamp(13px,.8em,17px); line-height:1.45; }
+.dungeon-question-container .ml-rich-content .ml-table-scroll :is(td,th,p,div,span,font,li,strong,b) { font-size:inherit; line-height:inherit; }
+.dungeon-question-container .ml-rich-content .ml-table-scroll :is(td,th) { padding:8px 12px; vertical-align:top; }
+.ml-rich-content .ml-table-scroll :is(p,div) { margin:0; }
+.ml-rich-content .ml-table-scroll :is(ul,ol) { margin:4px 0; padding-left:20px; }
+.ml-rich-content .ml-table-scroll li { margin:2px 0; }
+.ml-rich-content .ml-table-scroll th { text-align:left; }
+.ml-rich-content .ml-table-open { display:block; margin:0 0 6px auto; padding:4px 8px; border:1px solid var(--border,#8a8a8a); border-radius:5px; background:transparent; color:inherit; font:500 12px/1.4 "Segoe UI",sans-serif; cursor:pointer; }
+#dungeonImageViewer .ml-table-open { display:none; }
 .ml-rich-content a { color:#2e66b8; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:2px; cursor:pointer; }
+.ml-rich-content a.ml-figure-link { font-weight:500; }
+.ml-rich-content a.ml-figure-link:focus-visible { outline:2px solid currentColor; outline-offset:3px; border-radius:2px; }
+.ml-rich-content img { cursor:zoom-in; }
 body.theme-light .ml-rich-content a { color:#1459a6; }
 body:not(.theme-light) .ml-rich-content a { color:#79aaf0; }
 .ml-rich-content figure { margin: 16px 0; }
@@ -248,3 +270,16 @@ body.theme-light .ml-library .qd-reset { color: #b33232; }
 @media (max-width: 1100px) { .qd-cards { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .qbank-overview { padding: 18px; } .qd-card { padding: 18px; } .qd-footnote > span { flex-basis: 100%; } }
 @media (prefers-reduced-motion: reduce) { .ml-library .ml-tree-node > summary, .ml-library .ml-leaf-arrow { transition: none; } }
+
+/* Compact library lists and unboxed actions, matching Recent Sessions. */
+.ml-library .ml-bank-tree { background:transparent; border:0; border-radius:0; }
+.ml-library .ml-tree-node > summary { min-height:44px; padding:8px 12px; }
+.ml-library .ml-bank-controls { display:flex; align-items:center; gap:4px; }
+.ml-library .ml-bank-controls .qw-icon,
+.ml-library .ml-library-toolbar .qd-icon-action,
+.ml-library-sessions .qw-icon { background:transparent; border:0; box-shadow:none; }
+.ml-library .ml-bank-controls .qw-icon:hover,
+.ml-library .ml-library-toolbar .qd-icon-action:hover,
+.ml-library-sessions .qw-icon:hover { background:var(--panel-hover,rgba(128,128,128,.08)); }
+.ml-library-sessions .qw-section-heading h3 { font-size:16px; }
+.ml-library-sessions .qw-table-scroll { margin-top:14px; }

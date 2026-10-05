@@ -479,7 +479,7 @@ export default class DungeonBase {
               <!-- Loading Screen -->
               <div id="dungeonLoadingScreen" class="dungeon-loading-screen hidden">
                   <div class="dungeon-loading-content">
-                      <div class="dungeon-loading-spinner"></div>
+                      ${window.QBankWorkspace?.loadingLogo() || '<div class="dungeon-loading-spinner"></div>'}
                       <div class="dungeon-loading-text">Loading Questions...</div>
                   </div>
               </div>
@@ -1719,7 +1719,8 @@ export default class DungeonBase {
             const sync = () => {
                 const width = sidebar.classList.contains('collapsed') ? 0 : sidebar.offsetWidth;
                 for (const id of ['dungeonTopbar', 'dungeonFooter']) {
-                    document.getElementById(id)?.style.setProperty('left', width + 'px', 'important');
+                    const fullWidthHeader = id === 'dungeonTopbar' && this.el.container?.classList.contains('amboss-dungeon');
+                    document.getElementById(id)?.style.setProperty('left', (fullWidthHeader ? 0 : width) + 'px', 'important');
                 }
             };
             this._sidebarLayoutObserver = new ResizeObserver(sync);
@@ -1731,7 +1732,7 @@ export default class DungeonBase {
         const q = this.state.questions[this.state.currentIndex];
         const titleEl = document.getElementById('dungeonQuestionTitle');
         if (titleEl && q) {
-            const rawId = String(q.source?.questionId ?? q.spId ?? q.id ?? '');
+            const rawId = String(q.source?.displayId ?? q.source?.questionId ?? q.spId ?? q.id ?? '');
             const displayId = (rawId.includes('.')) ? rawId.split('.').pop() : (rawId.replace('QNX-', '').replace(/[-.]/g, '') || 'N/A');
             
             titleEl.innerHTML = `
@@ -1740,7 +1741,7 @@ export default class DungeonBase {
                 <button class="dungeon-question-flag" type="button" title="Mark question" aria-label="Mark question" aria-pressed="${Boolean(q.starred || q.isStarred)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 3h9l1 3h7v12h-9l-1-3H6v7H4z"/></svg><span>Mark</span></button>
             `;
 
-            titleEl.querySelector('.id-value').textContent = q.source?.questionId ?? displayId;
+            titleEl.querySelector('.id-value').textContent = q.source?.displayId ?? q.source?.questionId ?? displayId;
             titleEl.querySelector('.dungeon-question-flag').onclick = () => this.toggleStar();
             // Add Click to Copy functionality
             const idLine = titleEl.querySelector('.dungeon-id-line');
@@ -1981,6 +1982,8 @@ export default class DungeonBase {
 
             resizer.onmousedown = (e) => {
                 e.preventDefault();
+                sidebar.classList.add('resizing');
+                this.el.container?.classList.add('qa-lab-resizing');
                 document.addEventListener('mousemove', onResize);
                 document.addEventListener('mouseup', stopResize);
                 sidebar.style.transition = 'none';
@@ -1988,8 +1991,11 @@ export default class DungeonBase {
 
             const onResize = (e) => {
                 let newWidth = window.innerWidth - e.clientX;
-                newWidth = Math.max(310, Math.min(newWidth, 550));
+                const amboss=this.el.container?.classList.contains('amboss-dungeon');
+                const maxWidth=amboss?Math.max(310,window.innerWidth-(this.state.sidebarCollapsed?56:Number.parseInt(getComputedStyle(this.el.container).getPropertyValue('--qa-sidebar-width'))||320)-320):550;
+                newWidth = Math.max(310, Math.min(newWidth, maxWidth));
                 sidebar.style.width = `${newWidth}px`;
+                if(amboss)this.el.container.style.setProperty('--qa-lab-panel-width',`${newWidth}px`);
                 this.updateToolbarPush();
             };
 
@@ -1997,6 +2003,8 @@ export default class DungeonBase {
                 document.removeEventListener('mousemove', onResize);
                 document.removeEventListener('mouseup', stopResize);
                 sidebar.style.transition = '';
+                sidebar.classList.remove('resizing');
+                this.el.container?.classList.remove('qa-lab-resizing');
                 localStorage.setItem('dungeonLabWidth', parseInt(sidebar.style.width));
             };
         }
@@ -2024,6 +2032,17 @@ export default class DungeonBase {
     }
 
     updateToolbarPush() {
+        const root=this.el?.container;
+        if(root?.classList.contains('amboss-dungeon')) {
+            const panel=document.getElementById('dungeonLabSidebar');
+            const active=Boolean(panel?.classList.contains('active'));
+            const media=document.getElementById('dungeonImageViewer');
+            const docked=Boolean(media?.classList.contains('visible')&&media.classList.contains('qa-media-docked'));
+            root.classList.toggle('qa-labs-open',active);
+            root.classList.toggle('qa-media-open',docked);
+            root.style.setProperty('--qa-lab-width',docked?media.getBoundingClientRect().width+'px':active?panel.getBoundingClientRect().width+'px':'0px');
+            root.querySelector('[data-qa="labs"]')?.setAttribute('aria-expanded',String(active));
+        }
         // Disabled: Toolbar should not move when lab sidebar opens
         // const sidebar = document.getElementById('dungeonLabSidebar');
         // const toolbar = document.getElementById('dungeonToolbar');
@@ -2475,6 +2494,34 @@ export default class DungeonBase {
         this.updateSaveStatus('saved');
     }
 
+    highlightTextRange(range, root, colorClass) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const parts = [];
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (!range.intersectsNode(node)) continue;
+            let start = node === range.startContainer ? range.startOffset : 0;
+            let end = node === range.endContainer ? range.endOffset : node.length;
+            while (start < end && /\s/.test(node.data[start])) start++;
+            while (end > start && /\s/.test(node.data[end - 1])) end--;
+            if (end > start) parts.push({ node, start, end });
+        }
+        const spans = [];
+        for (const { node, start, end } of parts.reverse()) {
+            if (end < node.length) node.splitText(end);
+            const text = start ? node.splitText(start) : node;
+            const span = document.createElement('span'); span.className = colorClass;
+            text.replaceWith(span); span.append(text); spans.unshift(span);
+        }
+        if (spans.length) {
+            const selected = document.createRange();
+            selected.setStart(spans[0].firstChild, 0);
+            selected.setEnd(spans[spans.length - 1].firstChild, spans[spans.length - 1].firstChild.length);
+            const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(selected);
+        }
+        return spans.length;
+    }
+
     handleHighlight(e, type, id) {
         if (!this.state.highlightMode) return;
 
@@ -2511,10 +2558,27 @@ export default class DungeonBase {
             return;
         }
 
+        if (!selection.toString().trim()) return;
+
         // 2. Add Highlight (Selection)
         if (selection.toString().length > 0) {
             const range = selection.getRangeAt(0);
 
+            // Keep boundary whitespace outside the highlight without changing the text.
+            if (range.startContainer.nodeType === Node.TEXT_NODE) {
+                const text=range.startContainer.textContent;
+                let start=range.startOffset;
+                const end=range.startContainer===range.endContainer?range.endOffset:text.length;
+                while(start<end && /\s/.test(text[start]))start++;
+                range.setStart(range.startContainer,start);
+            }
+            if (range.endContainer.nodeType === Node.TEXT_NODE) {
+                const text=range.endContainer.textContent;
+                let end=range.endOffset;
+                const start=range.startContainer===range.endContainer?range.startOffset:0;
+                while(end>start && /\s/.test(text[end-1]))end--;
+                range.setEnd(range.endContainer,end);
+            }
             // Ensure we are selecting inside the context box
             if (!e.currentTarget.contains(range.commonAncestorContainer)) return;
 
@@ -2524,13 +2588,7 @@ export default class DungeonBase {
             const colorClass = this.state.activeHighlightColor === 'yellow' ? 'highlight' : `highlight-${this.state.activeHighlightColor}`;
             span.className = colorClass;
             try {
-                range.surroundContents(span);
-
-                // Copy Logic: Keep selection on the new span so Ctrl+C works immediately
-                selection.removeAllRanges();
-                const newRange = document.createRange();
-                newRange.selectNodeContents(span);
-                selection.addRange(newRange);
+                if (!this.highlightTextRange(range, e.currentTarget, colorClass)) return;
 
                 // Persist Addition
                 if (type === 'main') {
@@ -2602,11 +2660,7 @@ export default class DungeonBase {
             const colorClass = this.state.activeHighlightColor === 'yellow' ? 'highlight' : `highlight-${this.state.activeHighlightColor}`;
             span.className = colorClass;
             try {
-                range.surroundContents(span);
-                selection.removeAllRanges();
-                const newRange = document.createRange();
-                newRange.selectNodeContents(span);
-                selection.addRange(newRange);
+                if (!this.highlightTextRange(range, contextBox, colorClass)) return;
                 if (type === 'main') {
                     if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, contextBox);
                     else q.text = contextBox.innerHTML;
@@ -2614,21 +2668,7 @@ export default class DungeonBase {
                 this.updateSaveStatus('unsaved');
                 this.saveQuestionsToBackend();
             } catch (err) {
-                // If surroundContents fails (crosses tags), try a more robust approach
-                try {
-                    const content = range.extractContents();
-                    span.appendChild(content);
-                    range.insertNode(span);
-                    selection.removeAllRanges();
-                    if (type === 'main') {
-                        if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, contextBox);
-                        else q.text = contextBox.innerHTML;
-                    }
-                    this.updateSaveStatus('unsaved');
-                    this.saveQuestionsToBackend();
-                } catch (err2) {
-                    console.warn('Touch highlight failed (even robust method):', err2);
-                }
+                console.warn('Touch highlight failed:', err);
             }
         }, 150); // Increased delay for iPad menu animations
     }
@@ -3066,15 +3106,29 @@ export default class DungeonBase {
     }
 
     updateTimerDisplay(ms) {
+        const bauClock=this.el.main?.querySelector('[data-bau-clock] strong');
+        if(bauClock){const seconds=Math.max(0,Math.ceil(ms/1000));bauClock.textContent=`${Math.floor(seconds/3600)}:${String(Math.floor(seconds/60)%60).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;}
         const blockClock=document.getElementById('dungeonBlockElapsed');
         if(blockClock){
             const saved=this.state.questions.reduce((sum,q)=>sum+(Number(q.timerElapsed)||0),0);
             const live=this.timerInterval && this.timerStart ? Math.max(0,Date.now()-this.timerStart) : 0;
-            const seconds=Math.floor((saved+live)/1000);
+            const current=this.state.questions[this.state.currentIndex];
+            const timed=current?._timerMode==='down';
+            let blockMs=saved+live;
+            if(timed && current._timerScope==='session') {
+                blockMs=Math.max(0,ms);
+            } else if(timed) {
+                blockMs=this.state.questions.reduce((sum,item)=>sum+Math.max(0,item._remainingMs ?? ((Number(item._timerSecs)||60)*1000-(Number(item.timerElapsed)||0))),0);
+                const currentSaved=Math.max(0,current._remainingMs ?? ((Number(current._timerSecs)||60)*1000-(Number(current.timerElapsed)||0)));
+                blockMs=Math.max(0,blockMs-currentSaved+Math.max(0,ms));
+            }
+            const seconds=timed ? Math.ceil(blockMs/1000) : Math.floor(blockMs/1000);
+            blockClock.title=timed ? 'Block time remaining' : 'Block time elapsed';
             blockClock.textContent=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
         }
 
         this.lastTimerMs = ms;
+        this.updateAmbossClocks?.(ms);
         const timerEl = document.getElementById('dungeonTimer');
         if (!timerEl) return;
 
@@ -3329,6 +3383,7 @@ export default class DungeonBase {
 
         // Remove from question object
         delete q.submittedAnswer;
+        delete q.ambossAttemptedOptionIds;
 
         // Reset timer
         delete q.timerElapsed;
@@ -3492,8 +3547,10 @@ export default class DungeonBase {
 
                 const onMouseMove = (ev) => {
                     const newWidth = startWidth + (ev.clientX - startX);
-                    if (newWidth >= 50 && newWidth <= 300) {
+                    const amboss=this.el.container?.classList.contains('amboss-dungeon');
+                    if (newWidth >= (amboss?220:50) && newWidth <= (amboss?Math.min(520,window.innerWidth-360):300)) {
                         this.el.sidebar.style.width = newWidth + 'px';
+                        if(amboss)this.el.container.style.setProperty('--qa-sidebar-width',newWidth+'px');
 
                         // Update Main Content Position
                         if (main) {
@@ -3513,6 +3570,7 @@ export default class DungeonBase {
 
                 const onMouseUp = () => {
                     localStorage.setItem("dungeonSidebarWidth", parseInt(this.el.sidebar.style.width)); // Save
+                    if(this.el.container?.classList.contains('amboss-dungeon'))localStorage.setItem('qnex-amboss-sidebar-width',String(this.el.sidebar.offsetWidth));
                     document.body.style.cursor = ""; // Reset cursor
 
                     // Re-enable transitions
@@ -3712,6 +3770,10 @@ export default class DungeonBase {
 
         // Auto-jump to first unanswered question, or stay at 0 if none found (all answered)
         this.state.currentIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : 0;
+        if(questions[0]?.source?.bank?.startsWith('bau-')){
+            this.state.isBlockRevealed=Boolean(window.MedicalLibrary?.active?.id===sessionId && window.MedicalLibrary.active.completed);
+            if(!this.state.isBlockRevealed && questions[0]._bauNavigation!=='two-way')this.state.currentIndex=Math.max(this.state.currentIndex,...questions.map(q=>Number(q._bauReached)||0));
+        }
         this.state.selectedOption = null;
 
         // Show container and loading screen
@@ -3858,6 +3920,9 @@ export default class DungeonBase {
     }
 
     close() {
+        if(this._viewerDock) this._viewerDock.hidden=true;
+        document.getElementById('dungeonImageViewer')?.classList.remove('visible');
+        this._exhibitRequestId = (this._exhibitRequestId || 0) + 1;
         document.body.classList.remove("dungeon-open");
         this.el.container.classList.add("hidden");
         this.stopTimer();
@@ -4048,6 +4113,7 @@ export default class DungeonBase {
         } else {
             this.initResizer(); // Fallback if handle wasn't there
         }
+        if(this.el.container?.classList.contains('amboss-dungeon'))this.renderAmbossSidebar();
     }
 
     // Search Implementation
@@ -4414,8 +4480,52 @@ export default class DungeonBase {
         this.render();
     }
 
+    bauCanNavigate(index) {
+        const q=this.state.questions[this.state.currentIndex];
+        const furthest=Math.max(this.state.currentIndex,...this.state.questions.map(item=>Number(item._bauReached)||0));
+        return !q?.source?.bank?.startsWith('bau-') || this.state.isBlockRevealed || q._bauNavigation==='two-way' || index>=furthest;
+    }
+
+    renderBauQuestion(q) {
+        const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const index=this.state.currentIndex,answer=this.state.answers.get(q.id),review=this.state.isBlockRevealed;
+        q._bauReached=Math.max(index,Number(q._bauReached)||0);
+        const show=review || (q._tutorMode!==false && answer?.submitted);
+        const flag='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h9l1 3h7v12h-9l-1-3H6v7H4z"/></svg>';
+        const course=q.tags?.subject?.join(' / ')||'BAU Qbank';
+        const session=window.MedicalLibrary?.active;
+        const title=q._bauSessionTitle || (session?.id===this.state.associatedSessionId ? session.title : 'Custom session');
+        const render=(item,type,opt)=>window.MedicalLibrary.renderContent(item,type,opt);
+        this.el.main.innerHTML=`<div class="bau-quiz"><div class="bau-course">${esc(course)} <span>/</span> ${esc(title)}</div><h1>${esc(title)}</h1><button class="bau-back" data-bau-close>Back</button><div class="bau-layout"><section><div class="bau-time" hidden><button data-bau-time-toggle>${this._bauTimerHidden?'Show':'Hide'}</button><span data-bau-clock ${this._bauTimerHidden?'hidden':''}>${q._timerMode==='down'?'Time left':'Time elapsed'} <strong>00:00</strong></span></div><div class="bau-question-row"><aside class="bau-info"><strong>Question ${index+1}</strong><p>${answer?.submitted?'Answer saved':'Not yet answered'}</p><p>Marked out of 1</p><button data-bau-flag aria-pressed="${Boolean(q.starred||q.isStarred)}">${flag}${q.starred||q.isStarred?'Flagged':'Flag question'}</button></aside><div><div class="bau-question">${render(q,'question')}<p>Select one:</p><div class="bau-options">${q.options.map((opt,i)=>`<label><input type="radio" name="bau-answer" value="${esc(opt.id)}" ${String(answer?.selectedId || this.state.selectedOption)===String(opt.id)?'checked':''} ${review || (show && q._tutorMode!==false)?'disabled':''}><span>${String.fromCharCode(97+i)}.</span><div>${render(q,'option',opt)}</div></label>`).join('')}</div></div>${show?`<div class="bau-explanation"><p>${answer?.isCorrect?'Your answer is correct.':'Your answer is incorrect.'}</p><p>The correct answer is: ${esc(q.options.find(o=>o.isCorrect)?.text)}</p>${render(q,'explanation')}</div>`:''}<div class="bau-actions">${q._tutorMode!==false&&!show?'<button data-bau-submit>Check answer</button>':''}${index>0&&this.bauCanNavigate(index-1)?'<button data-bau-prev>Previous page</button>':''}<button data-bau-next>${index===this.state.questions.length-1?'Finish attempt …':'Next page'}</button></div></div></div></section><aside class="bau-navigation"><h2>Quiz navigation</h2><div class="bau-squares">${this.state.questions.map((item,i)=>`<button data-bau-index="${i}" class="${i===index?'current ':''}${this.state.answers.has(item.id)?'answered':''}" ${!this.bauCanNavigate(i)?'disabled':''} aria-label="Question ${i+1}${item.starred||item.isStarred?', flagged':''}" ${i===index?'aria-current="step"':''}>${i+1}${item.starred||item.isStarred?flag:''}</button>`).join('')}</div><button class="bau-finish" data-bau-finish>Finish attempt …</button></aside></div></div>`;
+        const mount=this.el.main;
+        if(q._timedOut || answer?.locked)mount.querySelectorAll('[name=bau-answer], [data-bau-submit]').forEach(control=>control.disabled=true);
+        mount.querySelectorAll('[name=bau-answer]').forEach(input=>input.onchange=()=>this.handleSelectOption(input.value));
+        mount.querySelector('[data-bau-submit]')?.addEventListener('click',()=>this.handleSubmit());
+        mount.querySelector('[data-bau-flag]').onclick=()=>{this.toggleStar();this.renderQuestion();};
+        mount.querySelector('[data-bau-close]').onclick=()=>this.suspendBlock();
+        mount.querySelector('[data-bau-prev]')?.addEventListener('click',()=>this.navPrev());
+        mount.querySelector('[data-bau-next]').onclick=()=>index===this.state.questions.length-1?this.submitBlock():this.navNext();
+        mount.querySelector('[data-bau-finish]').onclick=()=>this.submitBlock();
+        mount.querySelectorAll('[data-bau-index]').forEach(button=>button.onclick=()=>this.jumpToQuestion(Number(button.dataset.bauIndex)));
+        mount.querySelector('[data-bau-time-toggle]').onclick=()=>{this._bauTimerHidden=!this._bauTimerHidden;mount.querySelector('[data-bau-clock]').hidden=this._bauTimerHidden;mount.querySelector('[data-bau-time-toggle]').textContent=this._bauTimerHidden?'Show':'Hide';};
+        const key=this.state.associatedSessionId+':'+index;
+        if(this._bauTimerQuestion!==key){this._bauTimerQuestion=key;this._bauTimerAppearAt=Date.now()+2000;}
+        clearTimeout(this._bauTimerAppear);
+        const remaining=Math.max(0,this._bauTimerAppearAt-Date.now());
+        const time=mount.querySelector('.bau-time');
+        if(!remaining)time.hidden=false;
+        else this._bauTimerAppear=setTimeout(()=>{if(time.isConnected)time.hidden=false;},remaining);
+        this.updateTimerDisplay(this.lastTimerMs||0);
+    }
+
     renderQuestion() {
         const q = this.state.questions[this.state.currentIndex];
+        const bau=q.source?.bank?.startsWith('bau-');
+        this.el.container?.classList.toggle('bau-dungeon',Boolean(bau));
+        const amboss=q.contentFormat==='medos-html' && q.source?.bank?.startsWith('amboss');
+        this.el.container?.classList.toggle('amboss-dungeon',Boolean(amboss));
+        if(amboss) {this.renderAmbossQuestion(q);return;}
+        if(bau) {this.renderBauQuestion(q);return;}
         const answer = this.state.answers.get(q.id);
         const isTimedOut = q._timedOut === true;
         const isSubmitted = answer && answer.submitted;
@@ -4543,7 +4653,7 @@ export default class DungeonBase {
             explHtml = `
          <div class="dungeon-explanation">
              <div class="dungeon-feedback ${isSubmitted ? (answer.isCorrect ? 'correct' : 'incorrect') : ''}" role="status"><div><strong>${explanationTitle}</strong><small>Correct answer</small><span>${options.map((o,i) => o.isCorrect ? String.fromCharCode(65+i) : '').filter(Boolean).join(', ') || '—'}</span></div><div class="dungeon-feedback-metric"><svg class="dungeon-feedback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21h18M6 18v-5M12 18V5M18 18V9"/></svg><span>${q.answerStats?.percent_correct == null ? '—' : Number(q.answerStats.percent_correct) + '%'}</span><small>Answered correctly</small></div><div class="dungeon-feedback-metric"><svg class="dungeon-feedback-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>${Math.floor((q.timerElapsed || 0)/60000)} min, ${Math.floor((q.timerElapsed || 0)/1000)%60} secs</span><small>Time spent</small></div></div>
-             <h3>Explanation</h3>
+             ${q.source?.bank?.startsWith('mehlman-') ? '' : '<h3>Explanation</h3>'}
              <div>${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'explanation') : (window.Markdown ? window.Markdown.render(q.explanation || "No explanation provided.") : (q.explanation || "No explanation provided."))}</div>
              ${tagsHtml}
          </div>
@@ -4573,6 +4683,8 @@ export default class DungeonBase {
             if (explContent) explContent.innerHTML = '';
         }
 
+        if(q.contentFormat === 'medos-html') this.layoutTableOptions(this.el.main);
+
         // Bind click events to images for the viewer
         this.el.main.querySelectorAll('.question-image').forEach(img => {
             img.style.cursor = 'zoom-in';
@@ -4590,12 +4702,475 @@ export default class DungeonBase {
         }
     }
 
+    pauseAmbossSession() {
+        if(document.getElementById('qaPausedSession'))return;
+        this.stopTimer();
+        const dialog=document.createElement('dialog');dialog.id='qaPausedSession';dialog.className='qa-pause-dialog';
+        dialog.innerHTML='<button type="button" class="qa-pause-close" aria-label="Resume session">×</button><h2>Your question session is paused</h2><img class="qa-pause-art" src="assets/amboss/pause-coffee.png" alt=""><div><button type="button" class="qa-pause-resume">Resume</button></div>';
+        if(this.el.container?.classList.contains('qa-dark'))dialog.classList.add('qa-pause-dark');
+        document.body.append(dialog);
+        dialog.querySelectorAll('button').forEach(button=>button.onclick=()=>dialog.close());
+        dialog.onclose=()=>{dialog.remove();if(!this.el.container?.classList.contains('hidden'))this.startTimer();};dialog.showModal();
+    }
+
+    updateAmbossClocks(ms=0) {
+        const sidebar=this.el.container?.querySelector('.dungeon-sidebar');
+        if(!sidebar?.querySelector('.qa-clock-panel'))return;
+        const block=document.getElementById('dungeonBlockElapsed')?.textContent;
+        const saved=this.state.questions.reduce((total,item)=>total+(Number(item.timerElapsed)||0),0);
+        const seconds=block?block.split(':').reduce((total,value)=>total*60+Number(value),0):Math.floor(saved/1000);
+        sidebar.querySelector('.qa-session-time').textContent=`${Math.floor(seconds/3600)}h ${String(Math.floor(seconds/60)%60).padStart(2,'0')}m`;
+        const qSeconds=Math.floor(Math.max(0,ms)/1000);
+        sidebar.querySelector('.qa-question-time').textContent=`${String(Math.floor(qSeconds/60)).padStart(2,'0')}:${String(qSeconds%60).padStart(2,'0')}`;
+    }
+
+    renderAmbossSidebar() {
+        const sidebar=this.el.container?.querySelector('.dungeon-sidebar');if(!sidebar)return;
+        const width=Math.max(220,Math.min(520,Number(localStorage.getItem('qnex-amboss-sidebar-width'))||320));
+        if(!this.el.container.style.getPropertyValue('--qa-sidebar-width'))this.el.container.style.setProperty('--qa-sidebar-width',width+'px');
+        const current=this.state.questions[this.state.currentIndex];if(current)current._ambossVisited=true;
+        const solved=this.state.questions.filter(item=>this.state.answers.get(item.id)?.submitted).length;
+        const review=Boolean(this.state.isBlockRevealed || window.MedicalLibrary?.active?.completed);
+        sidebar.querySelector('.qa-session-heading')?.remove();sidebar.querySelector('.qa-clock-panel')?.remove();
+        const heading=document.createElement('div');heading.className='qa-session-heading';
+        heading.innerHTML=`<div class="qa-session-title">${review?'<span class="qa-review-badge">REVIEW</span>':''}<span>${review?'':''}<strong class="qa-session-name"></strong></span><button type="button" class="qa-sidebar-collapse" aria-label="Collapse sidebar"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M15 4v16"/></svg></button></div><div class="qa-session-progress">${solved}/${this.state.questions.length}</div><div class="qa-progress-track" role="progressbar" aria-label="Questions answered" aria-valuemin="0" aria-valuemax="${this.state.questions.length}" aria-valuenow="${solved}"><span style="width:${100*solved/Math.max(1,this.state.questions.length)}%"></span></div>`;
+        const session=window.MedicalLibrary?.active;
+        const sessionName=session?.title;
+        heading.querySelector('.qa-session-name').textContent=!sessionName||/ · \d+ questions$/.test(sessionName)?window.MedicalLibrary?.defaultSessionTitle?.(session?.date||new Date())||'Custom session':sessionName;
+        heading.querySelector('button').onclick=()=>this.toggleSidebar();sidebar.prepend(heading);
+        sidebar.querySelectorAll('.dungeon-q-box').forEach((box,index)=>{
+            const item=this.state.questions[index];if(!item)return;
+            box.querySelector('.dungeon-result-icon')?.remove();
+            const recordedAnswer=this.state.answers.get(item.id)||item.submittedAnswer;
+            const hadWrongAttempt=(item.ambossAttemptedOptionIds||[]).some(id=>item.options?.some(option=>String(option.id)===String(id)&&!option.isCorrect));
+            const incorrect=hadWrongAttempt||Boolean(recordedAnswer?.submitted&&!recordedAnswer.isCorrect);
+            if(incorrect){box.classList.remove('correct');box.classList.add('wrong');}
+            const hasStatus=item.revealed||box.classList.contains('correct')||box.classList.contains('wrong');
+            if(hasStatus){
+                const hinted=Boolean(item._ambossHintUsed||item._ambossKeyUsed);
+                const wrong=incorrect;
+                const path=wrong?'M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m3.707-11.707a1 1 0 0 1 0 1.414L9.414 8l2.293 2.293a1 1 0 0 1-1.414 1.414L8 9.414l-2.293 2.293a1 1 0 0 1-1.414-1.414L6.586 8 4.293 5.707a1 1 0 0 1 1.414-1.414L8 6.586l2.293-2.293a1 1 0 0 1 1.414 0':'M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m4.737-10.324a1 1 0 0 0-1.474-1.352L6.5 9.52 4.737 7.597a1 1 0 0 0-1.474 1.351l2.5 2.728a1 1 0 0 0 1.474 0z';
+                const status=document.createElement('span');status.className='dungeon-result-icon'+(hinted&&!wrong?' qa-revealed-icon':'');
+                status.setAttribute('aria-label',wrong?'Incorrect answer':hinted?'Hint used':'Correct answer');
+                status.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16" focusable="false" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="${path}" clip-rule="evenodd"></path></svg>`;
+                box.querySelector('.dungeon-box-status')?.prepend(status);
+            }else if(item._ambossVisited||Number(item.timerElapsed)>0){
+                const status=document.createElement('span');status.className='dungeon-result-icon qa-unanswered-icon';status.setAttribute('aria-label','Unanswered question');status.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" focusable="false" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle></svg>';box.querySelector('.dungeon-box-status')?.prepend(status);
+            }
+            box.querySelector('.qa-sidebar-label')?.remove();box.querySelector('.qa-difficulty')?.remove();
+            const visited=item._ambossVisited||hasStatus||this.state.answers.get(item.id)?.submitted||Number(item.timerElapsed)>0;
+            if(visited){
+                const preview=document.createElement('template');preview.innerHTML=item.richText||'';const stem=preview.content;stem.querySelectorAll('details,script,style').forEach(el=>el.remove());
+                const label=document.createElement('span');label.className='qa-sidebar-label';label.textContent=(item.text||stem.textContent||item.title||'Question').replace(/\s+/g,' ').trim();box.append(label);
+            }
+            box.removeAttribute('title');
+            const flag=box.querySelector('.dungeon-flagged-indicator');
+            if(flag)flag.innerHTML=this.ambossFlagIcon(true);
+        });
+        const clocks=document.createElement('div');clocks.className='qa-clock-panel';
+        clocks.classList.toggle('qa-clock-collapsed',Boolean(this._ambossClocksHidden));
+        clocks.innerHTML=`<button type="button" class="qa-clock-toggle" aria-label="${this._ambossClocksHidden?'Show timers':'Hide timers'}" aria-expanded="${!this._ambossClocksHidden}"><svg viewBox="0 0 24 24"><path d="M9 2h6M12 2v3"/><circle cx="12" cy="14" r="8"/><path d="m12 14 3-4"/><path class="qa-clock-slash" d="M3 3l18 18"/></svg></button><div class="qa-clock-values"><div><strong class="qa-session-time">0h 00m</strong><small>SESSION</small></div><div><strong class="qa-question-time">00:00</strong><small>QUESTION</small></div></div>`;
+        clocks.querySelector('button').onclick=event=>{this._ambossClocksHidden=!this._ambossClocksHidden;clocks.classList.toggle('qa-clock-collapsed',this._ambossClocksHidden);event.currentTarget.setAttribute('aria-expanded',!this._ambossClocksHidden);event.currentTarget.setAttribute('aria-label',this._ambossClocksHidden?'Show timers':'Hide timers');};
+        sidebar.append(clocks);this.updateAmbossClocks(this.lastTimerMs||0);
+        const pause=document.createElement('button');pause.type='button';pause.className='qa-clock-pause';pause.setAttribute('aria-label','Pause session');pause.innerHTML='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-width="1.5" d="M3 2h3v12H3zM10 2h3v12h-3z"/></svg>';pause.onclick=()=>this.pauseAmbossSession();clocks.append(pause);
+    }
+
+    renderAmbossHeader(q) {
+        const root=this.el.container, top=root?.querySelector('#dungeonTopbar');
+        if(!top)return;
+        top.style.setProperty('left','0px','important');
+        let header=top.querySelector('.qa-header');
+        if(!header){
+            header=document.createElement('div');header.className='qa-header';
+            header.innerHTML=`<form class="qa-library-search" role="search"><input aria-label="Search medical library" placeholder="Find AMBOSS content" autocomplete="off"><kbd>Ctrl+K</kbd><div class="qa-search-status" role="status" hidden>Medical library search will be available when the library is added.</div></form>
+              <details class="qa-bank-menu"><summary aria-label="Settings" aria-describedby="qaBankSettingsTip"><span class="qa-bank-avatar">A</span><span><strong class="qa-bank-name"></strong><small>Question bank</small></span></summary><span class="qa-bank-tooltip" id="qaBankSettingsTip" role="tooltip">Settings</span>
+                <div class="qa-bank-dropdown"><div class="qa-bank-info"><strong class="qa-bank-fullname"></strong><p>Question bank</p><button type="button" class="qa-open-settings">Settings</button></div>
+                <div class="qa-theme-section"><label>THEME</label><div class="qa-theme-segments" role="group" aria-label="Theme"><button type="button" data-qa-theme="light">Light</button><button type="button" data-qa-theme="dark">Dark</button><button type="button" data-qa-theme="system">System</button></div></div>
+                <button type="button" class="qa-menu-exit" title="Exit question bank session">LOG OUT</button></div></details>`;
+            top.append(header);
+            const search=header.querySelector('form'), input=search.querySelector('input'),status=search.querySelector('[role=status]'),menu=header.querySelector('details');
+            input.onfocus=()=>status.hidden=false;
+            input.onblur=()=>status.hidden=true;
+            search.onsubmit=event=>{
+                event.preventDefault();status.hidden=false;
+                // The future library can register this event without changing the header.
+                root.dispatchEvent(new CustomEvent('medical-library-search',{bubbles:true,detail:{query:input.value.trim(),bank:header.dataset.bank}}));
+            };
+            header.querySelector('.qa-open-settings').onclick=()=>{menu.open=false;this.close();window.QuestionBase?.switchTab('qbank-settings');};
+            header.querySelector('.qa-menu-exit').onclick=()=>{menu.open=false;this.close();};
+            const applyTheme=()=>{
+                const choice=localStorage.getItem('qnex-amboss-theme')||'light';
+                root.classList.toggle('qa-dark',choice==='dark'||(choice==='system'&&matchMedia('(prefers-color-scheme: dark)').matches));
+                header.querySelectorAll('[data-qa-theme]').forEach(button=>button.setAttribute('aria-pressed',button.dataset.qaTheme===choice));
+            };
+            header.querySelectorAll('[data-qa-theme]').forEach(button=>button.onclick=()=>{localStorage.setItem('qnex-amboss-theme',button.dataset.qaTheme);applyTheme();});
+            matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);applyTheme();
+            document.addEventListener('pointerdown',event=>{if(!menu.contains(event.target))menu.open=false;});
+            document.addEventListener('keydown',event=>{
+                if(root.classList.contains('hidden')||!root.classList.contains('amboss-dungeon'))return;
+                if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();event.stopImmediatePropagation();input.focus();}
+                if(event.key==='Escape'){menu.open=false;status.hidden=true;input.blur();}
+            },true);
+        }
+        const bank=window.MedicalLibrary?.banks?.find(item=>item.key===q.source.bank);
+        const name=bank?.label||q.source.bank.replace(/^amboss/i,'AMBOSS Step ');
+        header.dataset.bank=q.source.bank;
+        const profile=window.QbankProfile?.read();
+        header.querySelector('.qa-bank-name').textContent=profile?.username||name;
+        header.querySelector('.qa-bank-fullname').textContent=profile?.username||name;
+        header.querySelector('summary small').textContent=window.MedicalLibrary?.banks?.find(item=>item.key===window.MedicalLibrary.currentBank)?.label||name;
+        header.querySelector('.qa-bank-info p').textContent=header.querySelector('summary small').textContent;
+        header.querySelector('.qa-bank-avatar').textContent=profile?.username?.slice(0,1).toUpperCase()||'A';
+    }
+
+    ambossHintBadge() {
+        return '<div class="qa-hint-used"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m4.737-10.324a1 1 0 0 0-1.474-1.352L6.5 9.52 4.737 7.597a1 1 0 0 0-1.474 1.351l2.5 2.728a1 1 0 0 0 1.474 0z" clip-rule="evenodd"/></svg><span>HINT USED</span></div>';
+    }
+
+    ambossFlagIcon(filled=false) {
+        return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 14V2m0 0c3-2 6 2 10 0v8c-4 2-7-2-10 0" fill="${filled?'currentColor':'none'}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+
+    syncAmbossExplanationToggle(mount) {
+        if(mount.dataset.qaFullAnswer!=='true')return;
+        const bodies=[...mount.querySelectorAll('.qa-answer-explanation')];
+        const button=mount.querySelector('[data-qa="answer"]');
+        if(!bodies.length||!button)return;
+        const allOpen=bodies.every(body=>body.dataset.qaOpen?body.dataset.qaOpen==='true':!body.hidden);
+        const icon=button.querySelector('svg');
+        if(icon)icon.outerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="bevel" stroke-width="2" d="M3 6h10M3 10h10"/><path fill="currentColor" d="${allOpen?'m8 12 3 3H5zm0-8L5 1h6z':'m8 16 3-3H5zM8 0 5 3h6z'}"/></svg>`;
+        button.lastChild.textContent=allOpen?'Hide all explanations':'Show all explanations';
+    }
+
+    async transitionAmbossPanel(panel,open) {
+        if(!panel)return false;
+        const wasHidden=panel.hidden,current=panel.getBoundingClientRect().height;
+        const style=getComputedStyle(panel),opacity=wasHidden?0:Number(style.opacity);
+        panel._qaExpansion?.cancel();
+        panel.dataset.qaOpen=String(open);
+        if(matchMedia('(prefers-reduced-motion: reduce)').matches){panel.hidden=!open;return true;}
+        panel.hidden=false;
+        const full=panel.getBoundingClientRect().height;
+        const expanded=getComputedStyle(panel),top=expanded.paddingTop,bottom=expanded.paddingBottom;
+        const animation=panel.animate([
+            {height:(wasHidden?0:current)+'px',opacity,paddingTop:wasHidden?'0px':top,paddingBottom:wasHidden?'0px':bottom,overflow:'hidden',boxSizing:'border-box'},
+            {height:(open?full:0)+'px',opacity:open?1:0,paddingTop:open?top:'0px',paddingBottom:open?bottom:'0px',overflow:'hidden',boxSizing:'border-box'}
+        ],{duration:220,easing:'cubic-bezier(.2,.7,.2,1)',fill:'both'});
+        panel._qaExpansion=animation;
+        try{await animation.finished;}catch{return false;}
+        if(panel._qaExpansion!==animation)return false;
+        panel.hidden=!open;animation.cancel();panel._qaExpansion=null;return true;
+    }
+
+    ambossNoteId(q) {
+        const source=String(q.id),safe=/[<>:"/\\|?*]/.test(source)?'encoded-'+Array.from(new TextEncoder().encode(source),b=>b.toString(16).padStart(2,'0')).join(''):source;
+        return 'dungeon_note_'+safe;
+    }
+
+    setAmbossNoteStatus(q,button,hasNote) {
+        q._ambossHasNote=hasNote;
+        if(!button?.isConnected||this.state.questions[this.state.currentIndex]!==q)return;
+        button.classList.toggle('qa-has-note',hasNote);
+        button.setAttribute('aria-label',hasNote?'Add notes — saved note available':'Add notes');
+        const filled='<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="m11.8 1.2 3 3-9 9-4 .8.8-4zM1 15h13v1H1z"/></svg>';
+        button.innerHTML=(hasNote?'<span class="qa-note-dot" aria-hidden="true"></span>'+filled:(window.AmbossIcons?.notes||'✎'))+'<span>Add notes</span>';
+    }
+
+    async refreshAmbossNoteStatus(q,button) {
+        this.setAmbossNoteStatus(q,button,Boolean(q._ambossHasNote));
+        if(!window.QBankWorkspace?.loadNotes)return;
+        try {
+            const notes=await window.QBankWorkspace.loadNotes();
+            if(this.state.questions[this.state.currentIndex]!==q||!button.isConnected)return;
+            const note=notes.find(item=>item.id===this.ambossNoteId(q));
+            this.setAmbossNoteStatus(q,button,Boolean(note&&(note.content||note.contentHtml||'').trim()));
+        } catch(error) { console.warn('[Dungeon] Could not refresh saved note status:',error.message); }
+    }
+
+    async editAmbossNote() {
+        const mount=this.el.main,q=this.state.questions[this.state.currentIndex];
+        const existing=mount.querySelector('.qa-note-editor');if(existing){this.transitionAmbossPanel(existing,false).then(done=>{if(done)existing.remove();});return;}
+        const noteId=this.ambossNoteId(q);
+        try {
+            const notes=await window.QBankWorkspace.loadNotes();
+            if(this.state.questions[this.state.currentIndex]!==q)return;
+            if(mount.querySelector('.qa-note-editor'))return;
+            const previous=notes.find(note=>note.id===noteId);
+            const panel=document.createElement('div');panel.className='qa-note-editor';
+            panel.innerHTML='<div class="qa-note-toolbar" role="toolbar" aria-label="Note formatting"><button type="button" data-command="bold" aria-label="Bold"><b>B</b></button><button type="button" data-command="italic" aria-label="Italic"><i>I</i></button><button type="button" data-command="underline" aria-label="Underline"><u>U</u></button><button type="button" data-command="insertUnorderedList" aria-label="Bulleted list">• ≡</button><button type="button" data-command="insertOrderedList" aria-label="Numbered list">1 ≡</button><button type="button" data-command="undo" aria-label="Undo">↶</button><button type="button" data-command="redo" aria-label="Redo">↷</button></div><div class="qa-note-content" contenteditable="true" role="textbox" aria-label="Question note" aria-multiline="true" data-placeholder="Write your note…"></div><div class="qa-note-actions"><button type="button" data-note="cancel">Cancel</button><button type="button" data-note="save">Save</button></div>';
+            const editor=panel.querySelector('.qa-note-content');
+            const noteIcons={insertUnorderedList:'<circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><path d="M6 4h8M6 8h8M6 12h8"/>',insertOrderedList:'<path d="M2 2h1v4M2 8h2l-2 3h2M6 4h8M6 8h8M6 12h8"/>',undo:'<path d="M5 3 2 6l3 3M2 6h7a5 5 0 0 1 0 10"/>',redo:'<path d="m11 3 3 3-3 3M14 6H7a5 5 0 0 0 0 10"/>'};
+            for(const [command,path] of Object.entries(noteIcons))panel.querySelector(`[data-command="${command}"]`).innerHTML=`<svg width="16" height="16" viewBox="0 0 16 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+            const clean=html=>{const template=document.createElement('template');template.innerHTML=html;template.content.querySelectorAll('script,style,iframe,object,embed').forEach(el=>el.remove());template.content.querySelectorAll('*').forEach(el=>{if(!['B','STRONG','I','EM','U','P','BR','DIV','UL','OL','LI','BLOCKQUOTE','SPAN'].includes(el.tagName))el.replaceWith(...el.childNodes);else for(const attr of [...el.attributes])el.removeAttribute(attr.name);});return template.innerHTML;};
+            editor.innerHTML=previous?.contentHtml?clean(previous.contentHtml):'';
+            if(!previous?.contentHtml&&previous?.content)editor.textContent=previous.content;
+            mount.querySelector('.qa-tools').before(panel);
+            panel.hidden=true;this.transitionAmbossPanel(panel,true);
+            panel.querySelectorAll('[data-command]').forEach(button=>{button.onmousedown=event=>event.preventDefault();button.onclick=()=>{editor.focus();document.execCommand(button.dataset.command,false,null);};});
+            panel.querySelector('[data-note="cancel"]').onclick=()=>this.transitionAmbossPanel(panel,false).then(done=>{if(done)panel.remove();});
+            const save=panel.querySelector('[data-note="save"]');
+            const update=()=>save.disabled=!editor.textContent.trim();editor.oninput=update;update();
+            editor.onpaste=event=>{event.preventDefault();document.execCommand('insertText',false,event.clipboardData.getData('text/plain'));update();};
+            save.onclick=async()=>{save.disabled=true;try{const now=new Date().toISOString();await window.QBankWorkspace.saveNote({...previous,id:noteId,title:`Dungeon Note - Q${this.state.currentIndex+1} (${q.title||'Question'})`,content:editor.innerText,contentHtml:clean(editor.innerHTML),type:'dungeon-note',bank:q.source?.bank||null,questionId:q.id,questionIndex:this.state.currentIndex,sessionId:this.state.associatedSessionId||this.state.sessionId,isSessionWide:false,folderId:previous?.folderId||null,createdAt:previous?.createdAt||now,updatedAt:now,date:now});this.setAmbossNoteStatus(q,mount.querySelector('[data-qa="notes"]'),true);if(await this.transitionAmbossPanel(panel,false))panel.remove();window.showToast?.('Question note saved.','success');}catch(error){update();window.showToast?.(error.message,'error');}};
+            editor.focus();
+        } catch(error) { window.showToast?.('Could not open question notes: '+error.message,'error'); }
+    }
+
+    async exportAmbossContent(wholeBlock=false) {
+        const questions=(wholeBlock?this.state.questions:[this.state.questions[this.state.currentIndex]]).map(q=>{
+            const copy=JSON.parse(JSON.stringify(q));for(const key of Object.keys(copy))if(key.startsWith('_')||['revealed','timerElapsed','selectedOption','crossedOutOptionIds'].includes(key))delete copy[key];return copy;
+        });
+        const title=window.MedicalLibrary?.active?.title||'Qnex question block';
+        const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const lib=window.MedicalLibrary;
+        const body=questions.map((q,index)=>`<section><h2>Question ${wholeBlock?index+1:this.state.currentIndex+1}</h2>${lib.renderContent(q,'question')}<ol type="A">${(q.options||[]).map(opt=>`<li>${lib.renderContent(q,'option',opt)}</li>`).join('')}</ol><h3>Answer and explanation</h3>${lib.renderContent(q,'explanation')}</section>`).join('');
+        const documentHtml=document.createElement('div');documentHtml.innerHTML=body;
+        documentHtml.querySelectorAll('script,iframe,object,embed,button,audio,video').forEach(el=>el.remove());
+        documentHtml.querySelectorAll('*').forEach(el=>{for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);});
+        documentHtml.querySelectorAll('details').forEach(el=>el.setAttribute('open',''));
+        documentHtml.querySelectorAll('img').forEach(img=>{img.src=new URL(img.getAttribute('src'),location.href).href;});
+        const html=`<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>body{font:14px/1.6 Lato,Arial,sans-serif;color:#14242f}h1{font-size:22px}h2{font-size:18px}h3{font-size:15px}section+section{break-before:page}li{padding:5px 0}img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border:1px solid #ccd5dc;padding:6px}a{color:#146772}p{orphans:3;widows:3}</style></head><body><h1>${escape(title)}</h1>${documentHtml.innerHTML}</body></html>`;
+        if(!window.electronAPI?.createQuestionPdf)throw new Error('PDF export requires the desktop app. Restart Qnex to enable it.');
+        const bytes=await window.electronAPI.createQuestionPdf(html);
+        const name=wholeBlock?'qnex-question-block.pdf':`qnex-question-${questions[0]?.source?.questionId||'saved'}.pdf`;
+        const blob=new Blob([new Uint8Array(bytes)],{type:'application/pdf'});
+        if(wholeBlock&&navigator.canShare&&navigator.share){const file=new File([blob],name,{type:'application/pdf'});if(navigator.canShare({files:[file]})){try{await navigator.share({title,files:[file]});return;}catch(error){if(error.name==='AbortError')return;}}}
+        const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+        window.showToast?.(wholeBlock?'Question block exported for sharing.':'Question saved.','success');
+    }
+
+    styleAmbossLabs() {
+        const panel=document.getElementById('dungeonLabSidebar');if(!panel)return;
+        if(!this.el.container.style.getPropertyValue('--qa-lab-panel-width')){
+            const saved=Number(localStorage.getItem('dungeonLabWidth'));
+            if(saved>=310)this.el.container.style.setProperty('--qa-lab-panel-width',Math.min(saved,Math.max(310,window.innerWidth-376))+'px');
+        }
+        const header=panel.querySelector('.lab-sidebar-header'),search=panel.querySelector('.lab-search-container');
+        const close=()=>{panel.classList.remove('active');document.getElementById('dungeonLabBtn')?.classList.remove('active');this.updateToolbarPush();};
+        if(header&&search&&!header.contains(search))header.prepend(search);
+        if(header){header.onclick=null;if(!header.querySelector('.qa-lab-top-close')){
+            const topClose=document.createElement('button');topClose.type='button';topClose.className='qa-lab-top-close';topClose.setAttribute('aria-label','Close lab values');topClose.textContent='×';topClose.onclick=close;header.append(topClose);
+        }}
+        if(!panel.querySelector('.qa-lab-close')){const button=document.createElement('button');button.type='button';button.className='qa-lab-close';button.innerHTML='<span aria-hidden="true">×</span> Close';button.onclick=close;panel.append(button);}
+    }
+
+    renderAmbossQuestion(q) {
+        this.renderAmbossHeader(q);
+        this.el.container?.querySelector(':scope > .qa-navigation')?.remove();
+        const lib=window.MedicalLibrary;
+        const icons=window.AmbossIcons||{};
+        const doctors=['3ab2389014dea442','044cb46fd2d38580','13741dd475cea158','f7be05f97d56c118','a69fa336ff5178fa','7b6df07905703110'];
+        if(!q._ambossDoctor)q._ambossDoctor=doctors[Math.floor(Math.random()*doctors.length)];
+        const answer=this.state.answers.get(q.id);
+        const show=Boolean(q.revealed || (answer?.submitted && (q._tutorMode!==false || this.state.isBlockRevealed)));
+        const fullAnswer=Boolean(q.revealed||this.state.isBlockRevealed||(show&&answer?.isCorrect));
+        const locked=q._timedOut || answer?.locked;
+        const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const stem=document.createElement('div');stem.innerHTML=lib.renderContent(q,'question');
+        const hints=[...stem.querySelectorAll('details.qbank-hint')];hints.forEach(hint=>hint.remove());
+        const pictures=[...stem.querySelectorAll('img')].filter(img=>!img.closest('table'));
+        if(pictures.length){
+            const layout=document.createElement('div');layout.className='qa-stem-layout';
+            const text=document.createElement('div');text.className='qa-stem-text';
+            const media=document.createElement('aside');media.className='qa-stem-media';media.setAttribute('aria-label','Question illustrations');
+            pictures.forEach(img=>{const figure=document.createElement('figure');figure.className='qa-stem-figure';figure.append(img);const expand=document.createElement('button');expand.type='button';expand.className='qa-picture-expand';expand.setAttribute('aria-label','Expand question image');expand.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2h4v4M14 2l-5 5M6 14H2v-4M2 14l5-5"/></svg>';figure.append(expand);media.append(figure);});
+            while(stem.firstChild)text.append(stem.firstChild);
+            text.querySelectorAll('figure').forEach(figure=>{if(!figure.textContent.trim()&&!figure.querySelector('img,video,table'))figure.remove();});
+            layout.append(text,media);stem.append(layout);
+        }
+        const hasKey=Boolean(stem.querySelector('span.selected'));
+        const explanation=document.createElement('div');explanation.innerHTML=lib.renderContent(q,'explanation');
+        const parts=new Map();
+        explanation.querySelectorAll('h4').forEach(heading=>{
+            const match=heading.textContent.match(/(?:Correct Answer Is\s+|\[\s*)([A-Z])\s*(?:\]|\[)/i);
+            if(!match) return;
+            const percent=heading.textContent.match(/(\d+(?:\.\d+)?)\s*%/);
+            const block=heading.parentElement;heading.remove();
+            parts.set(match[1].toUpperCase(),{html:block.innerHTML,percent:percent?.[1]});block.remove();
+        });
+        // Unassigned supplementary figures belong to the correct answer's explanation.
+        // Figures embedded in an option explanation stay in their original source block.
+        const correctLetter=String.fromCharCode(65+(q.options||[]).findIndex(option=>option.isCorrect));
+        const supplementary=document.createElement('div');
+        explanation.querySelectorAll('figure').forEach(figure=>{
+            if(figure.querySelector('img,video,audio'))supplementary.append(figure);
+        });
+        explanation.querySelectorAll('img,video,audio').forEach(media=>supplementary.append(media));
+        if(supplementary.childNodes.length){
+            const correctPart=parts.get(correctLetter)||{html:'',percent:null};
+            correctPart.html+=supplementary.innerHTML;parts.set(correctLetter,correctPart);
+        }
+        const selected=answer?.submitted?answer.selectedId:this.state.selectedOption;
+        const attempted=new Set((q.ambossAttemptedOptionIds||[]).map(String));
+        if(show&&answer?.submitted)attempted.add(String(answer.selectedId));
+        const options=(q.options||[]).map((opt,index)=>{
+            const letter=String.fromCharCode(65+index),part=parts.get(letter);
+            const percentage=part?.percent ?? opt.percent;
+            const active=String(selected)===String(opt.id)||(show&&attempted.has(String(opt.id)));
+            const crossed=q.crossedOutOptionIds?.includes(String(opt.id));
+            const feedback=show&&(fullAnswer||active);
+            const state=feedback?(opt.isCorrect?'qa-correct':active?'qa-wrong':'qa-other'):active?'qa-selected':'';
+            return `<div class="qa-option dungeon-radio-option ${state}${crossed?' crossed-out':''}" data-option="${escape(opt.id)}">
+              <div class="qa-answer-line"><button type="button" class="dungeon-radio-circle qa-letter" aria-label="Select answer ${letter}" aria-pressed="${active}" ${locked?'disabled':''} onclick="window.DungeonBase.handleSelectOption('${opt.id}')">${letter}</button>
+              <div class="qa-choice" data-select="${escape(opt.id)}">${lib.renderContent(q,'option',opt)}</div>
+              ${feedback?`<small class="qa-percent" aria-label="${letter}: percentage choosing this answer">${percentage==null?'—':escape(percentage)+'%'}</small>`:''}
+              <button type="button" class="qa-strike" aria-label="${feedback?'Toggle explanation for':'Cross out answer'} ${letter}" ${locked&&!show?'disabled':''}>${feedback?'−':'×'}</button></div>
+              ${feedback&&part?`<div class="qa-answer-explanation" ${!opt.isCorrect&&!active?'hidden':''}>${part.html}</div>`:''}</div>`;
+        }).join('');
+        this.el.main.innerHTML=`<article class="qa-card"><div class="qa-reading-bar"><span class="qa-question-position">Question ID: ${escape(q.source?.qid ?? q.source?.questionId ?? q.id)}</span><button type="button" data-qa="font" aria-label="Change text size">${icons.font||'AA'}</button></div>
+          <div class="qa-stem dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event,'main')">${stem.innerHTML}</div>
+          <div class="qa-tools">${hasKey?`<button data-qa="key" aria-pressed="false">${icons.key||'☰'} Key info</button>`:''}${hints.length?`<button data-qa="hint" aria-expanded="false">${icons.hint||'ⓘ'} Attending tip</button>`:''}<button data-qa="labs">${icons.labs||'▤'} Labs</button><span></span><button data-qa="notes">${icons.notes||'✎'} Add notes</button><button data-qa="mark" aria-pressed="${Boolean(q.starred)}">${icons.mark||'⚑'} ${q.starred?'Marked':'Mark'}</button></div>
+          ${hints.length?`<div class="qa-hint" hidden>${this.ambossHintBadge()}<div class="qa-attending-content"><img src="assets/amboss/doctor-${q._ambossDoctor}.svg" alt="" class="qa-doctor"><div>${hints.map(hint=>hint.querySelector('.qbank-hint-body')?.innerHTML||hint.innerHTML).join('')}</div></div></div>`:''}
+          <div class="qa-options">${options}</div></article>
+          <div class="qa-bottom-actions"><button data-qa="answer"><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><g stroke="currentColor" stroke-width="2"><path d="M4 2a1 1 0 0 0-1 1v3.222L1.5 7.817a.2.2 0 0 0 0 .366L3 9.778V13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/><path stroke-linecap="round" stroke-linejoin="round" d="m12 6-4.125 4L6 8.182"/></g></svg>${fullAnswer?'Show all explanations':'Show answer'}</button><div class="qa-bottom-right"><button data-qa="reset" ${!answer?.submitted&&!q.revealed&&!this.state.selectedOption?'disabled':''}><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a7 7 0 1 1-7 7 1 1 0 0 1 2 0 5.002 5.002 0 0 0 5.976 4.904A5 5 0 0 0 8 3a5.5 5.5 0 0 0-3.564 1.333h.896a1 1 0 0 1 0 2H2q-.085-.001-.166-.016-.015-.001-.031-.005l-.047-.01-.049-.013a1 1 0 0 1-.257-.121 1 1 0 0 1-.33-.36l-.02-.042a1 1 0 0 1-.1-.433V2a1 1 0 0 1 2 0v.934A7.5 7.5 0 0 1 7.996 1z"/></svg>Reset question</button><button data-qa="stats" ${!show?'disabled':''}><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="m12.3 12.57 2.286 2.344L16 13.5 2.914.086 1.5 1.5l2.013 2.063c-.537.396-1.007.827-1.407 1.246a13.3 13.3 0 0 0-1.65 2.135 2 2 0 0 0 0 2.112q.079.126.176.275c.332.505.826 1.18 1.474 1.86C3.387 12.531 5.381 14 8 14c1.707 0 3.148-.623 4.3-1.43m-1.42-1.455-.868-.89a3 3 0 0 1-4.187-4.292l-.899-.92A8.6 8.6 0 0 0 3.553 6.19 11.3 11.3 0 0 0 2.155 8l.148.232c.284.432.705 1.007 1.25 1.577C4.66 10.97 6.165 12 8 12c1.078 0 2.043-.355 2.88-.884zM7.225 7.368A1 1 0 0 0 8.613 8.79zm-.016-5.323 2.146 2.146c1.231.35 2.271 1.14 3.092 2A11.3 11.3 0 0 1 13.845 8a11 11 0 0 1-.269.412l1.435 1.435a14 14 0 0 0 .533-.791 2 2 0 0 0 0-2.112 13.3 13.3 0 0 0-1.65-2.135C12.613 3.467 10.619 2 8 2q-.405.001-.79.046z" clip-rule="evenodd"/></svg><span>${q._ambossStatsHidden?'Show stats':'Hide stats'}</span></button></div></div>
+          ${fullAnswer&&(explanation.textContent.trim()||explanation.querySelector("img,video,audio"))?`<section class="qa-extra">${explanation.innerHTML}</section>`:''}
+          <nav class="qa-navigation" aria-label="Question navigation"><button data-qa="exit">Exit session</button><button data-qa="prev" ${this.state.currentIndex===0?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>Previous</button><button data-qa="next">${this.state.currentIndex===this.state.questions.length-1?'See analysis':answer?.submitted?'Next':'Skip'}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button></nav>`;
+        document.getElementById('dungeonExplanationPanel')?.classList.add('hidden');
+        document.getElementById('dungeonSplitResizer')?.classList.add('hidden');
+        const mount=this.el.main;
+        mount.querySelectorAll('.qa-answer-explanation').forEach(body=>{
+            const images=[...body.querySelectorAll('img')].filter(img=>!img.closest('table'));
+            if(!images.length)return;
+            const row=document.createElement('div');row.className='qa-explanation-images';row.setAttribute('aria-label','Explanation images');
+            images.forEach(img=>{
+                const tile=document.createElement('figure');tile.className='qa-explanation-preview';tile.append(img);
+                const expand=document.createElement('button');expand.type='button';expand.className='qa-picture-expand';expand.setAttribute('aria-label','Expand explanation image');
+                expand.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2h4v4M14 2l-5 5M6 14H2v-4M2 14l5-5"/></svg>';
+                tile.append(expand);row.append(tile);
+            });
+            body.querySelectorAll('figure,p').forEach(el=>{if(!el.textContent.trim()&&!el.querySelector('img,video,audio,table'))el.remove();});
+            body.append(row);
+        });
+        mount.querySelectorAll('.qa-picture-expand').forEach(button=>button.onclick=event=>{event.stopPropagation();this.openImageViewer(button.parentElement.querySelector('img').src);});
+        mount.dataset.qaFullAnswer=String(fullAnswer);
+        if(q._ambossAnimateAnswer&&show){
+            delete q._ambossAnimateAnswer;
+            if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+                mount.querySelectorAll('.qa-answer-line').forEach(line=>{if(line.closest('.qa-option').dataset.option!==String(selected))return;line.animate([{backgroundColor:this.el.container.classList.contains('qa-dark')?'#1b1d1d':'#fff'},{backgroundColor:getComputedStyle(line).backgroundColor}],{duration:220,easing:'cubic-bezier(.2,.7,.2,1)'});});
+                mount.querySelectorAll('.qa-answer-explanation:not([hidden])').forEach(body=>{if(body.closest('.qa-option').dataset.option!==String(selected))return;body.hidden=true;this.transitionAmbossPanel(body,true);});
+            }
+        }
+        const tools=mount.querySelector('.qa-tools');
+        tools.insertAdjacentHTML('beforeend','<details class="qa-more-menu"><summary aria-label="More question actions"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 9H3V7h2zm4 0H7V7h2zm4 0h-2V7h2z"/></svg></summary><div class="qa-more-options"><button type="button" data-export="question"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><g stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"><path d="M14 12.667A1.334 1.334 0 0 1 12.667 14H3.333A1.334 1.334 0 0 1 2 12.667V3.333A1.333 1.333 0 0 1 3.333 2H6.5l1.333 2h4.834A1.333 1.333 0 0 1 14 5.333z"/><path stroke-linecap="round" d="M8 7v4M6 9h4"/></g></svg><span>Save question</span></button><button type="button" data-export="block"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 11V2M5 5l3-3 3 3M2 10v4h12v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Share block</span></button></div></details>');
+        const more=tools.querySelector('.qa-more-menu');
+        more.querySelectorAll('[data-export]').forEach(button=>button.onclick=()=>{more.open=false;this.exportAmbossContent(button.dataset.export==='block').catch(error=>window.showToast?.(error.message,'error'));});
+        if(!this._ambossMenuOutside){this._ambossMenuOutside=true;document.addEventListener('pointerdown',event=>this.el.container?.querySelectorAll('.qa-more-menu[open]').forEach(menu=>{if(!menu.contains(event.target))menu.open=false;}));}
+        mount.querySelectorAll('[data-select]').forEach(el=>el.onclick=()=>{if(!fullAnswer&&!locked&&!el.closest('.qa-option').querySelector('.qa-answer-explanation'))this.handleSelectOption(el.dataset.select);});
+        if(show)mount.querySelectorAll('.qa-option').forEach(row=>{
+            if(q._ambossHintUsed||q._ambossKeyUsed)row.classList.add('qa-hinted');
+            const body=row.querySelector('.qa-answer-explanation'),line=row.querySelector('.qa-answer-line');
+            if(!body)return;
+            line.classList.add('qa-expandable');line.tabIndex=0;line.setAttribute('role','button');line.setAttribute('aria-expanded',String(!body.hidden));
+            const toggle=()=>{if(window.getSelection()?.toString())return;const open=body.dataset.qaOpen?body.dataset.qaOpen!=='true':body.hidden;line.setAttribute('aria-expanded',String(open));this.transitionAmbossPanel(body,open);this.syncAmbossExplanationToggle(mount);};
+            line.onclick=toggle;line.onkeydown=event=>{if(event.target!==line)return;if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}};
+        });
+        mount.querySelectorAll('.qa-strike').forEach(button=>button.onclick=event=>{
+            event.stopPropagation();const row=button.closest('.qa-option');
+            if(show&&row.querySelector('.qa-answer-explanation')){const body=row.querySelector('.qa-answer-explanation');const open=body.dataset.qaOpen?body.dataset.qaOpen!=='true':body.hidden;this.transitionAmbossPanel(body,open);row.querySelector('.qa-answer-line').setAttribute('aria-expanded',String(open));this.syncAmbossExplanationToggle(mount);}
+            else if(!locked)this.handleStrikeOption(event,button);
+        });
+        mount.classList.toggle('qa-show-key', Boolean(q._ambossKeyVisible));
+        mount.querySelector('[data-qa="key"]')?.setAttribute('aria-pressed',String(mount.classList.contains('qa-show-key')));
+        mount.querySelector('[data-qa="key"]')?.addEventListener('click',event=>{const active=mount.classList.toggle('qa-show-key');q._ambossKeyVisible=active;event.currentTarget.setAttribute('aria-pressed',active);if(active){q._ambossKeyUsed=true;q._ambossHintUsed=true;this.renderAmbossSidebar();}this.saveQuestionsToBackend();});
+        if(q._ambossHintOpen){const hint=mount.querySelector('.qa-hint');if(hint)hint.hidden=false;mount.querySelector('[data-qa="hint"]')?.setAttribute('aria-expanded','true');}
+        mount.querySelector('[data-qa="hint"]')?.addEventListener('click',event=>{const hint=mount.querySelector('.qa-hint'),open=event.currentTarget.getAttribute('aria-expanded')!=='true';q._ambossHintOpen=open;this.transitionAmbossPanel(hint,open);event.currentTarget.setAttribute('aria-expanded',open);if(open){q._ambossHintUsed=true;this.renderAmbossSidebar();this.saveQuestionsToBackend();}});
+        mount.querySelector('[data-qa="labs"]').onclick=()=>{this.styleAmbossLabs();document.getElementById('dungeonLabBtn')?.click();};
+        this.updateToolbarPush();
+        mount.querySelector('[data-qa="notes"]').onclick=()=>this.editAmbossNote();
+        this.refreshAmbossNoteStatus(q,mount.querySelector('[data-qa="notes"]'));
+        mount.querySelector('[data-qa="mark"]').innerHTML=this.ambossFlagIcon(Boolean(q.starred||q.isStarred))+' Mark';
+        mount.querySelector('[data-qa="mark"]').setAttribute('aria-pressed',Boolean(q.starred||q.isStarred));
+        mount.querySelector('[data-qa="mark"]').onclick=()=>{this.toggleStar();this.renderQuestion();};
+        mount.querySelector('[data-qa="font"]').onclick=()=>{const sizes=['font-small','font-medium','font-large'];const index=sizes.findIndex(size=>mount.classList.contains(size));sizes.forEach(size=>mount.classList.remove(size));mount.classList.add(sizes[(index+1)%3]);};
+        mount.querySelector('[data-qa="answer"]').onclick=()=>{if(fullAnswer){const bodies=[...mount.querySelectorAll('.qa-answer-explanation')],open=bodies.some(el=>el.dataset.qaOpen?el.dataset.qaOpen!=='true':el.hidden);bodies.forEach(el=>{this.transitionAmbossPanel(el,open);el.closest('.qa-option').querySelector('.qa-answer-line').setAttribute('aria-expanded',String(open));});this.syncAmbossExplanationToggle(mount);}else this.toggleReveal();};
+        if(show)this.syncAmbossExplanationToggle(mount);
+        mount.querySelector('[data-qa="reset"]').onclick=()=>document.getElementById('dungeonClearBtn')?.click();
+        mount.classList.toggle('qa-stats-hidden',Boolean(q._ambossStatsHidden));
+        mount.querySelector('[data-qa="stats"]').onclick=event=>{q._ambossStatsHidden=!q._ambossStatsHidden;mount.classList.toggle('qa-stats-hidden',q._ambossStatsHidden);event.currentTarget.querySelector('span').textContent=q._ambossStatsHidden?'Show stats':'Hide stats';};
+        mount.querySelector('[data-qa="prev"]').onclick=()=>this.navPrev();
+        mount.querySelector('[data-qa="exit"]').onclick=()=>this.close();
+        mount.querySelector('[data-qa="next"]').onclick=()=>{if(this.state.currentIndex===this.state.questions.length-1)this.submitBlock();else this.navNext();};
+        // Keep fixed navigation outside the scrolling question panel's clipping boundary.
+        this.el.container?.append(mount.querySelector('.qa-navigation'));
+        const sidebar=this.el.container?.querySelector('.dungeon-sidebar');
+        if(sidebar&&!sidebar.querySelector('.qa-session-heading')){
+            const title=document.createElement('div');title.className='qa-session-heading';title.textContent=window.MedicalLibrary.active?.title||'AMBOSS session';sidebar.prepend(title);
+        }
+        sidebar?.querySelectorAll('.dungeon-q-box').forEach((box,index)=>{
+            const item=this.state.questions[index];if(!item)return;
+            const label=document.createElement('span');label.className='qa-sidebar-label';label.textContent=(item.text||item.title||'Question').replace(/\s+/g,' ').trim();
+            box.querySelector('.qa-sidebar-label')?.remove();box.append(label);
+        });
+        this.renderToolbarState();
+        this.renderAmbossSidebar();
+    }
+
+    layoutTableOptions(root) {
+        const list=root.querySelector('.dungeon-options-list');
+        if(!list) return;
+        const rows=[...list.querySelectorAll('.dungeon-radio-option')];
+        if(!rows.length) return;
+        const tables=rows.map(row=>row.querySelector('.ml-rich-content table'));
+        if(tables.some(table=>!table || table.rows.length!==1)) return;
+        const columns=tables[0].rows[0].cells.length;
+        if(columns<2 || tables.some(table=>table.rows[0].cells.length!==columns || [...table.rows[0].cells].some(cell=>cell.colSpan!==1||cell.rowSpan!==1))) return;
+        // Merge only genuine tabular choices, leaving mixed-text answers intact.
+        if(rows.some((row,index)=>{
+            const clone=row.querySelector('.ml-rich-content').cloneNode(true);
+            clone.querySelector('table').remove();
+            return clone.textContent.trim() || clone.querySelector('img,video,audio,table');
+        })) return;
+        const stemTables=[...root.querySelectorAll('.dungeon-context-box table')];
+        const header=stemTables.at(-1);
+        if(!header || header.rows.length!==1 || header.rows[0].cells.length!==columns) return;
+        const wrapper=document.createElement('div');wrapper.className='dungeon-choice-table-scroll';
+        const table=document.createElement('table');table.className='dungeon-choice-table';
+        const thead=document.createElement('thead'),head=document.createElement('tr');
+        const choiceHeading=document.createElement('th');choiceHeading.setAttribute('aria-label','Answer choice');head.append(choiceHeading);
+        [...header.rows[0].cells].forEach(cell=>{const th=document.createElement('th');th.scope='col';th.innerHTML=cell.innerHTML;head.append(th);});
+        thead.append(head);table.append(thead);
+        const body=document.createElement('tbody');
+        rows.forEach((row,index)=>{
+            const tr=document.createElement('tr');tr.className=row.className;
+            const choice=document.createElement('td');choice.className='dungeon-choice-select';
+            const circle=row.querySelector('.dungeon-radio-circle'),letter=row.querySelector('.dungeon-option-letter');
+            choice.append(circle,letter);
+            choice.onclick=event=>{if(!event.target.closest('.dungeon-radio-circle')) circle.click();};
+            choice.tabIndex=0;choice.setAttribute('role','radio');choice.setAttribute('aria-label','Option '+letter.textContent.replace('.',''));
+            choice.setAttribute('aria-checked',row.classList.contains('selected')?'true':'false');
+            choice.onkeydown=event=>{if(event.key===' '||event.key==='Enter'){event.preventDefault();circle.click();}};
+            tr.append(choice);
+            const text=row.querySelector('.dungeon-radio-text');
+            [...tables[index].rows[0].cells].forEach(cell=>{
+                const td=document.createElement('td');td.className='dungeon-radio-text';td.innerHTML=cell.innerHTML;
+                for(const attr of ['onclick','onmouseup']) if(text.hasAttribute(attr))td.setAttribute(attr,text.getAttribute(attr));
+                tr.append(td);
+            });body.append(tr);
+        });
+        table.append(body);wrapper.append(table);
+        const headerWrapper=header.closest('.ml-table-scroll');
+        if(headerWrapper)headerWrapper.remove();else header.remove();
+        list.replaceChildren(wrapper);list.classList.add('has-choice-table');
+    }
+
     handleSelectOption(optionId) {
         const q = this.state.questions[this.state.currentIndex];
         if (q.crossedOutOptionIds && q.crossedOutOptionIds.includes(String(optionId))) return; // Prevent selection if crossed out
         const answer = this.state.answers.get(q.id);
 
-        if (answer && answer.submitted && q._tutorMode !== false) return; // Locked only in Tutor
+        const retryAmboss=q.contentFormat==='medos-html'&&q.source?.bank?.startsWith('amboss')&&!answer?.isCorrect&&!q.revealed&&!this.state.isBlockRevealed;
+        if(retryAmboss&&answer?.submitted&&String(answer.selectedId)===String(optionId))return;
+        if (answer && answer.submitted && q._tutorMode !== false && !retryAmboss) return;
+
+        if(q.contentFormat==='medos-html' && q.source?.bank?.startsWith('amboss') && q._tutorMode!==false && !q.revealed) {
+            q.ambossAttemptedOptionIds||=[];
+            if(answer?.submitted&&!q.ambossAttemptedOptionIds.includes(String(answer.selectedId)))q.ambossAttemptedOptionIds.push(String(answer.selectedId));
+            if(!q.ambossAttemptedOptionIds.includes(String(optionId)))q.ambossAttemptedOptionIds.push(String(optionId));
+            this.state.selectedOption=optionId;
+            q._ambossAnimateAnswer=true;
+            this.handleSubmit();
+            return;
+        }
 
         this.pushHistoryState();
 
@@ -4783,14 +5358,14 @@ export default class DungeonBase {
         const answer = this.state.answers.get(q.id);
 
         // If already submitted, don't allow reveal toggle
-        if (answer && answer.submitted) return;
+        if (answer && answer.submitted && !(q.contentFormat==='medos-html'&&q.source?.bank?.startsWith('amboss')&&!answer.isCorrect&&!q.revealed)) return;
 
         // Toggle reveal state
         const wasRevealed = q.revealed;
         q.revealed = !q.revealed;
 
         // If newly revealed and not already answered, count as omitted
-        if (q.revealed && !wasRevealed && !answer?.submitted) {
+        if (q.revealed && !wasRevealed && !answer?.submitted && q.contentFormat!=='medos-html') {
             window.fileSystemService.makeRequest('/stats', {
                 method: 'POST',
                 body: JSON.stringify({ 
@@ -4844,6 +5419,8 @@ export default class DungeonBase {
 
     jumpToQuestion(index) {
         if (index >= 0 && index < this.state.questions.length) {
+            if(!this.bauCanNavigate(index))return;
+            this.stopTimer();
             this.state.currentIndex = index;
             this.state.selectedOption = null;
             this.render();
@@ -4863,6 +5440,7 @@ export default class DungeonBase {
     }
 
     navPrev() {
+        if (!this.bauCanNavigate(this.state.currentIndex-1)) return;
         if (this.state.currentIndex > 0) {
             this.stopTimer();
             this.state.currentIndex--;
@@ -5022,6 +5600,7 @@ export default class DungeonBase {
         };
 
         content.onwheel = (e) => {
+            if (viewer.classList.contains('showing-exhibit')) return;
             e.preventDefault();
             applyZoom(-e.deltaY, e);
         };
@@ -5031,6 +5610,7 @@ export default class DungeonBase {
 
         // Pan Logic
         content.onmousedown = (e) => {
+            if (viewer.classList.contains('showing-exhibit')) return;
             if (e.button !== 0) return;
             this.state.viewer.isDragging = true;
             this.state.viewer.startX = e.clientX - this.state.viewer.x;
@@ -5071,14 +5651,160 @@ export default class DungeonBase {
         if (reset) reset.onclick = () => this.resetViewer();
     }
 
-    openImageViewer(src) {
+    initViewerWindow(viewer) {
+        if (viewer.dataset.windowReady) return;
+        viewer.dataset.windowReady = 'true';
+        viewer.setAttribute('role', 'dialog');
+        viewer.setAttribute('aria-label', 'Figure viewer');
+        const header = viewer.querySelector('.viewer-header');
+        if (!header) return;
+        const fit = document.createElement('button');
+        fit.type = 'button'; fit.className = 'viewer-fit-btn';
+        fit.title = 'Fit window'; fit.setAttribute('aria-label', 'Fit window');
+        fit.textContent = '↗';
+        header.insertBefore(fit, header.querySelector('.viewer-close-btn'));
+        const fitWindow = () => {
+            viewer.classList.remove('maximized');
+            const bounds = viewer.parentElement.getBoundingClientRect();
+            const table=viewer.querySelector('.viewer-exhibit table');
+            const width = Math.min(table ? Math.max(360,table.scrollWidth+64) : 860, bounds.width - 32);
+            const height = Math.min(table ? Math.max(280,table.scrollHeight+112) : 650, bounds.height - 48);
+            Object.assign(viewer.style, {width:width+'px', height:height+'px', left:Math.max(0,(bounds.width-width)/2)+'px', top:Math.max(0,(bounds.height-height)/2)+'px'});
+        };
+        fit.onclick = fitWindow;
+        this._viewerFit=fitWindow;
+        const controls = document.createElement('div'); controls.className='viewer-window-controls';
+        header.insertBefore(controls,fit); controls.append(fit);
+        const close = header.querySelector('.viewer-close-btn');
+        const minimize = document.createElement('button'), maximize = document.createElement('button');
+        minimize.type=maximize.type='button';
+        minimize.className=maximize.className='viewer-fit-btn';
+        minimize.textContent='—'; minimize.title='Minimize'; minimize.setAttribute('aria-label','Minimize');
+        maximize.textContent='❐'; maximize.title='Maximize / restore'; maximize.setAttribute('aria-label','Maximize or restore');
+        controls.append(minimize,maximize); if(close) controls.append(close);
+        const dock = document.createElement('button'); dock.type='button'; dock.className='viewer-minimized-dock'; dock.hidden=true;
+        viewer.parentElement.append(dock); this._viewerDock=dock;
+        dock.onclick=()=>{dock.hidden=true;viewer.classList.add('visible');};
+        minimize.onclick=()=>{dock.textContent=viewer.querySelector('.viewer-title')?.textContent || 'Figure viewer';dock.hidden=false;viewer.classList.remove('visible');};
+        let restoredBounds;
+        maximize.onclick=()=>{
+            if(viewer.classList.contains('maximized')) {
+                viewer.classList.remove('maximized'); Object.assign(viewer.style,restoredBounds);
+            } else {
+                restoredBounds={left:viewer.style.left,top:viewer.style.top,width:viewer.style.width,height:viewer.style.height};
+                const bounds=viewer.parentElement.getBoundingClientRect();
+                Object.assign(viewer.style,{left:'12px',top:'12px',width:Math.max(0,bounds.width-24)+'px',height:Math.max(0,bounds.height-24)+'px'});
+                viewer.classList.add('maximized');
+            }
+        };
+        header.ondblclick = event => { if (!event.target.closest('button')) maximize.click(); };
+        header.addEventListener('pointerdown', event => {
+            if (event.button !== 0 || event.target.closest('button') || viewer.classList.contains('maximized')) return;
+            event.preventDefault();
+            const start = viewer.getBoundingClientRect(), bounds = viewer.parentElement.getBoundingClientRect();
+            const x = event.clientX, y = event.clientY;
+            header.setPointerCapture(event.pointerId);
+            const move = next => {
+                viewer.style.left = Math.max(0, Math.min(bounds.width-start.width, start.left-bounds.left+next.clientX-x))+'px';
+                viewer.style.top = Math.max(0, Math.min(bounds.height-start.height, start.top-bounds.top+next.clientY-y))+'px';
+            };
+            const end = () => { header.removeEventListener('pointermove',move); header.removeEventListener('pointerup',end); header.removeEventListener('pointercancel',end); };
+            header.addEventListener('pointermove',move); header.addEventListener('pointerup',end); header.addEventListener('pointercancel',end);
+        });
+        const resize = document.createElement('div'); resize.className = 'viewer-resize-handle';
+        resize.title = 'Drag to resize'; viewer.append(resize);
+        resize.addEventListener('pointerdown', event => {
+            event.preventDefault(); event.stopPropagation();
+            const start = viewer.getBoundingClientRect(), bounds = viewer.parentElement.getBoundingClientRect();
+            resize.setPointerCapture(event.pointerId);
+            const move = next => {
+                const availableWidth = bounds.right-start.left, availableHeight = bounds.bottom-start.top;
+                viewer.style.width = Math.min(availableWidth, Math.max(Math.min(320,availableWidth),start.width+next.clientX-event.clientX))+'px';
+                viewer.style.height = Math.min(availableHeight, Math.max(Math.min(240,availableHeight),start.height+next.clientY-event.clientY))+'px';
+            };
+            const end = () => { resize.removeEventListener('pointermove',move); resize.removeEventListener('pointerup',end); resize.removeEventListener('pointercancel',end); };
+            resize.addEventListener('pointermove',move); resize.addEventListener('pointerup',end); resize.addEventListener('pointercancel',end);
+        });
+        window.addEventListener('resize', () => { if (viewer.classList.contains('visible')) fitWindow(); });
+        fitWindow();
+    }
+
+    setupAmbossMediaViewer(viewer,src) {
+        const q=this.state.questions[this.state.currentIndex];
+        let nav=viewer.querySelector('.qa-media-nav');
+        if(!nav){nav=document.createElement('nav');nav.className='qa-media-nav';nav.setAttribute('aria-label','Media viewer');nav.innerHTML='<button type="button" class="qa-media-caption" aria-label="Description" title="Description"><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M1 4a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3zm3-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z" clip-rule="evenodd"/><path fill="currentColor" fill-rule="evenodd" d="M4 8a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1m0 3a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1" clip-rule="evenodd"/></svg></button><span></span><button type="button" class="qa-media-bookmark" aria-label="Bookmark figure"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 14-5-3.333L3 14V3.333C3 2.597 3.64 2 4.429 2h7.142C12.361 2 13 2.597 13 3.333z"/></svg></button><button type="button" class="qa-media-zoom" aria-label="Zoom in"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="5"/><path d="m11 11 4 4M4 7h6M7 4v6"/></svg></button><button type="button" class="qa-media-close" aria-label="Close viewer"><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="2"><path d="m3 3 10 10M13 3 3 13"/></svg></button>';viewer.append(nav);}
+        viewer.classList.add('qa-media-full');
+        viewer.classList.remove('qa-media-docked');
+        this.el.container.classList.remove('qa-media-open');
+        if(!nav.querySelector('.qa-media-mode')){
+            const mode=document.createElement('button');mode.type='button';mode.className='qa-media-mode';mode.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 6h5V1M6 6 1 1M15 10h-5v5M10 10l5 5"/></svg>';nav.querySelector('.qa-media-close').before(mode);
+            const close=document.createElement('button');close.type='button';close.className='qa-media-footer-close';close.innerHTML='<span aria-hidden="true">×</span> Close';viewer.append(close);
+        }
+        const closeMedia=()=>{viewer.classList.remove('visible');this.updateToolbarPush();};
+        const mode=nav.querySelector('.qa-media-mode');
+        const updateMode=()=>mode.setAttribute('aria-label',viewer.classList.contains('qa-media-docked')?'Expand media viewer':'Minimize media viewer');updateMode();
+        mode.onclick=()=>{const docked=viewer.classList.toggle('qa-media-docked');viewer.classList.toggle('qa-media-full',!docked);if(docked){document.getElementById('dungeonLabSidebar')?.classList.remove('active');document.getElementById('dungeonLabBtn')?.classList.remove('active');}this.resetViewer();updateMode();this.updateToolbarPush();};
+        viewer.querySelector('.qa-media-footer-close').onclick=closeMedia;
+        if(!viewer.querySelector('.qa-media-resizer')) {
+            const grip=document.createElement('div');grip.className='qa-media-resizer';grip.setAttribute('role','separator');grip.setAttribute('aria-label','Resize image panel');grip.setAttribute('aria-orientation','vertical');viewer.append(grip);
+            grip.onmousedown=event=>{
+                event.preventDefault();event.stopPropagation();
+                this.el.container.classList.add('qa-lab-resizing');
+                const move=event=>{
+                    const scale=viewer.getBoundingClientRect().width/viewer.offsetWidth || 1;
+                    const sidebar=this.state.sidebarCollapsed?56:parseInt(getComputedStyle(this.el.container).getPropertyValue('--qa-sidebar-width'))||320;
+                    const width=Math.max(310,Math.min((window.innerWidth-event.clientX)/scale,Math.max(310,window.innerWidth/scale-sidebar-320)));
+                    this.el.container.style.setProperty('--qa-lab-panel-width',width+'px');
+                    this.updateToolbarPush();
+                };
+                const end=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',end);this.el.container.classList.remove('qa-lab-resizing');localStorage.setItem('dungeonLabWidth',parseInt(getComputedStyle(viewer).width));};
+                document.addEventListener('mousemove',move);document.addEventListener('mouseup',end);
+            };
+        }
+        const image=[...this.el.main.querySelectorAll('img')].find(img=>img.src===src);
+        const caption=image?.closest('figure')?.querySelector('figcaption')?.textContent||((image?.alt&&image.alt!=='Question illustration')?image.alt:'');
+        const description=nav.querySelector('.qa-media-caption');description.hidden=!caption.trim();description.disabled=!caption.trim();description.setAttribute('aria-expanded','false');viewer.querySelector('.qa-media-description')?.remove();
+        description.onclick=()=>{const old=viewer.querySelector('.qa-media-description');if(old){old.remove();description.setAttribute('aria-expanded','false');}else{const panel=document.createElement('div');panel.className='qa-media-description';panel.textContent=caption;viewer.append(panel);description.setAttribute('aria-expanded','true');}};
+        const bookmark=nav.querySelector('.qa-media-bookmark');
+        const update=()=>{const saved=Boolean(q.savedFigures?.some(figure=>figure.src===src));bookmark.setAttribute('aria-pressed',String(saved));bookmark.querySelector('svg').setAttribute('fill',saved?'currentColor':'none');};update();
+        bookmark.onclick=()=>{q.savedFigures||=[];const index=q.savedFigures.findIndex(figure=>figure.src===src);if(index>=0)q.savedFigures.splice(index,1);else q.savedFigures.push({src,caption,bank:q.source?.bank,questionId:q.source?.questionId,savedAt:new Date().toISOString()});update();this.saveQuestionsToBackend();window.dispatchEvent(new CustomEvent('qbank-figure-bookmark',{detail:{questionId:q.id,figures:q.savedFigures}}));};
+        nav.querySelector('.qa-media-zoom').onclick=()=>{this.state.viewer.zoom=Math.min(4,this.state.viewer.zoom+0.25);this.updateViewerTransform();};
+
+        nav.querySelector('.qa-media-close').onclick=closeMedia;
+    }
+
+    openImageViewer(src, exhibitHtml = null) {
         const viewer = document.getElementById('dungeonImageViewer');
         const img = document.getElementById('viewerImage');
         if (!viewer || !img) return;
-
-        img.src = src;
+        const dungeon = document.querySelector('.dungeon-base');
+        if (dungeon && viewer.parentElement !== dungeon) dungeon.append(viewer);
+        this.initViewerWindow(viewer);
+        if(this._viewerDock) this._viewerDock.hidden=true;
+        this._exhibitRequestId = (this._exhibitRequestId || 0) + 1;
+        const content = document.getElementById('viewerContent');
+        content.querySelector('.viewer-exhibit')?.remove();
+        content.querySelector('.ml-media-unavailable')?.remove();img.hidden=false;
+        img.hidden = exhibitHtml !== null;
+        viewer.classList.toggle('showing-exhibit', exhibitHtml !== null);
+        if (exhibitHtml !== null) {
+            img.removeAttribute('src');
+            const exhibit = document.createElement('div');
+            exhibit.className = 'viewer-exhibit';
+            exhibit.innerHTML = exhibitHtml;
+            content.append(exhibit);
+        } else img.src = src;
+        if(content.querySelector('table')&&!viewer.classList.contains('maximized')) this._viewerFit?.();
+        const title = viewer.querySelector('.viewer-title');
+        if (title) title.textContent = exhibitHtml !== null ? (content.querySelector('table') ? 'Table viewer' : 'Exhibit viewer') : 'Image viewer';
+        let icon=viewer.querySelector('.viewer-window-icon');
+        if(!icon && title) {icon=document.createElement('span');icon.className='viewer-window-icon';title.before(icon);}
+        if(icon) icon.innerHTML=content.querySelector('table') ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg>';
         this.resetViewer();
+        viewer.classList.remove('qa-media-full', 'qa-media-docked');
+        if(dungeon?.classList.contains('amboss-dungeon')&&exhibitHtml===null)this.setupAmbossMediaViewer(viewer,src);
         viewer.classList.add('visible');
+        this.updateToolbarPush();
 
         // Cache image rect after it might have rendered (short delay)
         setTimeout(() => {
@@ -5089,6 +5815,7 @@ export default class DungeonBase {
         const handleEsc = (e) => {
             if (e.key === 'Escape') {
                 viewer.classList.remove('visible');
+                this.updateToolbarPush();
                 document.removeEventListener('keydown', handleEsc);
             }
         };

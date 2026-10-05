@@ -24,6 +24,9 @@ class FileSystemService {
   }
 
   async init() {
+    if(window.location.hostname.endsWith('.github.io')){
+      this.isOffline=true;window.QnexOffline?.notice();return;
+    }
     console.log("[FileSystemService] Probing for active server...");
     const currentHost = window.location.hostname || 'localhost';
     
@@ -61,6 +64,7 @@ class FileSystemService {
     }
     console.warn("[FileSystemService] ⚠️ No active server found during probe. Using baseline:", this.baseUrl);
     this.isOffline = true;
+    window.QnexOffline?.notice();
   }
 
   // Helper method for making HTTP requests with retry logic
@@ -70,6 +74,7 @@ class FileSystemService {
 
     // If we determined we are offline, don't attempt fetch to avoid browser console errors
     if (this.isOffline) {
+      if(window.QnexOffline)return window.QnexOffline.service(url,options);
       throw new Error("SERVER_OFFLINE");
     }
 

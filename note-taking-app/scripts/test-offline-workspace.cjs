@@ -1,0 +1,33 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(__dirname,'..'),store=new Map(),nodes=new Map(),listeners={};
+const context={console,URLSearchParams,structuredClone,AbortController,setTimeout,clearTimeout,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,String(v))},document:{readyState:'loading',body:{append:node=>nodes.set(node.id,node)},getElementById:id=>nodes.get(id),createElement:()=>({setAttribute(){}}),addEventListener(){}},window:{location:{hostname:'qnex.github.io'},addEventListener:(type,fn)=>listeners[type]=fn},fetch:()=>{throw Error('A hosted offline workspace must not fetch a server');}};
+vm.createContext(context);
+context.MutationObserver=class {observe(){} disconnect(){}};
+const run=name=>vm.runInContext(fs.readFileSync(path.join(root,'scripts',name),'utf8'),context);
+(async()=>{
+ run('offline-catalog.js');run('offline-workspace.js');
+ vm.runInContext(fs.readFileSync(path.join(root,'scripts/file-system-service.js'),'utf8').replace('export default fileSystemService;','window.fileSystemService=fileSystemService;'),context);
+ await context.window.fileSystemService.waitForReady();assert(context.window.fileSystemService.isOffline);
+ run('medical-library.js');run('qbank-dashboard.js');
+ const L=context.window.MedicalLibrary;await L.preloadWorkspace();
+ assert.equal(L.banks.length,83);assert(L.banks.every(bank=>bank.count===0));
+ assert.equal(L.sessions.length,0);
+ const dashboard=await context.window.QBankDashboard.context();assert(dashboard.bank);assert.equal(dashboard.stats.totalQuestions,0);assert.equal(dashboard.stats.correct,0);
+ await L.api('/profile',{method:'POST',body:JSON.stringify({currentBank:'bau-year4'})});
+ assert.equal((await L.api('/profile')).currentBank,'bau-year4');
+ const bauDashboard=await context.window.QBankDashboard.context();assert.equal(bauDashboard.bank.label,'BAU - 4th year');
+ assert.equal((await L.api('/filters?bank=bau-year4')).items.length,0);
+ assert.equal((await L.api('/questions-list?bank=bau-year4')).questions.length,0);
+ assert.equal((await context.window.fileSystemService.loadNotes()).length,0);
+ await assert.rejects(L.api('/questions',{method:'POST',body:'{}'}),/not loaded/);
+ assert(nodes.get('qnexDataStatus').textContent.includes('not loaded'));
+ // Run the actual startup listener with a minimal DOM and shortened animation wait.
+ const hidden=new Set();nodes.set('appLoader',{querySelector:()=>({getBoundingClientRect:()=>({width:100})}),style:{setProperty(){}},classList:{add:name=>hidden.add(name)}});
+ nodes.set('qnexBootStatus',{textContent:'',getAnimations:()=>[]});nodes.set('loaderRetryBtn',{style:{}});
+ context.matchMedia=()=>({matches:true});context.setTimeout=(fn)=>setTimeout(fn,0);
+ context.window.QBankDashboard.renderMain=async()=>{};
+ vm.runInContext(fs.readFileSync(path.join(root,'scripts/custom-features.js'),'utf8').split('// Fullscreen functionality')[0],context);
+ await listeners.load();assert(hidden.has('hidden'),'Startup must release the boot screen');
+ assert.equal(nodes.get('loaderRetryBtn').style.display,undefined);
+ console.log('PASS: hosted startup without server requests, visible bank catalog, zero statistics, empty content, bank selection, explicit unavailable writes and boot-screen release.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

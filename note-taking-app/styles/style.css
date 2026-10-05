@@ -6053,12 +6053,20 @@ ol.editor-block {
 
 /* ==================== MODERN LOADER (Themed) ==================== */
 .app-loader {
+  --loader-bg: #181818;
+  --loader-surface: #242424;
+  --loader-text: #f3f4f6;
+  --loader-muted: #b8bec8;
+  --loader-border: #505050;
+  --loader-error: #ff9292;
+  --loader-success: #76dfae;
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--bg);
+  background: var(--loader-bg);
+  color: var(--loader-text);
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -6067,6 +6075,16 @@ ol.editor-block {
   transition:
     opacity 0.5s ease-out,
     visibility 0.5s ease-out;
+}
+
+body.theme-light .app-loader {
+  --loader-bg: #f7f7f7;
+  --loader-surface: #ffffff;
+  --loader-text: #202124;
+  --loader-muted: #555b65;
+  --loader-border: #c4c7cc;
+  --loader-error: #b42318;
+  --loader-success: #137345;
 }
 
 .app-loader.hidden {
@@ -6095,8 +6113,8 @@ ol.editor-block {
 .loader-logo {
   width: 56px;
   height: 56px;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
+  background: var(--loader-surface);
+  border: 1px solid var(--loader-border);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -6117,7 +6135,7 @@ ol.editor-block {
 .loader-title h1 {
   margin: 0;
   font-size: 20px;
-  color: var(--text);
+  color: var(--loader-text);
   font-weight: 700;
   letter-spacing: -0.5px;
   background: none;
@@ -6126,7 +6144,7 @@ ol.editor-block {
 
 .loader-title span {
   font-size: 11px;
-  color: var(--boot);
+  color: var(--loader-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 500;
@@ -6135,7 +6153,7 @@ ol.editor-block {
 /* Status Bar */
 .loader-status-bar {
   height: 4px;
-  background: var(--panel-2);
+  background: var(--loader-border);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -6157,15 +6175,15 @@ ol.editor-block {
 
 /* Terminal Log Area */
 .loader-terminal {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--loader-surface);
+  border: 1px solid var(--loader-border);
   border-radius: 8px;
   padding: 16px;
   height: 200px;
   overflow-y: auto;
   font-family: "Consolas", "Monaco", monospace;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--loader-muted);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -6181,12 +6199,12 @@ ol.editor-block {
 }
 
 .loader-terminal::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--loader-border);
   border-radius: 3px;
 }
 
 .loader-terminal::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
+  background: var(--loader-muted);
 }
 
 .terminal-line {
@@ -6195,22 +6213,21 @@ ol.editor-block {
   padding: 2px 0;
   display: flex;
   line-height: 1.4;
-  color: var(--text);
+  color: var(--loader-text);
 }
 
 .terminal-line.error {
-  color: #ef4444;
+  color: var(--loader-error);
 }
 
 .terminal-line.success {
-  color: #10b981;
+  color: var(--loader-success);
 }
 
 .terminal-line::before {
   content: ">";
   margin-right: 8px;
-  color: var(--muted);
-  opacity: 0.7;
+  color: var(--loader-muted);
 }
 
 .cursor {
@@ -6236,9 +6253,9 @@ ol.editor-block {
 
 /* Retry Button */
 #loaderRetryBtn {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: var(--loader-surface);
+  color: var(--loader-text);
+  border: 1px solid var(--loader-border);
   padding: 10px;
   border-radius: 6px;
   font-weight: 500;
@@ -6250,9 +6267,14 @@ ol.editor-block {
 }
 
 #loaderRetryBtn:hover {
-  background: var(--panel-hover);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--loader-bg);
+  border-color: var(--loader-text);
+  color: var(--loader-text);
+}
+
+#loaderRetryBtn:focus-visible {
+  outline: 2px solid var(--loader-text);
+  outline-offset: 3px;
 }
 
 /* Note Toolbar Section - Fixed Height */
@@ -6445,3 +6467,175 @@ summary::-webkit-details-marker { display:none; }
 summary::marker { content:''; }
 summary:not(:has(svg)):not(.qw-system summary)::before { content:''; display:inline-block; width:16px; height:16px; margin-right:8px; vertical-align:-2px; background:currentColor; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 5 7 7-7 7' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 5 7 7-7 7' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
 details[open] > summary:not(:has(svg)):not(.qw-system summary)::before { transform:rotate(90deg); }
+
+/* Qnex branded startup: one animation definition for stable label geometry. */
+body #appLoader { background:radial-gradient(ellipse at 50% 42%,#172536 0%,#0c1119 60%); color:#edf5ff; transition:opacity .75s ease,visibility .75s ease; }
+#appLoader .loader-content { width:auto; max-width:90%; align-items:center; gap:26px; }
+#appLoader .qnex-boot-logo { display:flex; align-items:baseline; width:max-content; height:116px; font:600 88px/1.2 'Segoe UI',Arial,sans-serif; letter-spacing:-4px; }
+#appLoader .qnex-morph-q { position:relative; display:block; flex:none; line-height:1.2; transform:translateX(var(--qnex-q-travel,80px)); animation:qnex-q-settle .7s cubic-bezier(.2,.8,.2,1) 1.45s forwards; }
+#appLoader .qnex-font-q { display:block; opacity:0; animation:qnex-font-q-in .45s ease 1.2s forwards; }
+#appLoader .qnex-boot-circle { position:absolute; left:50%; top:50%; width:76px; height:76px; margin:0; padding:0; box-sizing:border-box; border:4px solid #c6d8ec; border-radius:50%; transform:translate(-50%,-50%); animation:qnex-circle-glow .3s ease 4,qnex-circle-fade .45s ease 1.2s forwards; }
+#appLoader .qnex-boot-circle > span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; margin:0; padding:0; font:600 42px/1 Arial,sans-serif; letter-spacing:0; transform:none!important; opacity:0; animation:qnex-letter-fade .3s ease both; }
+#appLoader .qnex-boot-circle > span:nth-child(2) { animation-delay:.3s; }
+#appLoader .qnex-boot-circle > span:nth-child(3) { animation-delay:.6s; }
+#appLoader .qnex-boot-circle > span:nth-child(4) { animation-delay:.9s; }
+#appLoader .qnex-word-tail { display:flex; align-items:baseline; line-height:1.2; opacity:0; animation:qnex-word-arrive .55s ease 1.8s forwards; }
+#appLoader .qnex-ne { display:block; overflow:visible; white-space:nowrap; width:var(--qnex-ne-width,100px); flex-shrink:0; animation:qnex-word-loop 3.4s cubic-bezier(.4,0,.2,1) 3.5s 2; }
+#appLoader .qnex-x { display:block; }
+#appLoader .qnex-boot-dot { display:block; color:#35c3e8; letter-spacing:0; opacity:0; animation:qnex-dot-in .6s ease 2.45s forwards; }
+#appLoader .qnex-boot-status { margin:0; font:400 15px/1.5 'Segoe UI',sans-serif; letter-spacing:.3px; color:#b9cce2; text-shadow:0 0 18px #78b3fb30; }
+#appLoader #loaderTerminal,#appLoader #loaderProgress { display:none!important; }
+#appLoader #loaderRetryBtn { border:1px solid #728eaa; background:#ffffff0a; color:#e5f0ff; border-radius:8px; padding:10px 18px; cursor:pointer; }
+#appLoader .qnex-cycle-return .qnex-word-tail { animation:none; opacity:0; transform:translateX(-12px); transition:opacity .45s ease,transform .6s ease; }
+#appLoader .qnex-cycle-return .qnex-morph-q { animation:none; transform:translateX(var(--qnex-q-travel,80px)); transition:transform .65s ease; }
+#appLoader .qnex-cycle-return .qnex-font-q { animation:none; opacity:1; }
+#appLoader .qnex-cycle-return .qnex-boot-circle { animation:none; opacity:0; }
+@keyframes qnex-letter-fade { 0%,100% {opacity:0} 30%,70% {opacity:1} }
+@keyframes qnex-circle-glow { 0%,100% {box-shadow:0 0 0 0 #b9d5f000} 50% {box-shadow:0 0 12px 1px #b9d5f030} }
+@keyframes qnex-circle-fade { to {opacity:0} }
+@keyframes qnex-font-q-in { to {opacity:1} }
+@keyframes qnex-q-settle { to {transform:translateX(0)} }
+@keyframes qnex-word-arrive { from {opacity:0;transform:translateX(-10px)} to {opacity:1;transform:none} }
+@keyframes qnex-word-loop { 0%,18%,85%,100% {width:var(--qnex-ne-width,100px);opacity:1;transform:none} 42%,65% {width:0;opacity:0;transform:translateX(-8px)} }
+@keyframes qnex-dot-in { 0% {opacity:0;transform:translateY(-24px)} 55% {opacity:1;transform:translateY(3px)} 78% {transform:translateY(-5px)} 100% {opacity:1;transform:none} }
+@media(prefers-reduced-motion:reduce) { #appLoader .qnex-boot-circle {display:none} #appLoader .qnex-morph-q {animation:none;transform:none} #appLoader .qnex-font-q,#appLoader .qnex-word-tail,#appLoader .qnex-ne,#appLoader .qnex-boot-dot {animation:none;opacity:1} }
+#appLoader .qnex-boot-circle { --boot-circle-size:76px; width:var(--boot-circle-size); height:var(--boot-circle-size); }
+#appLoader .qnex-boot-circle > span { font-size:calc(var(--boot-circle-size) * .55); width:100%; height:100%; box-sizing:border-box; }
+
+#appLoader .qnex-boot-logo { font-size:108px; height:140px; letter-spacing:-5px; }
+#appLoader .qnex-boot-circle { --boot-circle-size:92px; }
+#appLoader .qnex-boot-status { font-size:18px; }
+/* Fade ne completely before its width contracts beneath x. */
+@keyframes qnex-word-loop { 0%,18%,100% {width:var(--qnex-ne-width,120px);opacity:1;transform:none} 27% {width:var(--qnex-ne-width,120px);opacity:0;transform:none} 42%,65% {width:0;opacity:0;transform:none} 84% {width:var(--qnex-ne-width,120px);opacity:0;transform:none} 94% {width:var(--qnex-ne-width,120px);opacity:1;transform:none} }
+body:has(#appLoader:not(.hidden)) #notifCenter { z-index:10010; color:#dbeaff; }
+body:has(#appLoader:not(.hidden)) #notifPane { z-index:10011; background:#182330; color:#edf5ff; border-color:#42566d; }
+body:has(#appLoader:not(.hidden)) #notifPane :is(.notif-item-message,.notif-pane-header,button) { color:#edf5ff; }
+body:has(#appLoader:not(.hidden)) #notifPane :is(.notif-item-time,.notif-empty-state) { color:#b7c9dc; }
+
+/* Restore natural spacing between independently animated glyph groups. */
+#appLoader .qnex-ne { padding-right:5px; box-sizing:content-box; }
+#appLoader .qnex-x { margin-left:0; }
+body #appLoader { transition:opacity .85s ease,visibility .85s ease,background-color .3s ease,color .3s ease; }
+body #appLoader.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+body.theme-light #appLoader { background:radial-gradient(ellipse at 50% 42%,#ffffff 0%,#f2f5f9 65%); color:#192b40; }
+body.theme-light #appLoader .qnex-boot-logo { color:#192b40; }
+body.theme-light #appLoader .qnex-boot-circle { border-color:#37536f; }
+body.theme-light #appLoader .qnex-boot-status { color:#52677e; text-shadow:0 1px 1px #ffffff,0 0 18px #608bb51a; }
+body.theme-light #appLoader .qnex-boot-dot { color:#008cab; }
+body.theme-light #appLoader #loaderRetryBtn { background:#fff; color:#233e5b; border-color:#9badc0; }
+body.theme-light:has(#appLoader:not(.hidden)) #notifCenter { color:#243e59; }
+body.theme-light:has(#appLoader:not(.hidden)) #notifPane { background:#fff; color:#233e5b; border-color:#c5d0dc; }
+body.theme-light:has(#appLoader:not(.hidden)) #notifPane :is(.notif-item-message,.notif-pane-header,button) { color:#233e5b; }
+body.theme-light:has(#appLoader:not(.hidden)) #notifPane :is(.notif-item-time,.notif-empty-state) { color:#5d7187; }
+
+/* Restore the original word sweep and the font's natural e/x spacing. */
+#appLoader .qnex-ne { padding-right:0; box-sizing:content-box; }
+#appLoader .qnex-x { margin-left:0; }
+@keyframes qnex-word-loop { 0%,18%,85%,100% {width:var(--qnex-ne-width,100px);opacity:1;transform:none} 42%,65% {width:0;opacity:0;transform:translateX(-8px)} }
+
+/* Rebuilt wordmark: complete words retain native font kerning. */
+#appLoader .qnex-boot-logo { position:relative; display:grid; place-items:center; width:320px; height:140px; font-family:Arial,Helvetica,sans-serif; font-size:108px; font-weight:400; letter-spacing:-5px; line-height:1.15; }
+#appLoader .qnex-word-tail { position:absolute; inset:0; display:grid; place-items:center; line-height:inherit; animation:qnex-rebuilt-word-in .5s ease 1.8s both; }
+#appLoader .qnex-full-word,#appLoader .qnex-short-word { grid-area:1/1; white-space:nowrap; font:inherit; letter-spacing:inherit; }
+#appLoader .qnex-logo-period { color:#35c3e8; font:inherit; letter-spacing:0; }
+#appLoader .qnex-full-word { animation:qnex-full-cycle 3.4s ease 3.5s 2; }
+#appLoader .qnex-short-word { opacity:0; animation:qnex-short-cycle 3.4s ease 3.5s 2; }
+#appLoader .qnex-single-q { position:absolute; inset:0; display:grid; place-items:center; font:inherit; opacity:0; animation:qnex-rebuilt-q 2.3s ease both; }
+#appLoader .qnex-label-ring { position:absolute; left:50%; top:50%; width:92px; height:92px; box-sizing:border-box; transform:translate(-50%,-50%); border:4px solid #c6d8ec; border-radius:50%; animation:qnex-circle-glow .3s ease 4,qnex-circle-fade .4s ease 1.2s forwards; }
+#appLoader .qnex-label-ring > span { position:absolute; inset:0; display:grid; place-items:center; font:600 48px/1 Arial,sans-serif; letter-spacing:0; opacity:0; animation:qnex-letter-fade .3s ease both; }
+#appLoader .qnex-label-ring > span:nth-child(2) {animation-delay:.3s} #appLoader .qnex-label-ring > span:nth-child(3) {animation-delay:.6s} #appLoader .qnex-label-ring > span:nth-child(4) {animation-delay:.9s}
+#appLoader .qnex-cycle-return .qnex-word-tail { animation:none; opacity:0; transform:none; transition:opacity .5s ease; }
+#appLoader .qnex-cycle-return .qnex-single-q { animation:none; opacity:1; transition:opacity .5s ease; }
+#appLoader .qnex-cycle-return .qnex-label-ring {opacity:0}
+@keyframes qnex-rebuilt-q { 0%,50% {opacity:0} 65%,80% {opacity:1} 100% {opacity:0} }
+@keyframes qnex-rebuilt-word-in { from {opacity:0;transform:translateX(8px)} to {opacity:1;transform:none} }
+@keyframes qnex-full-cycle { 0%,18%,85%,100% {opacity:1;transform:none} 42%,65% {opacity:0;transform:translateX(-8px)} }
+@keyframes qnex-short-cycle { 0%,18%,85%,100% {opacity:0;transform:translateX(8px)} 42%,65% {opacity:1;transform:none} }
+body.theme-light #appLoader .qnex-label-ring {border-color:#37536f} body.theme-light #appLoader .qnex-logo-period {color:#008cab}
+@media(prefers-reduced-motion:reduce) { #appLoader .qnex-label-ring,#appLoader .qnex-single-q,#appLoader .qnex-short-word {display:none} #appLoader .qnex-word-tail,#appLoader .qnex-full-word {animation:none;opacity:1} }
+
+@font-face { font-family:'Qnex Manrope'; src:url('../assets/fonts/manrope-800.ttf') format('truetype'); font-style:normal; font-weight:800; font-display:block; }
+#appLoader .qnex-boot-logo { font-family:'Qnex Manrope',Manrope,sans-serif; font-weight:800; letter-spacing:-.06em; }
+#appLoader .qnex-label-ring > span { font-family:'Qnex Manrope',Manrope,sans-serif; font-weight:800; }
+
+/* Restore the Segoe UI wordmark and its original overlapping word sweep. */
+#appLoader .qnex-boot-logo { display:flex; align-items:baseline; width:max-content; height:140px; font-family:'Segoe UI',Arial,sans-serif; font-size:108px; font-weight:600; line-height:1.2; letter-spacing:-5px; }
+#appLoader .qnex-morph-q { position:relative; display:block; flex:none; line-height:1.2; transform:translateX(var(--qnex-q-travel,80px)); animation:qnex-q-settle .7s cubic-bezier(.2,.8,.2,1) 1.45s forwards; }
+#appLoader .qnex-font-q { display:block; opacity:0; animation:qnex-font-q-in .45s ease 1.2s forwards; }
+#appLoader .qnex-boot-circle { position:absolute; left:50%; top:50%; width:92px; height:92px; margin:0; padding:0; box-sizing:border-box; border:4px solid #c6d8ec; border-radius:50%; transform:translate(-50%,-50%); animation:qnex-circle-glow .3s ease 4,qnex-circle-fade .45s ease 1.2s forwards; }
+#appLoader .qnex-boot-circle > span { position:absolute; inset:0; display:grid; place-items:center; font:600 50px/1 Arial,sans-serif; letter-spacing:0; transform:none!important; opacity:0; animation:qnex-letter-fade .3s ease both; }
+#appLoader .qnex-boot-circle > span:nth-child(2) {animation-delay:.3s} #appLoader .qnex-boot-circle > span:nth-child(3) {animation-delay:.6s} #appLoader .qnex-boot-circle > span:nth-child(4) {animation-delay:.9s}
+#appLoader .qnex-word-tail { position:static; inset:auto; display:flex; align-items:baseline; line-height:1.2; animation:qnex-word-arrive .55s ease 1.8s forwards; }
+#appLoader .qnex-ne { display:block; padding:0; width:var(--qnex-ne-width,120px); flex-shrink:0; overflow:visible; animation:qnex-word-loop 3.4s cubic-bezier(.4,0,.2,1) 3.5s 2; }
+#appLoader .qnex-x { display:block; margin:0; }
+#appLoader .qnex-boot-dot { position:static; display:block; color:#35c3e8; letter-spacing:0; opacity:0; animation:qnex-dot-in .6s ease 2.45s forwards; }
+#appLoader .qnex-cycle-return .qnex-word-tail {animation:none;opacity:0;transform:translateX(-12px)}
+#appLoader .qnex-cycle-return .qnex-morph-q {animation:none;transform:translateX(var(--qnex-q-travel,80px));transition:transform .65s ease}
+#appLoader .qnex-cycle-return .qnex-font-q {animation:none;opacity:1}
+#appLoader .qnex-cycle-return .qnex-boot-circle {animation:none;opacity:0}
+@keyframes qnex-word-loop { 0%,18%,85%,100% {width:var(--qnex-ne-width,120px);opacity:1;transform:none} 42%,65% {width:0;opacity:0;transform:translateX(-8px)} }
+body.theme-light #appLoader .qnex-boot-circle {border-color:#37536f} body.theme-light #appLoader .qnex-boot-dot {color:#008cab}
+@media(prefers-reduced-motion:reduce) { #appLoader .qnex-boot-circle {display:none} #appLoader .qnex-morph-q {animation:none;transform:none} #appLoader .qnex-font-q,#appLoader .qnex-word-tail,#appLoader .qnex-ne,#appLoader .qnex-boot-dot {animation:none;opacity:1} }
+
+/* Lighter wordmark with natural letter spacing. */
+#appLoader .qnex-boot-logo { font-weight:400; letter-spacing:-2px; }
+
+#appLoader .qnex-boot-logo { font-weight:700; letter-spacing:-5px; }
+.qnex-loading-mark { --qnex-ne-width:1.13em; --qnex-q-travel:38px; position:relative; display:flex; align-items:baseline; justify-content:center; width:max-content; margin:0 auto; height:64px; font:700 46px/1.2 'Segoe UI',Arial,sans-serif; letter-spacing:-2px; color:inherit; }
+.qnex-loading-mark .qnex-morph-q { position:relative; transform:translateX(var(--qnex-q-travel)); animation:qnex-q-settle .7s ease 1.45s forwards; }
+.qnex-loading-mark .qnex-font-q { display:block; opacity:0; animation:qnex-font-q-in .45s ease 1.2s forwards; }
+.qnex-loading-mark .qnex-boot-circle { position:absolute; left:50%; top:50%; width:40px; height:40px; box-sizing:border-box; margin:0; border:2px solid currentColor; border-radius:50%; transform:translate(-50%,-50%); animation:qnex-circle-glow .3s ease 4,qnex-circle-fade .45s ease 1.2s forwards; }
+.qnex-loading-mark .qnex-boot-circle > span { position:absolute; inset:0; display:grid; place-items:center; font:600 22px/1 Arial,sans-serif; letter-spacing:0; opacity:0; animation:qnex-letter-fade .3s ease both; }
+.qnex-loading-mark .qnex-boot-circle > span:nth-child(2) {animation-delay:.3s} .qnex-loading-mark .qnex-boot-circle > span:nth-child(3) {animation-delay:.6s} .qnex-loading-mark .qnex-boot-circle > span:nth-child(4) {animation-delay:.9s}
+.qnex-loading-mark .qnex-word-tail { display:flex; align-items:baseline; opacity:0; animation:qnex-word-arrive .55s ease 1.8s forwards; }
+.qnex-loading-mark .qnex-ne { width:var(--qnex-ne-width); white-space:nowrap; animation:qnex-word-loop 3.4s ease 3.5s infinite; }
+.qnex-loading-mark .qnex-boot-dot { color:#18abc8; opacity:0; animation:qnex-dot-in .6s ease 2.45s forwards; }
+.qnex-branded-loader { flex-direction:column; gap:18px; color:var(--defualt); }
+@media(prefers-reduced-motion:reduce) { .qnex-loading-mark .qnex-boot-circle {display:none} .qnex-loading-mark .qnex-morph-q {animation:none;transform:none} .qnex-loading-mark .qnex-font-q,.qnex-loading-mark .qnex-word-tail,.qnex-loading-mark .qnex-ne,.qnex-loading-mark .qnex-boot-dot {animation:none;opacity:1} }
+
+#appLoader .qnex-boot-logo, .qnex-loading-mark { font-weight:600; }
+
+/* Finish at Qx: the dot taps the word rather than restarting the intro. */
+#appLoader .qnex-boot-circle { border-width:8px; }
+.qnex-loading-mark .qnex-boot-circle { border-width:3.5px; }
+#appLoader .qnex-ne,.qnex-loading-mark .qnex-ne { animation:qnex-contract-once .75s cubic-bezier(.4,0,.2,1) 3.5s forwards; }
+#appLoader .qnex-boot-dot,.qnex-loading-mark .qnex-boot-dot { animation:qnex-dot-in .6s ease 2.45s forwards,qnex-dot-knock 2s ease-in-out 4.5s infinite; }
+#appLoader .qnex-morph-q,.qnex-loading-mark .qnex-morph-q { animation:qnex-q-settle .7s ease 1.45s forwards,qnex-word-knocked 2s ease-in-out 4.5s infinite; }
+#appLoader .qnex-x,.qnex-loading-mark .qnex-x { animation:qnex-word-knocked 2s ease-in-out 4.5s infinite; }
+@keyframes qnex-contract-once { from {width:var(--qnex-ne-width,120px);opacity:1} to {width:0;opacity:0} }
+@keyframes qnex-dot-knock { 0%,25%,100% {translate:.14em 0} 40% {translate:-.03em 0} 48% {translate:.09em 0} 58% {translate:0 0} 75% {translate:.14em 0} }
+@keyframes qnex-word-knocked { 0%,39%,65%,100% {translate:0 0;rotate:0deg} 43% {translate:-.025em 0;rotate:-1deg} 48% {translate:.018em 0;rotate:1deg} 54% {translate:-.012em 0;rotate:-.5deg} }
+@media(prefers-reduced-motion:reduce) { #appLoader .qnex-ne,.qnex-loading-mark .qnex-ne,#appLoader .qnex-boot-dot,.qnex-loading-mark .qnex-boot-dot,#appLoader .qnex-morph-q,.qnex-loading-mark .qnex-morph-q,#appLoader .qnex-x,.qnex-loading-mark .qnex-x {animation:none;translate:none;rotate:none} }
+
+@keyframes qnex-dot-knock { 0%,25%,75%,100% {translate:0 0} 40% {translate:-.10em 0} 48% {translate:.025em 0} 58% {translate:0 0} }
+
+/* Dot winds up to the right, taps at its original edge, then settles. */
+@keyframes qnex-dot-knock { 0%,18%,82%,100% {translate:0 0} 30% {translate:.16em 0} 40% {translate:0 0} 49% {translate:.07em 0} 60% {translate:.025em 0} 72% {translate:0 0} }
+
+/* Match the label outline to the font Q's bowl, not its descender. */
+#appLoader .qnex-boot-circle { --boot-circle-size:80px; width:80px; height:85px; border-radius:50%; top:45%; border-width:8px; }
+#appLoader .qnex-boot-circle > span { font-size:44px; }
+.qnex-loading-mark .qnex-boot-circle { width:34px; height:36px; top:45%; border-radius:50%; border-width:3.5px; }
+.qnex-loading-mark .qnex-boot-circle > span { font-size:21px; }
+@keyframes qnex-circle-fade { from {opacity:1} to {opacity:0} }
+@keyframes qnex-font-q-in { from {opacity:0} to {opacity:1} }
+
+/* Round labels restored; align their top with the font Q cap edge. */
+#appLoader .qnex-boot-circle { --boot-circle-size:92px; width:92px; height:92px; top:.19em; transform:translateX(-50%); border-radius:50%; border-width:8px; }
+#appLoader .qnex-boot-circle > span { font-size:50px; }
+.qnex-loading-mark .qnex-boot-circle { width:40px; height:40px; top:.19em; transform:translateX(-50%); border-radius:50%; border-width:3.5px; }
+.qnex-loading-mark .qnex-boot-circle > span { font-size:22px; }
+
+/* Keep the full wordmark after the introduction; retain the dot's knock. */
+#appLoader .qnex-ne, .qnex-loading-mark .qnex-ne { animation:none; width:auto; opacity:1; transform:none; }
+#appLoader .qnex-ne { animation:qnex-word-knocked 2s ease-in-out 4.5s infinite; }
+.qnex-loading-mark .qnex-ne { animation:qnex-word-knocked 2s ease-in-out 4.5s infinite; }
+@media(prefers-reduced-motion:reduce) { #appLoader .qnex-ne, .qnex-loading-mark .qnex-ne {animation:none} }
+
+/* Start the knock immediately after the dot lands. */
+#appLoader .qnex-boot-dot, .qnex-loading-mark .qnex-boot-dot { animation-delay:2.45s,3.1s; }
+#appLoader .qnex-morph-q, .qnex-loading-mark .qnex-morph-q { animation-delay:1.45s,3.1s; }
+#appLoader .qnex-ne, #appLoader .qnex-x, .qnex-loading-mark .qnex-ne, .qnex-loading-mark .qnex-x { animation-delay:3.1s; }
+.qnex-static-dot { color:#18abc8; letter-spacing:0; }
+#qnexDataStatus {position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:10001;max-width:min(740px,calc(100vw - 32px));width:max-content;padding:10px 16px;border:1px solid var(--border,#555);border-radius:8px;background:var(--bg-primary,#202324);color:var(--defualt,#ddd);font:13px/1.45 'Segoe UI',sans-serif;box-shadow:0 2px 14px #0002;pointer-events:none;}
+body.theme-light .qnex-static-dot { color:#008cab; }

@@ -10,6 +10,7 @@
   const workspaceBankLabel = bank => {
     if (!bank) return 'Choose a question bank';
     const key=String(bank.key || '').toLowerCase(), label=String(bank.label || '');
+    if(key.startsWith('bau-'))return `BAU - ${label.replace(/^BAU\s*[-:·]?\s*/i,'')}`;
     const provider=key.startsWith('mehlman') || /mehlman/i.test(label) ? 'Mehlman' : key.startsWith('amboss') || /amboss/i.test(label) ? 'AMBOSS' : key.startsWith('uworld') || /uworld|uworld/i.test(label) ? 'UWorld' : key.startsWith('boardvitals') || /boardvitals/i.test(label) ? 'BoardVitals' : key.startsWith('mksap') || /mksap/i.test(label) ? 'MKSAP' : '';
     const clean=label.replace(/^(UWorld|AMBOSS|Mehlman|BoardVitals|MKSAP)\s*[-:·]?\s*/i,'');
     return provider ? `${provider} - ${clean}` : label;
@@ -29,7 +30,7 @@
       const head = document.createElement('div'); head.className = 'qw-bank-head';
       head.innerHTML='<button id="qwBankSwitch" type="button" aria-label="Open Qbank Library">Choose a question bank</button>';
       const header=document.querySelector('#questionSidebar .sidebar-header');header.after(head);
-      const brand=document.createElement('button');brand.className='qw-brand-link qw-sidebar-wordmark';brand.type='button';brand.title='Qbank Library';brand.setAttribute('aria-label','Qnex — Open Qbank Library');brand.innerHTML='<span class="qw-logo-q">Q</span><span class="qw-logo-rest">nex</span><span class="qw-logo-dot">.</span>';const back=header.querySelector('#backToMainFromQuestions');back?.after(brand);if(!back)header.prepend(brand);brand.onclick=()=>window.QuestionBase.switchTab('medical-library');
+      const brand=document.createElement('button');brand.className='qw-brand-link qw-sidebar-wordmark';brand.type='button';brand.title='Qbank Library';brand.setAttribute('aria-label','Qnex — Open Qbank Library');brand.innerHTML='<span class="qw-sidebar-intro-ring" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></span><span class="qw-sidebar-intro-q" aria-hidden="true">Q</span><span class="qw-sidebar-loop-word" aria-hidden="true">Qnex<span class="qw-logo-dot">.</span></span>';const back=header.querySelector('#backToMainFromQuestions');back?.after(brand);if(!back)header.prepend(brand);brand.onclick=()=>window.QuestionBase.switchTab('medical-library');
       sidebar.prepend(nav); nav.classList.add('qw-nav');
       nav.setAttribute('aria-label', 'Question bank navigation');
       const bankLibrary = nav.querySelector('[data-tab="medical-library"]');
@@ -68,13 +69,14 @@
     syncSidebar() {
       const bank = lib().banks.find(b => b.key === lib().currentBank);
       const button = document.getElementById('qwBankSwitch');
-      const reset=document.getElementById('qwResetBank');if(reset)reset.disabled=!bank;
+      const reset=document.getElementById('qwResetBank');if(reset)reset.disabled=false;
       if (button) {
         button.textContent=workspaceBankLabel(bank);button.title='Open Qbank Library';
       }
       document.querySelectorAll('#qbankTabNav .qbank-tab').forEach(b => b.setAttribute('aria-current', b.dataset.tab === window.QuestionBase?.state.lastActiveTab ? 'page' : 'false'));
     },
-    loading(label='Loading your bank…') { return `<div class="qw-loader" role="status" aria-live="polite"><span class="qw-spinner" aria-hidden="true"></span><span>${esc(label)}</span></div>`; },
+    loadingLogo() { return '<div class="qnex-loading-mark" aria-hidden="true">Qnex<span class="qnex-static-dot">.</span></div>'; },
+    loading(label='Loading your bank…') { return `<div class="qw-loader qnex-branded-loader" role="status" aria-live="polite">${this.loadingLogo()}<span>${esc(label)}</span></div>`; },
     async render(tab) {
       const revision = ++this.revision;
       const panel = document.querySelector(`[data-tab-content="${tab}"]`); if (!panel) return;
@@ -84,10 +86,14 @@
           const mount=panel.firstChild;
           mount.innerHTML='<header class="qw-heading"><h2>Qbank Settings</h2></header><section class="qw-card"><h3>Reading</h3><label class="qw-field">Question and explanation text size<select id="qwReadingSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label></section><section class="qw-card"><h3>Timed tests</h3><label class="qw-field">Time accommodation<select id="qwDefaultTime"><option value="0">Standard</option><option value="25">Extra (1.25x)</option><option value="50">Extended (1.5x)</option><option value="100">Double (2x)</option></select></label><p class="qw-muted">Applies to future tests. Tests already started keep their time allowance.</p></section>';
           mount.querySelector('header').insertAdjacentHTML('afterend','<section class="qw-card"><h3>Appearance</h3><label class="qw-field">Theme<select id="qwTheme"><option value="dark">Qnex Dark</option><option value="light">Qnex Light</option></select></label><label class="qw-field">App text &amp; interface size<select id="qwAppScale"><option value="0.9">Small · 90%</option><option value="1">Default · 100%</option><option value="1.1">Large · 110%</option><option value="1.25">Extra large · 125%</option></select></label><p class="qw-muted">Scales text and controls together throughout Qnex.</p></section>');
-          mount.insertAdjacentHTML('beforeend','<section class="qw-card"><h3>Reset progress</h3><p class="qw-muted">Start over in the selected question bank. You will need to type RESET to confirm.</p><button type="button" id="qwSettingsReset" class="ml-library-btn qd-icon-action" title="Reset current bank" aria-label="Reset current bank"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg></button></section>');
+          lib().renderLocationSettings(mount);
+          mount.insertAdjacentHTML('beforeend','<section class="qw-card"><h3>Reset progress</h3><p class="qw-muted">Reset the current question bank or all question banks. Type RESET to confirm.</p><button type="button" id="qwSettingsReset" class="ml-library-btn qd-icon-action" title="Reset progress" aria-label="Reset progress"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg></button></section>');
           mount.querySelector('#qwSettingsReset').onclick=()=>document.getElementById('qwResetBank')?.click();
-          mount.querySelector('#qwSettingsReset').disabled=!lib().currentBank;
+
           const theme=mount.querySelector('#qwTheme'),scale=mount.querySelector('#qwAppScale');theme.value=document.body.classList.contains('theme-light') ? 'light' : 'dark';scale.value=localStorage.getItem('qnex-app-scale') || '1';
+          mount.querySelector('header').insertAdjacentHTML('afterend','<section class="qw-card"><h3>Study profile</h3><p class="qw-muted" id="qwProfileSummary"></p><button type="button" id="qwEditProfile" class="ml-library-btn">Edit name and objective</button></section>');
+          const updateProfile=()=>{const profile=window.QbankProfile?.read();mount.querySelector('#qwProfileSummary').textContent=profile?`${profile.username} · ${profile.objective}`:'Set your name and study objective.';};updateProfile();
+          mount.querySelector('#qwEditProfile').onclick=()=>{window.QbankProfile?.open();document.getElementById('qbankProfileIntro')?.addEventListener('close',updateProfile,{once:true});};
           theme.onchange=async()=>{try{const settings=window.Storage?.loadSettings ? await window.Storage.loadSettings() : {};settings.theme=theme.value;if(window.Storage?.saveSettings)await window.Storage.saveSettings(settings);if(window.state?.settings)window.state.settings.theme=theme.value;document.body.classList.toggle('theme-light',theme.value==='light');document.querySelectorAll('[data-theme]').forEach(card=>card.classList.toggle('active',card.dataset.theme===theme.value));window.showToast('Theme saved.','success');}catch(error){window.showToast(esc('Could not save theme: '+error.message),'error');}};
           scale.onchange=()=>{localStorage.setItem('qnex-app-scale',scale.value);this.applyAppScale(scale.value);window.showToast('App size saved.','success');};
           const size=mount.querySelector('#qwReadingSize'),time=mount.querySelector('#qwDefaultTime');size.value=localStorage.getItem('dungeonFontSize') || 'medium';time.value=localStorage.getItem('qnex-time-accommodation') || '0';
@@ -107,12 +113,12 @@
           const mount=document.createElement('div');mount.className='qw-page ml-library';panel.replaceChildren(mount);
           this.flagged(mount, {label:'Qnex Qbank'}, []);return;
         }
+        if(tab==='qbank-reset'){const mount=document.createElement('div');mount.className='qw-page ml-library';panel.replaceChildren(mount);window.QBankDashboard.reset(context.bank,mount);return;}
         if (!context.bank) {
           panel.innerHTML = '<div class="qw-page ml-library"><h2>Choose your question bank</h2><p>Select a bank on Main to build tests and track your progress.</p><button class="ml-library-btn" id="qwChoose">Choose bank</button></div>';
           panel.querySelector('button').onclick = () => window.QuestionBase.switchTab('main'); return;
         }
         const mount = document.createElement('div'); mount.className = 'qw-page ml-library'; panel.replaceChildren(mount);
-        if(tab==='qbank-reset'){window.QBankDashboard.reset(context.bank,mount);return;}
         if (tab === 'flagged') {
           const questions=await lib().api('/flagged?bank='+encodeURIComponent(context.bank.key));
           if (revision !== this.revision) return;
@@ -135,7 +141,7 @@
         }
       } catch (error) {
         if (revision !== this.revision) return;
-        panel.innerHTML = `<div class="qw-page ml-library"><p role="alert">${esc(error.message)}</p><button class="ml-library-btn qd-icon-action" title="Retry" aria-label="Retry"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17a8 8 0 1 0 2-11"/></svg></button></div>`;
+        panel.innerHTML = `<div class="qw-page ml-library"><div class="qw-feedback"><p class="qd-message qd-error" role="alert">${esc(error.message)}</p><button class="ml-library-btn qd-icon-action" title="Retry" aria-label="Retry"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L3 9m0-6v6h6M4 13a8 8 0 0 0 14 5l3-3m0 6v-6h-6"/></svg></button></div></div>`;
         panel.querySelector('button').onclick = () => this.render(tab);
       }
     },
@@ -168,10 +174,22 @@
         <section class="qw-card"><h3>Select Source:</h3><p class="qw-muted">Choose a source to begin, then select subjects and systems below.</p><div class="qw-inline">${[['all','All questions'],['new','New questions'],['incorrect','Incorrect answers'],['marked','Marked questions'],['omitted','Omitted questions']].map(([id,label]) => check('pool',id,label,null,draft.pools.includes(id))).join('')}</div></section>
         <section class="qw-card"><div class="qw-section-heading"><h3>Subjects</h3><label><input type="checkbox" data-all="subject"> Select all</label></div><div class="qw-check-grid">${taxonomy.subjects.map(s => check('subject',s.id,s.name,s.count,draft.subjects.includes(String(s.id)))).join('')}</div></section>
         <section class="qw-card"><div class="qw-section-heading"><h3>Systems & topics</h3><label><input type="checkbox" data-all="system"> Select all</label></div><div class="qw-check-grid">${[...groups].sort(([a],[b]) => a.localeCompare(b)).map(([name, children], i) => `<details class="qw-system"><summary><input type="checkbox" data-group="${i}" aria-label="Select ${esc(name)}"><span>${esc(name)}</span><small>${unique([...children.values()].flatMap(c => [...c.ids])).length}</small></summary><div>${[...children.values()].map(c => check('system',c.key,c.label,c.count,draft.systems.includes(c.key))).join('')}</div></details>`).join('')}</div></section>
-        <section class="qw-card qw-generate"><div class="qw-generate-details"><h3>Ready to start?</h3><strong id="qwMatching" aria-live="polite"></strong><p class="qw-muted">Choose up to 100 questions for this test.</p><p class="qw-muted qw-content-note">Incomplete questions and linked cases are skipped.</p></div><label class="qw-question-count">Questions per test<input name="count" type="number" min="1" max="100" required value="${draft.count}"></label><button class="ml-library-btn primary" id="qwGenerate" title="Generate Test" aria-label="Generate Test">${icons.play}</button></section><p id="qwStatus" role="status"></p>
+        <section class="qw-card qw-generate"><div class="qw-generate-details"><strong id="qwMatching" aria-live="polite"></strong><div class="qw-selection-tags" id="qwSelectionTags" aria-label="Selected subjects and systems"></div></div><div class="qw-question-count"><label for="qwBlockCount">Questions per test</label><input id="qwBlockCount" name="count" type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" required value="${draft.count}"><button type="button" id="qwMatchCount" class="qw-match-count">Match questions number</button></div><button class="ml-library-btn primary" id="qwGenerate" title="Generate Test" aria-label="Generate Test">${icons.play}</button></section><p id="qwStatus" role="status"></p>
       </form>`;
       this.wireHeading(mount);
       const form = mount.querySelector('form');
+      if(bank.key.startsWith('bau-')) {
+        const field=document.createElement('label');field.className='qw-switch';
+        field.innerHTML='<input type="checkbox" role="switch" name="bauNavigation" aria-label="Two-way navigation"><span></span><b class="qw-navigation-label" style="font-weight:inherit">One way</b>';
+        form.querySelector('.qw-switch').closest('.qw-inline').append(field);
+        field.querySelector('input').checked=draft.bauNavigation==='two-way';
+      }
+      // Keep editing keys inside the builder instead of invoking app shortcuts.
+      form.addEventListener('keydown', event => {
+        if (!event.target.closest('input, textarea, select, [contenteditable]')) return;
+        event.stopPropagation();
+        if (event.key === 'Enter' && event.target.matches('input:not([type=checkbox]):not([type=radio])')) event.preventDefault();
+      });
       const idStatus=document.createElement('p');idStatus.id='qwIdStatus';idStatus.setAttribute('aria-live','polite');form.querySelector('[name=ids]').after(idStatus);
       const subjectSection=form.querySelector('[data-all="subject"]').closest('section');
       const systemSection=form.querySelector('[data-all="system"]').closest('section');
@@ -179,7 +197,12 @@
       [subjectSection,systemSection,generateSection].forEach(section=>section.classList.add('qw-step'));
       const addStatus=section=>{const status=document.createElement('p');status.className='qw-muted qw-step-status';status.setAttribute('aria-live','polite');section.querySelector('h3').closest('.qw-section-heading')?.after(status);return status;};
       const subjectStatus=addStatus(subjectSection),systemStatus=addStatus(systemSection);
+      let idsSyncTimer;
       const sync = () => {
+        clearTimeout(idsSyncTimer);
+        draft.bauNavigation=form.elements.bauNavigation?.checked ? 'two-way' : 'one-way';
+        const navigationLabel=form.querySelector('.qw-navigation-label');
+        if(navigationLabel)navigationLabel.textContent=draft.bauNavigation==='two-way' ? 'Two way' : 'One way';
         const fd = new FormData(form);
         Object.assign(draft, { subjects: fd.getAll('subject'), systems: fd.getAll('system'), pools: fd.getAll('pool'), name: fd.get('title'), ids: fd.get('ids'), count: Number(fd.get('count')), tutor: fd.has('tutor'), timed: fd.has('timed'), timingBasis:'question', timingScope:'session', seconds:90, minutes:60, adjustment:Number(form.elements.adjustment.value) });
         const facet=this.facets(items,draft,stats,taxonomy.amboss);
@@ -191,6 +214,7 @@
         const systems=this.facets(items,draft,stats,taxonomy.amboss);
         form.querySelectorAll('[name="system"]').forEach(box=>{
           const count=systems.systems.get(box.value)?.size || 0;box.closest('label').querySelector('small').textContent=count.toLocaleString();
+          box.closest('label').hidden=!count;
           box.disabled=!count;if(!count)box.checked=false;
         });
         draft.systems=[...form.querySelectorAll('[name="system"]:checked')].map(b=>b.value);
@@ -198,11 +222,21 @@
         form.querySelectorAll('[data-group]').forEach(box => {
           const children = [...box.closest('details').querySelectorAll('[name="system"]:not(:disabled)')];
           box.disabled=!children.length;box.checked = children.length>0 && children.every(c => c.checked); box.indeterminate = children.some(c => c.checked) && !box.checked;
+          box.closest('details').hidden=!children.length;
           const ids=new Set(children.flatMap(b=>[...(systems.systems.get(b.value) || [])]));
           box.closest('summary').querySelector('small').textContent=ids.size.toLocaleString();
         });
         const matching = this.matching(items, draft, stats, taxonomy.amboss);
+        if (!draft.countManual) {
+          draft.count=matching.length;
+          form.elements.count.value=matching.length;
+        }
         mount.querySelector('#qwMatching').textContent = `${matching.length.toLocaleString()} matching questions`;
+        const selectedTags = unique([
+          ...taxonomy.subjects.filter(subject => draft.subjects.includes(String(subject.id))).map(subject => subject.name),
+          ...[...form.querySelectorAll('[name="system"]:checked')].map(box => box.closest('.qw-check').querySelector('span').textContent)
+        ]);
+        mount.querySelector('#qwSelectionTags').innerHTML = selectedTags.map(tag => `<span class="qw-selection-tag">${esc(tag)}</span>`).join('');
         const validation=this.validateIds(items,draft.ids);
         idStatus.className=validation.valid ? 'qw-id-valid' : 'qw-id-invalid';
         idStatus.textContent=validation.message;
@@ -211,8 +245,8 @@
         form.querySelector('[name=pool]').closest('section').hidden=draft.custom;
         generateSection.hidden=draft.custom ? !validation.valid : !draft.pools.length || !draft.systems.length;
         form.querySelector('#qwRetrieve').disabled=!form.elements.retrieveId.value.trim();
-        if(draft.custom){draft.count=Math.min(100,matching.length);form.elements.count.value=draft.count || 1;}
-        form.querySelector('.qw-question-count').hidden=draft.custom;
+
+
         const sourceCount=facet.ids.size,systemCount=unique([...systems.systems.values()].flatMap(ids=>[...ids])).length;
         subjectStatus.textContent=sourceCount ? `${sourceCount.toLocaleString()} questions in the selected source · ${draft.subjects.length} subjects selected` : 'No questions in this source yet. Choose another source to continue.';
         systemStatus.textContent=`${systemCount.toLocaleString()} questions across your selected subjects · ${matching.length.toLocaleString()} match the selected systems`;
@@ -221,12 +255,32 @@
         const count=Math.min(draft.count,matching.length);
         const timing=this.timing(draft,count);
         form.querySelector('#qwTimingSummary').textContent=count>0 ? `${count} questions · ${this.duration(timing.total)} total · ${this.duration(timing.total/count)} ${draft.timingScope==='session' ? 'average per question' : 'per question'}${draft.adjustment ? ` (${Math.abs(draft.adjustment)}% ${draft.adjustment>0 ? 'extra' : 'less'} time)` : ''}` : 'Select questions to calculate your test time.';
-        mount.querySelector('#qwGenerate').disabled = !matching.length || !Number.isInteger(draft.count) || draft.count<1 || draft.count>100 || (draft.custom && !validation.valid) || (draft.timed && !timing.valid);
+        mount.querySelector('#qwGenerate').disabled = !matching.length || !Number.isInteger(draft.count) || draft.count<1 || (draft.custom && !validation.valid) || (draft.timed && !timing.valid);
         return matching;
       };
-      form.oninput = event => { if (event.target.type !== 'checkbox') sync(); };
+      form.querySelector('#qwMatchCount').onclick = () => {
+        draft.countManual=false;
+        sync();
+      };
+      const countInput = form.querySelector('#qwBlockCount');
+      countInput.addEventListener('focus', event => event.target.select());
+      countInput.addEventListener('keydown', event => event.stopPropagation());
+      form.oninput = event => {
+        if (event.target.name === 'title') { draft.name=event.target.value; return; }
+        if (event.target.name === 'retrieveId') { form.querySelector('#qwRetrieve').disabled=!event.target.value.trim(); return; }
+        if (event.target.name === 'ids') {
+          draft.ids=event.target.value;
+          clearTimeout(idsSyncTimer);
+          form.querySelector('#qwGenerate').disabled=true;
+          idsSyncTimer=setTimeout(()=>{if(form.isConnected)sync();},150);
+          return;
+        }
+        if (event.target.name === 'count') draft.countManual=true;
+        if (event.target.type !== 'checkbox') sync();
+      };
       form.onchange = event => {
         const target = event.target;
+        if (target.name === 'title' || target.name === 'retrieveId') return;
         if (target.dataset.all) form.querySelectorAll(`[name="${target.dataset.all}"]:not(:disabled)`).forEach(b => b.checked = target.checked);
         if (target.hasAttribute('data-group')) target.closest('details').querySelectorAll('[name="system"]:not(:disabled)').forEach(b => b.checked = target.checked);
         if (target.name === 'pool' && target.checked) form.querySelectorAll('[name="pool"]').forEach(b => { if (b !== target) b.checked = false; });
@@ -241,29 +295,37 @@
       };
       form.querySelector('#qwRetrieve').onclick=async()=>{
         const button=form.querySelector('#qwRetrieve'),status=form.querySelector('#qwRetrieveStatus');button.disabled=true;status.textContent='Retrieving questions…';
-        try{const enteredId=form.elements.retrieveId.value.trim();const savedTests=await lib().api('/sessions');const matches=savedTests.filter(s=>s.id===enteredId||s.id.slice(-8)===enteredId);if(matches.length!==1)throw Error(matches.length ? 'This ID matches more than one test. Copy its full ID from Recent Sessions.' : 'Test not found in Qnex. For a test from another app, enter its bank question IDs on the left.');const session=await lib().api('/sessions/'+encodeURIComponent(matches[0].id));if(session.bank!==bank.key)throw Error('This test belongs to a different question bank.');const ids=unique((session.questions || []).map(q=>q.source?.questionId).filter(id=>id!=null));if(!ids.length)throw Error('No question IDs found in this test.');form.elements.ids.value=ids.join(', ');status.textContent=ids.length+' question IDs retrieved.';sync();}catch(error){status.textContent=error.message;}finally{button.disabled=!form.elements.retrieveId.value.trim();}
+        try{const enteredId=form.elements.retrieveId.value.trim();const savedTests=await lib().api('/sessions');const matches=savedTests.filter(s=>s.id===enteredId||s.id.slice(-8)===enteredId);if(matches.length!==1)throw Error(matches.length ? 'This ID matches more than one test. Copy its full ID from Recent Sessions.' : 'Test not found in Qnex. For a test from another app, enter its bank question IDs on the left.');const session=await lib().api('/sessions/'+encodeURIComponent(matches[0].id));if(session.bank!==bank.key)throw Error('This test belongs to a different question bank.');const ids=unique((session.questions || []).map(q=>(q.source?.displayId || q.source?.questionId)).filter(id=>id!=null));if(!ids.length)throw Error('No question IDs found in this test.');form.elements.ids.value=ids.join(', ');status.textContent=ids.length+' question IDs retrieved.';sync();}catch(error){status.textContent=error.message;}finally{button.disabled=!form.elements.retrieveId.value.trim();}
       };
       form.onsubmit = async event => {
         event.preventDefault(); const ids = sync(); const button = mount.querySelector('#qwGenerate'); button.disabled = true;
-        const status = mount.querySelector('#qwStatus'); status.textContent = 'Preparing your questions…';
+        const status = mount.querySelector('#qwStatus'); status.textContent = '';
+        let preparationScreen;
         try {
           if (draft.custom && !this.validateIds(items,draft.ids).valid) throw new Error(this.validateIds(items,draft.ids).message);
           if (!ids.length) throw new Error('Choose a question source, subjects and systems first.');
-          if (!Number.isInteger(draft.count) || draft.count<1 || draft.count>100) throw new Error('Choose between 1 and 100 questions.');
+          if (!Number.isInteger(draft.count) || draft.count<1) throw new Error('Enter a positive whole number of questions.');
+          preparationScreen = document.createElement('div'); preparationScreen.className = 'qw-preparation-screen';
+          preparationScreen.setAttribute('role', 'status'); preparationScreen.setAttribute('aria-live', 'polite');
+          preparationScreen.innerHTML = `<div class="qw-preparation-content">${this.loadingLogo()}<h2>Preparing your questions</h2><p>${esc(bank.label)} · ${Math.min(draft.count, ids.length).toLocaleString()} questions</p></div>`;
+          document.body.append(preparationScreen);
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           const result = await lib().api('/questions', { method: 'POST', body: JSON.stringify({ bank: bank.key, ids, count: draft.count }) });
           if (!result.questions.length) throw new Error('No supported questions match. Try a different selection.');
           const options = new Map([['mode',draft.tutor ? 'tutor' : 'exam'],['timer',draft.timed ? 'down' : 'up']]);
           const questions = result.questions.map(q => ({ ...lib().adapt(q, bank.key, options), starred: (stats.markedIds || []).includes(q.id) }));
+          if(bank.key.startsWith('bau-'))questions.forEach(q=>{q._bauNavigation=draft.bauNavigation;q._bauSessionTitle=draft.name.trim() || lib().defaultSessionTitle();});
           const timing=this.timing(draft,questions.length);
           if(draft.timed && !timing.valid) throw new Error('Enter a valid time allowance.');
           questions.forEach((q,i)=>{q._timerScope=draft.timed ? draft.timingScope : 'question';q._timerSecs=draft.timed ? (draft.timingScope==='session' ? timing.total : timing.allocations[i]) : 0;q._budgetSeconds=timing.allocations[i];});
-          const session = { id: 'medos-' + crypto.randomUUID(), library: true, bank: bank.key, generation: profile.generations[bank.key] || 0, title: draft.name.trim() || `${bank.label} · ${questions.length} questions`, date: new Date().toISOString(), questions, completed: false, settings: { pools: [...draft.pools], custom: draft.custom, timing:draft.timed ? {...timing,scope:draft.timingScope,basis:draft.timingBasis,adjustment:draft.adjustment} : null } };
+          const session = { id: 'medos-' + crypto.randomUUID(), library: true, bank: bank.key, generation: profile.generations[bank.key] || 0, title: draft.name.trim() || lib().defaultSessionTitle(), date: new Date().toISOString(), questions, completed: false, settings: { pools: [...draft.pools], custom: draft.custom, timing:draft.timed ? {...timing,scope:draft.timingScope,basis:draft.timingBasis,adjustment:draft.adjustment} : null } };
           lib().updateSummary(await lib().api('/sessions/' + session.id, { method: 'PUT', body: JSON.stringify(session) }));
           lib().active = session;
           status.textContent = `${questions.length} questions ready.${result.skipped ? ` Skipped ${result.skipped} incomplete or linked questions.` : ''}`;
           window.DungeonBase.open(questions, session.id);
+          document.getElementById('dungeonLoadingScreen')?.classList.add('hidden');
         } catch (error) { status.textContent = error.message; }
-        finally { sync(); }
+        finally { preparationScreen?.remove(); sync(); }
       };
       sync();
     },
@@ -283,12 +345,21 @@
       }
       return {subjects,systems,ids};
     },
+    resolveQuestionIds(items, text) {
+      const aliases=new Map();
+      items.forEach(q=>[String(q.id),q.displayId,...(q.aliases || [])].filter(Boolean).forEach(alias=>{
+        const key=String(alias).toLowerCase();if(!aliases.has(key))aliases.set(key,new Set());aliases.get(key).add(q.id);
+      }));
+      const raw=text.trim().split(/[\s,]+/).filter(Boolean),ids=[],missing=[],ambiguous=[];
+      raw.forEach(value=>{const matches=aliases.get(value.toLowerCase());if(!matches)missing.push(value);else if(matches.size>1)ambiguous.push(value);else ids.push([...matches][0]);});
+      return {raw,ids:unique(ids),missing:unique(missing),ambiguous:unique(ambiguous)};
+    },
     validateIds(items, text) {
       if(!text.trim())return {valid:false,message:'Enter question IDs to check them.'};
-      if(!/^\s*\d+(?:[\s,]+\d+)*\s*$/.test(text))return {valid:false,message:'Use numeric IDs separated by commas or spaces.'};
-      const raw=text.trim().split(/[\s,]+/).map(Number), ids=unique(raw), known=new Set(items.map(q=>q.id));
-      const missing=ids.filter(id=>!known.has(id)), found=ids.length-missing.length;
-      return {valid:!missing.length,found,missing,message:missing.length ? `${found} questions found. IDs not found in this bank: ${missing.slice(0,10).join(', ')}${missing.length>10 ? '…' : ''}.` : `IDs valid · ${found} ${found===1 ? 'question' : 'questions'} found.${raw.length>ids.length ? ' Duplicate IDs counted once.' : ''}`};
+      const {raw,ids,missing,ambiguous}=this.resolveQuestionIds(items,text),found=ids.length;
+      const valid=!missing.length&&!ambiguous.length;
+      const message=ambiguous.length ? `These IDs identify more than one question: ${ambiguous.slice(0,10).join(', ')}. Use the full batch ID.` : missing.length ? `${found} questions found. IDs not found in this bank: ${missing.slice(0,10).join(', ')}${missing.length>10 ? '…' : ''}.` : `IDs valid · ${found} ${found===1 ? 'question' : 'questions'} found.${raw.length>ids.length ? ' Duplicate IDs counted once.' : ''}`;
+      return {valid,found,missing,ambiguous,message};
     },
     duration(seconds) { const value=Math.max(0,Math.round(seconds || 0));return `${Math.floor(value/60)}m ${String(value%60).padStart(2,'0')}s`; },
     timing(draft,count) {
@@ -300,7 +371,7 @@
       return {total:valid ? total : 0,allocations,valid};
     },
     matching(items, draft, stats, amboss) {
-      const requested = new Set(draft.ids.trim().split(/[\s,]+/).map(Number));
+      const requested = draft.custom ? new Set(this.resolveQuestionIds(items,draft.ids).ids) : null;
       const marked = new Set(stats.markedIds || []);
       return unique(items.filter(q => {
         if (draft.custom && !requested.has(q.id)) return false;
@@ -310,6 +381,9 @@
         return draft.pools.some(pool => pool === 'all' || pool === 'new' && !result || pool === result || pool === 'marked' && marked.has(q.id));
       }).map(q => q.id));
     },
+    sessionTable(sessions, withDelete = false) {
+      return `<div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Date</th><th>Test / ID</th><th>Mode</th><th>Subjects</th><th>Systems</th><th>Score</th><th>Progress</th><th>Actions</th></tr></thead><tbody>${sessions.map(s => `<tr><td>${esc(new Date(s.date).toLocaleDateString())}</td><td><strong>${esc(s.title)}</strong><small>${esc(s.id.slice(-8))}</small></td><td>${esc(s.mode || 'Tutor')}<small>${s.timed ? 'Timed' : 'Untimed'}</small></td><td>${this.chips(s.subjects || [])}</td><td>${this.chips(s.systems || [])}</td><td>${s.completed ? percent(s.correct,s.count)+'%' : '—'}</td><td>${s.answered} / ${s.count}<small>${s.completed ? 'Completed' : 'In progress'}</small></td><td><div class="qw-inline"><button class="qw-icon" data-rename="${esc(s.id)}" title="Rename test" aria-label="Rename test">${icons.edit}</button><button class="qw-icon" data-result="${esc(s.id)}" title="Results and analysis" aria-label="Results and analysis">${icons.results}</button><button class="qw-icon" data-resume="${esc(s.id)}" title="${s.completed ? 'Review' : 'Resume'}" aria-label="${s.completed ? 'Review' : 'Resume'}">${icons.play}</button>${withDelete ? `<button class="qw-icon" data-delete-session="${esc(s.id)}" title="Delete session" aria-label="Delete session">${svg('<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>')}</button>` : ''}</div></td></tr>`).join('') || '<tr><td colspan="8" class="qw-empty-sessions">No sessions yet. Create a test to get started.</td></tr>'}</tbody></table></div>`;
+    },
     history(mount, { bank }, sessions) {
       mount.innerHTML = this.heading('Recent Sessions', bank) + '<label class="qw-field">Find a test<input id="qwFindTest" type="search" placeholder="Search test names"></label><div id="qwHistory"></div>';
       this.wireHeading(mount);
@@ -318,7 +392,7 @@
         const filtered = sessions.filter(s => s.title.toLowerCase().includes(term));
         this.page = Math.min(this.page, Math.max(0, Math.ceil(filtered.length/10)-1));
         const rows = filtered.slice(this.page*10,this.page*10+10);
-        mount.querySelector('#qwHistory').innerHTML = rows.length ? `<div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Date</th><th>Test / ID</th><th>Mode</th><th>Subjects</th><th>Systems</th><th>Score</th><th>Progress</th><th>Actions</th></tr></thead><tbody>${rows.map(s => `<tr><td>${esc(new Date(s.date).toLocaleDateString())}</td><td><strong>${esc(s.title)}</strong><small>${esc(s.id.slice(-8))}</small></td><td>${esc(s.mode)}<small>${s.timed ? 'Timed' : 'Untimed'}</small></td><td>${this.chips(s.subjects)}</td><td>${this.chips(s.systems)}</td><td>${s.completed ? percent(s.correct,s.count)+'%' : '—'}</td><td>${s.answered} / ${s.count}<small>${s.completed ? 'Completed' : 'In progress'}</small></td><td><div class="qw-inline"><button class="qw-icon" data-rename="${s.id}" title="Rename test" aria-label="Rename test">${icons.edit}</button><button class="qw-icon" data-result="${s.id}" title="Results and analysis" aria-label="Results and analysis">${icons.results}</button><button class="qw-icon" data-resume="${s.id}" title="${s.completed ? 'Review' : 'Resume'}" aria-label="${s.completed ? 'Review' : 'Resume'}">${icons.play}</button></div></td></tr>`).join('')}</tbody></table></div><div class="qw-pagination"><button class="ml-library-btn qd-icon-action" id="qwPrev" ${this.page === 0 ? 'disabled' : ''} title="Previous" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span>${this.page*10+1}–${this.page*10+rows.length} of ${filtered.length}</span><button class="ml-library-btn" id="qwNext" ${(this.page+1)*10 >= filtered.length ? 'disabled' : ''}>Next</button></div>` : '<div class="qw-card">No tests here yet. Create a test for this bank to get started.</div>';
+        mount.querySelector('#qwHistory').innerHTML = rows.length ? `${this.sessionTable(rows)}<div class="qw-pagination"><button class="ml-library-btn qd-icon-action" id="qwPrev" ${this.page === 0 ? 'disabled' : ''} title="Previous" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span>${this.page*10+1}–${this.page*10+rows.length} of ${filtered.length}</span><button class="ml-library-btn" id="qwNext" ${(this.page+1)*10 >= filtered.length ? 'disabled' : ''}>Next</button></div>` : '<div class="qw-card">No tests here yet. Create a test for this bank to get started.</div>';
         mount.querySelector('#qwPrev')?.addEventListener('click', () => { this.page--; draw(); });
         mount.querySelector('#qwNext')?.addEventListener('click', () => { this.page++; draw(); });
         mount.querySelectorAll('#qwHistory td:nth-child(2) small').forEach(b => b.onclick = async () => { try { const row=b.closest('tr');const id=row.querySelector('[data-resume]')?.dataset.resume;if(!id)throw Error('Test ID unavailable');await navigator.clipboard.writeText(id); if (typeof window.showToast === 'function') window.showToast('Test ID copied to clipboard.', 'success', 2200); else window.notifCenter?.add('Test ID copied to clipboard.', 'success'); b.title='Copied'; setTimeout(() => b.title='Copy test ID', 1200); } catch { if (typeof window.showToast === 'function') window.showToast('Could not copy the test ID.', 'error', 2200); else window.notifCenter?.add('Could not copy the test ID.', 'error'); } });
@@ -424,7 +498,7 @@
         this.wireHeading(mount); mount.querySelector('#qwBackTests').onclick = back;
         mount.querySelectorAll('[data-result-tab]').forEach(b => b.onclick = () => { tab = b.dataset.resultTab; draw(); });
         const body = mount.querySelector('#qwResultBody');
-        if (tab === 'results') body.innerHTML = `<div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Result</th><th>ID</th><th>Subject</th><th>System</th><th>Topic</th><th>Others correct</th><th>Time</th></tr></thead><tbody>${questions.map(q => `<tr><td class="qw-${outcome(q)}">${outcome(q)}</td><td>${esc(q.source.questionId)}</td><td>${esc(q.tags.subject.join(', '))}</td><td>${esc(q.tags.system.join(', '))}</td><td>${esc(q.tags.minor.join(', ')) || '—'}</td><td>${q.answerStats?.percent_correct == null ? '—' : esc(q.answerStats.percent_correct)+'%'}</td><td>${q.timerElapsed == null ? '—' : Math.round(q.timerElapsed/1000)+'s'}</td></tr>`).join('')}</tbody></table></div>`;
+        if (tab === 'results') body.innerHTML = `<div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Result</th><th>ID</th><th>Subject</th><th>System</th><th>Topic</th><th>Others correct</th><th>Time</th></tr></thead><tbody>${questions.map(q => `<tr><td class="qw-${outcome(q)}">${outcome(q)}</td><td>${esc(q.source.displayId || q.source.questionId)}</td><td>${esc(q.tags.subject.join(', '))}</td><td>${esc(q.tags.system.join(', '))}</td><td>${esc(q.tags.minor.join(', ')) || '—'}</td><td>${q.answerStats?.percent_correct == null ? '—' : esc(q.answerStats.percent_correct)+'%'}</td><td>${q.timerElapsed == null ? '—' : Math.round(q.timerElapsed/1000)+'s'}</td></tr>`).join('')}</tbody></table></div>`;
         else {
           const changes = { C2I:0,I2C:0,I2I:0 };
           questions.forEach(q => Object.keys(changes).forEach(k => changes[k] += q.answerChanges?.[k] || 0));
@@ -486,16 +560,16 @@
       this.wireHeading(mount);
       const draw = () => {
         const query = mount.querySelector('input').value.trim().toLowerCase();
-        const matches = query ? questions.filter(q => `${q.source.questionId} ${q.title} ${q.tags.subject} ${q.tags.system}`.toLowerCase().includes(query)) : [];
+        const matches = query ? questions.filter(q => `${q.source.displayId || q.source.questionId} ${(q.source.aliases || []).join(' ')} ${q.title} ${q.tags.subject} ${q.tags.system}`.toLowerCase().includes(query)) : [];
         const results = mount.querySelector('#qwSearchResults');
-        results.innerHTML = query ? `<p>${matches.length} matches${matches.length > 50 ? ' · showing first 50' : ''}</p>`+matches.slice(0,50).map(q => `<button class="qw-search-row" data-question="${q.source.questionId}"><strong>#${q.source.questionId} · ${esc(q.title)}</strong><small>${esc(q.tags.subject.join(', '))} · ${esc(q.tags.system.join(', '))}</small></button>`).join('') : '';
+        results.innerHTML = query ? `<p>${matches.length} matches${matches.length > 50 ? ' · showing first 50' : ''}</p>`+matches.slice(0,50).map(q => `<button class="qw-search-row" data-question="${q.source.questionId}"><strong>#${esc(q.source.displayId || q.source.questionId)} · ${esc(q.title)}</strong><small>${esc(q.tags.subject.join(', '))} · ${esc(q.tags.system.join(', '))}</small></button>`).join('') : '';
         results.querySelectorAll('[data-question]').forEach(b => b.onclick = async () => {
           b.disabled = true;
           try { const result = await lib().api(`/question-detail?bank=${encodeURIComponent(bank.key)}&qid=${b.dataset.question}`);
             if (!result.question) throw new Error('Question unavailable.');
             const q = lib().adapt(result.question,bank.key,new Map([['mode','tutor'],['timer','off']]));
             const dialog = document.createElement('dialog'); dialog.className = 'qw-dialog qw-reader ml-library';
-            dialog.innerHTML = `<button class="ml-library-btn qd-icon-action" title="Close" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button><h2>Question #${esc(q.source.questionId)}</h2>${lib().renderContent(q,'question')}<ol>${q.options.map(o => `<li>${lib().renderContent(q,'option',o)}</li>`).join('')}</ol><details><summary>Explanation</summary>${lib().renderContent(q,'explanation')}</details>`;
+            dialog.innerHTML = `<button class="ml-library-btn qd-icon-action" title="Close" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button><h2>Question #${esc(q.source.displayId || q.source.questionId)}</h2>${lib().renderContent(q,'question')}<ol>${q.options.map(o => `<li>${lib().renderContent(q,'option',o)}</li>`).join('')}</ol><details><summary>Explanation</summary>${lib().renderContent(q,'explanation')}</details>`;
             document.body.append(dialog); dialog.showModal(); dialog.querySelector('button').onclick = () => dialog.close(); dialog.onclose = () => dialog.remove();
           } catch (error) { alert(error.message); } finally { b.disabled = false; }
         });
