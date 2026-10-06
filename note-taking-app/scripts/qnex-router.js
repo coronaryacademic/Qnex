@@ -19,12 +19,17 @@
       if(prev)prev.disabled=index===0;if(next)next.disabled=index>=this.maxHistoryIndex;
     },
     settleRender(tab, revision=this.revision) {
-      const render=()=>{if(revision!==this.revision)return;try{this.renderTab(tab);}catch(error){console.error('[QnexRouter] render failed',error);}};
+      const render=()=>{if(revision!==this.revision)return;try{
+        this.show(false);
+        this.renderTab(tab);
+        const panel=document.querySelector(`[data-tab-content="${tab}"]`);
+        if(panel){panel.classList.add('active');panel.hidden=false;panel.style.display='';}
+      }catch(error){console.error('[QnexRouter] render failed',error);}};
+      // Safari can deliver several hash events before the previous tab's
+      // layout has committed. Re-render on a few frames so the destination
+      // cannot remain an empty panel after rapid navigation.
       render();
-      // iPad Safari can apply the hash/class transition one frame after the
-      // route event. A single deferred commit prevents a valid destination
-      // from being left blank when users navigate quickly or press Back.
-      setTimeout(()=>{if(revision===this.revision)render();},120);
+      [80, 220, 500].forEach(delay=>setTimeout(()=>{if(revision===this.revision)render();},delay));
     },
     setTitle(path) { document.title='Qnex'; document.body.dataset.qnexRoute=path; },
     write(path,replace=false) {
