@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/svg+xml"
-    href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect rx="12" ry="12" width="64" height="64" fill="%23fbbf24"/><path d="M18 20h28v4H18zm0 10h28v4H18zm0 10h18v4H18z" fill="%231f2937"/></svg>' />
-  <link rel="stylesheet" href="styles/style.css">
+  <title>Qnex</title>
+  <link rel="icon" type="image/svg+xml" href="assets/qnex-favicon.svg?v=qx-large-2" />
+  <link rel="stylesheet" href="styles/style.css?v=soft-selection-fast-labels-20261006">
   <link rel="stylesheet" href="styles/two-base.css">
   <link rel="stylesheet" href="styles/toolbar-highlight.css">
   <link rel="stylesheet" href="styles/settings.css">
@@ -15,11 +15,11 @@
   <link rel="stylesheet" href="styles/dungeon-footer.css">
   <link rel="stylesheet" href="styles/dungeon-note.css">
   <link rel="stylesheet" href="styles/toast.css">
-  <link rel="stylesheet" href="styles/notif-center.css">
+  <link rel="stylesheet" href="styles/notif-center.css?v=corner-toasts-spaced-bell-20261006">
   <link rel="stylesheet" href="styles/pdf-viewer.css">
   <link rel="stylesheet" href="styles/html-viewer.css">
   <link rel="stylesheet" href="styles/medical-library.css">
-  <link rel="stylesheet" href="styles/qbank-workspace.css?v=cqb-update-20261005">
+  <link rel="stylesheet" href="styles/qbank-workspace.css?v=header-forward-chevron-20261006">
   <link rel="stylesheet" href="styles/amboss-dungeon.css">
   <link rel="stylesheet" href="styles/bau-dungeon.css">
   <!-- Startup and reload sounds removed -->
@@ -85,10 +85,10 @@
       margin: 0.5rem 0;
     }
   </style>
-  <title>Qnex</title>
+
 </head>
 
-<body>
+<body class="qbank-only">
 
 
   <!-- Loading Spinner -->
@@ -98,7 +98,7 @@
       <div class="qnex-boot-logo" aria-label="Qnex" role="img">
         <span class="qnex-morph-q" aria-hidden="true"><span class="qnex-font-q">Q</span><span class="qnex-boot-circle"><span>A</span><span>B</span><span>C</span><span>D</span></span></span><span class="qnex-word-tail" aria-hidden="true"><span class="qnex-ne">ne</span><span class="qnex-x">x</span><span class="qnex-boot-dot">.</span></span>
       </div>
-      <p id="qnexBootStatus" class="qnex-boot-status" role="status">Loading data…</p>
+      <p id="qnexBootStatus" class="qnex-boot-status" role="status">Loading app...</p>
       <div id="loaderProgress" hidden></div><div id="loaderTerminal" hidden></div>
       <button id="loaderRetryBtn">RETRY CONNECTION</button>
     </div>
@@ -845,71 +845,7 @@
           </div>
 
           <!-- Breadcrumb Nav -->
-          <div class="breadcrumb-nav">
-            <div class="breadcrumb-left" style="flex: 1; padding-right: 10px; display: flex; align-items: center; justify-content: center; gap: 12px;">
-              <button id="backToEmptyStateBtn" class="icon-btn" title="Back" style="display: none;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M15 18l-6-6 6-6"/>
-                </svg>
-              </button>
-              
-              <!-- Tab Navigation -->
-              <div id="qbankTabNav" class="qbank-tab-nav" style="display: flex; gap: 4px;">
-                <button class="qbank-tab active" data-tab="main">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                  </svg>
-                  Main
-                </button>
-                <button class="qbank-tab" data-tab="statistics">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 20V10M12 20V4M6 20v-6"></path>
-                  </svg>
-                  Statistics
-                </button>
-                <button class="qbank-tab" data-tab="create-test">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="12" y1="8" x2="12" y2="16"></line>
-                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                  </svg>
-                  Create Test
-                </button>
-                <button class="qbank-tab" data-tab="recent-sessions">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 8v4l3 3m6-3a9 9 0 1 1-6.219-8.56"></path>
-                  </svg>
-                  Recent Sessions
-                </button>
-                <button class="qbank-tab" data-tab="medical-library">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5.5C9 3.5 5 3.5 2 5v15c3-1.5 7-1.5 10 .5 3-2 7-2 10-.5V5c-3-1.5-7-1.5-10 .5Z" stroke-linecap="round" stroke-linejoin="round"></path>
-                    <path d="M12 5.5v15M5 8.5l4 1M5 12l4 1M15 9.5l4-1M15 13l4-1" stroke-linecap="round" stroke-linejoin="round"></path>
-                  </svg>
-                  Medical Library
-                </button>
-              </div>
-              
-              <input type="text" id="questionTitleInput" placeholder="Select a question or create new"
-                class="question-title-input" disabled
-                style="width: 100%; border: none; background: transparent; font-size: 1.1em; font-weight: 600; outline: none; color: var(--text); display: none;">
-            </div>
-            <div class="breadcrumb-actions">
-              <button id="saveQuestionBtn" class="icon-btn" title="Save Question" disabled style="display:none;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                  <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-              </button>
-              <button id="deleteQuestionBtn" class="icon-btn danger" title="Delete Question" disabled style="display:none;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
+
 
           <div class="question-editor-container hidden" id="questionEditor">
             <!-- Header Moved Out -->
@@ -1353,12 +1289,6 @@
               <!-- Medical Library Tab Content -->
               <div class="tab-content" data-tab-content="medical-library">
                 <div class="statistics-container ml-page">
-                  <div class="stats-header">
-                    <div class="stats-title-group">
-                      <h2>Qbank Library</h2>
-                      <p>Choose a question bank and build your next test</p>
-                    </div>
-                  </div>
                   <div class="ml-grid" id="medicalLibraryGrid">
                     <!-- Categories will be rendered here -->
                   </div>
@@ -2760,22 +2690,24 @@
   <script src="scripts/markdown.js"></script>
   <script src="scripts/two-base.js"></script>
   <script src="scripts/two-base-persistence.js"></script>
-  <script src="scripts/question-base.js?v=3"></script>
-  <script src="scripts/medical-library.js?v=cqb-update-20261005"></script>
-  <script src="scripts/qbank-dashboard.js?v=cqb-update-20261005"></script>
-  <script src="scripts/qbank-workspace.js"></script>
+  <script src="scripts/question-base.js?v=sidebar-logo-restart-20261006"></script>
+  <script src="scripts/medical-library.js?v=view-performance-label-20261006"></script>
+  <script src="scripts/qbank-dashboard.js?v=view-performance-label-20261006"></script>
+  <script src="scripts/qbank-workspace.js?v=original-sessions-icon-20261006"></script>
   <script src="scripts/amboss-icons.js"></script>
-  <script src="scripts/qbank-profile.js"></script>
-  <script src="scripts/custom-features.js"></script>
+  <script src="scripts/qbank-profile.js?v=dashboard-default-20261006"></script>
+  <script src="scripts/custom-features.js?v=loading-app-label-20261006"></script>
   <script src="scripts/note-font-handler.js"></script>
   <script src="scripts/dungeon-note.js"></script>
   <script src="scripts/pdf-viewer.js"></script>
   <script src="scripts/html-viewer.js"></script>
   <script type="module">
-    import DungeonBase from './scripts/dungeon-base.js';
+    import DungeonBase from './scripts/dungeon-base.js?v=end-block-only-20261006';
     window.DungeonBase = new DungeonBase();
     window.DungeonBase.init();
   </script>
+
+  <script src="scripts/qnex-router.js?v=header-forward-chevron-20261006"></script>
 
   <!-- Debug Log Modal -->
   <div id="debugLogModal" class="modal-overlay" style="display: none; z-index: 2000;">

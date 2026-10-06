@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>.word{fill:#17202e}@media(prefers-color-scheme:dark){.word{fill:#f3f4f6}}</style>
+  <text class="word" x="0" y="49" textLength="55" lengthAdjust="spacingAndGlyphs" font-family="Segoe UI,Arial,sans-serif" font-size="54" font-weight="600" letter-spacing="-4">Qx</text>
+  <circle cx="60" cy="47" r="3.5" fill="#18abc8"/>
+</svg>

@@ -3,40 +3,25 @@
 // Global UI elements
 let topbar, sidebar, footer;
 
-// Keep the branded boot screen until the selected bank's initial data is ready.
-window.addEventListener('load', async () => {
-  const loader = document.getElementById('appLoader');
-  if (!loader) return;
-  const wordTail = loader.querySelector('.qnex-word-tail');
-  loader.style.setProperty('--qnex-ne-width', loader.querySelector('.qnex-ne').getBoundingClientRect().width + 'px');
-  loader.style.setProperty('--qnex-q-travel', (wordTail.getBoundingClientRect().width / 2) + 'px');
-  const status = document.getElementById('qnexBootStatus');
-  const setStatus = async message => {
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) await status.animate([{opacity:1},{opacity:0,transform:'translateY(-3px)'}],{duration:100,fill:'forwards'}).finished;
-    status.textContent = message;
-    status.getAnimations().forEach(animation => animation.cancel());
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) status.animate([{opacity:0,transform:'translateY(3px)'},{opacity:1,transform:'none'}],{duration:160});
-  };
-  const retry = document.getElementById('loaderRetryBtn');
-  retry.onclick = () => window.location.reload();
-  try {
-    const animationReady = new Promise(resolve => setTimeout(resolve, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 3800));
-    await setStatus('Connecting to local data…');
-    await window.fileSystemService.waitForReady();
-    await window.MedicalLibrary.preloadWorkspace(setStatus);
-    await setStatus('Preparing dashboard…');
-    await window.QBankDashboard.renderMain();
-    await animationReady;
-    await setStatus('Workspace ready');
-    await new Promise(resolve => setTimeout(resolve, 200));
-    loader.classList.add('hidden');
-  } catch (error) {
-    if(window.fileSystemService?.isOffline){window.QnexOffline?.notice();loader.classList.add('hidden');return;}
-    status.textContent = 'Your workspace could not finish loading. Please try again.';
-    retry.style.display = 'block';
-    console.warn('Workspace preparation failed:', error.message);
+// Show the shell immediately; bank data has its own in-page loading status.
+const dismissBootLogo = () => {
+  const loader=document.getElementById('appLoader');
+  if(loader) { loader.classList.add('hidden'); loader.style.display='none'; }
+};
+const startQbankShell = () => {
+  const base=document.getElementById('questionBase');
+  if(document.body.classList.contains('qbank-only') && base) {
+    (document.getElementById("qnexPages") || document.body).append(base);
+    if(!window.QnexRouter?.current?.startsWith('test/')) base.classList.remove('hidden');
   }
-});
+  const status=document.getElementById('qnexBootStatus');
+  if(status) status.textContent='Loading app...';
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Original animation speed; dismiss when the full wordmark and dot have formed.
+  setTimeout(dismissBootLogo,reducedMotion ? 150 : 2700);
+};
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',startQbankShell,{once:true});
+else startQbankShell();
 // Fullscreen functionality
 let isFullscreen = false;
 let currentFontSize = 16;
@@ -63,6 +48,11 @@ let autoBackupTimer = null;
 
 // Initialize custom features when DOM is ready
 document.addEventListener("DOMContentLoaded", async () => {
+  if(document.body.classList.contains("qbank-only")) {
+    window.notifCenter = new NotificationCenter();
+    document.addEventListener("keydown",event=>{if(event.key==="F12"){event.preventDefault();toggleFullscreen();}});
+    return; // Standalone notes observers and backups do not belong to the Qbank app.
+  }
   // Initialize theme carousel
   initializeThemeCarousel();
   // Initialize font size
@@ -165,7 +155,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       showToast("System cache purged successfully", "success", 4000);
     }, 800);
     // Clean up URL without reload
-    const newUrl = window.location.origin + window.location.pathname;
+    const newUrl = window.location.origin + window.location.pathname + window.location.hash;
     window.history.replaceState({}, document.title, newUrl);
   }
 });
@@ -413,7 +403,7 @@ class NotificationCenter {
  */
 function showToast(message, type = 'info', duration = 4000) {
     // If DND mode is on, skip the flying animation entirely
-    if (window.notifCenter && window.notifCenter.dnd) {
+    if (typeof window.notifCenter?.add === 'function' && window.notifCenter.dnd) {
         // Log to notification center silently without animation
         window.notifCenter.add(message, type, true);
         return;
@@ -430,13 +420,15 @@ function showToast(message, type = 'info', duration = 4000) {
         <span class="flyer-icon">${getToastIconHtml(type)}</span>
         <span class="flyer-text">${message}</span>
     `;
+    const bell=document.getElementById('notifCenter')?.getBoundingClientRect();
+    if(bell){flyer.style.setProperty('--bell-bottom',(window.innerHeight-bell.top-bell.height/2)+'px');flyer.style.setProperty('--bell-left',(bell.left+bell.width/2)+'px');flyer.style.setProperty('--bell-right',(window.innerWidth-bell.left-bell.width/2)+'px');}
     document.body.appendChild(flyer);
 
     // 2. Handle animation end (lands in bell)
     flyer.addEventListener('animationend', (e) => {
         // Only trigger when the 'flyToBell' animation finished (the 4s one)
-        if (e.animationName === 'flyToBell') {
-            if (window.notifCenter) {
+        if (['flyToBell','qnex-toast-to-bell','qnex-toast-fade'].includes(e.animationName)) {
+            if (typeof window.notifCenter?.add === 'function') {
                 // Log to notification center and trigger ping
                 window.notifCenter.add(message, type);
             }

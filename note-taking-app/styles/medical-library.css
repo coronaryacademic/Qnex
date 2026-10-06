@@ -82,12 +82,14 @@ body.theme-light .ml-library { --ml-muted: #000; --ml-surface: #fff; --ml-text: 
 .ml-tree-node > summary::-webkit-details-marker { display: none; }
 .ml-tree-node > summary:hover { background: var(--panel-hover, rgba(255,255,255,.05)); }
 .ml-tree-node > summary:focus-visible { outline: 2px solid var(--accent, #5677ee); outline-offset: -3px; }
-.ml-category-icon { flex-shrink: 0; color: var(--accent, #7894ff); display: inline-flex; align-items: center; justify-content: center; }
+.ml-category-icon { flex-shrink: 0; color: var(--ml-text); display: inline-flex; align-items: center; justify-content: center; }
+.ml-category-icon.ml-uw-icon { color: var(--ml-text); }
 .ml-tree-caret { flex-shrink: 0; color: var(--ml-muted); display: inline-flex; align-items: center; justify-content: center; transition: transform .2s cubic-bezier(0.4, 0, 0.2, 1), color .15s ease; }
 .ml-tree-node[open] > summary > .ml-tree-caret { transform: rotate(90deg); color: var(--ml-text); }
 .ml-tree-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; }
 .ml-tree-total { color: var(--ml-muted); font-size: 12px; white-space: nowrap; }
 .ml-tree-children { padding: 0 10px 10px 38px; }
+.ml-library .ml-tree-children .ml-bau-year-note { margin: 6px 12px 2px; color: var(--ml-muted); font-size: 11px; font-weight: 400; line-height: 1.4; }
 .ml-tree-subgroup + .ml-tree-subgroup { border-top: 0; }
 .ml-tree-subgroup > summary { min-height: 42px; padding: 8px 12px; border-radius: 7px; }
 .ml-tree-subgroup .ml-tree-children { padding: 0 0 4px 20px; }

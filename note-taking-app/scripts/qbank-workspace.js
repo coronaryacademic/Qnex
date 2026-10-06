@@ -23,10 +23,36 @@
       document.documentElement.style.setProperty('--qnex-app-scale',String(scale));
     },
     init() {
+      // Qbank must not inherit the hidden standalone notes container.
+      const base=document.getElementById("questionBase");
+      if(document.body.classList.contains("qbank-only") && base) {
+        document.body.append(base);
+        base.classList.remove("hidden");
+      }
       this.applyAppScale(localStorage.getItem("qnex-app-scale") || "1");
       const sidebar = document.querySelector('#questionSidebar .sidebar-content');
-      const nav = document.getElementById('qbankTabNav');
-      if (!sidebar || !nav) return;
+      let nav = document.getElementById('qbankTabNav');
+      if (!sidebar) return;
+      if(!nav) {
+        nav=document.createElement('div');nav.id='qbankTabNav';nav.className='qbank-tab-nav';
+        for(const [tab,label,icon] of [
+          ['main','Dashboard','<path d="m3 10 9-7 9 7v11H3z"/>'],
+          ['statistics','Performance','<path d="M4 20V10M12 20V4M20 20v-7"/>'],
+          ['create-test','Create Test','<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>'],
+          ['recent-sessions','Recent Sessions','<path d="M12 8v4l3 3m6-3a9 9 0 1 1-6.219-8.56"/>'],
+          ['medical-library','Library','<path d="M4 6h16M4 12h16M4 18h16"/>']
+        ]) {const button=document.createElement('button');button.className='qbank-tab';button.dataset.tab=tab;button.innerHTML=svg(icon)+label;button.onclick=()=>window.QuestionBase.switchTab(tab);nav.append(button);}
+      }
+      sidebar.replaceChildren(nav);
+      const historyNav=document.createElement('div');historyNav.className='qw-sidebar-history';historyNav.setAttribute('aria-label','Page history');
+      for(const [id,label,path,action] of [['qwNavPrevious','Previous page','m15 6-6 6 6 6','previous'],['qwNavNext','Next page','m9 6 6 6-6 6','next']]) {
+        const button=document.createElement('button');button.id=id;button.type='button';button.className='qw-icon';button.title=label;button.setAttribute('aria-label',label);button.disabled=true;button.innerHTML=svg('<path d="'+path+'"/>');button.onclick=()=>window.QnexRouter?.[action]();historyNav.append(button);
+      }
+      sidebar.prepend(historyNav);
+      const forward=document.createElement('button');forward.id='qwHeaderNext';forward.type='button';forward.className='icon-btn';forward.title='Next page';forward.setAttribute('aria-label','Next page');forward.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>';forward.onclick=()=>window.QnexRouter?.next();document.getElementById('toggleQuestionSidebarBtn').before(forward);
+      const oldBack=document.getElementById('backToMainFromQuestionsHeader');
+      if(oldBack){const back=oldBack.cloneNode(true);oldBack.replaceWith(back);back.title='Back';back.setAttribute('aria-label','Back');back.onclick=()=>window.QnexRouter?.back();}
+      const dashboardShortcut=document.createElement('button');dashboardShortcut.id='qwHeaderDashboard';dashboardShortcut.type='button';dashboardShortcut.className='icon-btn';dashboardShortcut.title='Dashboard';dashboardShortcut.setAttribute('aria-label','Dashboard');dashboardShortcut.innerHTML=nav.querySelector('[data-tab="main"] svg').outerHTML;dashboardShortcut.onclick=()=>window.QuestionBase.switchTab('main');document.getElementById('toggleQuestionSidebarBtn').after(dashboardShortcut);
       const head = document.createElement('div'); head.className = 'qw-bank-head';
       head.innerHTML='<button id="qwBankSwitch" type="button" aria-label="Open Qbank Library">Choose a question bank</button>';
       const header=document.querySelector('#questionSidebar .sidebar-header');header.after(head);
@@ -34,9 +60,9 @@
       sidebar.prepend(nav); nav.classList.add('qw-nav');
       nav.setAttribute('aria-label', 'Question bank navigation');
       const bankLibrary = nav.querySelector('[data-tab="medical-library"]');
-      if (bankLibrary) bankLibrary.innerHTML = svg('<path d="M2 7v8a3 3 0 0 0 6 0V7M11 7l2 11 3-8 3 8 3-11"/>') + 'Qbank Library';
+      if (bankLibrary) bankLibrary.innerHTML = svg('<path d="M4 6H3v14a1 1 0 0 0 1 1h14"/><rect x="7" y="3" width="14" height="14" rx="1"/><path d="M12.1 8a1.9 1.9 0 0 1 3.8 0c0 1.3-1.9 1.5-1.9 2.8" stroke-width="1.4"/><circle cx="14" cy="13.4" r=".55" fill="currentColor" stroke="none"/>') + 'Qbank Library';
       const medical = document.createElement('button'); medical.className = 'qbank-tab'; medical.dataset.tab = 'medical-reference';
-      medical.innerHTML = svg('<path d="M12 5.5C9 3.5 5 3.5 2 5v15c3-1.5 7-1.5 10 .5 3-2 7-2 10-.5V5c-3-1.5-7-1.5-10 .5ZM12 5.5v15"/>') + 'Medical Library';
+      medical.innerHTML = svg('<path d="M4 6H3v14a1 1 0 0 0 1 1h14"/><rect x="7" y="3" width="14" height="14" rx="1"/><path d="M10.5 7h7M10.5 10h7M10.5 13h4.5" stroke-width="1.4"/>') + 'Medical Library';
       medical.onclick = () => window.QuestionBase.switchTab('medical-reference'); nav.append(medical);
       const medicalPanel = document.createElement('div'); medicalPanel.className = 'tab-content'; medicalPanel.dataset.tabContent = 'medical-reference';
       medicalPanel.innerHTML = '<div class="qw-page ml-library"><header class="qw-heading"><h2>Medical Library</h2></header><div class="qw-card"><h3>Coming soon</h3><p class="qw-muted">Your space for medical references and study resources.</p></div></div>';
@@ -60,13 +86,62 @@
       const legacy=document.createElement('div');legacy.hidden=true;legacy.id='qwLegacyTools';legacy.style.display='none';document.body.append(legacy);
       [list,document.getElementById('createSessionBtn'),document.querySelector('#questionSidebar .sidebar-search'),document.querySelector('#questionSidebar .sidebar-action-menu')].filter(Boolean).forEach(node=>legacy.append(node));
       document.getElementById('playQuestionsBtn')?.remove();
-      const settings=document.createElement('button');settings.className='qbank-tab';settings.dataset.tab='qbank-settings';settings.innerHTML=svg('<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>')+'Settings';settings.onclick=()=>window.QuestionBase.switchTab('qbank-settings');nav.append(settings);
+      document.querySelector('#questionContent .header-center')?.remove();
+      document.getElementById('questionEditor')?.remove();
+      document.getElementById('sessionCreator')?.remove();
+      legacy.remove();
+      const settings=document.createElement('button');settings.className='icon-btn qw-header-settings';settings.id='qwHeaderSettings';settings.type='button';settings.title='Settings';settings.setAttribute('aria-label','Settings');settings.dataset.tab='qbank-settings';settings.classList.add('qw-profile-avatar');const updateAvatar=()=>{const name=window.QbankProfile?.read()?.username?.trim() || '';settings.textContent=Array.from(name)[0]?.toUpperCase() || 'Q';settings.title=name ? name+' — Settings' : 'Account settings';settings.setAttribute('aria-label',settings.title);};updateAvatar();window.addEventListener('qbank-profile-changed',updateAvatar);settings.onclick=()=>window.QuestionBase.switchTab('qbank-settings');const headerActions=document.createElement('div');headerActions.className='qw-header-account';
+      const notifications=document.getElementById('notifCenter');
+      if(notifications){notifications.setAttribute('role','button');notifications.tabIndex=0;notifications.setAttribute('aria-label','Notifications');notifications.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();notifications.click();}};headerActions.append(notifications);}
+      headerActions.append(settings);document.querySelector('#questionContent .question-header').append(headerActions);
       const settingsPanel=document.createElement('div');settingsPanel.className='tab-content';settingsPanel.dataset.tabContent='qbank-settings';medicalPanel.after(settingsPanel);
       const resetPanel=document.createElement('div');resetPanel.className='tab-content';resetPanel.dataset.tabContent='qbank-reset';settingsPanel.after(resetPanel);
       head.querySelector('button').onclick=()=>window.QuestionBase.switchTab('medical-library');
+      const group=document.createElement('section');group.className='qw-qbank-group';
+      const groupHead=document.createElement('div');groupHead.className='qw-qbank-group-head';
+      const toggle=document.createElement('button');toggle.type='button';toggle.className='qbank-tab qw-qbank-toggle';toggle.setAttribute('aria-controls','qwQbankSubnav');toggle.innerHTML=bankLibrary.querySelector('svg').outerHTML+'<span>Qbank/Test</span><svg class="qw-qbank-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m7 14 5-5 5 5"/></svg>';
+      bankLibrary.innerHTML=svg('<path d="M4 6h16M4 12h16M4 18h16"/>')+'Library';
+      const dashboard=nav.querySelector('[data-tab="main"]');dashboard.innerHTML=dashboard.querySelector('svg').outerHTML+'Dashboard';
+      const children=document.createElement('div');children.id='qwQbankSubnav';children.className='qw-qbank-subnav';
+      for(const tab of ['medical-library','create-test','recent-sessions','statistics','bank-search']) {
+        const button=nav.querySelector('[data-tab="'+tab+'"]');if(!button)continue;
+        if(tab==='statistics')button.innerHTML=icons.results+'Performance';
+        if(tab==='bank-search')button.innerHTML=icons.search+'Search';
+        children.append(button);
+      }
+      nav.querySelector('[data-tab="main"]').after(group);groupHead.append(toggle);group.append(groupHead,children);
+      const setExpanded=expanded=>{children.hidden=!expanded;toggle.setAttribute('aria-expanded',String(expanded));toggle.setAttribute('aria-label',(expanded?'Collapse':'Expand')+' Qbank/Test');group.classList.toggle('collapsed',!expanded);};
+      setExpanded(localStorage.getItem('qnex-qbank-nav-expanded')!=='false');
+      toggle.onclick=()=>{const expanded=children.hidden;setExpanded(expanded);localStorage.setItem('qnex-qbank-nav-expanded',String(expanded));};
+      this.expandQbankNav=()=>setExpanded(true);
       this.syncSidebar();
+      if(document.body.classList.contains("qbank-only")) window.QuestionBase?.open();
+    },
+    organizeSettings(mount) {
+      const cards=[...mount.querySelectorAll(':scope > .qw-card')];
+      mount.classList.add('qw-settings');
+      mount.innerHTML='<header class="qw-heading"><h2>Settings</h2></header><div class="settings-view"><div class="settings-container"><aside class="settings-sidebar" aria-label="Settings categories"></aside><main class="settings-content"></main></div></div>';
+      const nav=mount.querySelector('.settings-sidebar'),content=mount.querySelector('.settings-content');
+      const sections={};
+      for(const [key,label,icon] of [['general','General','<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'],['appearance','Appearance','<path d="M12 3 6 10a8 8 0 1 0 12 0Z"/>'],['data','Data Management','<path d="M6 3h9l4 4v14H6zM9 12h7M9 16h7"/>'],['about','About the app','<path d="m12 3 10 5-10 5L2 8zM2 12l10 5 10-5M2 16l10 5 10-5"/>']]) {
+        const button=document.createElement('button');button.type='button';button.className='settings-nav-btn';button.innerHTML=svg(icon)+label;nav.append(button);
+        const section=document.createElement('section');section.className='settings-section';section.innerHTML='<h2>'+label+'</h2>';content.append(section);sections[key]=section;
+        button.onclick=()=>{nav.querySelectorAll('.settings-nav-btn').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-pressed',String(b===button));});Object.values(sections).forEach(s=>s.classList.toggle('active',s===section));};
+      }
+      for(const card of cards){const title=card.querySelector('h3')?.textContent;const key=title==='Appearance'||title==='Reading'?'appearance':title==='Library location'||title==='Reset progress'?'data':'general';card.classList.remove('qw-card');card.classList.add('setting-group');sections[key].append(card);}
+      sections.general.insertAdjacentHTML('beforeend','<div class="setting-group"><h3>Maintenance</h3><div class="setting-row"><div><strong>Safe Refresh</strong><p class="qw-muted">Reload the application interface.</p></div><button class="settings-btn" data-reload>Reload Interface</button></div><div class="setting-row"><div><strong>Startup Logs</strong><p class="qw-muted">View application logs for troubleshooting.</p></div><button class="settings-btn" data-logs>View Logs</button></div></div>');
+      sections.general.querySelector('[data-reload]').onclick=()=>window.location.reload();
+      sections.general.querySelector('[data-logs]').onclick=()=>{const dialog=document.createElement('dialog');dialog.className='qw-log-dialog';const title=document.createElement('h3');title.textContent='Application Logs';const logs=document.createElement('textarea');logs.readOnly=true;logs.value=(window.appLogs||[]).join('\n')||'No startup logs available.';const close=document.createElement('button');close.className='settings-btn';close.textContent='Close';close.onclick=()=>dialog.close();dialog.append(title,logs,close);dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();};
+      sections.appearance.insertAdjacentHTML('beforeend','<div class="setting-group"><h3>Dungeon themes</h3><p>UW · AMBOSS · BAU</p><p class="qw-muted">The question bank determines the Dungeon layout.</p></div>');
+      sections.about.insertAdjacentHTML('beforeend','<div class="setting-group"><h3>Qnex</h3><p>Your question bank and Dungeon study workspace.</p></div>');
+      const quit=document.createElement('button');quit.type='button';quit.className='settings-nav-btn qw-settings-quit';quit.textContent='Quit App';quit.onclick=()=>{if(window.electronAPI?.confirmAppClose)window.electronAPI.confirmAppClose();else if(window.electronAPI?.closeApp)window.electronAPI.closeApp();else window.close();};nav.append(quit);
+      nav.querySelector('button').click();
     },
     syncSidebar() {
+      const active=window.QuestionBase?.state.lastActiveTab;
+      document.body.dataset.qnexTab=active || 'main';
+      if(active!==this.lastSidebarTab && ['medical-library','create-test','recent-sessions','statistics','bank-search'].includes(active))this.expandQbankNav?.();
+      this.lastSidebarTab=active;
       const bank = lib().banks.find(b => b.key === lib().currentBank);
       const button = document.getElementById('qwBankSwitch');
       const reset=document.getElementById('qwResetBank');if(reset)reset.disabled=false;
@@ -75,9 +150,10 @@
       }
       document.querySelectorAll('#qbankTabNav .qbank-tab').forEach(b => b.setAttribute('aria-current', b.dataset.tab === window.QuestionBase?.state.lastActiveTab ? 'page' : 'false'));
     },
-    loadingLogo() { return '<div class="qnex-loading-mark" aria-hidden="true">Qnex<span class="qnex-static-dot">.</span></div>'; },
+    loadingLogo() { return '<div class="qnex-loading-mark qnex-knock-logo" aria-hidden="true"><span class="qnex-knock-word">Qnex</span><span class="qnex-knock-dot">.</span></div>'; },
     loading(label='Loading your bank…') { return `<div class="qw-loader qnex-branded-loader" role="status" aria-live="polite">${this.loadingLogo()}<span>${esc(label)}</span></div>`; },
     async render(tab) {
+      if(tab === 'recent-sessions' && /^test-(analysis|results)\//.test(window.QnexRouter?.current || '')) return;
       const revision = ++this.revision;
       const panel = document.querySelector(`[data-tab-content="${tab}"]`); if (!panel) return;
       panel.innerHTML = '<div class="qw-page ml-library">'+this.loading(tab==='notebook' ? 'Opening your notebook…' : 'Loading your bank…')+'</div>';
@@ -94,11 +170,11 @@
           mount.querySelector('header').insertAdjacentHTML('afterend','<section class="qw-card"><h3>Study profile</h3><p class="qw-muted" id="qwProfileSummary"></p><button type="button" id="qwEditProfile" class="ml-library-btn">Edit name and objective</button></section>');
           const updateProfile=()=>{const profile=window.QbankProfile?.read();mount.querySelector('#qwProfileSummary').textContent=profile?`${profile.username} · ${profile.objective}`:'Set your name and study objective.';};updateProfile();
           mount.querySelector('#qwEditProfile').onclick=()=>{window.QbankProfile?.open();document.getElementById('qbankProfileIntro')?.addEventListener('close',updateProfile,{once:true});};
-          theme.onchange=async()=>{try{const settings=window.Storage?.loadSettings ? await window.Storage.loadSettings() : {};settings.theme=theme.value;if(window.Storage?.saveSettings)await window.Storage.saveSettings(settings);if(window.state?.settings)window.state.settings.theme=theme.value;document.body.classList.toggle('theme-light',theme.value==='light');document.querySelectorAll('[data-theme]').forEach(card=>card.classList.toggle('active',card.dataset.theme===theme.value));window.showToast('Theme saved.','success');}catch(error){window.showToast(esc('Could not save theme: '+error.message),'error');}};
+          theme.onchange=async()=>{try{const settings=window.Storage?.loadSettings ? await window.Storage.loadSettings() : {};settings.theme=theme.value;if(window.Storage?.saveSettings)await window.Storage.saveSettings(settings);if(window.state?.settings)window.state.settings.theme=theme.value;document.body.classList.toggle('theme-light',theme.value==='light');localStorage.setItem('theme',theme.value);window.dispatchEvent(new CustomEvent('theme-changed',{detail:{theme:theme.value}}));document.querySelectorAll('[data-theme]').forEach(card=>card.classList.toggle('active',card.dataset.theme===theme.value));window.showToast('Theme saved.','success');}catch(error){window.showToast(esc('Could not save theme: '+error.message),'error');}};
           scale.onchange=()=>{localStorage.setItem('qnex-app-scale',scale.value);this.applyAppScale(scale.value);window.showToast('App size saved.','success');};
           const size=mount.querySelector('#qwReadingSize'),time=mount.querySelector('#qwDefaultTime');size.value=localStorage.getItem('dungeonFontSize') || 'medium';time.value=localStorage.getItem('qnex-time-accommodation') || '0';
           size.onchange=()=>{localStorage.setItem('dungeonFontSize',size.value);window.DungeonBase?.setFontSize?.(size.value);window.showToast('Reading size saved.','success');};
-          time.onchange=()=>{localStorage.setItem('qnex-time-accommodation',time.value);this.drafts.forEach(d=>d.adjustment=Number(time.value));window.showToast('Time accommodation saved.','success');};return;
+          time.onchange=()=>{localStorage.setItem('qnex-time-accommodation',time.value);this.drafts.forEach(d=>d.adjustment=Number(time.value));window.showToast('Time accommodation saved.','success');};this.organizeSettings(mount);return;
         }
         if (tab === 'notebook') {
           const notes = await this.loadNotes();
@@ -118,25 +194,30 @@
           panel.innerHTML = '<div class="qw-page ml-library"><h2>Choose your question bank</h2><p>Select a bank on Main to build tests and track your progress.</p><button class="ml-library-btn" id="qwChoose">Choose bank</button></div>';
           panel.querySelector('button').onclick = () => window.QuestionBase.switchTab('main'); return;
         }
-        const mount = document.createElement('div'); mount.className = 'qw-page ml-library'; panel.replaceChildren(mount);
+        const mount = document.createElement('div'); mount.className = 'qw-page ml-library';
         if (tab === 'flagged') {
           const questions=await lib().api('/flagged?bank='+encodeURIComponent(context.bank.key));
           if (revision !== this.revision) return;
+          panel.replaceChildren(mount);
           this.flagged(mount,context.bank,questions);
         } else if (tab === 'create-test') {
           const taxonomy = await lib().api('/filters?bank=' + encodeURIComponent(context.bank.key));
           if (revision !== this.revision) return;
+          panel.replaceChildren(mount);
           this.builder(mount, context, taxonomy);
         } else if (tab === 'recent-sessions') {
           const sessions = await lib().api('/sessions'); if (revision !== this.revision) return;
-          this.history(mount, context, sessions.filter(s => s.bank === context.bank.key));
+          panel.replaceChildren(mount);
+          this.history(mount, context, sessions);
         } else if (tab === 'statistics') {
           const taxonomy = await lib().api('/filters?bank=' + encodeURIComponent(context.bank.key));
           if (revision !== this.revision) return;
+          panel.replaceChildren(mount);
           this.performance(mount, context, taxonomy);
         } else {
           const data = await lib().api('/questions-list?bank=' + encodeURIComponent(context.bank.key));
           if (revision !== this.revision) return;
+          panel.replaceChildren(mount);
           this.search(mount, context, data.questions);
         }
       } catch (error) {
@@ -167,6 +248,7 @@
         children.get(key).ids.add(item.id);
         children.get(key).count = children.get(key).ids.size;
       }
+      for(const [name,children] of groups)groups.set(name,new Map([...children].sort(([,a],[,b])=>a.label.localeCompare(b.label))));
       const check = (name, value, label, count, checked) => `<label class="qw-check"><input type="checkbox" name="${name}" value="${esc(value)}"${checked ? ' checked' : ''}><span>${esc(label)}</span>${count == null ? '' : `<small>${count.toLocaleString()}</small>`}</label>`;
       mount.innerHTML = this.heading('Create Test', bank) + `<form id="qwBuilder">
         <section class="qw-card"><h3>Test mode</h3><div class="qw-inline"><label class="qw-switch"><input type="checkbox" role="switch" name="tutor"${draft.tutor ? ' checked' : ''}><span></span>Tutor</label><label class="qw-switch"><input type="checkbox" role="switch" name="timed"${draft.timed ? ' checked' : ''}><span></span>Timed</label><button type="button" id="qwAccommodation" class="qw-clock" aria-label="Time accommodation" title="Time accommodation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></button></div><p class="qw-muted">Tutor shows explanations after each answer. Timed adds a shared countdown for the test.</p><input type="hidden" name="adjustment" value="${draft.adjustment || 0}"><p id="qwTimingSummary" class="qw-timing-summary" aria-live="polite"></p></section>
@@ -382,7 +464,7 @@
       }).map(q => q.id));
     },
     sessionTable(sessions, withDelete = false) {
-      return `<div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Date</th><th>Test / ID</th><th>Mode</th><th>Subjects</th><th>Systems</th><th>Score</th><th>Progress</th><th>Actions</th></tr></thead><tbody>${sessions.map(s => `<tr><td>${esc(new Date(s.date).toLocaleDateString())}</td><td><strong>${esc(s.title)}</strong><small>${esc(s.id.slice(-8))}</small></td><td>${esc(s.mode || 'Tutor')}<small>${s.timed ? 'Timed' : 'Untimed'}</small></td><td>${this.chips(s.subjects || [])}</td><td>${this.chips(s.systems || [])}</td><td>${s.completed ? percent(s.correct,s.count)+'%' : '—'}</td><td>${s.answered} / ${s.count}<small>${s.completed ? 'Completed' : 'In progress'}</small></td><td><div class="qw-inline"><button class="qw-icon" data-rename="${esc(s.id)}" title="Rename test" aria-label="Rename test">${icons.edit}</button><button class="qw-icon" data-result="${esc(s.id)}" title="Results and analysis" aria-label="Results and analysis">${icons.results}</button><button class="qw-icon" data-resume="${esc(s.id)}" title="${s.completed ? 'Review' : 'Resume'}" aria-label="${s.completed ? 'Review' : 'Resume'}">${icons.play}</button>${withDelete ? `<button class="qw-icon" data-delete-session="${esc(s.id)}" title="Delete session" aria-label="Delete session">${svg('<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>')}</button>` : ''}</div></td></tr>`).join('') || '<tr><td colspan="8" class="qw-empty-sessions">No sessions yet. Create a test to get started.</td></tr>'}</tbody></table></div>`;
+      return `<div class="qw-table-scroll"><table class="qw-table qw-session-table"><thead><tr><th>Date</th><th>Test / ID</th><th>Mode</th><th>Subjects</th><th>Systems</th><th>Score</th><th>Progress</th><th>Actions</th></tr></thead><tbody>${sessions.map(s => `<tr><td>${esc(new Date(s.date).toLocaleDateString())}</td><td><strong>${esc(s.title)}</strong><small>${esc(s.id.slice(-8))}</small></td><td>${esc(s.mode || 'Tutor')}<small>${s.timed ? 'Timed' : 'Untimed'}</small></td><td>${this.chips(s.subjects || [])}</td><td>${this.chips(s.systems || [])}</td><td>${s.completed ? percent(s.correct,s.count)+'%' : '—'}</td><td>${s.answered} / ${s.count}<small>${s.completed ? 'Completed' : 'In progress'}</small></td><td><div class="qw-inline"><button class="qw-icon" data-rename="${esc(s.id)}" title="Rename test" aria-label="Rename test">${icons.edit}</button><button class="qw-icon" data-result="${esc(s.id)}" title="Results and analysis" aria-label="Results and analysis">${icons.results}</button><button class="qw-icon" data-resume="${esc(s.id)}" title="${s.completed ? 'Review' : 'Resume'}" aria-label="${s.completed ? 'Review' : 'Resume'}">${s.completed ? svg('<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>') : icons.play}</button><button class="qw-icon qw-unsee" data-unsee="${esc(s.id)}" title="Unsee — Reset questions to New" aria-label="Unsee — Reset questions to New">${svg('<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/><path d="M18 20h.01M21 17h.01"/>')}</button>${withDelete ? `<button class="qw-icon" data-delete-session="${esc(s.id)}" title="Delete session" aria-label="Delete session">${svg('<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>')}</button>` : ''}</div></td></tr>`).join('') || '<tr><td colspan="8" class="qw-empty-sessions">No sessions yet. Create a test to get started.</td></tr>'}</tbody></table></div>`;
     },
     history(mount, { bank }, sessions) {
       mount.innerHTML = this.heading('Recent Sessions', bank) + '<label class="qw-field">Find a test<input id="qwFindTest" type="search" placeholder="Search test names"></label><div id="qwHistory"></div>';
@@ -392,10 +474,11 @@
         const filtered = sessions.filter(s => s.title.toLowerCase().includes(term));
         this.page = Math.min(this.page, Math.max(0, Math.ceil(filtered.length/10)-1));
         const rows = filtered.slice(this.page*10,this.page*10+10);
-        mount.querySelector('#qwHistory').innerHTML = rows.length ? `${this.sessionTable(rows)}<div class="qw-pagination"><button class="ml-library-btn qd-icon-action" id="qwPrev" ${this.page === 0 ? 'disabled' : ''} title="Previous" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span>${this.page*10+1}–${this.page*10+rows.length} of ${filtered.length}</span><button class="ml-library-btn" id="qwNext" ${(this.page+1)*10 >= filtered.length ? 'disabled' : ''}>Next</button></div>` : '<div class="qw-card">No tests here yet. Create a test for this bank to get started.</div>';
+        mount.querySelector('#qwHistory').innerHTML = `<h3>Current Qbank sessions</h3>${this.sessionTable(filtered.filter(s => s.bank === bank.key))}<h3>All sessions</h3>${this.sessionTable(rows)}<div class="qw-pagination"><button class="ml-library-btn qd-icon-action" id="qwPrev" ${this.page === 0 ? 'disabled' : ''} title="Previous" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span>${filtered.length ? this.page*10+1 : 0}–${this.page*10+rows.length} of ${filtered.length}</span><button class="ml-library-btn" id="qwNext" ${(this.page+1)*10 >= filtered.length ? 'disabled' : ''}>Next</button></div>`;
         mount.querySelector('#qwPrev')?.addEventListener('click', () => { this.page--; draw(); });
         mount.querySelector('#qwNext')?.addEventListener('click', () => { this.page++; draw(); });
         mount.querySelectorAll('#qwHistory td:nth-child(2) small').forEach(b => b.onclick = async () => { try { const row=b.closest('tr');const id=row.querySelector('[data-resume]')?.dataset.resume;if(!id)throw Error('Test ID unavailable');await navigator.clipboard.writeText(id); if (typeof window.showToast === 'function') window.showToast('Test ID copied to clipboard.', 'success', 2200); else window.notifCenter?.add('Test ID copied to clipboard.', 'success'); b.title='Copied'; setTimeout(() => b.title='Copy test ID', 1200); } catch { if (typeof window.showToast === 'function') window.showToast('Could not copy the test ID.', 'error', 2200); else window.notifCenter?.add('Could not copy the test ID.', 'error'); } });
+        this.wireUnsee(mount, () => this.history(mount, { bank }, lib().sessions));
         mount.querySelectorAll('[data-resume]').forEach(b => b.onclick = () => lib().resume(b.dataset.resume));
         mount.querySelectorAll('[data-resume]').forEach(b => {
           const remove=document.createElement('button');remove.className='qw-icon';remove.title='Delete test';remove.setAttribute('aria-label','Delete test');
@@ -417,7 +500,7 @@
         mount.querySelectorAll('[data-rename]').forEach(b => b.onclick = () => this.rename(sessions.find(s => s.id === b.dataset.rename), draw));
         mount.querySelectorAll('[data-result]').forEach(b => b.onclick = async () => {
           b.disabled = true;
-          try { const session = await lib().api('/sessions/' + b.dataset.result); if (mount.isConnected) this.results(mount, bank, session, () => this.history(mount, { bank }, sessions)); }
+          try { const session = await lib().api('/sessions/' + b.dataset.result); const sessionBank = lib().banks.find(item => item.key === session.bank) || bank; if (mount.isConnected) this.results(mount, sessionBank, session, () => this.history(mount, { bank }, sessions)); }
           catch (error) { alert(error.message); b.disabled = false; }
         });
       };
@@ -489,35 +572,57 @@
         } catch (error) { dialog.querySelector('[role="alert"]').textContent = error.message; button.disabled = false; }
       };
     },
-    results(mount, bank, session, back) {
-      let tab = 'results';
-      const completed = session.completed || session.questions.every(q => q._tutorMode !== false && q.submittedAnswer?.submitted);
-      const questions = session.questions, correct = questions.filter(q => outcome(q) === 'correct').length;
+    wireUnsee(mount, redraw) {
+      mount.querySelectorAll('[data-unsee]').forEach(button => button.onclick = async () => {
+        button.disabled = true;
+        try { if (await lib().reset(button.dataset.unsee, false)) redraw(); }
+        finally { if(button.isConnected) button.disabled = false; }
+      });
+    },
+    results(mount, bank, session, back, initialTab = 'results') {
+      this.revision++; // Cancel any session-list render started before opening this report.
+      let tab = initialTab, filter = 'all';
+      const questions = session.questions || [];
+      const counts = {correct:0, incorrect:0, omitted:0};
+      questions.forEach(q => counts[outcome(q)]++);
+      const score = percent(counts.correct, questions.length);
+      const changes = {C2I:0,I2C:0,I2I:0};
+      questions.forEach(q => Object.keys(changes).forEach(k => changes[k] += Number(q.answerChanges?.[k]) || 0));
+      const validStats = questions.map(q => Number(q.answerStats?.percent_correct)).filter((n,i) => questions[i].answerStats?.percent_correct != null && Number.isFinite(n));
+      const average = validStats.length === questions.length && validStats.length ? Math.round(validStats.reduce((a,b)=>a+b,0)/validStats.length) : null;
+      const tags = (q, field) => (q.tags?.[field] || []).join(', ') || '—';
+      const groupTable = field => {
+        const groups = new Map();
+        questions.forEach(q => (q.tags?.[field]?.length ? q.tags[field] : ['General']).forEach(name => {
+          if(!groups.has(name)) groups.set(name,{correct:0,incorrect:0,omitted:0,total:0});
+          const row=groups.get(name); row.total++; row[outcome(q)]++;
+        }));
+        return '<details class="qw-analysis-group" open><summary>'+ (field==='subject'?'Subjects':'Systems') +'</summary><div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Name</th><th>Total Q</th><th>Correct</th><th>Incorrect</th><th>Omitted</th></tr></thead><tbody>'+[...groups].map(([name,r])=>'<tr><td>'+esc(name)+'</td><td>'+r.total+'</td>'+['correct','incorrect','omitted'].map(k=>'<td>'+r[k]+' ('+percent(r[k],r.total)+'%)</td>').join('')+'</tr>').join('')+'</tbody></table></div></details>';
+      };
+      const tally = (title, rows) => '<section class="qw-analysis-tally"><h3>'+title+'</h3>'+rows.map(([label,value])=>'<div><span>'+label+'</span><b>'+value+'</b></div>').join('')+'</section>';
       const draw = () => {
-        mount.innerHTML = this.heading(esc(session.title), bank) + `<button class="ml-library-btn" id="qwBackTests">Back to tests</button><div class="qw-tabs"><button data-result-tab="results" class="${tab === 'results' ? 'active' : ''}">Test Results</button><button data-result-tab="analysis" class="${tab === 'analysis' ? 'active' : ''}">Test Analysis</button></div><div class="qw-card qw-inline"><div class="qw-score">${percent(correct,questions.length)}%<small>Correct${completed ? '' : ' · current answers'}</small></div><div><h3>Test settings</h3><p>${questions[0]._tutorMode === false ? 'Exam' : 'Tutor'} · ${questions[0]._timerMode === 'down' ? 'Timed' : 'Untimed'}</p><p>Question pool: ${esc(session.settings?.pools?.join(', ') || 'All')}</p></div></div><div id="qwResultBody"></div>`;
-        this.wireHeading(mount); mount.querySelector('#qwBackTests').onclick = back;
-        mount.querySelectorAll('[data-result-tab]').forEach(b => b.onclick = () => { tab = b.dataset.resultTab; draw(); });
-        const body = mount.querySelector('#qwResultBody');
-        if (tab === 'results') body.innerHTML = `<div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Result</th><th>ID</th><th>Subject</th><th>System</th><th>Topic</th><th>Others correct</th><th>Time</th></tr></thead><tbody>${questions.map(q => `<tr><td class="qw-${outcome(q)}">${outcome(q)}</td><td>${esc(q.source.displayId || q.source.questionId)}</td><td>${esc(q.tags.subject.join(', '))}</td><td>${esc(q.tags.system.join(', '))}</td><td>${esc(q.tags.minor.join(', ')) || '—'}</td><td>${q.answerStats?.percent_correct == null ? '—' : esc(q.answerStats.percent_correct)+'%'}</td><td>${q.timerElapsed == null ? '—' : Math.round(q.timerElapsed/1000)+'s'}</td></tr>`).join('')}</tbody></table></div>`;
-        else {
-          const changes = { C2I:0,I2C:0,I2I:0 };
-          questions.forEach(q => Object.keys(changes).forEach(k => changes[k] += q.answerChanges?.[k] || 0));
-          body.innerHTML = `<div class="qw-card"><h3>Answer summary</h3><p>${correct} correct · ${questions.filter(q => outcome(q) === 'incorrect').length} incorrect · ${questions.filter(q => outcome(q) === 'omitted').length} omitted / unanswered</p>${this.changeSummary(changes)}</div>` + ['subject','system'].map(field => {
-            const rows = {};
-            questions.forEach(q => (q.tags[field] || ['General']).forEach(name => { const row = rows[name] ||= {name,correct:0,incorrect:0,omitted:0,used:0}; row[outcome(q)]++; row.used++; }));
-            return `<section class="qw-card"><h3>${field === 'subject' ? 'Subjects' : 'Systems'}</h3>${this.reportRows(Object.values(rows))}</section>`;
-          }).join('');
+        if(window.QnexRouter?.initialized){const route=(tab==='analysis'?'test-analysis/':'test-results/')+encodeURIComponent(session.id);window.QnexRouter.current=route;window.QnexRouter.returnPath='recent-session';window.QnexRouter.write(route);}
+        mount.innerHTML = '<section class="qw-test-report"><header class="qw-result-nav"><button class="qw-result-back" id="qwBackTests">← Previous Tests</button><button class="ml-library-btn primary" id="qwReviewTest">Review Test</button></header><h2 class="qw-result-title">'+esc(session.title || 'Test Results')+'</h2><div class="qw-tabs">'+['results','analysis'].map(t=>'<button data-result-tab="'+t+'" class="'+(tab===t?'active':'')+'">Test '+(t==='results'?'Results':'Analysis')+'</button>').join('')+'</div><div id="qwResultBody"></div></section>';
+        mount.querySelector('#qwBackTests').onclick = back;
+        mount.querySelector('#qwReviewTest').onclick = () => lib().resume(session.id);
+        mount.querySelectorAll('[data-result-tab]').forEach(b => b.onclick = () => {tab=b.dataset.resultTab;draw();});
+        const body=mount.querySelector('#qwResultBody');
+        if(tab==='results') {
+          body.innerHTML = '<div class="qw-results-summary"><section><h3>Your Score</h3><strong class="qw-result-score qw-'+(score>=60?'correct':'incorrect')+'">'+score+'%</strong>'+(average==null?'':'<p class="qw-muted">Avg: '+average+'% (question peers)</p>')+'<div class="qw-score-track"><span style="width:'+score+'%"></span></div></section><section class="qw-test-settings"><h3>Test Settings</h3><p><span>Mode</span><span class="qw-chips"><span>'+(questions[0]?._tutorMode===false?'Exam':'Tutor')+'</span><span>'+(questions[0]?._timerMode==='down'?'Timed':'Untimed')+'</span></span></p><p><span>Question Pool</span><span class="qw-chips"><span>'+esc(session.settings?.pools?.join(', ') || 'All')+'</span></span></p></section></div><label class="qw-result-filter">Show: <select aria-label="Filter question results">'+['all','correct','incorrect','omitted'].map(f=>'<option value="'+f+'" '+(f===filter?'selected':'')+'>'+f[0].toUpperCase()+f.slice(1)+'</option>').join('')+'</select></label><div class="qw-table-scroll"><table class="qw-table"><thead><tr><th>Result</th><th>ID</th><th>Subject</th><th>System</th><th>Topic</th><th>% Correct Others</th><th>Time Spent</th></tr></thead><tbody>'+questions.filter(q=>filter==='all'||outcome(q)===filter).map(q=>'<tr><td class="qw-'+outcome(q)+'" aria-label="'+outcome(q)+'">'+({correct:'✓',incorrect:'×',omitted:'—'}[outcome(q)])+'</td><td>'+esc(q.source?.displayId || q.source?.questionId || q.id)+'</td><td>'+esc(tags(q,'subject'))+'</td><td>'+esc(tags(q,'system'))+'</td><td>'+esc(tags(q,'minor'))+'</td><td>'+(q.answerStats?.percent_correct==null?'—':esc(q.answerStats.percent_correct)+'%')+'</td><td>'+(q.timerElapsed==null?'—':Math.round(q.timerElapsed/1000)+'s')+'</td></tr>').join('')+'</tbody></table></div>';
+          body.querySelector('select').onchange=e=>{filter=e.target.value;draw();};
+        } else {
+          const green=questions.length?100*counts.correct/questions.length:0,red=questions.length?100*counts.incorrect/questions.length:0;
+          body.innerHTML='<div class="qw-analysis-summary"><div class="qw-score-donut" role="img" aria-label="'+counts.correct+' correct, '+counts.incorrect+' incorrect, '+counts.omitted+' omitted" style="--correct-end:'+green+'%;--incorrect-end:'+(green+red)+'%"><div><strong>'+score+'%</strong><span>Correct</span></div></div>'+tally('Your Score',[['Total Correct',counts.correct],['Total Incorrect',counts.incorrect],['Total Omitted',counts.omitted]])+tally('Answer Changes',[['Correct to Incorrect',changes.C2I],['Incorrect to Correct',changes.I2C],['Incorrect to Incorrect',changes.I2I]])+'</div>'+groupTable('subject')+groupTable('system');
         }
       }; draw();
     },
-    changeSummary(changes) { return `<h3>Answer changes</h3><p>Correct to incorrect: ${changes.C2I} · Incorrect to correct: ${changes.I2C} · Incorrect to incorrect: ${changes.I2I}</p>`; },
     reportRows(rows, totals = {}) {
       return rows.length ? rows.sort((a,b) => a.name.localeCompare(b.name)).map(r => `<article class="qw-report"><div class="qw-section-heading"><strong>${esc(r.name)}</strong><span>${r.used}${totals[r.name] != null ? ' / '+totals[r.name] : ''} used · ${percent(r.correct,r.used)}% correct</span></div><div class="qw-bar"><span style="width:${percent(r.correct,r.used)}%;background:#35aa77"></span><span style="width:${percent(r.incorrect,r.used)}%;background:#de646e"></span></div><small>${r.correct} correct · ${r.incorrect} incorrect · ${r.omitted} omitted</small></article>`).join('') : '<p>No saved answers yet.</p>';
     },
     performance(mount, { bank, stats }, taxonomy) {
       const performance=stats.performance || stats;
       const draw = () => {
-        mount.innerHTML = this.heading('Statistics', bank) + `<p class="qw-stats-note"><strong>Note:</strong> Performance metrics use completed tests. Press End when you finish a test to record your results. QBank usage counts unique questions with saved answers, including tests in progress.</p><div class="qw-tabs">${['overall','reports','graphs'].map(tab => `<button data-stats="${tab}" class="${this.statsTab === tab ? 'active' : ''}">${tab[0].toUpperCase()+tab.slice(1)}</button>`).join('')}</div><div id="qwPerformance"></div>`;
+        mount.innerHTML = this.heading('Performance', bank) + `<p class="qw-stats-note"><strong>Note:</strong> Performance metrics use completed tests. Press End when you finish a test to record your results. QBank usage counts unique questions with saved answers, including tests in progress.</p><div class="qw-tabs">${['overall','reports','graphs'].map(tab => `<button data-stats="${tab}" class="${this.statsTab === tab ? 'active' : ''}">${tab[0].toUpperCase()+tab.slice(1)}</button>`).join('')}</div><div id="qwPerformance"></div>`;
         this.wireHeading(mount);
         mount.querySelectorAll('[data-stats]').forEach(b => b.onclick = () => { this.statsTab = b.dataset.stats; draw(); });
         const body = mount.querySelector('#qwPerformance');
@@ -526,7 +631,7 @@
           const unused=Math.max(0,stats.totalQuestions-stats.used);
           const ring=(value,label,color)=>'<article class="qw-stat-card qw-ring-card"><div class="qw-ring" style="--ring-value:'+value+';--ring-color:'+color+'"><div><strong>'+value+'%</strong><span>'+label+'</span></div></div></article>';
           const card=(title,rows)=>'<article class="qw-stat-card"><h3>'+title+'</h3>'+rows.map(([label,value])=>'<div class="qw-stat-row"><span>'+label+'</span><strong>'+Number(value || 0).toLocaleString()+'</strong></div>').join('')+'</article>';
-          body.innerHTML='<h3>Statistics</h3><div class="qw-stat-grid">'+ring(score,'Correct','#20c464')+card('Your Score',[['Total Correct',performance.correct],['Total Incorrect',performance.incorrect],['Total Omitted',performance.omitted]])+card('Answer Changes',[['Correct to Incorrect',performance.changes.C2I],['Incorrect to Correct',performance.changes.I2C],['Incorrect to Incorrect',performance.changes.I2I]])+ring(stats.totalQuestions ? Math.floor(1000*unused/stats.totalQuestions)/10 : 0,'Unused','#9ca3af')+card('QBank Usage',[['Used Questions',stats.used],['Unused Questions',unused],['Total Questions',stats.totalQuestions]])+card('Test Count',[['Tests Created',stats.created],['Tests Completed',stats.completed],['Suspended Tests',stats.suspended]])+'</div>';
+          body.innerHTML='<h3>Performance</h3><div class="qw-stat-grid">'+ring(score,'Correct','#20c464')+card('Your Score',[['Total Correct',performance.correct],['Total Incorrect',performance.incorrect],['Total Omitted',performance.omitted]])+card('Answer Changes',[['Correct to Incorrect',performance.changes.C2I],['Incorrect to Correct',performance.changes.I2C],['Incorrect to Incorrect',performance.changes.I2I]])+ring(stats.totalQuestions ? Math.floor(1000*unused/stats.totalQuestions)/10 : 0,'Unused','#9ca3af')+card('QBank Usage',[['Used Questions',stats.used],['Unused Questions',unused],['Total Questions',stats.totalQuestions]])+card('Test Count',[['Tests Created',stats.created],['Tests Completed',stats.completed],['Suspended Tests',stats.suspended]])+'</div>';
         } else if (this.statsTab === 'reports') {
           const totals = {};
           if (this.reportBy === 'subject') taxonomy.subjects.forEach(s => totals[s.name] = s.count);

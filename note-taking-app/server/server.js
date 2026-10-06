@@ -45,6 +45,20 @@ fs.ensureDirSync(path.join(NOTES_BASE_DIR, "questions"));
 require('./medical-library').mountMedicalLibrary(app, NOTES_BASE_DIR);
 app.use("/api/images", express.static(path.join(NOTES_BASE_DIR, "images")));
 
+// Serve the Qnex web client from the same LAN host as the API. This lets an
+// iPad or another device open http://<laptop-ip>:3001 while all data remains
+// on the laptop. Keep the server implementation and dependencies private.
+const QNEX_WEB_ROOT = path.resolve(__dirname, "..");
+app.use((req, res, next) => {
+  if (req.path === "/server" || req.path.startsWith("/server/")) return res.sendStatus(404);
+  next();
+});
+app.use(express.static(QNEX_WEB_ROOT, { index: "index.html" }));
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api/")) return next();
+  res.sendFile(path.join(QNEX_WEB_ROOT, "index.html"));
+});
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({

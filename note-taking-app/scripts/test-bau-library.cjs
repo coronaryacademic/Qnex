@@ -6,14 +6,22 @@ const bau=require('../server/bau-library');
 const {bankStatistics}=require('../server/medical-library');
 const root=path.resolve(__dirname,'..');
 (async()=>{
-  const catalog=bau.catalog();assert.equal(catalog.length,1);assert.equal(catalog[0].key,'bau-year4');
+  const catalog=bau.catalog();assert.equal(catalog.length,2);assert.equal(catalog[0].key,'bau-year4');
+  const year5=catalog.find(b=>b.key==='bau-year5');assert(year5&&year5.count>0);
+  const year5taxonomy=bau.dispatch({action:'filters',bank:year5.key});
+  assert.deepEqual(year5taxonomy.subjects.map(s=>s.id),[9,10]);
+  assert.equal(year5taxonomy.subjects.reduce((n,s)=>n+s.count,0),year5.count);
+  for(const subject of year5taxonomy.subjects){
+    const result=bau.dispatch({action:'questions',bank:year5.key,subject:subject.id,count:year5.count});
+    assert.equal(result.questions.length,subject.count);assert(result.questions.every(q=>q.subject_id===subject.id));
+  }
   const bank=catalog[0], taxonomy=bau.dispatch({action:'filters',bank:bank.key});
   assert.equal(taxonomy.subjects.length,8);assert.equal(taxonomy.subjects.reduce((n,s)=>n+s.count,0),bank.count);
   assert.equal(new Set(taxonomy.items.map(q=>q.id)).size,bank.count);
   for(const subject of taxonomy.subjects.filter(s=>s.count)){
     const result=bau.dispatch({action:'questions',bank:bank.key,subject:subject.id,count:bank.count});
     assert.equal(result.matching,subject.count);assert(result.questions.every(q=>q.subject_id===subject.id));
-    assert(result.questions.every(q=>q.choices.length>=2&&Number(q.correct)>0&&Number(q.correct)<=q.choices.length));
+    assert(result.questions.every(q=>q.choices.length>=2&&(q.type==='matching' ? q.matching.every(b=>b.correct>0&&b.correct<=q.choices.length) : Number(q.correct)>0&&Number(q.correct)<=q.choices.length)));
   }
   for(const system of taxonomy.systems){
     const result=bau.dispatch({action:'questions',bank:bank.key,system:system.id,count:bank.count});
@@ -24,7 +32,7 @@ const root=path.resolve(__dirname,'..');
   assert.equal(context.window.QBankWorkspace.validateIds(taxonomy.items,'IM-Iris-1').valid,true);
   assert.equal(context.window.QBankWorkspace.validateIds(taxonomy.items,'Iris-1').valid,false);
   const all=bau.dispatch({action:'questions',bank:bank.key,count:bank.count}).questions;
-  for(const q of all.filter(q=>q.explanation_media.length))for(const media of q.explanation_media){
+  for(const q of all)for(const media of [...q.explanation_media,...q.media]){
     const result=bau.dispatch({action:'media',bank:bank.key,qid:q.id,name:media.name});
     assert.equal(Buffer.from(result.body,'base64').subarray(1,4).toString(),'PNG');
   }
@@ -36,28 +44,30 @@ const root=path.resolve(__dirname,'..');
     await page.goto('http://qnex.test');
     for(const name of ['medical-library.js','qbank-workspace.js'])await page.addScriptTag({content:fs.readFileSync(path.join(root,'scripts',name),'utf8')});
     for(const name of ['style.css','medical-library.css','qbank-workspace.css']){const file=path.join(root,'styles',name);if(fs.existsSync(file))await page.addStyleTag({content:fs.readFileSync(file,'utf8')});}
-    await page.evaluate(({bank,taxonomy,stats})=>{
+    await page.evaluate(({bank,year5,taxonomy,stats})=>{
       const L=window.MedicalLibrary,W=window.QBankWorkspace;
       window.QuestionBase={switchTab(){}};
-      L.banks=[bank,{key:'step1',label:'Step 1',category:'uworld',step:1,count:3659}];L.renderBanks();
+      L.banks=[bank,year5,{key:'step1',label:'Step 1',category:'uworld',step:1,count:3659}];L.renderBanks();
       const group=document.querySelector('[data-node="bau"]');
-      if(group.querySelectorAll('.ml-tree-leaf').length!==3||group.querySelector('.ml-tree-subgroup'))throw Error('BAU must have three direct year leaves');
-      if(group.querySelector('.ml-tree-total').textContent!=='3 banks')throw Error('Wrong BAU bank count');
+      if(group.querySelectorAll('.ml-tree-leaf').length!==2||group.querySelector('.ml-tree-subgroup'))throw Error('BAU must have two direct year leaves');
+      if([...group.querySelectorAll('.ml-tree-leaf')].some(leaf=>leaf.textContent.includes('6th year')))throw Error('Sixth year must not have a separate bank');
+      if(group.querySelectorAll('.ml-bau-year-note').length!==1||group.querySelector('.ml-bau-year-note').textContent!=='* 6th year uses the same question banks as 4th and 5th year.')throw Error('Missing BAU year note');
+      if(group.querySelector('.ml-tree-total').textContent!=='2 banks')throw Error('Wrong BAU bank count');
       if(group.textContent.includes('subjects')||group.textContent.includes('Internal Medicine'))throw Error('Subjects leaked into library');
-      if(group.open||!document.querySelector('[data-node="uworld"]').open)throw Error('Incorrect default expansion');
+      if(!group.open||!document.querySelector('[data-node="uworld"]').open)throw Error('Incorrect default expansion');
       group.open=true;
       W.builder(document.getElementById('builder'),{bank,stats,profile:{generations:{}}},taxonomy);
-    },{bank,taxonomy,stats:bankStatistics([],bank.key,bank.count)});
+    },{bank,year5,taxonomy,stats:bankStatistics([],bank.key,bank.count)});
     assert.equal(await page.locator('[name=bauNavigation]').getAttribute('role'),'switch');
     assert.equal(await page.locator('.qw-navigation-label').textContent(),'One way');
-    await page.locator('[name=bauNavigation]').check();
+    await page.locator('label.qw-switch').filter({has:page.locator('[name=bauNavigation]')}).click();
     assert.equal(await page.locator('.qw-navigation-label').textContent(),'Two way');
-    await page.locator('[name=bauNavigation]').uncheck();
+    await page.locator('label.qw-switch').filter({has:page.locator('[name=bauNavigation]')}).click();
     assert.equal(await page.locator('.qw-navigation-label').textContent(),'One way');
     await page.locator('[name=pool][value=all]').check();
     await page.locator('[name=subject][value="1"]').check();
     assert.equal(await page.locator('[name=subject]').count(),8);
-    assert.equal(await page.locator('[name=subject]:disabled').count(),6);
+    assert.equal(await page.locator('[name=subject]:disabled').count(),taxonomy.subjects.filter(s=>!s.count).length);
     assert.equal(await page.locator('.qw-system:not([hidden])').count(),new Set(taxonomy.items.filter(q=>q.subject===1).map(q=>q.group)).size);
     assert.equal(await page.locator('[name=system]:disabled').evaluateAll(boxes=>boxes.every(box=>box.closest('label').hidden)),true);
     await page.locator('[data-all=system]').check();
@@ -67,7 +77,7 @@ const root=path.resolve(__dirname,'..');
     assert.equal(await page.locator('[name=count]').inputValue(),'11','Manual count persists when filters change');
     await page.locator('#qwMatchCount').click();
     await page.locator('[data-all=system]').check();
-    assert.equal(await page.locator('[name=count]').inputValue(),String(bank.count));
+    assert.equal(await page.locator('[name=count]').inputValue(),String(taxonomy.subjects[0].count+taxonomy.subjects[1].count));
     await page.locator('[name=subject][value="1"]').uncheck();
     assert.equal(await page.locator('[name=count]').inputValue(),String(taxonomy.subjects[1].count));
     assert.equal(await page.locator('.qw-system:not([hidden])').count(),new Set(taxonomy.items.filter(q=>q.subject===2).map(q=>q.group)).size);
@@ -91,7 +101,32 @@ const root=path.resolve(__dirname,'..');
     const beforeRetrieve=await page.evaluate(()=>window.typingFacetCalls);
     await page.locator('[name=retrieveId]').pressSequentially('45');
     assert.equal(await page.evaluate(()=>window.typingFacetCalls),beforeRetrieve,'Test-ID typing must not recalculate filters');
+    await page.locator('[data-mode=standard]').click();
+    for(const sid of [5,6,7,8]){
+      await page.locator('[name=subject]:checked').uncheck();
+      await page.locator(`[name=subject][value="${sid}"]`).check();
+      const expected=new Set(taxonomy.items.filter(q=>q.subject===sid).map(q=>q.group));
+      assert.equal(await page.locator('.qw-system:not([hidden])').count(),expected.size);
+      assert(!(await page.locator('.qw-system:not([hidden])').allTextContents()).some(t=>t.includes('final review')));
+      if(sid===7 || sid===6){
+        const spine=page.locator('.qw-system:not([hidden])').filter({has:page.locator('summary span',{hasText:'Spine and spinal cord'})});
+        assert.equal(await spine.count(),1,'All spine topics must share one parent');
+        await spine.locator('summary span').click();
+        assert((await spine.locator('[name=system]').count())>=3);
+        assert.equal(await spine.locator('summary small').textContent(),String(taxonomy.items.filter(q=>q.subject===sid&&q.group==='Spine and spinal cord').length));
+      }
+      await page.screenshot({path:path.join(root,`reports/bau-specialties/taxonomy-subject-${sid}.png`),fullPage:true});
+    }
     await page.screenshot({path:path.join(root,'reports/bau-import/year-bank-and-builder.png'),fullPage:true});
+    await page.evaluate(({year5,year5taxonomy,stats})=>{
+      window.QBankWorkspace.builder(document.getElementById('builder'),{bank:year5,stats,profile:{generations:{}}},year5taxonomy);
+    },{year5,year5taxonomy,stats:bankStatistics([],year5.key,year5.count)});
+    assert.equal(await page.locator('[name=subject]').count(),2);
+    await page.locator('[name=pool][value=all]').check();
+    await page.locator('[name=subject][value="9"]').check();
+    await page.locator('[data-all=system]').check();
+    assert.equal(await page.locator('[name=count]').inputValue(),String(year5.subjects.find(s=>s.id===9).count));
+    await page.screenshot({path:path.join(root,'reports/bau-expansion/fifth-year-builder.png'),fullPage:true});
   }finally{await browser.close();}
-  console.log('PASS: three year leaves, default collapse, Create Test subjects/topics, alias ambiguity, unique IDs, complete keys and clinical media.');
+  console.log('PASS: only fourth and fifth year leaves, Create Test subjects/topics, unique IDs, complete keys and clinical media.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -96,16 +96,16 @@
     }
     100% {
         opacity: 0;
-        bottom: 18px; /* Targets the center of the 20px bell at bottom: 8px */
-        left: calc(100% - 18px); /* Targets the center of the 20px bell at right: 8px */
+        bottom: var(--bell-bottom,18px);
+        left: var(--bell-left,calc(100% - 18px));
         transform: translate(0, 0) scale(0.2);
     }
 }
 
 .notif-count {
     position: absolute;
-    top: -5px;
-    right: -5px;
+    top: -2px;
+    right: -2px;
     background: #ef4444;
     color: white;
     font-size: 8px;
@@ -118,7 +118,7 @@
     align-items: center;
     justify-content: center;
     border: 1px solid #1a1b1e;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    box-shadow: none;
 }
 
 .notif-count.hidden {
@@ -360,3 +360,14 @@ body.theme-light .notif-item.success {
     font-weight: 400;
     letter-spacing: 0.5px;
 }
+
+/* Toasts enter at the lower right, then shrink toward the live bell position. */
+body.qbank-only .flying-notif { left:auto; right:18px; bottom:18px; max-width:min(380px,calc(100vw - 36px)); box-sizing:border-box; white-space:normal; transform:none; }
+body.qbank-only .flying-notif.active { animation:qnex-toast-to-bell 4s cubic-bezier(.22,.7,.3,1) forwards; }
+@keyframes qnex-toast-to-bell {
+  0% { opacity:0; transform:translateY(14px); }
+  8%,78% { opacity:1; bottom:18px; right:18px; transform:none; }
+  100% { opacity:0; bottom:var(--bell-bottom,18px); right:var(--bell-right,18px); transform:translate(50%,50%) scale(.08); }
+}
+@media(prefers-reduced-motion:reduce) { body.qbank-only .flying-notif.active { animation:qnex-toast-fade 4s linear forwards; } }
+@keyframes qnex-toast-fade { 0%,100% {opacity:0} 5%,90% {opacity:1} }

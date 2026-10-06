@@ -704,7 +704,7 @@ const QuestionBase = {
         document.addEventListener("mousemove", (e) => {
             if (!isResizing) return;
             const newWidth = startWidth + (e.clientX - startX);
-            if (newWidth > 230 && newWidth < 900) {
+            if (newWidth >= 220 && newWidth <= 480) {
                 this.el.sidebar.style.width = `${newWidth}px`;
                 const baseSidebar = document.getElementById("sidebar");
                 if (baseSidebar) baseSidebar.style.width = `${newWidth}px`;
@@ -725,12 +725,12 @@ const QuestionBase = {
     },
 
     loadSidebarWidth() {
-        const width = localStorage.getItem("app-question-sidebar-width");
-        if (width) this.el.sidebar.style.width = width;
+        const width = parseInt(localStorage.getItem("qnex-qbank-sidebar-width"), 10);
+        if (this.el.sidebar) this.el.sidebar.style.width = `${Number.isFinite(width) ? Math.max(220, Math.min(480, width)) : 240}px`;
     },
 
     saveSidebarWidth() {
-        if (this.el.sidebar) localStorage.setItem("app-question-sidebar-width", this.el.sidebar.style.width);
+        if (this.el.sidebar) localStorage.setItem("qnex-qbank-sidebar-width", this.el.sidebar.style.width);
     },
 
     loadCollapsedSections() {
@@ -1094,7 +1094,7 @@ Generate a professional title for this study session.`;
         // Update Floating Button to "Back to Notes"
         if (this.el.floatBtn) {
             this.el.floatBtn.style.zIndex = "2000"; // Ensure on top of question layer
-            this.el.floatBtn.title = "Back to Notes";
+            this.el.floatBtn.title = "Qbank Library";
             this.el.floatBtn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
         }
 
@@ -1116,6 +1116,12 @@ Generate a professional title for this study session.`;
     },
 
     close() {
+        // Qbank is the application root.
+        if (document.body.classList.contains('qbank-only')) {
+            this.el.base.classList.remove('hidden');
+            this.switchTab('medical-library');
+            return;
+        }
         this.el.base.classList.add("hidden");
         this.toggleSessionControls(false); // Hide controls when closing QuestionBase
         // Revert Floating Button to "Questions"
@@ -2241,6 +2247,7 @@ Rules:
 
     async toggleSidebar() {
         this.el.sidebar.classList.toggle("collapsed");
+        this.el.sidebar.querySelectorAll(".qw-sidebar-wordmark, .qw-sidebar-wordmark *").forEach(element=>element.getAnimations().forEach(animation=>{animation.currentTime=0;}));
         const isCollapsed = this.el.sidebar.classList.contains("collapsed");
 
         // Sync TO main sidebar
@@ -2351,8 +2358,7 @@ Rules:
         // Reset Header -> HOME
         this.updateHeaderUI('HOME');
 
-        this.el.saveBtn.disabled = true;
-        this.el.saveBtn.style.display = "none";
+        if(this.el.saveBtn) { this.el.saveBtn.disabled = true; this.el.saveBtn.style.display = "none"; }
 
 
 
@@ -2571,6 +2577,7 @@ Rules:
 
     // RENDER SIDEBAR with Sections
     renderSidebar() {
+        if(document.body.classList.contains("qbank-only") && window.QBankWorkspace) { window.QBankWorkspace.syncSidebar(); return; }
         this.el.list.innerHTML = "";
         const query = this.el.searchInput ? this.el.searchInput.value.toLowerCase().trim() : "";
 

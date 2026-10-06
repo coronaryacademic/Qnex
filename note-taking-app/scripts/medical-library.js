@@ -2,14 +2,14 @@
   'use strict';
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const categoryIcons = {
-    bau: '<svg class="ml-category-icon" width="20" height="22" viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2h18v10c0 6-4 10-9 12-5-2-9-6-9-12z"/><path d="M5.5 4.5h13V12c0 4.5-2.8 7.7-6.5 9.2-3.7-1.5-6.5-4.7-6.5-9.2z"/><g stroke-width="1.15" transform="translate(12 12.7) scale(.82) translate(-12 -12.7)"><path d="M11.7 8.2v8.6l-1-1.9-2 .6.6-2-1.9-1 1.9-1-.6-2 2 .6z"/><path d="m12.9 9.4 2.3-1.6 1.5 1.5-.5 1.9 1.1 1.1-2.6 1.1.6 1.2-1.6 3.3-1.1-.3.1-2.8-.4-1.6.4-1.1-.2-1.6z"/></g></svg>',
+    bau: '<svg class="ml-category-icon" width="20" height="22" viewBox="0 0 100 114" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true"><path d="M8 5h84v31c0 36-14 59-42 73C22 95 8 72 8 36Z"/><path d="M21 29h58v39H21Z" stroke-width="1.5"/><path d="m52 34 26-8v17l-24 4 23 15-23 3" stroke-width="2"/><g transform="translate(49 49)" stroke-width="1.8"><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(0)"/><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(45)"/><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(90)"/><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(135)"/><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(180)"/><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(225)"/><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(270)"/><ellipse cx="0" cy="-10" rx="4" ry="11" transform="rotate(315)"/><path d="m0-8 3 5 6-1-3 5 3 5-6-1-3 5-3-5-6 1 3-5-3-5 6 1Z" fill="currentColor" stroke="none"/></g><path d="M26 72h48v16H26ZM24 88h52M32 88V77a3 3 0 0 1 6 0v11m7 0V77a3 3 0 0 1 6 0v11m7 0V77a3 3 0 0 1 6 0v11m5 0V77" stroke-width="2"/><text x="50" y="15" text-anchor="middle" fill="currentColor" stroke="none" font-family="Arial,sans-serif" font-size="8" font-weight="700">جامعة البلقاء التطبيقية</text><text x="50" y="23" text-anchor="middle" fill="currentColor" stroke="none" font-family="Arial,sans-serif" font-size="5.6" font-weight="700">AL-BALQA APPLIED UNIVERSITY</text><path d="M19 57c3 16 12 30 22 37M81 57c-3 16-12 30-22 37" stroke-width="1.5"/><path d="m20 65 5 1m-2 5 5 1m-2 5 5 1m38-13 5-1m-8 7 5-1m-8 7 5-1" stroke-width="2"/><text x="50" y="100" text-anchor="middle" fill="currentColor" stroke="none" font-family="Arial,sans-serif" font-size="7">الأردن</text></svg>',
     cqb: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="4" rx="1"/><path d="M5 7v13h14V7M10 11h4"/></svg>',
-    uworld: '<svg class="ml-category-icon ml-uw-icon" width="24" height="20" viewBox="0 0 32 24" fill="none" aria-hidden="true"><text x="1" y="18" font-family="Segoe UI,Arial,sans-serif" font-size="15" font-weight="600" letter-spacing="-1.2" fill="currentColor">UW</text></svg>',
-    amboss: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>',
-    mehlman: '<svg class="ml-category-icon ml-mehlman-icon" width="22" height="20" viewBox="0 0 22 24" fill="none" aria-hidden="true"><text x="1" y="19" font-family="Arial Narrow,Segoe UI,Arial,sans-serif" font-size="19" font-weight="700" letter-spacing="-.8" fill="currentColor">M</text></svg>',
+    uworld: '<svg class="ml-category-icon ml-uw-icon" width="20" height="20" viewBox="13 19 63 63" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M49,55L49,53L50,53L50,50L49,50L49,52L48,52L48,53L47,53L47,54L46,54L46,55L45,55L45,56L43,56L43,57L40,57L40,58L36,58L36,59L34,59L34,58L30,58L30,57L27,57L27,56L26,56L26,55L25,55L25,54L24,54L24,53L23,53L23,52L22,52L22,50L21,50L21,48L20,48L20,43L19,43L19,53L20,53L20,55L21,55L21,57L22,57L22,58L23,58L23,60L24,60L24,61L26,61L26,62L28,62L28,63L30,63L30,64L39,64L39,63L42,63L42,62L43,62L43,61L45,61L45,60L46,60L46,59L47,59L47,57L48,57L48,56L49,56ZM67,63L68,63L68,61L69,61L69,59L70,59L70,55L71,55L71,46L70,46L70,42L69,42L69,39L68,39L68,45L67,45L67,50L66,50L66,52L65,52L65,54L64,54L64,56L63,56L63,57L62,57L62,58L61,58L61,60L60,60L60,61L59,61L59,62L58,62L58,63L56,63L56,64L55,64L55,65L53,65L53,66L51,66L51,67L49,67L49,68L44,68L44,69L38,69L38,68L33,68L33,67L30,67L30,66L28,66L28,65L27,65L27,64L25,64L25,63L24,63L24,62L23,62L23,61L22,61L22,60L21,60L21,59L20,59L20,58L19,58L19,60L20,60L20,62L21,62L21,64L22,64L22,65L23,65L23,66L24,66L24,68L25,68L25,69L26,69L26,70L27,70L27,71L28,71L28,72L30,72L30,73L31,73L31,74L33,74L33,75L36,75L36,76L39,76L39,77L48,77L48,76L53,76L53,75L55,75L55,74L57,74L57,73L59,73L59,72L60,72L60,71L61,71L61,70L63,70L63,69L64,69L64,68L65,68L65,66L66,66L66,65L67,65ZM53,21L56,21L56,22L58,22L58,23L60,23L60,24L62,24L62,25L63,25L63,26L65,26L65,27L66,27L66,28L67,28L67,29L68,29L68,31L69,31L69,32L70,32L70,33L71,33L71,35L72,35L72,37L73,37L73,38L74,38L74,42L75,42L75,47L76,47L76,54L75,54L75,59L74,59L74,63L73,63L73,64L72,64L72,66L71,66L71,68L70,68L70,69L69,69L69,70L68,70L68,72L67,72L67,73L66,73L66,74L65,74L65,75L63,75L63,76L62,76L62,77L60,77L60,78L58,78L58,79L56,79L56,80L53,80L53,81L48,81L48,82L41,82L41,81L36,81L36,80L33,80L33,79L31,79L31,78L29,78L29,77L27,77L27,76L26,76L26,75L24,75L24,74L23,74L23,73L22,73L22,72L21,72L21,70L20,70L20,69L19,69L19,68L18,68L18,66L17,66L17,64L16,64L16,62L15,62L15,59L14,59L14,53L13,53L13,48L14,48L14,42L15,42L15,39L16,39L16,37L17,37L17,35L18,35L18,33L19,33L19,32L20,32L20,31L21,31L21,29L22,29L22,28L23,28L23,27L24,27L24,26L26,26L26,25L27,25L27,24L29,24L29,23L31,23L31,22L33,22L33,21L36,21L36,20L41,20L41,19L48,19L48,20L53,20ZM39,27L38,27L38,28L37,28L37,29L36,29L36,37L37,37L37,39L38,39L38,40L39,40L39,41L40,41L40,42L42,42L42,43L44,43L44,42L43,42L43,41L42,41L42,40L41,40L41,38L40,38L40,36L39,36L39,30L40,30L40,29L41,29L41,27L42,27L42,26L44,26L44,25L47,25L47,24L42,24L42,25L40,25L40,26L39,26ZM44,39L45,39L45,40L46,40L46,41L47,41L47,40L46,40L46,32L47,32L47,31L48,31L48,30L49,30L49,29L50,29L50,28L52,28L52,27L57,27L57,26L55,26L55,25L49,25L49,26L47,26L47,27L46,27L46,28L45,28L45,29L44,29L44,31L43,31L43,37L44,37ZM29,33L29,40L30,40L30,42L31,42L31,43L32,43L32,44L33,44L33,45L34,45L34,46L36,46L36,47L45,47L45,46L47,46L47,45L40,45L40,44L38,44L38,43L36,43L36,42L35,42L35,40L34,40L34,39L33,39L33,36L32,36L32,31L33,31L33,28L34,28L34,27L35,27L35,26L36,26L36,25L35,25L35,26L33,26L33,27L32,27L32,28L31,28L31,29L30,29L30,31L29,31ZM58,27L57,27L57,28L54,28L54,29L52,29L52,30L51,30L51,31L50,31L50,33L49,33L49,38L50,38L50,40L51,40L51,35L52,35L52,33L53,33L53,32L54,32L54,31L56,31L56,30L59,30L59,31L62,31L62,30L61,30L61,29L59,29L59,28L58,28ZM27,31L26,31L26,32L25,32L25,33L24,33L24,35L23,35L23,38L22,38L22,43L23,43L23,46L24,46L24,48L25,48L25,49L26,49L26,50L27,50L27,51L28,51L28,52L29,52L29,53L32,53L32,54L40,54L40,53L43,53L43,52L44,52L44,51L45,51L45,50L43,50L43,51L38,51L38,50L34,50L34,49L32,49L32,48L31,48L31,47L30,47L30,46L29,46L29,45L28,45L28,44L27,44L27,42L26,42L26,33L27,33ZM46,49L45,49L45,50L46,50ZM59,32L58,32L58,33L56,33L56,34L55,34L55,35L54,35L54,37L53,37L53,39L54,39L54,37L55,37L55,36L57,36L57,35L62,35L62,36L64,36L64,37L65,37L65,40L66,40L66,36L65,36L65,34L63,34L63,33L61,33L61,32ZM50,49L51,49L51,48L50,48ZM27,30L27,31L28,31L28,30ZM63,31L62,31L62,32L63,32Z"/></svg>',
+    amboss: '<svg class="ml-category-icon" width="18" height="18" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true"><path d="M16 3 2 27h28L19 8M16 10 6 30h20L16 13 10 24h12"/></svg>',
+    mehlman: '<svg class="ml-category-icon ml-mehlman-icon" width="22" height="24" viewBox="25 21 82 89" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M73,85L73,107L74,107L74,106L76,106L76,105L78,105L78,104L80,104L80,103L82,103L82,79L83,79L83,78L84,78L84,80L85,80L85,81L86,81L86,82L87,82L87,84L88,84L88,85L90,85L90,82L91,82L91,79L92,79L92,77L93,77L93,74L94,74L94,73L95,73L95,74L96,74L96,95L97,95L97,94L99,94L99,93L101,93L101,92L103,92L103,91L105,91L105,48L102,48L102,49L100,49L100,50L98,50L98,51L96,51L96,53L95,53L95,55L94,55L94,57L93,57L93,60L92,60L92,63L91,63L91,65L90,65L90,66L88,66L88,65L87,65L87,64L86,64L86,62L85,62L85,61L84,61L84,59L80,59L80,60L78,60L78,61L76,61L76,62L74,62L74,63L73,63ZM25,75L25,39L26,39L26,38L27,38L27,37L28,37L28,36L31,36L31,35L33,35L33,34L35,34L35,33L37,33L37,32L39,32L39,33L41,33L41,34L43,34L43,35L45,35L45,34L46,34L46,31L47,31L47,29L48,29L48,27L49,27L49,26L51,26L51,25L53,25L53,24L55,24L55,23L56,23L56,22L58,22L58,21L63,21L63,22L65,22L65,23L68,23L68,22L70,22L70,21L74,21L74,22L76,22L76,23L78,23L78,24L80,24L80,25L82,25L82,26L84,26L84,28L85,28L85,30L86,30L86,33L87,33L87,35L90,35L90,34L92,34L92,33L97,33L97,34L99,34L99,35L101,35L101,36L103,36L103,37L105,37L105,38L107,38L107,92L106,92L106,93L105,93L105,94L103,94L103,95L101,95L101,96L99,96L99,97L97,97L97,98L93,98L93,97L91,97L91,96L88,96L88,95L86,95L86,94L84,94L84,104L83,104L83,105L81,105L81,106L79,106L79,107L77,107L77,108L75,108L75,109L73,109L73,110L71,110L71,109L69,109L69,108L64,108L64,109L62,109L62,110L59,110L59,109L57,109L57,108L55,108L55,107L53,107L53,106L51,106L51,105L49,105L49,95L48,95L48,94L47,94L47,95L44,95L44,96L42,96L42,97L40,97L40,98L36,98L36,97L34,97L34,96L32,96L32,95L30,95L30,94L28,94L28,93L26,93L26,92L25,92ZM51,84L51,103L52,103L52,104L54,104L54,105L56,105L56,106L58,106L58,107L59,107L59,106L60,106L60,63L58,63L58,62L56,62L56,61L55,61L55,60L53,60L53,59L49,59L49,60L48,60L48,62L47,62L47,63L46,63L46,64L45,64L45,66L42,66L42,64L41,64L41,62L40,62L40,59L39,59L39,56L38,56L38,53L37,53L37,52L36,52L36,51L35,51L35,50L33,50L33,49L31,49L31,48L28,48L28,91L29,91L29,92L31,92L31,93L33,93L33,94L35,94L35,95L36,95L36,94L37,94L37,73L38,73L38,74L39,74L39,76L40,76L40,78L41,78L41,81L42,81L42,84L43,84L43,85L45,85L45,84L46,84L46,82L47,82L47,81L48,81L48,79L50,79L50,80L51,80L51,81L50,81L50,83L51,83ZM64,60L64,59L65,59L65,57L66,57L66,56L65,56L65,54L64,54L64,53L61,53L61,52L60,52L60,53L58,53L58,54L56,54L56,55L54,55L54,56L53,56L53,57L54,57L54,58L56,58L56,59L58,59L58,60L59,60L59,61L62,61L62,60ZM65,74L65,62L63,62L63,63L62,63L62,106L64,106L64,105L65,105L65,104L66,104L66,103L65,103ZM47,37L49,37L49,38L50,38L50,39L51,39L51,41L52,41L52,42L53,42L53,44L54,44L54,45L55,45L55,44L56,44L56,41L57,41L57,39L58,39L58,37L59,37L59,34L58,34L58,33L56,33L56,32L55,32L55,31L53,31L53,30L49,30L49,32L48,32L48,35L47,35ZM79,28L79,26L77,26L77,25L75,25L75,24L73,24L73,23L71,23L71,24L69,24L69,25L68,25L68,30L69,30L69,31L71,31L71,32L73,32L73,31L75,31L75,30L76,30L76,29L78,29L78,28ZM68,88L68,106L71,106L71,63L70,63L70,62L68,62ZM51,52L50,52L50,49L49,49L49,47L48,47L48,48L45,48L45,49L44,49L44,50L42,50L42,51L40,51L40,55L41,55L41,57L42,57L42,60L43,60L43,62L45,62L45,60L46,60L46,59L47,59L47,58L48,58L48,56L49,56L49,55L51,55ZM44,47L44,46L46,46L46,44L44,44L44,43L32,43L32,44L31,44L31,46L33,46L33,47L34,47L34,48L36,48L36,49L40,49L40,48L42,48L42,47ZM89,37L89,38L87,38L87,40L88,40L88,41L102,41L102,40L103,40L103,39L102,39L102,38L100,38L100,37L98,37L98,36L96,36L96,35L94,35L94,36L91,36L91,37ZM60,23L59,23L59,24L57,24L57,25L56,25L56,26L54,26L54,27L53,27L53,29L56,29L56,30L58,30L58,31L59,31L59,32L62,32L62,31L64,31L64,30L65,30L65,29L66,29L66,27L65,27L65,25L64,25L64,24L62,24L62,23ZM72,61L73,61L73,60L75,60L75,59L76,59L76,58L79,58L79,56L78,56L78,55L76,55L76,54L75,54L75,53L72,53L72,52L71,52L71,53L69,53L69,54L68,54L68,59L69,59L69,60L71,60L71,61ZM85,33L84,33L84,31L83,31L83,30L80,30L80,31L78,31L78,32L76,32L76,33L74,33L74,38L75,38L75,40L76,40L76,43L77,43L77,44L79,44L79,43L80,43L80,41L81,41L81,39L82,39L82,38L83,38L83,37L85,37ZM91,94L92,94L92,95L94,95L94,82L93,82L93,83L92,83L92,86L91,86L91,88L90,88L90,89L86,89L86,88L84,88L84,91L85,91L85,92L87,92L87,93L90,93L90,94ZM88,46L89,46L89,47L91,47L91,48L93,48L93,49L97,49L97,48L99,48L99,47L101,47L101,46L102,46L102,44L101,44L101,43L89,43L89,44L87,44L87,45L88,45ZM81,45L80,45L80,47L79,47L79,48L78,48L78,49L76,49L76,47L75,47L75,44L74,44L74,41L73,41L73,38L72,38L72,36L71,36L71,34L70,34L70,33L68,33L68,51L70,51L70,50L73,50L73,51L76,51L76,52L78,52L78,53L79,53L79,52L80,52L80,49L81,49L81,46L82,46L82,44L84,44L84,43L85,43L85,41L83,41L83,42L82,42L82,44L81,44ZM47,92L47,91L48,91L48,88L47,88L47,89L44,89L44,90L43,90L43,89L42,89L42,87L41,87L41,85L40,85L40,83L39,83L39,95L41,95L41,94L43,94L43,93L45,93L45,92ZM57,52L57,51L59,51L59,50L63,50L63,51L65,51L65,50L66,50L66,49L65,49L65,40L66,40L66,39L65,39L65,38L66,38L66,37L65,37L65,33L63,33L63,34L62,34L62,35L61,35L61,38L60,38L60,40L59,40L59,42L58,42L58,45L57,45L57,48L54,48L54,47L53,47L53,46L52,46L52,45L51,45L51,43L50,43L50,42L49,42L49,41L48,41L48,43L49,43L49,44L50,44L50,45L51,45L51,48L52,48L52,50L53,50L53,52L54,52L54,53L55,53L55,52ZM85,47L84,47L84,48L83,48L83,51L82,51L82,53L81,53L81,54L82,54L82,55L83,55L83,56L84,56L84,57L85,57L85,58L86,58L86,60L87,60L87,61L88,61L88,62L89,62L89,61L90,61L90,59L91,59L91,56L92,56L92,54L93,54L93,51L92,51L92,50L90,50L90,49L88,49L88,48L85,48ZM30,39L30,40L31,40L31,41L44,41L44,40L45,40L45,38L43,38L43,37L41,37L41,36L39,36L39,35L37,35L37,36L34,36L34,37L32,37L32,38L30,38Z"/></svg>',
     boardvitals: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
-    mksap: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v8M8 12h8"/></svg>',
-    abim: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    mksap: '<svg class="ml-category-icon" width="18" height="18" viewBox="-2 0 40 36" fill="currentColor" aria-hidden="true"><path d="M2 2h5l4 10 4-10h5v15h-4V7l-4 10H9L5 7v10H2ZM23 2h4v6l5-6h5l-6 7 6 8h-5l-5-7v7h-4ZM9 22c-2-2-7-2-7 2 0 4 7 2 7 7 0 5-7 6-10 2l3-2c2 2 4 2 4 0 0-2-7-1-7-6 0-6 8-7 12-4ZM14 20h4l6 15h-4l-1-3h-6l-1 3H8Zm0 9h4l-2-6ZM26 20h6c7 0 7 10 0 10h-2v5h-4Zm4 3v4h2c3 0 3-4 0-4Z"/></svg>',
+    abim: '<svg class="ml-category-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3v5a5 5 0 0 0 10 0V3M4 3h2M12 3h2M9 13v3a5 5 0 0 0 10 0v-3"/><circle cx="19" cy="10" r="3"/></svg>',
     nbme: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>',
     cms: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>',
     default: '<svg class="ml-category-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5C9 3.5 5 3.5 2 5v15c3-1.5 7-1.5 10 .5 3-2 7-2 10-.5V5c-3-1.5-7-1.5-10 .5ZM12 5.5v15"/></svg>'
@@ -20,6 +20,8 @@
 
   const Library = {
     bootCache: new Map(),
+    pendingReads: new Map(),
+    cacheRevision:0,
     async preloadWorkspace(onStatus = () => {}) {
       const prime = async endpoint => {
         const value = await this.api(endpoint);
@@ -52,20 +54,36 @@
       const hour=time.toLocaleTimeString('en-US',{hour:'numeric',hour12:true}).replace(/\s/g,'');
       return `Custom session from ${day}, ${hour}`;
     },
-    openBankNodes: new Set(['uworld']),
+    openBankNodes: new Set(),
     async api(endpoint, options = {}) {
-      if (!options.method || options.method === 'GET') {
-        const cached = this.bootCache.get(endpoint);
-        if (cached && cached.expires > Date.now()) return structuredClone(cached.value);
-      } else this.bootCache.clear();
-      await window.fileSystemService.waitForReady();
-      if(window.fileSystemService.isOffline && window.QnexOffline)return window.QnexOffline.library(endpoint,options);
-      const response = await fetch(window.fileSystemService.baseUrl + '/medical-library' + endpoint, {
-        ...options, headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await response.json().catch(() => ({ error: 'The library service is unavailable. Restart Qnex to load the update.' }));
-      if (!response.ok) throw new Error(data.error || 'Could not load the library.');
-      return data;
+      const read=!options.method || options.method==='GET';
+      if(read) {
+        const cached=this.bootCache.get(endpoint);
+        if(cached && cached.expires>Date.now())return structuredClone(cached.value);
+        if(this.pendingReads.has(endpoint))return structuredClone(await this.pendingReads.get(endpoint));
+      } else {
+        // Choosing a bank does not change its catalog.
+        const catalog=endpoint==='/profile'?this.bootCache.get('/catalog'):null;
+        this.bootCache.clear();if(catalog)this.bootCache.set('/catalog',catalog);
+        this.pendingReads.clear();this.cacheRevision++;
+      }
+      const revision=this.cacheRevision;
+      const request=(async()=>{
+        await window.fileSystemService.waitForReady();
+        if(window.fileSystemService.isOffline && window.QnexOffline)return window.QnexOffline.library(endpoint,options);
+        const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+        try {
+          const response=await fetch(window.fileSystemService.baseUrl+'/medical-library'+endpoint,{
+            ...options,signal:options.signal || controller.signal,headers:{'Content-Type':'application/json',...options.headers}
+          });
+          const data=await response.json().catch(()=>({error:'The library service is unavailable. Restart Qnex to load the update.'}));
+          if(!response.ok)throw Error(data.error || 'Could not load the library.');
+          if(read && endpoint==='/catalog' && revision===this.cacheRevision)this.bootCache.set(endpoint,{value:data,expires:Date.now()+60000});
+          return data;
+        }finally{clearTimeout(timer);}
+      })();
+      if(read)this.pendingReads.set(endpoint,request);
+      try{return await request;}finally{if(this.pendingReads.get(endpoint)===request)this.pendingReads.delete(endpoint);}
     },
     status(message, error = false) {
       if(window.fileSystemService?.isOffline && window.QnexOffline){message=window.QnexOffline.message;error=false;}
@@ -77,16 +95,16 @@
       if (!grid) return;
       const token = ++this.viewToken;
       grid.innerHTML = `
-        <section class="ml-library">
+        <section class="ml-library ml-catalog">
+          <header class="ml-catalog-header"><div class="ml-catalog-title"><h2>Qbank Library</h2><p>Choose a question bank and build your next test</p></div>
           <div class="ml-library-toolbar">
-            <input id="mlBankSearch" type="search" placeholder="Find a question bank…" aria-label="Find a question bank">
+            <input id="mlBankSearch" type="search" placeholder="Search question banks…" aria-label="Find a question bank">
             <button class="ml-library-btn qd-icon-action" id="mlRefresh" title="Refresh" aria-label="Refresh"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L3 9m0-6v6h6M4 13a8 8 0 0 0 14 5l3-3m0 6v-6h-6"/></svg></button>
-          </div>
+          </div></header>
 
           <p id="mlLibraryStatus" class="ml-library-muted ml-library-status" role="status"><span class="qw-spinner" aria-hidden="true"></span><span>Finding local question banks…</span></p>
           <div id="mlBankContent"></div>
 
-          <div id="mlSavedSessions" class="ml-library-sessions"></div>
         </section>
       `;
       document.getElementById('mlRefresh').onclick = () => this.render();
@@ -147,7 +165,7 @@
         </div>
         <div class="ml-goal-actions">
           ${activeBank ? `<button type="button" class="ml-library-btn primary qd-icon-action" id="mlGoalStudyBtn" title="Practice Session" aria-label="Practice Session"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 4 12 8-12 8z"/></svg></button>` : ''}
-          ${activeBank ? `<button type="button" class="ml-library-btn qd-icon-action" id="mlGoalStatsBtn" title="View Statistics" aria-label="View Statistics"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-6M12 20V4M19 20V10"/></svg></button>` : ''}
+          ${activeBank ? `<button type="button" class="ml-library-btn qd-icon-action" id="mlGoalStatsBtn" title="View Performance" aria-label="View Performance"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-6M12 20V4M19 20V10"/></svg></button>` : ''}
           <button type="button" class="ml-library-btn" id="mlGoalChangeBtn">${activeBank ? 'Change QBank' : 'Choose QBank'}</button>
         </div>
       `;
@@ -184,8 +202,8 @@
       const categories = [
         ['bau', 'BAU Qbank'],
         ['uworld', 'UWorld Qbank'], ['amboss', 'AMBOSS Qbank'],
-        ['mehlman', 'Mehlman High Yield'], ['boardvitals', 'BoardVitals'],
-        ['mksap', 'MKSAP'], ['abim', 'ABIM / Internal Medicine'],
+        ['mehlman', 'Mehlman Qbank'], ['boardvitals', 'BoardVitals Qbank'],
+        ['mksap', 'MKSAP Qbank'], ['abim', 'ABIM / Internal Medicine Qbank'],
         ['nbme', 'NBME Self-Assessments'], ['cms', 'CMS Forms']
       ];
       const groups = new Map(categories.map(([id, label]) => [id, { id, label, banks: [], children: [] }]));
@@ -208,12 +226,13 @@
       }
       return [...groups.values()].filter(group => group.banks.length);
     },
+    isForm(bank) { return ['nbme','cms'].includes(bank.category) || !!bank.form || /(?:^|[·\s])Form\s+\w/i.test(bank.label || ''); },
     renderBanks() {
       const content = document.getElementById('mlBankContent');
       if (!content) return;
       const query = document.getElementById('mlBankSearch').value.trim().toLowerCase();
       const listedBanks = [...this.banks];
-      for (const year of [4,5,6]) {
+      for (const year of [4,5]) {
         if (!listedBanks.some(bank => bank.category==='bau' && Number(bank.year)===year)) {
           listedBanks.push({key:`bau-year${year}`,label:`${year}th year`,category:'bau',year,count:0,isPending:true});
         }
@@ -221,7 +240,10 @@
       const allGroups = this.groupBanks(listedBanks);
       const banks = allGroups.flatMap(group => group.banks.filter(bank => `${group.label} ${bank.year ? bank.year+'th year' : ''} ${bank.label} ${bank.subject || ''} ${bank.category}`.toLowerCase().includes(query)));
       const groups = this.groupBanks(banks);
-      this.status(query ? `${banks.length} matching banks` : `${this.banks.length} banks · ${allGroups.length} collections`);
+      const currentEntries=this.banks.filter(bank=>!bank.isArchived);
+      const forms=currentEntries.filter(bank=>this.isForm(bank)).length;
+      const totalQuestions=this.banks.reduce((sum,bank)=>sum+Number(bank.count || 0),0);
+      this.status(`${currentEntries.length-forms} Banks · ${forms} Forms · ${totalQuestions.toLocaleString()} Total questions${query ? ' · '+banks.length+' matching entries' : ''}`);
       const leaves = (items, category) => items.map(bank => {
         const form = bank.form || bank.label.match(/·\s*Form\s+(.+)$/)?.[1];
         const label = bank.isArchived ? (['uworld', 'amboss'].includes(category) ? 'Archived' : `Archived · ${bank.label.replace(/ · Archived$/, '')}`) : ['nbme', 'cms'].includes(category) && form ? `Form ${form}` : ['uworld', 'amboss'].includes(category) && bank.step ? `Step ${bank.step}${bank.category === 'amboss' && bank.step === 2 ? ' CK' : ''}` : bank.label;
@@ -238,11 +260,13 @@
           </div>
         `;
       }).join('');
-      const node = (id, label, count, children, nested = false, unit = '') => {
+      const node = (id, label, count, children, nested = false, unit = '', totalQuestions = null, formCount = 0) => {
         const icon = categoryIcons[id] || categoryIcons.default;
-        return `<details class="ml-tree-node${nested ? ' ml-tree-subgroup' : ''}" data-node="${escape(id)}"${query || this.openBankNodes.has(id) ? ' open' : ''}><summary>${caret}${nested ? '' : icon}<span class="ml-tree-name">${escape(label)}</span><span class="ml-tree-total">${count} ${unit || (nested ? (count === 1 ? 'form' : 'forms') : (count === 1 ? 'bank' : 'banks'))}</span></summary><div class="ml-tree-children">${children}</div></details>`;
+        if (id === 'bau') children += '<p class="ml-bau-year-note">* 6th year uses the same question banks as 4th and 5th year.</p>';
+        return `<details class="ml-tree-node${nested ? ' ml-tree-subgroup' : ''}" data-node="${escape(id)}"${query || this.openBankNodes.has(id) ? ' open' : ''}><summary>${nested ? `${caret}<span class="ml-tree-name">${escape(label)}</span><span class="ml-tree-total">${count} ${unit || (count === 1 ? 'form' : 'forms')}</span>` : `<span class="ml-collection-name">${caret}${icon}<span>${escape(label)}</span></span><span class="ml-tree-total"><span class="ml-count-circle">${count-formCount}</span></span><span class="ml-collection-questions"><span class="ml-count-circle">${Number(totalQuestions || 0).toLocaleString()}</span></span>`}</summary><div class="ml-tree-children">${children}</div></details>`;
       };
-      content.innerHTML = `<div class="ml-collection-heading"><h3>Question banks</h3><div class="ml-bank-controls"><button type="button" class="qw-icon" data-bank-toggle aria-label="Expand all" title="Expand all"></button></div></div><div class="ml-bank-tree">${groups.map(group => node(group.id, group.label, group.banks.length, group.children.length ? group.children.map(child => node(child.id, child.label, child.banks.length, leaves(child.banks, group.id), true, group.id==='bau' ? 'subjects' : '')).join('') : leaves(group.banks, group.id))).join('')}</div>`;
+      content.innerHTML = `<div class="ml-collection-heading"><h3>Question banks</h3><div class="ml-bank-controls"><button type="button" class="qw-icon" data-bank-toggle aria-label="Expand all" title="Expand all"></button></div></div><div class="qw-table-scroll ml-catalog-table-wrap"><table class="qw-table ml-catalog-table"><colgroup><col style="width:64%"><col style="width:18%"><col style="width:18%"></colgroup><thead><tr><th>Qbank / Collection</th><th>Banks</th><th>Questions</th></tr></thead><tbody>${groups.map(group => '<tr><td colspan="3">'+node(group.id, group.label, group.banks.filter(bank=>!bank.isArchived).length, group.children.length ? group.children.map(child => node(child.id, child.label, child.banks.filter(bank=>!bank.isArchived).length, leaves(child.banks, group.id), true, group.id==='bau' ? 'subjects' : '')).join('') : leaves(group.banks, group.id),false,'',group.banks.reduce((sum,bank)=>sum+Number(bank.count || 0),0),group.banks.filter(bank=>!bank.isArchived && this.isForm(bank)).length)+'</td></tr>').join('')}</tbody></table></div>`;
+
       if (!banks.length) content.innerHTML = '<div class="ml-library-empty">No matching question banks. Try a source, Step, or subject.</div>';
       const toggle = content.querySelector('[data-bank-toggle]');
       const syncToggle = () => {
@@ -349,6 +373,7 @@
         media: q.media || [], explanationMedia: q.explanation_media || [],
         source: { bank, questionId: q.id, displayId:q.displayId, aliases:q.aliases, references:q.sources },
         answerStats: q.answer_stats, subjectId: q.subject_id, systemId: q.system_id,
+        questionType: q.type || 'mcq', matching: q.matching,
         options: q.choices.map((text, index) => ({ id: String(index + 1), text, richText: q.choices_html?.[index] || '', percent: q.answer_percentages?.[index], isCorrect: index + 1 === Number(q.correct) })),
         tags: { subject: q.subject_names?.length ? q.subject_names : q.subject ? [q.subject] : ['General'], system: q.system_groups?.length ? q.system_groups : q.system_group ? [q.system_group] : q.system ? [q.system] : ['General'], major: [], minor: q.system_detail ? [q.system_detail] : [] },
         _tutorMode: form.get('mode') !== 'exam', _timerMode: form.get('timer'), _timerScope: 'question', _timerSecs: form.get('timer') === 'down' ? 90 : 0 };
@@ -568,15 +593,18 @@
         this.sessions = this.sessions.filter(s => s.id !== id); this.mergeSessionSummaries(); this.renderSessions();
       } catch (error) { alert(error.message); }
     },
-    async reset(id) {
-      if (!confirm('Clear the answers and restart this study session?')) return;
+    async reset(id, launch = true) {
+      if (!confirm('Reset this test’s questions to New? Saved answers, timing and answer changes for this test will be cleared.')) return false;
       try {
         await this.saveQueue.catch(() => {});
         const session = await this.api('/sessions/' + id); session.completed = false;
-        for (const q of session.questions) { delete q.submittedAnswer; delete q.timerElapsed; delete q.revealed; delete q._remainingMs; delete q._blockRemainingMs; delete q._timedOut; q.crossedOutOptionIds = []; }
+        for (const q of session.questions) { delete q.submittedAnswer; delete q.answerChanges; delete q.timerElapsed; delete q.revealed; delete q._remainingMs; delete q._blockRemainingMs; delete q._timedOut; q.crossedOutOptionIds = []; }
         this.updateSummary(await this.api('/sessions/' + id, { method: 'PUT', body: JSON.stringify(session) }));
-        await this.resume(id);
-      } catch (error) { alert(error.message); }
+        if(this.active?.id===id)this.active=null;
+        this.mergeSessionSummaries();
+        if(launch) await this.resume(id);
+        return true;
+      } catch (error) { alert(error.message); return false; }
     },
     renderSessions() {
       const container = document.getElementById('mlSavedSessions'); if (!container) return;
@@ -584,6 +612,7 @@
       const workspace = window.QBankWorkspace;
       const rows = [...this.sessions].sort((a,b) => new Date(b.date || b.updatedAt) - new Date(a.date || a.updatedAt));
       container.innerHTML='<div class="qw-section-heading"><h3>All sessions</h3><button class="qw-icon" data-clear-sessions title="Clear all study sessions" aria-label="Clear all study sessions" '+(rows.length ? '' : 'disabled')+'>'+icon('m6 6 12 12M6 18 18 6')+'</button></div>'+workspace.sessionTable(rows, true);
+      workspace.wireUnsee(container,()=>this.renderSessions());
       container.querySelectorAll('[data-resume]').forEach(button=>button.onclick=()=>this.resume(button.dataset.resume));
       container.querySelectorAll('[data-rename]').forEach(button=>button.onclick=()=>workspace.rename(this.sessions.find(s=>s.id===button.dataset.rename),()=>this.renderSessions()));
       container.querySelectorAll('[data-result]').forEach(button=>button.onclick=async()=>{

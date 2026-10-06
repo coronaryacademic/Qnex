@@ -134,6 +134,14 @@ class FileSystemService {
         this.baseUrl = this.fallbackUrl;
         return await this.makeRequest(url, options);
       }
+      // A discovered API can still be unavailable for a specific route. If
+      // both ports fail at the network layer, use the hosted offline adapter
+      // instead of surfacing a fetch error to note saving and other local-safe
+      // features.
+      if (window.QnexOffline && (error?.name === 'TypeError' || /fetch|network|connection/i.test(error?.message || ''))) {
+        this.isOffline = true;
+        return window.QnexOffline.service(url, options);
+      }
       throw error;
     }
   }

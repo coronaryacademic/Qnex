@@ -121,6 +121,13 @@
 .amboss-dungeon.qa-dark :is(.qa-stem .ml-rich-content,.qa-bank-fullname,.qa-choice .ml-rich-content) { color:var(--text); }
 .amboss-dungeon.qa-dark :is(.qa-bank-info,.dungeon-q-box.active) { background:#2d434e; }
 .amboss-dungeon.qa-dark #dungeonTopbar :is(.qa-theme-segments button,.qa-menu-exit) { background:var(--panel); color:var(--text); border-color:#40515e; }
+.amboss-dungeon.qa-dark #dungeonTopbar .qa-theme-segments button[aria-pressed="true"] {
+  background:#29464d;
+  border-color:#8bc8d4;
+  color:#d8f5f8;
+  box-shadow:none;
+  font-weight:600;
+}
 .amboss-dungeon.qa-dark :is(.qa-reading-bar,.qa-tools,.qa-answer-line) { border-color:#40515e; }
 .amboss-dungeon.qa-dark :is(.qa-tools,.qa-bottom-actions,.qa-reading-bar) button { color:#b8ccd9; }
 .amboss-dungeon.qa-dark .qa-option.qa-correct { background:#173d38; }
@@ -195,7 +202,7 @@
 .amboss-dungeon .dungeon-sidebar.collapsed .qa-sidebar-collapse { width:32px; height:32px; flex-basis:32px; }
 .amboss-dungeon .dungeon-main.sidebar-collapsed { left:56px!important; }
 .amboss-dungeon:has(.dungeon-main.sidebar-collapsed) .qa-navigation { grid-template-columns:min(140px,22%) 1fr 1fr; }
-.amboss-dungeon .dungeon-sidebar:not(.collapsed) { width:var(--qa-sidebar-width,320px)!important; max-width:520px; min-width:220px; }
+.amboss-dungeon .dungeon-sidebar:not(.collapsed) { width:var(--qa-sidebar-width,320px)!important; max-width:680px; min-width:220px; }
 .amboss-dungeon .dungeon-main:not(.sidebar-collapsed) { left:var(--qa-sidebar-width,320px)!important; }
 .amboss-dungeon .qa-navigation { grid-template-columns:var(--qa-sidebar-width,320px) 1fr 1fr; }
 .amboss-dungeon .dungeon-resizer-handle { display:block!important; }
@@ -219,6 +226,49 @@ body .amboss-dungeon.qa-dark #dungeonSidebar .dungeon-q-box.active:nth-child(n),
 .amboss-dungeon .qa-clock-collapsed { display:flex; padding:12px 18px; }
 .amboss-dungeon .qa-clock-collapsed .qa-clock-pause { display:none; }
 .amboss-dungeon.qa-dark .qa-clock-pause { border-color:#34383d; color:#c5cbd1; }
+
+/* Keep the AMBOSS sidebar readable when the question surface is in light mode.
+   The legacy dungeon skin can otherwise leave the session header and timer on
+   its dark panel colors even though the question card has switched to white. */
+.amboss-dungeon:not(.qa-dark) .qa-session-heading,
+.amboss-dungeon:not(.qa-dark) .qa-clock-panel {
+  background:#fff !important;
+  color:#172b36 !important;
+  border-color:#dbe3e9 !important;
+}
+.amboss-dungeon:not(.qa-dark) .dungeon-sidebar,
+.amboss-dungeon:not(.qa-dark) .dungeon-sidebar.collapsed,
+.amboss-dungeon:not(.qa-dark) .dungeon-sidebar::before,
+.amboss-dungeon:not(.qa-dark) .dungeon-sidebar-questions,
+.amboss-dungeon:not(.qa-dark) .dungeon-sidebar-stats,
+.amboss-dungeon:not(.qa-dark) .dungeon-q-box,
+.amboss-dungeon:not(.qa-dark) .qa-navigation,
+.amboss-dungeon:not(.qa-dark) .qa-navigation button {
+  background:#fff !important;
+  color:#455a6a !important;
+  border-color:#dbe3e9 !important;
+}
+.amboss-dungeon:not(.qa-dark) .dungeon-sidebar.collapsed .qa-session-heading {
+  background:#fff !important;
+}
+.amboss-dungeon:not(.qa-dark) .qa-session-heading :is(.qa-session-title,.qa-session-name),
+.amboss-dungeon:not(.qa-dark) .qa-clock-panel :is(.qa-clock-toggle,.qa-clock-pause) {
+  color:#455a6a !important;
+}
+.amboss-dungeon:not(.qa-dark) .qa-session-progress,
+.amboss-dungeon:not(.qa-dark) .qa-clock-values small {
+  color:#5b7487 !important;
+}
+.amboss-dungeon:not(.qa-dark) .qa-clock-values strong {
+  color:#172b36 !important;
+}
+.amboss-dungeon:not(.qa-dark) .qa-progress-track {
+  background:#dfe6eb !important;
+}
+.amboss-dungeon:not(.qa-dark) .qa-progress-track span {
+  background:#5e7689 !important;
+}
+
 .qa-pause-dialog { width:min(700px,calc(100vw - 40px)); box-sizing:border-box; padding:40px; border:0; border-radius:16px; background:#fff; color:#1b1d1d; font-family:"Segoe UI",sans-serif; }
 .qa-pause-dialog::backdrop { background:#0009; }
 .qa-pause-dialog h2 { margin:0; font-size:28px; line-height:1.3; font-weight:600; }
@@ -248,6 +298,16 @@ body .amboss-dungeon.qa-dark #dungeonSidebar .dungeon-q-box.active:nth-child(n),
 .amboss-dungeon .qa-tools svg { width:16px; height:16px; flex:0 0 16px; }
 .amboss-dungeon .qa-tools button:hover { color:#273f50; }
 .amboss-dungeon .qa-tools button[aria-expanded=true],.amboss-dungeon .qa-tools button[aria-pressed=true] { border-bottom-color:#576d7b; box-shadow:none; }
+.amboss-dungeon:not(.qa-dark) .qa-tools [data-qa="hint"][aria-expanded="true"] { color:#087c87; border-bottom-color:#087c87; }
+.amboss-dungeon.qa-dark .qa-tools [data-qa="hint"][aria-expanded="true"] { color:#8bc8d4; border-bottom-color:#8bc8d4; }
+.amboss-dungeon:not(.qa-dark) .qa-tools [data-qa="labs"][aria-expanded="true"] { color:#087c87; border-bottom-color:#087c87; }
+.amboss-dungeon.qa-dark .qa-tools [data-qa="labs"][aria-expanded="true"] { color:#8bc8d4; border-bottom-color:#8bc8d4; }
+body .amboss-dungeon.qa-dark .qa-tools [data-qa="key"][aria-pressed="true"],
+body .amboss-dungeon.qa-dark .qa-tools [data-qa="hint"][aria-expanded="true"],
+body .amboss-dungeon.qa-dark .qa-tools [data-qa="labs"][aria-expanded="true"] {
+  color:#8bc8d4;
+  border-bottom-color:#8bc8d4;
+}
 .amboss-dungeon .qa-option.dungeon-radio-option { font-size:inherit!important; }
 .amboss-dungeon .qa-answer-line { min-height:40px; padding:7px 28px; }
 .amboss-dungeon .qa-hint { background:var(--panel); padding:18px 28px 24px; }
@@ -375,6 +435,12 @@ body .amboss-dungeon .qa-stem .ml-answer-reference-wrap { width:fit-content; max
 body .amboss-dungeon .qa-stem .ml-answer-reference { width:auto; margin:0; border:0; border-collapse:collapse; font-size:14px!important; line-height:1.5; }
 body .amboss-dungeon .qa-stem .ml-answer-reference :is(th,td) { border:0; border-right:1px solid #8098aa; padding:2px 20px; text-align:left; vertical-align:middle; background:transparent; font-weight:400; font-size:14px!important; line-height:1.5; }
 body .amboss-dungeon .qa-stem .ml-answer-reference :is(th,td):last-child { border-right:0; }
+body .amboss-dungeon .qa-stem table,
+body .amboss-dungeon .qa-extra table { max-width:100%; border-collapse:collapse; }
+body .amboss-dungeon .qa-stem table,
+body .amboss-dungeon .qa-extra table { font-size:15px!important; line-height:1.55; }
+body .amboss-dungeon .qa-stem table :is(th,td),
+body .amboss-dungeon .qa-extra table :is(th,td) { box-sizing:border-box; font-size:15px!important; }
 body .amboss-dungeon .qa-stem .ml-answer-reference :is(p,span,div) { font-size:14px!important; line-height:inherit; }
 body .amboss-dungeon .qa-stem .ml-answer-reference :is(sub,sup) { font-size:.75em!important; }
 body .amboss-dungeon .qa-more-options { width:200px; }
@@ -425,9 +491,9 @@ body .amboss-dungeon .qa-stem span.selected { -webkit-box-decoration-break:clone
 
 /* Lab reference panel shares the navigation baseline. */
 body .amboss-dungeon #dungeonLabSidebar { top:56px!important; bottom:0!important; width:min(var(--qa-lab-panel-width,650px),calc(100vw - 56px))!important; box-sizing:border-box; box-shadow:none!important; transition:transform 220ms cubic-bezier(.2,.7,.2,1); }
-body .amboss-dungeon.qa-labs-open .dungeon-main { right:var(--qa-lab-width,650px)!important; }
+body .amboss-dungeon.qa-labs-open .dungeon-main { right:var(--qa-lab-panel-width,var(--qa-lab-width,650px))!important; }
 body .amboss-dungeon .dungeon-main { transition:left 220ms cubic-bezier(.2,.7,.2,1),right 220ms cubic-bezier(.2,.7,.2,1); }
-body .amboss-dungeon.qa-labs-open .qa-navigation { right:var(--qa-lab-width,650px); }
+body .amboss-dungeon.qa-labs-open .qa-navigation { right:var(--qa-lab-panel-width,var(--qa-lab-width,650px)); }
 body .amboss-dungeon .qa-navigation { transition:right 220ms cubic-bezier(.2,.7,.2,1),grid-template-columns 220ms cubic-bezier(.2,.7,.2,1); }
 body .amboss-dungeon .qa-lab-close { height:49.3px; min-height:49.3px; flex:0 0 49.3px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:8px; }
 body .amboss-dungeon .qa-lab-close span { margin:0; line-height:1; vertical-align:baseline; }
@@ -436,6 +502,10 @@ body .amboss-dungeon .lab-sidebar-header .lab-search-container { position:relati
 body .amboss-dungeon #dungeonLabSearch { display:block; width:100%; min-width:0; box-sizing:border-box; padding:0 12px 0 38px!important; }
 body .amboss-dungeon .lab-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:#5e7689; }
 body .amboss-dungeon .qa-lab-top-close { flex:0 0 36px; height:36px; padding:0 0 0 12px; display:grid; place-items:center; }
+body .amboss-dungeon:not(.qa-dark) .qa-lab-close { background:#5b7486; color:#fff; }
+body .amboss-dungeon:not(.qa-dark) .lab-sidebar-header,
+body .amboss-dungeon:not(.qa-dark) .lab-filters { background:#f3f6f8; color:#455a6a; }
+body .amboss-dungeon .lab-item mark.lab-search-highlight { background:#ffeb3b; color:#172b36; padding:0 2px; border-radius:2px; }
 body .amboss-dungeon .lab-resizer { width:10px; left:-5px; touch-action:none; }
 body .amboss-dungeon.qa-lab-resizing :is(.dungeon-main,.qa-navigation,#dungeonLabSidebar) { transition:none!important; }
 
@@ -502,8 +572,8 @@ body .amboss-dungeon #dungeonImageViewer.qa-media-docked #viewerImage { width:au
 body .amboss-dungeon .qa-media-footer-close { display:none; }
 body .amboss-dungeon #dungeonImageViewer.qa-media-docked .qa-media-footer-close { position:absolute; inset:auto 0 0; height:50px; display:flex; align-items:center; justify-content:center; gap:8px; border:0; background:#5b7486; color:#fff; font-size:14px; font-weight:700; text-transform:uppercase; cursor:pointer; }
 body .amboss-dungeon .qa-media-footer-close span { font-size:22px; }
-body .amboss-dungeon.qa-media-open .dungeon-main { right:var(--qa-lab-width,650px)!important; }
-body .amboss-dungeon.qa-media-open .qa-navigation { right:var(--qa-lab-width,650px); }
+body .amboss-dungeon.qa-media-open .dungeon-main { right:var(--qa-lab-panel-width,var(--qa-lab-width,650px))!important; }
+body .amboss-dungeon.qa-media-open .qa-navigation { right:var(--qa-lab-panel-width,var(--qa-lab-width,650px)); }
 /* Question identifiers and truthful answer feedback in both themes. */
 body .amboss-dungeon .qa-question-position { display:block; margin-right:auto; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:.02em; }
 body .amboss-dungeon.qa-dark .dungeon-q-box .q-number { color:#a9bdcb!important; }
@@ -580,3 +650,9 @@ body .amboss-dungeon .qa-explanation-preview .ml-media-unavailable { min-height:
 body .amboss-dungeon .qa-explanation-preview .ml-media-sad svg { width:22px; height:22px; }
 body .amboss-dungeon .ml-media-sad { font-family:inherit; font-size:32px; line-height:1; font-weight:500; }
 body .amboss-dungeon .qa-explanation-preview .ml-media-sad { font-size:24px; }
+/* Qnex setup branding uses the app's own typography, independently of AMBOSS. */
+#qbankProfileIntro { font-family:Arial,sans-serif; }
+#qbankProfileIntro :is(input,select,button) { font-family:Arial,sans-serif; }
+#qbankProfileIntro .qp-wordmark { font-family:"Segoe UI",Arial,sans-serif; font-weight:600; letter-spacing:-.085em; color:#ffffff; text-shadow:none; }
+#qbankProfileIntro .qp-wordmark .qnex-knock-word { color:#ffffff; }
+#qbankProfileIntro .qp-wordmark .qnex-knock-dot { color:#18abc8; letter-spacing:0; }

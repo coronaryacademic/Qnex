@@ -463,10 +463,6 @@ export default class DungeonBase {
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
                       </button>
 
-                      <button id="dungeonSubmitBlockBtn" class="dungeon-reveal-btn submit-block-svg" title="Submit Block & See Results">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11"/></svg>
-                      </button>
-
                       <button id="dungeonClearBtn" class="dungeon-reveal-btn" title="Clear Answer" style="display: none;">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                               <circle cx="12" cy="12" r="10"></circle>
@@ -2117,6 +2113,14 @@ export default class DungeonBase {
         };
 
         const mappedTerm = searchMappings[filterLower];
+        const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        const highlight = (value, term) => {
+            const text = escapeHtml(value);
+            if (!term) return text;
+            const escapedTerm = String(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return text.replace(new RegExp(`(${escapedTerm})`, 'gi'), '<mark class="lab-search-highlight">$1</mark>');
+        };
+        const highlightTerm = mappedTerm || filterLower;
 
         for (const [category, items] of Object.entries(this.labData)) {
             if (activeCat !== 'All' && activeCat !== category) continue;
@@ -2149,14 +2153,9 @@ export default class DungeonBase {
                     const itemEl = document.createElement('div');
                     itemEl.className = 'lab-item';
                     itemEl.innerHTML = `
-                       <span class="lab-name">${item.name}</span>
-                       <span class="lab-value">${item.normal}</span>
+                       <span class="lab-name">${highlight(item.name, highlightTerm)}</span>
+                       <span class="lab-value">${highlight(item.normal, highlightTerm)}</span>
                    `;
-                    // Highlight search match if simple
-                    if (filterLower.length > 1) {
-                        const regex = new RegExp(`(${filterLower})`, 'gi');
-                        // Optional: highlighting logic could go here
-                    }
                     group.appendChild(itemEl);
                 });
 
@@ -3452,12 +3451,8 @@ export default class DungeonBase {
                 if (resultsEl) resultsEl.classList.remove('hidden');
                 if (statsEl)   statsEl.classList.add('hidden');
             } else {
-                // Pre-reveal: show End Block or Submit depending on unanswered count
-                if (unanswered > 0) {
-                    if (endBlockBtn)    endBlockBtn.style.display    = 'inline-flex';
-                } else {
-                    if (submitBlockBtn) submitBlockBtn.style.display = 'inline-flex';
-                }
+                // End Block is the single finish action, including fully answered tests.
+                if (endBlockBtn) endBlockBtn.style.display = 'inline-flex';
                 if (resultsEl) resultsEl.classList.add('hidden');
                 if (statsEl)   statsEl.classList.remove('hidden');
             }
@@ -3548,7 +3543,7 @@ export default class DungeonBase {
                 const onMouseMove = (ev) => {
                     const newWidth = startWidth + (ev.clientX - startX);
                     const amboss=this.el.container?.classList.contains('amboss-dungeon');
-                    if (newWidth >= (amboss?220:50) && newWidth <= (amboss?Math.min(520,window.innerWidth-360):300)) {
+                    if (newWidth >= (amboss?220:50) && newWidth <= (amboss?Math.min(680,window.innerWidth-320):300)) {
                         this.el.sidebar.style.width = newWidth + 'px';
                         if(amboss)this.el.container.style.setProperty('--qa-sidebar-width',newWidth+'px');
 
@@ -3700,7 +3695,7 @@ export default class DungeonBase {
                         // Exam mode: silently save the choice — timer keeps running (unless 'up' mode)
                         // When timer runs out, this saved choice is final
                         const selectedOpt = currentQ.options?.find(o => String(o.id) === String(this.state.selectedOption));
-                        const isCorrect = selectedOpt?.isCorrect || false;
+                        const isCorrect = this.isAnswerCorrect(currentQ,this.state.selectedOption);
                         const answerData = {
                             submitted: true,
                             selectedId: this.state.selectedOption,
@@ -3727,12 +3722,17 @@ export default class DungeonBase {
     }
 
     open(questions, sessionId = null) {
+        // Test pages must never inherit the hidden notes shell.
+        const container=document.getElementById("dungeonBase");
+        const root=document.getElementById("qnexPages") || document.body;
+        if(container && container.parentElement!==root) root.append(container);
         document.body.classList.add("dungeon-open");
         if (!questions || questions.length === 0) {
             alert("No questions to play!");
             return;
         }
 
+        const openRevision=this._openRevision=(this._openRevision || 0)+1;
         // Setup state
         this.state.questions = [...questions];
         this.state.associatedSessionId = sessionId;
@@ -3782,6 +3782,7 @@ export default class DungeonBase {
         if (loadingScreen) {
             loadingScreen.classList.remove('hidden');
             setTimeout(() => {
+                if(this._openRevision!==openRevision || this.el.container.classList.contains("hidden")) return;
                 loadingScreen.classList.add('hidden');
                 this.render();
             }, 400);
@@ -3802,15 +3803,22 @@ export default class DungeonBase {
     async submitBlock(skipConfirm = false) {
         if (!this.state.isBlockRevealed) {
             const unanswered = this.state.questions.length - this.state.answers.size;
-            if (unanswered > 0 && !skipConfirm) {
-                if (!confirm(`You still have ${unanswered} unanswered questions. Are you sure you want to end the block?`)) {
-                    return;
-                }
+            if (!skipConfirm) {
+                const approved = await new Promise(resolve => {
+                    const dialog=document.createElement('dialog');dialog.className='qw-dialog ml-library';
+                    dialog.innerHTML='<h2>End Block?</h2><p>You will not be able to change your answers after ending the block. Unanswered questions will be recorded as omitted and count against your score.</p><div class="qw-dialog-actions"><button class="ml-library-btn" data-cancel>Cancel</button><button class="ml-library-btn" data-end style="color:#d92f39">End Block</button></div>';
+                    document.body.append(dialog);
+                    dialog.onclose=()=>{const accepted=dialog.returnValue==='end';dialog.remove();resolve(accepted);};
+                    dialog.querySelector('[data-cancel]').onclick=()=>dialog.close('cancel');
+                    dialog.querySelector('[data-end]').onclick=()=>dialog.close('end');
+                    dialog.showModal();dialog.querySelector('[data-cancel]').focus();
+                });
+                if(!approved) return;
             }
 
             // Automatically reveal and mark unanswered as incorrect
             this.state.questions.forEach(q => {
-                if (!this.state.answers.has(q.id)) {
+                if (!this.state.answers.get(q.id)?.submitted) {
                     const autoAnswer = {
                         selectedId: null,
                         isCorrect: false,
@@ -3819,7 +3827,6 @@ export default class DungeonBase {
                     };
                     this.state.answers.set(q.id, autoAnswer);
                     q.submittedAnswer = autoAnswer;
-                    q.revealed = true;
                 }
             });
 
@@ -3871,10 +3878,14 @@ export default class DungeonBase {
                 // Fetch the existing session if needed, but here we just want to update stats.
                 // Assuming backend has a way to update specific session stats.
                 // For now, let's just save the questions (which contain submittedAnswer with feedback)
-                await this.saveQuestionsToBackend();
+                if(this.state.associatedSessionId.startsWith('medos-')) await window.MedicalLibrary.saveDungeonSession(this);
+                else await this.saveQuestionsToBackend();
                 
                 // Also update the session record itself if possible
-                if (this.state.associatedSessionId.startsWith('medos-')) return;
+                if (this.state.associatedSessionId.startsWith('medos-')) {
+                    await window.QnexRouter?.report(this.state.associatedSessionId);
+                    return;
+                }
                 const sessionsStr = localStorage.getItem("active-recall-recent-sessions");
                 if (sessionsStr) {
                     const sessions = JSON.parse(sessionsStr);
@@ -3897,7 +3908,10 @@ export default class DungeonBase {
                 }
             } catch (err) {
                 console.error("[DungeonBase] Failed to persist session stats:", err);
+                window.showToast?.("Could not save test results. Please try End Block again.", "error");
+                return;
             }
+            await window.QnexRouter?.report(this.state.associatedSessionId);
         }
     }
 
@@ -3920,6 +3934,7 @@ export default class DungeonBase {
     }
 
     close() {
+        this._openRevision=(this._openRevision || 0)+1;
         if(this._viewerDock) this._viewerDock.hidden=true;
         document.getElementById('dungeonImageViewer')?.classList.remove('visible');
         this._exhibitRequestId = (this._exhibitRequestId || 0) + 1;
@@ -3935,7 +3950,7 @@ export default class DungeonBase {
         this.currentNote = null;
 
         // Restore QBank Tabs to ensure they are properly visible and styled
-        if (window.QuestionBase && typeof window.QuestionBase.switchTab === "function") {
+        if (!window.QnexRouter?.initialized && window.QuestionBase && typeof window.QuestionBase.switchTab === "function") {
             const lastTab = window.QuestionBase.state.lastActiveTab || "main";
             window.QuestionBase.switchTab(lastTab);
         }
@@ -4047,7 +4062,7 @@ export default class DungeonBase {
             }
             
             // Revealed state (Orange) - take precedence
-            if (q.revealed) {
+            if (q.revealed && !this.state.isBlockRevealed) {
                 box.classList.remove("correct", "wrong", "solved");
                 box.classList.add("revealed-state");
             }
@@ -4496,8 +4511,33 @@ export default class DungeonBase {
         const session=window.MedicalLibrary?.active;
         const title=q._bauSessionTitle || (session?.id===this.state.associatedSessionId ? session.title : 'Custom session');
         const render=(item,type,opt)=>window.MedicalLibrary.renderContent(item,type,opt);
-        this.el.main.innerHTML=`<div class="bau-quiz"><div class="bau-course">${esc(course)} <span>/</span> ${esc(title)}</div><h1>${esc(title)}</h1><button class="bau-back" data-bau-close>Back</button><div class="bau-layout"><section><div class="bau-time" hidden><button data-bau-time-toggle>${this._bauTimerHidden?'Show':'Hide'}</button><span data-bau-clock ${this._bauTimerHidden?'hidden':''}>${q._timerMode==='down'?'Time left':'Time elapsed'} <strong>00:00</strong></span></div><div class="bau-question-row"><aside class="bau-info"><strong>Question ${index+1}</strong><p>${answer?.submitted?'Answer saved':'Not yet answered'}</p><p>Marked out of 1</p><button data-bau-flag aria-pressed="${Boolean(q.starred||q.isStarred)}">${flag}${q.starred||q.isStarred?'Flagged':'Flag question'}</button></aside><div><div class="bau-question">${render(q,'question')}<p>Select one:</p><div class="bau-options">${q.options.map((opt,i)=>`<label><input type="radio" name="bau-answer" value="${esc(opt.id)}" ${String(answer?.selectedId || this.state.selectedOption)===String(opt.id)?'checked':''} ${review || (show && q._tutorMode!==false)?'disabled':''}><span>${String.fromCharCode(97+i)}.</span><div>${render(q,'option',opt)}</div></label>`).join('')}</div></div>${show?`<div class="bau-explanation"><p>${answer?.isCorrect?'Your answer is correct.':'Your answer is incorrect.'}</p><p>The correct answer is: ${esc(q.options.find(o=>o.isCorrect)?.text)}</p>${render(q,'explanation')}</div>`:''}<div class="bau-actions">${q._tutorMode!==false&&!show?'<button data-bau-submit>Check answer</button>':''}${index>0&&this.bauCanNavigate(index-1)?'<button data-bau-prev>Previous page</button>':''}<button data-bau-next>${index===this.state.questions.length-1?'Finish attempt …':'Next page'}</button></div></div></div></section><aside class="bau-navigation"><h2>Quiz navigation</h2><div class="bau-squares">${this.state.questions.map((item,i)=>`<button data-bau-index="${i}" class="${i===index?'current ':''}${this.state.answers.has(item.id)?'answered':''}" ${!this.bauCanNavigate(i)?'disabled':''} aria-label="Question ${i+1}${item.starred||item.isStarred?', flagged':''}" ${i===index?'aria-current="step"':''}>${i+1}${item.starred||item.isStarred?flag:''}</button>`).join('')}</div><button class="bau-finish" data-bau-finish>Finish attempt …</button></aside></div></div>`;
+        // Moodle 4.5 grade icons: Font Awesome Free 6.6.0, Copyright 2024 Fonticons, Inc. (CC BY 4.0; https://fontawesome.com/license/free).
+        const feedbackIcon=correct=>`<svg class="bau-answer-icon ${correct?'correct':'incorrect'}" viewBox="0 0 512 512" role="img" aria-label="${correct?'Correct':'Incorrect'}"><path fill="currentColor" d="${correct?'M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-111 111-47-47c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l64 64c9.4 9.4 24.6 9.4 33.9 0L369 209z':'M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM175 175c-9.4 9.4-9.4 24.6 0 33.9l47 47-47 47c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l47-47 47 47c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-47-47 47-47c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-47 47-47-47c-9.4-9.4-24.6-9.4-33.9 0z'}"/></svg>`;
+        const correctIndex=q.options.findIndex(option=>option.isCorrect);
+        const correctLabel=correctIndex<0?'':`${String.fromCharCode(97+correctIndex)}. ${q.options[correctIndex].text}`;
+        const matching=q.questionType==='matching';
+        const values=String(answer?.selectedId ?? q.matchingDraft ?? '').split(',');
+        const disabled=review || (show && q._tutorMode!==false) || q._timedOut || answer?.locked;
+        const matchingMarkup=matching?`<p>Choose an answer for each part. The same list is available in every dropdown.</p><div class="bau-matching">${q.matching.map((part,i)=>`<label><span>${esc(part.prompt)}</span><select data-bau-match="${i}" aria-label="${esc(part.prompt)}" ${disabled?'disabled':''}><option value="">Choose…</option>${q.options.map(opt=>`<option value="${esc(opt.id)}" ${values[i]===String(opt.id)?'selected':''}>${esc(opt.text)}</option>`).join('')}</select>${show?`<small>${feedbackIcon(values[i]===String(part.correct))} ${esc(String.fromCharCode(96+Number(part.correct))+'. '+q.options.find(opt=>String(opt.id)===String(part.correct))?.text)}</small>`:''}</label>`).join('')}</div>`:'';
+        this.el.main.innerHTML=`<div class="bau-quiz"><div class="bau-course">${esc(course)} <span>/</span> ${esc(title)}</div><h1>${esc(title)}</h1><button class="bau-back" data-bau-close>Back</button><div class="bau-layout"><section><div class="bau-time" hidden><button data-bau-time-toggle>${this._bauTimerHidden?'Show':'Hide'}</button><span data-bau-clock ${this._bauTimerHidden?'hidden':''}>${q._timerMode==='down'?'Time left':'Time elapsed'} <strong>00:00</strong></span></div><div class="bau-question-row"><aside class="bau-info"><strong>Question ${index+1}</strong><p>${answer?.submitted?'Answer saved':'Not yet answered'}</p><p>Marked out of 1</p><button data-bau-flag aria-pressed="${Boolean(q.starred||q.isStarred)}">${flag}${q.starred||q.isStarred?'Flagged':'Flag question'}</button></aside><div><div class="bau-question">${render(q,'question')}<p>Select one:</p><div class="bau-options">${q.options.map((opt,i)=>`<label><input type="radio" name="bau-answer" value="${esc(opt.id)}" ${String(answer?.selectedId || this.state.selectedOption)===String(opt.id)?'checked':''} ${review || (show && q._tutorMode!==false)?'disabled':''}><span>${String.fromCharCode(97+i)}.</span><div>${render(q,'option',opt)}</div>${show&&(opt.isCorrect||String(answer?.selectedId)===String(opt.id))?feedbackIcon(Boolean(opt.isCorrect)):''}</label>`).join('')}</div></div>${show?`<div class="bau-explanation"><p>${answer?.isCorrect?'Your answer is correct.':'Your answer is incorrect.'}</p><p>The correct answer is: ${esc(correctLabel)}</p>${render(q,'explanation')}</div>`:''}<div class="bau-actions">${q._tutorMode!==false&&!show?'<button data-bau-submit>Check answer</button>':''}${index>0&&this.bauCanNavigate(index-1)?'<button data-bau-prev>Previous page</button>':''}<button data-bau-next>${index===this.state.questions.length-1?'Finish attempt …':'Next page'}</button></div></div></div></section><aside class="bau-navigation"><h2>Quiz navigation</h2><div class="bau-squares">${this.state.questions.map((item,i)=>`<button data-bau-index="${i}" class="${i===index?'current ':''}${this.state.answers.has(item.id)?'answered':''}" ${!this.bauCanNavigate(i)?'disabled':''} aria-label="Question ${i+1}${item.starred||item.isStarred?', flagged':''}" ${i===index?'aria-current="step"':''}>${i+1}${item.starred||item.isStarred?flag:''}</button>`).join('')}</div><button class="bau-finish" data-bau-finish>Finish attempt …</button></aside></div></div>`;
         const mount=this.el.main;
+        if(matching){
+            const question=mount.querySelector('.bau-question');
+            question.querySelector('.bau-options').remove();
+            question.querySelector(':scope > p')?.remove();
+            question.insertAdjacentHTML('beforeend',matchingMarkup);
+            mount.querySelector('.bau-explanation > p:nth-child(2)')?.remove();
+            mount.querySelectorAll('[data-bau-match]').forEach(select=>select.onchange=()=>{
+                const draft=mount.querySelectorAll('[data-bau-match]');
+                q.matchingDraft=[...draft].map(control=>control.value).join(',');
+                this.state.selectedOption=q.matchingDraft;
+                if(q._tutorMode===false){
+                    const answerData={submitted:true,selectedId:q.matchingDraft,isCorrect:this.isAnswerCorrect(q,q.matchingDraft),examCommitted:true,timerStopped:false};
+                    this.state.answers.set(q.id,answerData);q.submittedAnswer=answerData;
+                }
+                this.updateSaveStatus('unsaved');this.saveQuestionsToBackend();
+            });
+        }
         if(q._timedOut || answer?.locked)mount.querySelectorAll('[name=bau-answer], [data-bau-submit]').forEach(control=>control.disabled=true);
         mount.querySelectorAll('[name=bau-answer]').forEach(input=>input.onchange=()=>this.handleSelectOption(input.value));
         mount.querySelector('[data-bau-submit]')?.addEventListener('click',()=>this.handleSubmit());
@@ -4522,6 +4562,7 @@ export default class DungeonBase {
         const q = this.state.questions[this.state.currentIndex];
         const bau=q.source?.bank?.startsWith('bau-');
         this.el.container?.classList.toggle('bau-dungeon',Boolean(bau));
+        if(this.el.container) this.el.container.dataset.qbankTheme=bau?'BAU':(q.contentFormat==='medos-html'&&q.source?.bank?.startsWith('amboss')?'AMBOSS':'UW');
         const amboss=q.contentFormat==='medos-html' && q.source?.bank?.startsWith('amboss');
         this.el.container?.classList.toggle('amboss-dungeon',Boolean(amboss));
         if(amboss) {this.renderAmbossQuestion(q);return;}
@@ -4726,7 +4767,7 @@ export default class DungeonBase {
 
     renderAmbossSidebar() {
         const sidebar=this.el.container?.querySelector('.dungeon-sidebar');if(!sidebar)return;
-        const width=Math.max(220,Math.min(520,Number(localStorage.getItem('qnex-amboss-sidebar-width'))||320));
+        const width=Math.max(220,Math.min(680,Number(localStorage.getItem('qnex-amboss-sidebar-width'))||320));
         if(!this.el.container.style.getPropertyValue('--qa-sidebar-width'))this.el.container.style.setProperty('--qa-sidebar-width',width+'px');
         const current=this.state.questions[this.state.currentIndex];if(current)current._ambossVisited=true;
         const solved=this.state.questions.filter(item=>this.state.answers.get(item.id)?.submitted).length;
@@ -4990,7 +5031,16 @@ export default class DungeonBase {
         });
         // Unassigned supplementary figures belong to the correct answer's explanation.
         // Figures embedded in an option explanation stay in their original source block.
-        const correctLetter=String.fromCharCode(65+(q.options||[]).findIndex(option=>option.isCorrect));
+        const sourceOptions=q.options||[];
+        const optionLabel=opt=>{
+            const text=String(opt.text||opt.richText||'').replace(/<[^>]*>/g,'').trim();
+            const match=text.match(/^\(?([A-E])\)?(?:[.:\s]|$)/i);
+            return match?match[1].toUpperCase():null;
+        };
+        const labels=sourceOptions.map(optionLabel);
+        const hasCompleteLabels=sourceOptions.length>=2&&labels.every(Boolean)&&new Set(labels).size===labels.length;
+        const orderedOptions=hasCompleteLabels?[...sourceOptions].sort((a,b)=>optionLabel(a).localeCompare(optionLabel(b))):sourceOptions;
+        const correctLetter=String.fromCharCode(65+orderedOptions.findIndex(option=>option.isCorrect));
         const supplementary=document.createElement('div');
         explanation.querySelectorAll('figure').forEach(figure=>{
             if(figure.querySelector('img,video,audio'))supplementary.append(figure);
@@ -5003,7 +5053,7 @@ export default class DungeonBase {
         const selected=answer?.submitted?answer.selectedId:this.state.selectedOption;
         const attempted=new Set((q.ambossAttemptedOptionIds||[]).map(String));
         if(show&&answer?.submitted)attempted.add(String(answer.selectedId));
-        const options=(q.options||[]).map((opt,index)=>{
+        const options=orderedOptions.map((opt,index)=>{
             const letter=String.fromCharCode(65+index),part=parts.get(letter);
             const percentage=part?.percent ?? opt.percent;
             const active=String(selected)===String(opt.id)||(show&&attempted.has(String(opt.id)));
@@ -5028,6 +5078,28 @@ export default class DungeonBase {
         document.getElementById('dungeonExplanationPanel')?.classList.add('hidden');
         document.getElementById('dungeonSplitResizer')?.classList.add('hidden');
         const mount=this.el.main;
+        // A few AMBOSS tables use category rows (for example “Serum”) with
+        // fewer cells than the data rows. Normalize those rows so their
+        // borders stay inside the table grid instead of protruding sideways.
+        mount.querySelectorAll('.qa-stem table, .qa-extra table').forEach(table=>{
+            const rows=[...table.rows];
+            const columns=Math.max(0,...rows.map(row=>[...row.cells].reduce((sum,cell)=>sum+(cell.colSpan||1),0)));
+            if(columns<2)return;
+            rows.forEach(row=>{
+                const cells=[...row.cells];
+                const count=cells.reduce((sum,cell)=>sum+(cell.colSpan||1),0);
+                // Category/header rows can contain an empty placeholder cell
+                // that creates a phantom third column. Collapse those cells
+                // into one full-width label cell.
+                if(cells.length>1&&cells.slice(1).every(cell=>!cell.textContent.trim())){
+                    cells[0].colSpan=columns;
+                    cells.slice(1).forEach(cell=>cell.remove());
+                    return;
+                }
+                if(count<columns&&cells.length===1)cells[0].colSpan=columns;
+                else if(count<columns&&cells.length)cells[cells.length-1].colSpan=(cells[cells.length-1].colSpan||1)+(columns-count);
+            });
+        });
         mount.querySelectorAll('.qa-answer-explanation').forEach(body=>{
             const images=[...body.querySelectorAll('img')].filter(img=>!img.closest('table'));
             if(!images.length)return;
@@ -5151,6 +5223,14 @@ export default class DungeonBase {
         const headerWrapper=header.closest('.ml-table-scroll');
         if(headerWrapper)headerWrapper.remove();else header.remove();
         list.replaceChildren(wrapper);list.classList.add('has-choice-table');
+    }
+
+    isAnswerCorrect(q, selectedId) {
+        if(q.questionType==='matching'){
+            const values=String(selectedId ?? '').split(',');
+            return values.length===q.matching.length && q.matching.every((part,i)=>values[i]===String(part.correct));
+        }
+        return Boolean(q.options?.find(option=>String(option.id)===String(selectedId))?.isCorrect);
     }
 
     handleSelectOption(optionId) {
@@ -5278,13 +5358,19 @@ export default class DungeonBase {
 
     async handleSubmit() {
         const q = this.state.questions[this.state.currentIndex];
+        if(q.questionType==='matching'){
+            this.state.selectedOption=q.matchingDraft || this.state.answers.get(q.id)?.selectedId;
+            if(!this.state.selectedOption || String(this.state.selectedOption).split(',').length!==q.matching.length || String(this.state.selectedOption).split(',').some(value=>!value)){
+                this.showNotification('Please choose an answer for each part');return;
+            }
+        }
         if (!this.state.selectedOption) {
             this.showNotification("Please choose an option first");
             return;
         }
 
         const selectedOpt = q.options.find(o => String(o.id) === String(this.state.selectedOption));
-        const isCorrect = selectedOpt && selectedOpt.isCorrect;
+        const isCorrect = this.isAnswerCorrect(q,this.state.selectedOption);
         
         // Detect if this is a re-submission
         const previousAnswer = q.submittedAnswer;

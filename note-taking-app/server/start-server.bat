@@ -4,7 +4,7 @@ echo.
 echo Installing dependencies...
 npm install
 echo.
-echo Starting server on http://localhost:3001
+echo Starting server on port 3001 (LAN access enabled)
 echo.
 echo The server will save your notes to: D:\MyNotes
 echo.

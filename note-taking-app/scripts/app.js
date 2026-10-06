@@ -5164,6 +5164,11 @@ window.startImportProcess = function () {
 
   // Settings Page Logic
   function openSettings() {
+    if (document.body.classList.contains("qbank-only")) {
+      window.QuestionBase?.open();
+      window.QuestionBase?.switchTab("qbank-settings");
+      return;
+    }
     console.log("[V1.12-DEBUG] openSettings() called");
     // Switch to main base view if not already there
     if (window.TwoBaseState) {

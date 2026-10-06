@@ -5,12 +5,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomInt } = require('node:crypto');
 const directory = path.join(__dirname, '..', 'content', 'bau');
-const filename = path.join(directory, 'banks.json');
+const filename = path.join(directory, 'bau-qbank.js');
 let cached, stamp;
 function data() {
   if (!fs.existsSync(filename)) return {banks:[]};
   const modified = fs.statSync(filename).mtimeMs;
-  if (!cached || modified !== stamp) { cached=JSON.parse(fs.readFileSync(filename,'utf8')); stamp=modified; }
+  if (!cached || modified !== stamp) { delete require.cache[require.resolve(filename)]; cached=require(filename); stamp=modified; }
   return cached;
 }
 function catalog() { return data().banks.map(({questions,...bank}) => bank); }
@@ -20,7 +20,7 @@ function bank(key) {
   return found;
 }
 function question(q) {
-  return {...q, explanation_media:q.media || [], media:[],
+  return {...q, explanation_media:q.explanation_media ?? q.media ?? [], media:q.explanation_media ? q.media : [],
     title:q.displayId + ' · ' + q.stem.slice(0,110),
     subject_names:[q.subject], system_names:[q.system], system_groups:[q.system_group],
     system_detail:q.system, quality:{valid:true}, correct:String(q.correct)};
@@ -55,7 +55,9 @@ function dispatch(req) {
   if (req.action === 'question_detail') return {question:question(q)};
   if (req.action === 'media') {
     const name=String(req.name || '');
-    if (path.basename(name)!==name || /[\\/]/.test(name) || !q.media.some(m=>m.name===name)) throw new Error('BAU media not found.');
+    if (path.basename(name)!==name || /[\\/]/.test(name) || ![...(q.media||[]),...(q.explanation_media||[])].some(m=>m.name===name)) throw new Error('BAU media not found.');
+    const embedded=data().assets?.[name];
+    if(embedded) return {body:embedded.base64,type:embedded.type};
     const body=fs.readFileSync(path.join(directory,'media',name));
     return {body:body.toString('base64'),type:'image/png'};
   }

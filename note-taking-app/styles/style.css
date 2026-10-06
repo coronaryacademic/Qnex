@@ -6639,3 +6639,15 @@ body.theme-light #appLoader .qnex-boot-circle {border-color:#37536f} body.theme-
 .qnex-static-dot { color:#18abc8; letter-spacing:0; }
 #qnexDataStatus {position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:10001;max-width:min(740px,calc(100vw - 32px));width:max-content;padding:10px 16px;border:1px solid var(--border,#555);border-radius:8px;background:var(--bg-primary,#202324);color:var(--defualt,#ddd);font:13px/1.45 'Segoe UI',sans-serif;box-shadow:0 2px 14px #0002;pointer-events:none;}
 body.theme-light .qnex-static-dot { color:#008cab; }
+
+/* Faster A–D cadence with opacity-only label transitions. */
+#appLoader .qnex-boot-circle > span { animation-duration:.2s; animation-timing-function:linear; will-change:opacity; }
+#appLoader .qnex-boot-circle > span:nth-child(2) { animation-delay:.2s; }
+#appLoader .qnex-boot-circle > span:nth-child(3) { animation-delay:.4s; }
+#appLoader .qnex-boot-circle > span:nth-child(4) { animation-delay:.6s; }
+#appLoader .qnex-boot-circle { animation:qnex-circle-glow .2s ease 4,qnex-circle-fade .45s ease .8s forwards; }
+#appLoader .qnex-font-q { animation-delay:.8s; }
+#appLoader .qnex-morph-q { animation-delay:1.05s,2.7s; }
+#appLoader .qnex-word-tail { animation-delay:1.4s; }
+#appLoader .qnex-boot-dot { animation-delay:2.05s,2.7s; }
+#appLoader .qnex-ne, #appLoader .qnex-x { animation-delay:2.7s; }

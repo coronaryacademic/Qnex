@@ -29,9 +29,22 @@
     },
     service(endpoint,options={}){
       this.notice();
-      if(options.method && options.method!=='GET')throw Error('Server data is not loaded.');
       const route=endpoint.split('?')[0];
-      if(['/notes','/folders','/sessions','/trash'].includes(route))return [];
+      const noteStore=()=>{try{return JSON.parse(localStorage.getItem('qnex-offline-notes')||'[]')}catch{return[]}};
+      const saveNote=(note)=>{const notes=noteStore();const index=notes.findIndex(item=>item.id===note.id);if(index<0)notes.push(note);else notes[index]=note;localStorage.setItem('qnex-offline-notes',JSON.stringify(notes));return {success:true,note};};
+      if(route==='/notes'){
+        if(options.method && options.method!=='GET'){
+          const body=JSON.parse(options.body||'[]');
+          if(Array.isArray(body)){localStorage.setItem('qnex-offline-notes',JSON.stringify(body));return {success:true,notes:body};}
+        }
+        return noteStore();
+      }
+      if(route.startsWith('/notes/')){
+        if(options.method==='DELETE'){const id=decodeURIComponent(route.slice('/notes/'.length));const notes=noteStore().filter(item=>item.id!==id);localStorage.setItem('qnex-offline-notes',JSON.stringify(notes));return {success:true};}
+        if(options.method && options.method!=='GET')return saveNote(JSON.parse(options.body||'{}'));
+        return noteStore().find(item=>item.id===decodeURIComponent(route.slice('/notes/'.length)))||null;
+      }
+      if(['/folders','/sessions','/trash'].includes(route))return [];
       if(route==='/questions')return {questions:[],folders:[]};
       if(route==='/stats')return stats(null);
       if(route==='/settings'||route==='/file-structure')return {};
