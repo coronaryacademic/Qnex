@@ -1,0 +1,17 @@
+{
+  "name": "Qnex",
+  "short_name": "Qnex",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "description": "Qnex medical question bank workspace",
+  "icons": [
+    {
+      "src": "assets/qnex-favicon.svg?v=qx-large-2",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
