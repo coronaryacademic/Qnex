@@ -8,7 +8,7 @@
   "description": "Qnex medical question bank workspace",
   "icons": [
     {
-      "src": "assets/qnex-app-icon.svg?v=balanced-icon-20261006",
+      "src": "assets/qnex-app-icon.svg?v=transparent-icon-20261006",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

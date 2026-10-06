@@ -400,7 +400,7 @@
           const timing=this.timing(draft,questions.length);
           if(draft.timed && !timing.valid) throw new Error('Enter a valid time allowance.');
           questions.forEach((q,i)=>{q._timerScope=draft.timed ? draft.timingScope : 'question';q._timerSecs=draft.timed ? (draft.timingScope==='session' ? timing.total : timing.allocations[i]) : 0;q._budgetSeconds=timing.allocations[i];});
-          const session = { id: 'medos-' + crypto.randomUUID(), library: true, bank: bank.key, generation: profile.generations[bank.key] || 0, title: draft.name.trim() || lib().defaultSessionTitle(), date: new Date().toISOString(), questions, completed: false, settings: { pools: [...draft.pools], custom: draft.custom, timing:draft.timed ? {...timing,scope:draft.timingScope,basis:draft.timingBasis,adjustment:draft.adjustment} : null } };
+          const session = { id: 'medos-' + window.QnexCompat.uuid(), library: true, bank: bank.key, generation: profile.generations[bank.key] || 0, title: draft.name.trim() || lib().defaultSessionTitle(), date: new Date().toISOString(), questions, completed: false, settings: { pools: [...draft.pools], custom: draft.custom, timing:draft.timed ? {...timing,scope:draft.timingScope,basis:draft.timingBasis,adjustment:draft.adjustment} : null } };
           lib().updateSummary(await lib().api('/sessions/' + session.id, { method: 'PUT', body: JSON.stringify(session) }));
           lib().active = session;
           status.textContent = `${questions.length} questions ready.${result.skipped ? ` Skipped ${result.skipped} incomplete or linked questions.` : ''}`;
@@ -548,7 +548,7 @@
         event.preventDefault();const button=dialog.querySelector('.primary');button.disabled=true;
         const now=new Date().toISOString();
         const text=dialog.querySelector('textarea').value;
-        const saved={...note,id:note?.id || 'dungeon_note_'+crypto.randomUUID(),type:'dungeon-note',title:dialog.querySelector('input').value.trim(),content:text,contentHtml:text,bank:note?.bank || lib().currentBank || null,createdAt:note?.createdAt || now,updatedAt:now,date:now};
+        const saved={...note,id:note?.id || 'dungeon_note_'+window.QnexCompat.uuid(),type:'dungeon-note',title:dialog.querySelector('input').value.trim(),content:text,contentHtml:text,bank:note?.bank || lib().currentBank || null,createdAt:note?.createdAt || now,updatedAt:now,date:now};
         try {
           await this.saveNote(saved);
           const index=notes.findIndex(n=>n.id===saved.id);if(index<0)notes.push(saved);else notes[index]=saved;

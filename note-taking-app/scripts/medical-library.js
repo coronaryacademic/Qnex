@@ -59,8 +59,9 @@
       const read=!options.method || options.method==='GET';
       if(read) {
         const cached=this.bootCache.get(endpoint);
-        if(cached && cached.expires>Date.now())return structuredClone(cached.value);
-        if(this.pendingReads.has(endpoint))return structuredClone(await this.pendingReads.get(endpoint));
+        const cloneValue=window.QnexCompat?.clone || (value=>JSON.parse(JSON.stringify(value)));
+        if(cached && cached.expires>Date.now())return cloneValue(cached.value);
+        if(this.pendingReads.has(endpoint))return cloneValue(await this.pendingReads.get(endpoint));
       } else {
         // Choosing a bank does not change its catalog.
         const catalog=endpoint==='/profile'?this.bootCache.get('/catalog'):null;
@@ -71,7 +72,7 @@
       const request=(async()=>{
         await window.fileSystemService.waitForReady();
         if(window.fileSystemService.isOffline && window.QnexOffline)return window.QnexOffline.library(endpoint,options);
-        const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+        const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),window.innerWidth<900?6000:15000);
         try {
           const response=await fetch(window.fileSystemService.baseUrl+'/medical-library'+endpoint,{
             ...options,signal:options.signal || controller.signal,headers:{'Content-Type':'application/json',...options.headers}
@@ -359,7 +360,7 @@
         const result = await this.api('/questions', { method: 'POST', body: JSON.stringify({ bank: bank.key, subject: form.get('subject'), system: form.get('system'), count: Number(form.get('count')), exclude }) });
         if (!result.questions.length) throw new Error('No supported questions match this selection. Try another subject or question pool.');
         const questions = result.questions.map(q => this.adapt(q, bank.key, form));
-        const session = { id: 'medos-' + crypto.randomUUID(), library: true, bank: bank.key, generation: this.profile.generations[bank.key] || 0, title: this.defaultSessionTitle(), date: new Date().toISOString(), questions, completed: false };
+        const session = { id: 'medos-' + window.QnexCompat.uuid(), library: true, bank: bank.key, generation: this.profile.generations[bank.key] || 0, title: this.defaultSessionTitle(), date: new Date().toISOString(), questions, completed: false };
         const summary = await this.api('/sessions/' + session.id, { method: 'PUT', body: JSON.stringify(session) });
         this.updateSummary(summary); this.active = session;
         this.status(`${questions.length} questions loaded.${result.skipped ? ` ${result.skipped} incomplete or linked questions skipped.` : ''}`);

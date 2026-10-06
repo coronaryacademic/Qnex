@@ -18,6 +18,14 @@
       const prev=document.getElementById('qwNavPrevious'),next=document.getElementById('qwNavNext');
       if(prev)prev.disabled=index===0;if(next)next.disabled=index>=this.maxHistoryIndex;
     },
+    settleRender(tab, revision=this.revision) {
+      const render=()=>{if(revision!==this.revision)return;try{this.renderTab(tab);}catch(error){console.error('[QnexRouter] render failed',error);}};
+      render();
+      // iPad Safari can apply the hash/class transition one frame after the
+      // route event. A single deferred commit prevents a valid destination
+      // from being left blank when users navigate quickly or press Back.
+      setTimeout(()=>{if(revision===this.revision)render();},120);
+    },
     setTitle(path) { document.title='Qnex'; document.body.dataset.qnexRoute=path; },
     write(path,replace=false) {
       this.setTitle(path);
@@ -42,7 +50,7 @@
       const path=paths[tab]||'qbank';
       if(window.QBankWorkspace)window.QBankWorkspace.revision++;
       this.revision++;this.current=path;this.returnPath=path;this.write(path,replace);this.show(false);
-      return this.renderTab(pages[path]);
+      this.settleRender(pages[path],this.revision);return;
     },
     leaveTest() {
       if(!document.body.classList.contains('dungeon-open'))return;
@@ -99,7 +107,7 @@
         return;
       }
       if(!pages[path]){this.page('medical-library',true);return;}
-      this.leaveTest();this.current=path;this.returnPath=path;this.show(false);this.renderTab(pages[path]);
+      this.leaveTest();this.current=path;this.returnPath=path;this.show(false);this.settleRender(pages[path],revision);
     },
     init() {
       if(this.initialized||!window.DungeonBase||!window.QuestionBase)return;

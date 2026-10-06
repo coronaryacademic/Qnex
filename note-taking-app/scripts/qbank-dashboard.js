@@ -9,7 +9,7 @@
   };
   const Dashboard = {
     mainRevision: 0, statsRevision: 0, brandTimer: null, updateObserver: null, updateMutationObserver: null,
-    withTimeout(promise, ms = 30000) {
+    withTimeout(promise, ms = (window.innerWidth < 900 ? 8000 : 30000)) {
       let timer;
       return Promise.race([promise, new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error('The question-bank service took too long to respond. Check the MedOS folder or restart Qnex.')), ms);

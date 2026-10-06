@@ -38,7 +38,8 @@ class FileSystemService {
       const url = `http://${currentHost}:${port}/api`;
       try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 5000); // Increased timeout to 5s for local network stability
+        const probeTimeout = window.innerWidth < 900 ? 1800 : 5000;
+        const id = setTimeout(() => controller.abort(), probeTimeout);
         console.log(`[FileSystemService] Probing: ${url}...`);
         const res = await fetch(`${url}/health`, { signal: controller.signal });
         clearTimeout(id);
