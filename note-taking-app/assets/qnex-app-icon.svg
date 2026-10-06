@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Qnex">
+  <rect width="180" height="180" rx="38" fill="#f3f6fb"/>
+  <rect x="8" y="8" width="164" height="164" rx="32" fill="#ffffff" stroke="#d7e0eb" stroke-width="4"/>
+  <g fill="#17202e" font-family="Segoe UI,Arial,sans-serif" font-size="92" font-weight="650" letter-spacing="-10">
+    <text x="28" y="117">Qx</text>
+  </g>
+  <circle cx="143" cy="119" r="9" fill="#18abc8"/>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      rect:first-child { fill:#111827; }
+      rect:nth-child(2) { fill:#1b2635; stroke:#34465d; }
+      text { fill:#f4f8ff; }
+    }
+  </style>
+</svg>
