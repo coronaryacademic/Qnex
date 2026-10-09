@@ -853,7 +853,7 @@ app.get("/api/settings", async (req, res) => {
     const settingsFile = path.join(NOTES_BASE_DIR, "settings", "settings.json");
 
     if (await fs.pathExists(settingsFile)) {
-      const settings = await fs.readJson(settingsFile);
+      const settings = await require("./settings-store").read(settingsFile);
       res.json(settings);
     } else {
       // Return default settings
@@ -876,7 +876,7 @@ app.post("/api/settings", async (req, res) => {
     const settings = req.body;
     const settingsFile = path.join(NOTES_BASE_DIR, "settings", "settings.json");
 
-    await fs.writeJson(settingsFile, settings, { spaces: 2 });
+    await require("./settings-store").write(settingsFile, settings);
 
     res.json({ success: true, message: "Settings saved successfully" });
   } catch (error) {

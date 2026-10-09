@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Qnex</title>
   <link rel="icon" type="image/svg+xml" href="assets/qnex-app-icon.svg?v=transparent-icon-20261006" />
   <link rel="manifest" href="manifest.webmanifest" />
@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="styles/two-base.css">
   <link rel="stylesheet" href="styles/toolbar-highlight.css">
   <link rel="stylesheet" href="styles/settings.css">
-  <link rel="stylesheet" href="styles/question-base.css?v=3">
+  <link rel="stylesheet" href="styles/question-base.css?v=load41">
   <link rel="stylesheet" href="styles/dungeon-base.css">
   <link rel="stylesheet" href="styles/dungeon-footer.css">
   <link rel="stylesheet" href="styles/dungeon-note.css">
@@ -25,8 +25,9 @@
   <link rel="stylesheet" href="styles/pdf-viewer.css">
   <link rel="stylesheet" href="styles/html-viewer.css">
   <link rel="stylesheet" href="styles/medical-library.css">
-  <link rel="stylesheet" href="styles/qbank-workspace.css?v=header-forward-chevron-20261006">
-  <link rel="stylesheet" href="styles/amboss-dungeon.css">
+  <link rel="stylesheet" href="styles/qbank-workspace.css?v=reference-performance-20261006">
+  <link rel="stylesheet" href="styles/amboss-test-builder.css?v=font50-responsive-20261009-nbme73">
+  <link rel="stylesheet" href="styles/amboss-dungeon.css?v=responsive-20261009-nbme73">
   <link rel="stylesheet" href="styles/bau-dungeon.css">
   <!-- Startup and reload sounds removed -->
   <style>
@@ -92,6 +93,9 @@
     }
   </style>
 
+  <link rel="stylesheet" href="styles/qbank-settings.css?v=responsive-20261009-nbme73">
+  <link rel="stylesheet" href="styles/nbme-layout.css?v=responsive-20261009-nbme73">
+  <link rel="stylesheet" href="styles/qnex-responsive.css?v=responsive-20261009-nbme73">
 </head>
 
 <body class="qbank-only">
@@ -885,414 +889,10 @@
                 <div id="qbankMainDashboard" class="statistics-container ml-library qbank-overview" aria-live="polite"></div>
               </div>
 
-              <!-- Statistics Tab Content -->
-              <div class="tab-content" data-tab-content="statistics">
-                <div class="statistics-container">
-                  <div class="stats-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div class="stats-title-group">
-                      <h2>Knowledge Dashboard</h2>
-                      <p>System metrics and performance analysis</p>
-                    </div>
-                    <button id="syncStatsBtn" class="icon-btn" title="Sync & Recalculate Statistics" style="background:none; border:none; padding:8px; display:flex; align-items:center; justify-content:center; margin-top:18px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 4v6h-6"></path>
-                        <path d="M1 20v-6h6"></path>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  <div class="stats-dashboard">
+<div class="tab-content" data-tab-content="statistics"><div class="qw-loader qnex-branded-loader" role="status"><div class="qnex-loading-mark qnex-knock-logo"><span class="qnex-knock-word">Qnex</span><span class="qnex-knock-dot">.</span></div><span>Loading your workspace…</span></div></div>                <!-- Create Test is rendered by the selected bank's builder. -->
+                <div class="tab-content" data-tab-content="create-test"><div class="qw-loader qnex-branded-loader" role="status"><div class="qnex-loading-mark qnex-knock-logo"><span class="qnex-knock-word">Qnex</span><span class="qnex-knock-dot">.</span></div><span>Loading your workspace…</span></div></div>
 
-                    <!-- Row 1: Score -->
-                    <div class="stats-row">
-                      <!-- Donut: Correct % -->
-                      <div class="stats-donut-wrap">
-                        <svg class="stats-donut" viewBox="0 0 120 120">
-                          <circle class="donut-track" cx="60" cy="60" r="50"/>
-                          <circle class="donut-fill" id="donutCorrect" cx="60" cy="60" r="50" stroke-dasharray="0 314"/>
-                        </svg>
-                        <div class="donut-label">
-                          <span class="donut-pct" id="stat-accuracy">0%</span>
-                          <span class="donut-sub">Correct</span>
-                        </div>
-                      </div>
-
-                      <!-- Your Score -->
-                      <div class="stats-group">
-                        <div class="stats-group-title">Your Score</div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Total Correct</span>
-                          <span class="stats-row-badge green" id="stat-correct">0</span>
-                        </div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Total Incorrect</span>
-                          <span class="stats-row-badge red" id="stat-incorrect">0</span>
-                        </div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Total Omitted</span>
-                          <span class="stats-row-badge" id="stat-omitted">0</span>
-                        </div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Average Time Spent</span>
-                          <span class="stats-row-badge" id="stat-avg-time">0</span>
-                        </div>
-                      </div>
-
-                      <div class="stats-graph-container">
-                        <div class="graph-main">
-                          <div class="graph-bar-wrap">
-                            <div class="graph-bar green" id="barCorrect" style="height: 0%;">
-                              <span class="bar-value" id="barValueCorrect">0</span>
-                            </div>
-                            <span class="bar-label">Correct</span>
-                          </div>
-                          <div class="graph-bar-wrap">
-                            <div class="graph-bar red" id="barIncorrect" style="height: 0%;">
-                              <span class="bar-value" id="barValueIncorrect">0</span>
-                            </div>
-                            <span class="bar-label">Incorrect</span>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-
-                    <div class="stats-divider"></div>
-
-                    <!-- Row 2: QBank -->
-                    <div class="stats-row">
-                      <!-- Donut: Used % -->
-                      <div class="stats-donut-wrap">
-                        <svg class="stats-donut" viewBox="0 0 120 120">
-                          <circle class="donut-track" cx="60" cy="60" r="50"/>
-                          <circle class="donut-fill" id="donutUsed" cx="60" cy="60" r="50" stroke-dasharray="0 314"/>
-                        </svg>
-                        <div class="donut-label">
-                          <span class="donut-pct" id="stat-used-pct">0%</span>
-                          <span class="donut-sub">Used</span>
-                        </div>
-                      </div>
-
-                      <!-- QBank Usage -->
-                      <div class="stats-group">
-                        <div class="stats-group-title">QBank Usage</div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Used Questions</span>
-                          <span class="stats-row-badge" id="stat-used-q">0</span>
-                        </div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Unused Questions</span>
-                          <span class="stats-row-badge" id="stat-unused-q">0</span>
-                        </div>
-                        <div class="stats-row-item">
-                          <span class="stats-row-label">Total Questions</span>
-                          <span class="stats-row-badge" id="stat-total-questions">0</span>
-                        </div>
-                      </div>
-
-                        <div class="stats-group">
-                          <div class="stats-group-title">Test Activity</div>
-                          <div class="stats-row-item">
-                            <span class="stats-row-label">Tests Created</span>
-                            <span class="stats-row-badge" id="stat-total-folders">0</span>
-                          </div>
-                          <div class="stats-row-item">
-                            <span class="stats-row-label">Tests Completed</span>
-                            <span class="stats-row-badge" id="stat-total-sessions">0</span>
-                          </div>
-                          <div class="stats-row-item">
-                            <span class="stats-row-label">Tests Suspended</span>
-                            <span class="stats-row-badge" id="stat-suspended">0</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      </div>
-                    </div>
-                  </div>
-
-                <!-- Create Test Tab Content -->
-                <div class="tab-content" data-tab-content="create-test">
-                  <div class="statistics-container ct-page">
-
-                    <!-- Page Header -->
-                    <div class="stats-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
-                      <div class="stats-title-group">
-                        <h2>Create Test</h2>
-                        <p>Filter by tags, configure your session, and launch</p>
-                      </div>
-                      <div class="ct-header-actions" style="display:flex; gap:8px; align-items:center; margin-top: 40px;">
-                        <button id="ctRefreshBtn" class="icon-btn" title="Refresh syncing tags" style="background:none; border:none; padding:0; display:flex; align-items:center; justify-content:center; height:34px; min-width:34px;">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                        </button>
-                        <button id="ctAutoTagBtn" class="icon-btn" title="Auto-assign tags from question content" style="background:none; border:none; padding:0; display:flex; align-items:center; justify-content:center; height:34px; min-width:34px;">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="ct-layout">
-
-                      <!-- LEFT: Filter Panel -->
-                      <div class="ct-left">
-
-                        <!-- Tag Filters -->
-                        <div class="ct-section ct-centered">
-                          <div class="ct-section-title">
-                            Filter by Tags
-                          </div>
-                          <p class="ct-section-hint">Only questions with matching tags will be included</p>
-
-                          <div class="ct-category-row">
-                            <div class="ct-cat-wrap">
-                              <button class="ct-cat-btn" id="ctBtnSubject">
-                                <span>Subject</span>
-                                <span class="ct-cat-badge" id="ctBadgeSubject"></span>
-                              </button>
-                            </div>
-                            <div class="ct-cat-wrap">
-                              <button class="ct-cat-btn" id="ctBtnSystem">
-                                <span>System</span>
-                                <span class="ct-cat-badge" id="ctBadgeSystem"></span>
-                              </button>
-                            </div>
-                            <div class="ct-cat-wrap">
-                              <button class="ct-cat-btn" id="ctBtnMajor">
-                                <span>Major</span>
-                                <span class="ct-cat-badge" id="ctBadgeMajor"></span>
-                              </button>
-                            </div>
-                            <div class="ct-cat-wrap">
-                              <button class="ct-cat-btn" id="ctBtnMinor">
-                                <span>Minor</span>
-                                <span class="ct-cat-badge" id="ctBadgeMinor"></span>
-                              </button>
-                            </div>
-                          </div>
-
-                          <button id="ctClearTags" class="ct-clear-btn" style="display:none;">
-                            Clear all filters
-                          </button>
-                        </div>
-
-                        <!-- ID Search -->
-                        <div class="ct-section">
-                          <div class="ct-section-title">
-                            Load by IDs
-                          </div>
-                          <p class="ct-section-hint">Enter numeric IDs separated by commas <br/> (e.g. 121014, 121015, 121016, etc..)</p>
-                          <div class="ct-id-search-wrap">
-                            <span class="ct-id-prefix-fix">QNX-</span>
-                            <input type="text" id="ctIdSearch" class="ct-id-input" placeholder="e.g. 121014" spellcheck="false">
-                            <button id="ctIdSearchClear" class="ct-id-clear" title="Clear IDs" style="display:none;">×</button>
-                          </div>
-                          <div id="ctIdStatus" class="ct-id-status"></div>
-                        </div>
-
-                        <!-- Session Options -->
-                        <div class="ct-section ct-centered">
-                          <div class="ct-section-title">
-                            Session Options
-                          </div>
-
-                          <!-- Number of Questions -->
-                          <div class="ct-option-row">
-                            <div class="ct-option-label">
-                              Number of Questions
-                            </div>
-                            <div class="ct-qcount-wrap">
-                              <input type="number" id="ctQcount" min="1" max="2387" value="10" class="ct-num-input">
-                              <span class="ct-qcount-max-label">of <span id="ctMaxTotal">0</span> available</span>
-                            </div>
-                            <div class="ct-option-hint" id="ctQcountHint" style="display: none;">10 of — available</div>
-                          </div>
-
-                          <!-- Starred Selection -->
-                          <div class="ct-option-row">
-                            <div class="ct-option-label">
-                              Flagged Only
-                            </div>
-                            <div class="ct-toggle-group" id="ctStarredGroup">
-                              <button class="ct-toggle-btn" data-val="on">On</button>
-                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
-                            </div>
-                            <div class="ct-option-hint">Include only questions you've flagged</div>
-                          </div>
-
-                          <!-- Timer -->
-                          <div class="ct-option-row">
-                            <div class="ct-option-label">
-                              Timer Mode
-                            </div>
-                            <div class="ct-toggle-group" id="ctTimerModeGroup">
-                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
-                              <button class="ct-toggle-btn" data-val="up">Up (Elapsed)</button>
-                              <button class="ct-toggle-btn" data-val="down">Down (Remain)</button>
-                            </div>
-                            <div class="ct-option-hint">Count time spent or time remaining</div>
-                          </div>
-
-                          <!-- Timer Sub-Options (Down Only) -->
-                          <div id="ctTimerDownOptions" style="display: none; flex-direction: column; gap: 12px; margin-top: 8px;">
-                            <div class="ct-option-row">
-                              <div class="ct-option-label">Timer Scope</div>
-                              <div class="ct-toggle-group" id="ctTimerScopeGroup">
-                                <button class="ct-toggle-btn ct-toggle-active" data-val="question">Per Question</button>
-                                <button class="ct-toggle-btn" data-val="session">Whole Session</button>
-                              </div>
-                            </div>
-                            <div class="ct-option-row" id="ctTimerDurationRow">
-                              <div class="ct-option-label">Duration</div>
-                              <!-- Per Question Options -->
-                              <div class="ct-toggle-group" id="ctTimerDurationGroupQuestion">
-                                <button class="ct-toggle-btn" data-val="5">5s</button>
-                                <button class="ct-toggle-btn" data-val="10">10s</button>
-                                <button class="ct-toggle-btn" data-val="20">20s</button>
-                                <button class="ct-toggle-btn" data-val="30">30s</button>
-                                <button class="ct-toggle-btn ct-toggle-active" data-val="60">60s</button>
-                                <button class="ct-toggle-btn" data-val="120">2m</button>
-                                <button class="ct-toggle-btn" data-val="180">3m</button>
-                                <button class="ct-toggle-btn" data-val="300">5m</button>
-                              </div>
-                              <!-- Whole Session Options -->
-                              <div class="ct-session-timer-wrap" id="ctTimerDurationGroupSession" style="display: none; align-items: center; gap: 8px;">
-                                <input type="number" id="ctTimerHr" min="0" max="99" value="1" class="ct-num-input" style="width: 50px;"> <span style="font-size: 12px; color: var(--text-muted);">hr</span>
-                                <input type="number" id="ctTimerMin" min="0" max="59" value="0" class="ct-num-input" style="width: 50px;"> <span style="font-size: 12px; color: var(--text-muted);">min</span>
-                                <input type="number" id="ctTimerSec" min="0" max="59" value="0" class="ct-num-input" style="width: 50px;"> <span style="font-size: 12px; color: var(--text-muted);">sec</span>
-                              </div>
-                              <div class="ct-option-hint">Set duration for your timer</div>
-                            </div>
-                          </div>
-
-                          <!-- Reset Mode -->
-                          <div class="ct-option-row">
-                            <div class="ct-option-label">
-                              Reset Progress
-                            </div>
-                            <div class="ct-toggle-group" id="ctResetGroup">
-                              <button class="ct-toggle-btn" data-val="on">On</button>
-                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
-                            </div>
-                            <div class="ct-option-hint">Clear previous answers when starting folder session</div>
-                          </div>
-
-                          <!-- Tutor Mode -->
-                          <div class="ct-option-row">
-                            <div class="ct-option-label">
-                              Tutor Mode
-                            </div>
-                            <div class="ct-toggle-group" id="ctTutorGroup">
-                              <button class="ct-toggle-btn ct-toggle-active" data-val="on">On</button>
-                              <button class="ct-toggle-btn" data-val="off">Off</button>
-                            </div>
-                            <div class="ct-option-hint">Show explanation after each answer</div>
-                          </div>
-
-                          <!-- Shuffle -->
-                          <div class="ct-option-row">
-                            <div class="ct-option-label">
-                              Shuffle Questions
-                            </div>
-                            <div class="ct-toggle-group" id="ctShuffleGroup">
-                              <button class="ct-toggle-btn" data-val="on">On</button>
-                              <button class="ct-toggle-btn ct-toggle-active" data-val="off">Off</button>
-                            </div>
-                            <div class="ct-option-hint">Randomize question order</div>
-                          </div>
-                        </div>
-
-                      </div>
-
-                      <!-- RIGHT: Preview Panel -->
-                      <div class="ct-right">
-                        <div class="ct-section ct-preview-section">
-                          <div class="ct-section-title">
-                            Matching Questions
-                          </div>
-
-                          <!-- Stats row -->
-                          <div class="ct-preview-stats">
-                            <div class="ct-stat-box">
-                              <span class="ct-stat-num" id="ctMatchTotal">—</span>
-                              <span class="ct-stat-label">Total Tagged</span>
-                            </div>
-                            <div class="ct-stat-box">
-                              <span class="ct-stat-num ct-stat-accent" id="ctMatchFiltered">—</span>
-                              <span class="ct-stat-label">Match Filters</span>
-                            </div>
-                            <div class="ct-stat-box">
-                              <span class="ct-stat-num" id="ctMatchSelected">10</span>
-                              <span class="ct-stat-label">Will Include</span>
-                            </div>
-                          </div>
-
-                          <!-- Question List -->
-                          <div class="ct-preview-list" id="ctPreviewList">
-                            <div class="ct-preview-empty" id="ctPreviewEmpty">
-                              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:0.25;margin-bottom:8px;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/></svg>
-                              <div>Select tags to preview matching questions</div>
-                            </div>
-                          </div>
-
-                          <!-- Start Bar -->
-                          <div class="ct-start-zone" id="ctStartZone" style="display:none;">
-                            <div class="ct-start-summary" id="ctStartSummary"></div>
-                            <button class="ct-start-btn" id="ctStartSessionBtn">
-                              Create Test
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-
-              <!-- Recent Sessions Tab Content -->
-              <div class="tab-content" data-tab-content="recent-sessions">
-                <div class="statistics-container">
-                  <div class="stats-header">
-                    <div class="stats-title-group">
-                      <h2>Previous Journeys</h2>
-                      <p>Review and resume your previous learning sessions</p>
-                    </div>
-                  </div>
-
-                  <div class="sessions-management-toolbar">
-                    <div class="toolbar-search">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                      </svg>
-                      <input type="text" id="sessionsSearchInput" placeholder="Search sessions...">
-                    </div>
-                    
-                    <div class="toolbar-actions">
-                      <div class="sort-control">
-                        <span>Sort by:</span>
-                        <select id="sessionsSortSelect">
-                          <option value="newest">Newest</option>
-                          <option value="oldest">Oldest</option>
-                          <option value="name">Name</option>
-                          <option value="questions">Questions</option>
-                        </select>
-                      </div>
-                      
-                      <div class="view-toggle-group">
-                        <button id="viewListBtn" class="view-btn active" title="List View">List</button>
-                        <button id="viewGridBtn" class="view-btn" title="Grid View">Grid</button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div id="recentSessionsList" class="recent-sessions-grid">
-                    <!-- Sessions rendered here -->
-                  </div>
-                </div>
-              </div>
-
-              <!-- Medical Library Tab Content -->
+<div class="tab-content" data-tab-content="recent-sessions"><div class="qw-loader qnex-branded-loader" role="status"><div class="qnex-loading-mark qnex-knock-logo"><span class="qnex-knock-word">Qnex</span><span class="qnex-knock-dot">.</span></div><span>Loading your workspace…</span></div></div>              <!-- Medical Library Tab Content -->
               <div class="tab-content" data-tab-content="medical-library">
                 <div class="statistics-container ml-page">
                   <div class="ml-grid" id="medicalLibraryGrid">
@@ -2697,19 +2297,24 @@
   <script src="scripts/markdown.js"></script>
   <script src="scripts/two-base.js"></script>
   <script src="scripts/two-base-persistence.js"></script>
-  <script src="scripts/question-base.js?v=sidebar-logo-restart-20261006"></script>
-  <script src="scripts/medical-library.js?v=view-performance-label-20261006"></script>
-  <script src="scripts/qbank-dashboard.js?v=view-performance-label-20261006"></script>
-  <script src="scripts/qbank-workspace.js?v=original-sessions-icon-20261006"></script>
+  <script src="scripts/question-base.js?v=responsive-20261009-nbme73"></script>
+  <script src="scripts/medical-library.js?v=flow15-responsive-20261009-nbme73"></script>
+  <script src="scripts/qnex-reference.js?v=reference-server-origin-20261006"></script>
+  <script src="scripts/qnex-responsive.js?v=responsive-20261009-nbme73"></script>
+  <script src="scripts/qbank-dashboard.js?v=responsive-20261009-nbme73"></script>
+  <script src="scripts/amboss-test-builder.js?v=responsive-20261009-nbme73"></script>
+  <script src="scripts/nbme-layout.js?v=responsive-20261009-nbme73"></script>
+  <script src="scripts/qbank-settings.js?v=responsive-20261009-nbme73"></script>
+  <script src="scripts/qbank-workspace.js?v=responsive-20261009-nbme73"></script>
   <script src="scripts/amboss-icons.js"></script>
-  <script src="scripts/qbank-profile.js?v=dashboard-default-20261006"></script>
+  <script src="scripts/qbank-profile.js?v=picker42-dashboard-default-20261006"></script>
   <script src="scripts/custom-features.js?v=loading-app-label-20261006"></script>
   <script src="scripts/note-font-handler.js"></script>
   <script src="scripts/dungeon-note.js"></script>
   <script src="scripts/pdf-viewer.js"></script>
   <script src="scripts/html-viewer.js"></script>
   <script type="module">
-    import DungeonBase from './scripts/dungeon-base.js?v=end-block-only-20261006';
+    import DungeonBase from './scripts/dungeon-base.js?v=responsive-20261009-nbme73';
     window.DungeonBase = new DungeonBase();
     window.DungeonBase.init();
   </script>
@@ -2847,3 +2452,14 @@
   </body>
 
 </html>
+
+
+
+
+
+
+
+
+
+
+

@@ -1197,8 +1197,9 @@ div[data-tab-content="recent-sessions"].active {
   margin: 0 auto;
   padding: 3rem 2rem;
   flex: 1;
-  opacity: 0;
-  animation: fadeIn 0.4s ease forwards;
+  opacity: 1;
+  /* Content must remain visible when a hidden tab interrupts its entrance animation. */
+  animation: none;
 }
 
 @keyframes fadeIn {

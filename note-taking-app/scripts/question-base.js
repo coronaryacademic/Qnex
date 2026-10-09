@@ -689,39 +689,7 @@ const QuestionBase = {
     },
 
     initResizer() {
-        if (!this.el.resizer || !this.el.sidebar) return;
-        let isResizing = false;
-        let startX, startWidth;
-
-        this.el.resizer.addEventListener("mousedown", (e) => {
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = parseInt(document.defaultView.getComputedStyle(this.el.sidebar).width, 10);
-            this.el.sidebar.classList.add("resizing");
-            document.body.style.cursor = "col-resize";
-        });
-
-        document.addEventListener("mousemove", (e) => {
-            if (!isResizing) return;
-            const newWidth = startWidth + (e.clientX - startX);
-            if (newWidth >= 220 && newWidth <= 480) {
-                this.el.sidebar.style.width = `${newWidth}px`;
-                const baseSidebar = document.getElementById("sidebar");
-                if (baseSidebar) baseSidebar.style.width = `${newWidth}px`;
-            }
-        });
-
-        document.addEventListener("mouseup", () => {
-            if (isResizing) {
-                isResizing = false;
-                this.el.sidebar.classList.remove("resizing");
-                document.body.style.cursor = "default";
-                this.saveSidebarWidth();
-                if (typeof window.updateSidebarWidth === "function") {
-                    window.updateSidebarWidth(parseInt(this.el.sidebar.style.width));
-                }
-            }
-        });
+        window.QnexResponsive?.bindSidebar('app');
     },
 
     loadSidebarWidth() {
@@ -1186,6 +1154,7 @@ Generate a professional title for this study session.`;
             window.QBankWorkspace.render(tabName);
             return;
         }
+        if (tabName === 'medical-reference') window.QnexReference?.render();
         if (tabName === 'main') window.QBankDashboard?.renderMain();
         if (tabName === 'recent-sessions') {
             this.renderRecentSessions();
@@ -2246,6 +2215,7 @@ Rules:
     },
 
     async toggleSidebar() {
+        if(window.QnexResponsive?.isDrawer())return window.QnexResponsive.toggleDrawer('app',this.el.toggleSidebarBtn);
         this.el.sidebar.classList.toggle("collapsed");
         this.el.sidebar.querySelectorAll(".qw-sidebar-wordmark, .qw-sidebar-wordmark *").forEach(element=>element.getAnimations().forEach(animation=>{animation.currentTime=0;}));
         const isCollapsed = this.el.sidebar.classList.contains("collapsed");

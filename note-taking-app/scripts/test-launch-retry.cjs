@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+let seq=0;const timers=new Map(),window={};vm.runInNewContext(fs.readFileSync(__dirname+'/qbank-dashboard.js','utf8'),{window,setTimeout(fn,ms){const id=++seq;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);}});
+const d=window.QBankDashboard,owner={};let visible=true,retries=0;
+assert(d.isTemporary({name:'AbortError',message:'signal is aborted without reason'}));
+assert(d.isTemporary(new TypeError('Failed to fetch')));assert(!d.isTemporary(new Error('Question not found')));
+d.retryView(owner,()=>visible,()=>retries++);assert.equal(timers.get(owner.retryTimer).ms,2000);timers.get(owner.retryTimer).fn();assert.equal(retries,1);
+d.retryView(owner,()=>visible,()=>retries++);const old=owner.retryTimer;assert.equal(timers.get(old).ms,4000);
+d.retryView(owner,()=>visible,()=>retries++);assert(!timers.has(old));visible=false;timers.get(owner.retryTimer).fn();assert.equal(retries,1);
+for(let i=0;i<10;i++)d.retryView(owner,()=>visible,()=>{});assert.equal(timers.get(owner.retryTimer).ms,15000);
+console.log('PASS: transient launch errors retry automatically, back off to 15s, replace pending timers, and stop after navigation.');

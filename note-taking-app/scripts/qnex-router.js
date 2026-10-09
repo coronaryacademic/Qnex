@@ -25,11 +25,9 @@
         const panel=document.querySelector(`[data-tab-content="${tab}"]`);
         if(panel){panel.classList.add('active');panel.hidden=false;panel.style.display='';}
       }catch(error){console.error('[QnexRouter] render failed',error);}};
-      // Safari can deliver several hash events before the previous tab's
-      // layout has committed. Re-render on a few frames so the destination
-      // cannot remain an empty panel after rapid navigation.
+      // Commit the tab once. The tab renderer owns its async data work;
+      // repeated router renders cancel that work and cause blank panels.
       render();
-      [80, 220, 500].forEach(delay=>setTimeout(()=>{if(revision===this.revision)render();},delay));
     },
     setTitle(path) { document.title='Qnex'; document.body.dataset.qnexRoute=path; },
     write(path,replace=false) {
@@ -78,7 +76,7 @@
         this.leaveTest();this.show(false);this.renderTab('recent-sessions');
         if(window.QBankWorkspace)window.QBankWorkspace.revision++;
         const panel=document.querySelector('[data-tab-content="recent-sessions"]');
-        if(panel)panel.innerHTML='<p role="status">Loading test results…</p>';
+        if(panel)panel.innerHTML=window.QBankWorkspace?.loading('Loading test results…') || '<p role="status">Loading test results…</p>';
         try {
           const id=decodeURIComponent(path.slice(path.indexOf('/')+1));
           await window.MedicalLibrary.saveQueue.catch(()=>{});

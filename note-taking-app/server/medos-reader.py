@@ -120,6 +120,21 @@ def archived_ids(bank):
 
 
 def dispatch(req):
+    if req.get('action') == 'reference':
+        import asyncio
+        import httpx
+        from fastapi import FastAPI
+        import amboss_reader
+        import uworld_library_reader
+        import utd_reader
+        app = FastAPI()
+        for module in (amboss_reader, uworld_library_reader, utd_reader):
+            app.include_router(module.router)
+        async def get_reference():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://qnex') as client:
+                response = await client.get(req['path'])
+                return {'body': base64.b64encode(response.content).decode('ascii'), 'type': response.headers.get('content-type', 'application/octet-stream'), 'status': response.status_code}
+        return asyncio.run(get_reference())
     action = req.get('action')
     if action == 'archive':
         groups = []
@@ -163,6 +178,8 @@ def dispatch(req):
     if archive_pool:
         bank = bank[:-len('--archived')]
     archived = archived_ids(bank)
+    # Reviewed case repairs are supplied by the MedOS adapter, not inferred IDs.
+    incomplete = set()
     if archive_pool and not archived:
         raise ValueError('No archived questions exist for this bank.')
     if action == 'filters':
@@ -171,6 +188,8 @@ def dispatch(req):
             systems = {r['id']: dict(id=r['id'], name=r['name'], count=0) for r in conn.execute('SELECT id,name FROM Systems')}
             items = []
             for row in conn.execute('SELECT id,subId,sysId FROM Questions'):
+                if row['id'] in incomplete:
+                    continue
                 if (row['id'] not in archived) if archive_pool else (row['id'] in archived):
                     continue
                 sub_ids = reader._parse_amboss_taxonomy_ids(row['subId']) or [0]
@@ -186,6 +205,17 @@ def dispatch(req):
             result = dict(subjects=sorted((s for s in subjects.values() if s['count']), key=lambda s: s['name']),
                           systems=sorted((s for s in systems.values() if s['count']), key=lambda s: s['name']),
                           items=items, amboss=reader._is_amboss_qbank(bank))
+            from qbank_cases import case_groups
+            result['caseGroups'] = list({tuple(ids) for ids, _ in case_groups(conn, bank).values()})
+        if result['amboss']:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('amboss_facets', Path(__file__).with_name('amboss-facets.py'))
+            module = sys.modules.get('amboss_facets')
+            if module is None:
+                module = importlib.util.module_from_spec(spec)
+                sys.modules['amboss_facets'] = module
+                spec.loader.exec_module(module)
+            result = module.enrich(reader, ROOT, bank, result, archived, archive_pool)
         return result
     if action == 'questions':
         limit = max(1, int(req.get('count', 10)))
@@ -195,22 +225,24 @@ def dispatch(req):
                 clauses.append(f'{column}=?')
                 values.append(int(req[field]))
         where = ' WHERE ' + ' AND '.join(clauses) if clauses else ''
-        excluded = {int(qid) for qid in req.get('exclude', [])} | (set() if archive_pool else archived)
+        excluded = {int(qid) for qid in req.get('exclude', [])} | incomplete | (set() if archive_pool else archived)
         included = {int(qid) for qid in req['ids']} if 'ids' in req else None
         questions, skipped = [], 0
         with contextlib.closing(connection(bank)) as conn:
             ids = [r[0] for r in conn.execute('SELECT id FROM Questions' + where + ' ORDER BY RANDOM()', values)
                    if r[0] not in excluded and (not archive_pool or r[0] in archived) and (included is None or r[0] in included)]
-            for qid in ids:
-                q = reader._fetch_full_question(conn, qid, bank)
-                # Linked case sequences need their own ordered session flow.
-                if not q or not q.get('quality', {}).get('valid') or q.get('parentQId'):
-                    skipped += 1
-                    continue
-                questions.append(taxonomy_names(conn, q))
-                if len(questions) == limit:
-                    break
-        return {'questions': questions, 'skipped': skipped, 'matching': len(ids)}
+            from qbank_cases import selection_units, pack_units
+            valid = reader._valid_ids(bank)
+            units = selection_units(conn, bank, ids, excluded)
+            supported = [unit for unit in units if all(qid in valid for qid in unit)]
+            skipped = sum(len(unit) for unit in units if unit not in supported)
+            selected = pack_units(supported, limit)
+            for unit in selected:
+                for qid in unit:
+                    questions.append(taxonomy_names(conn, reader._fetch_full_question(conn, qid, bank)))
+            matching = sum(len(unit) for unit in supported)
+        return {'questions': questions, 'skipped': skipped, 'matching': matching,
+                'casePolicy': 'Complete cases stay together; counts include every item'}
     if action == 'question_list':
         limit = max(1, min(10000, int(req.get('limit', 5000))))
         with contextlib.closing(connection(bank)) as conn:

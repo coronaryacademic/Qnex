@@ -8,7 +8,8 @@ export default class DungeonBase {
             answers: new Map(), // id -> { isCorrect: boolean, selectedId: string, submitted: boolean }
             selectedOption: null, // Temporary selection before submit
             sidebarCollapsed: false,
-            activeHighlightColor: 'yellow', // Default highlighter color
+            activeHighlightColor: localStorage.getItem('qnex-highlight-color') || 'yellow',
+            highlightMode: localStorage.getItem('qnex-highlight-instant') !== 'false',
             toolbarVisible: true,
             toolbarPosition: 'floating', // 'floating', 'top', 'bottom', 'left', 'right'
             unsavedChanges: false,
@@ -1017,7 +1018,9 @@ export default class DungeonBase {
         if (q.contentFormat === 'medos-html') q.richText = stateSnapshot.richText;
         q.crossedOutOptionIds = [...stateSnapshot.crossedOutOptionIds];
         
-        if (stateSnapshot.answer) {
+        if (q._caseAdvanced) {
+            // Annotation undo remains available; source-locked answers do not.
+        } else if (stateSnapshot.answer) {
             this.state.answers.set(q.id, JSON.parse(JSON.stringify(stateSnapshot.answer)));
             q.submittedAnswer = JSON.parse(JSON.stringify(stateSnapshot.answer));
         } else {
@@ -1026,7 +1029,7 @@ export default class DungeonBase {
         }
 
         // Only restore selectedOption if we are on the same question
-        if (this.state.currentIndex === stateSnapshot.questionIndex) {
+        if (this.state.currentIndex === stateSnapshot.questionIndex && !q._caseAdvanced) {
             this.state.selectedOption = stateSnapshot.selectedOption;
         }
 
@@ -1162,6 +1165,7 @@ export default class DungeonBase {
                     e.stopPropagation();
                     const color = btn.dataset.color;
                     this.state.activeHighlightColor = color;
+                    localStorage.setItem('qnex-highlight-color', color);
                     this.state.highlightMode = true; // Auto-enable highlight mode when a color is chosen
                     
                     // Update active state icons in menu
@@ -1339,7 +1343,7 @@ export default class DungeonBase {
         const savedToolbarVisible = localStorage.getItem('dungeonToolbarVisible');
         if (savedToolbarVisible === 'false') {
             this.state.toolbarVisible = false;
-            this.state.highlightMode = true; // Auto-highlight on load if hidden
+            this.state.highlightMode = localStorage.getItem('qnex-highlight-instant') !== 'false';
             this.updateToolbarVisibility();
         }
 
@@ -1351,6 +1355,7 @@ export default class DungeonBase {
     }
 
     toggleSidebar() {
+        if(window.QnexResponsive?.isDrawer())return window.QnexResponsive.toggleDrawer('exam',document.getElementById('dungeonSidebarToggle'));
         this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
         const sidebar = document.getElementById('dungeonSidebar');
         const main = document.querySelector('.dungeon-main');
@@ -1395,7 +1400,7 @@ export default class DungeonBase {
         
         // Auto-activate highlight mode when hiding toolbar
         if (!this.state.toolbarVisible) {
-            this.state.highlightMode = true;
+            this.state.highlightMode = localStorage.getItem('qnex-highlight-instant') !== 'false';
             const toolbar = document.getElementById('dungeonToolbar');
             if (toolbar) {
                 this.updateHighlightSVG(toolbar);
@@ -1960,6 +1965,10 @@ export default class DungeonBase {
             };
         }
 
+        if (header && !header.querySelector('.lab-close-btn')) {
+            const close=document.createElement('button');close.type='button';close.className='lab-close-btn';close.setAttribute('aria-label','Close lab values');close.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+            close.onclick=event=>{event.stopPropagation();sidebar.classList.remove('active');toggle.classList.remove('active');this.updateToolbarPush();};header.append(close);
+        }
         // Removed: Click outside to close (User request)
 
         if (search) {
@@ -1976,33 +1985,7 @@ export default class DungeonBase {
                 sidebar.style.width = `${w}px`;
             }
 
-            resizer.onmousedown = (e) => {
-                e.preventDefault();
-                sidebar.classList.add('resizing');
-                this.el.container?.classList.add('qa-lab-resizing');
-                document.addEventListener('mousemove', onResize);
-                document.addEventListener('mouseup', stopResize);
-                sidebar.style.transition = 'none';
-            };
-
-            const onResize = (e) => {
-                let newWidth = window.innerWidth - e.clientX;
-                const amboss=this.el.container?.classList.contains('amboss-dungeon');
-                const maxWidth=amboss?Math.max(310,window.innerWidth-(this.state.sidebarCollapsed?56:Number.parseInt(getComputedStyle(this.el.container).getPropertyValue('--qa-sidebar-width'))||320)-320):550;
-                newWidth = Math.max(310, Math.min(newWidth, maxWidth));
-                sidebar.style.width = `${newWidth}px`;
-                if(amboss)this.el.container.style.setProperty('--qa-lab-panel-width',`${newWidth}px`);
-                this.updateToolbarPush();
-            };
-
-            const stopResize = () => {
-                document.removeEventListener('mousemove', onResize);
-                document.removeEventListener('mouseup', stopResize);
-                sidebar.style.transition = '';
-                sidebar.classList.remove('resizing');
-                this.el.container?.classList.remove('qa-lab-resizing');
-                localStorage.setItem('dungeonLabWidth', parseInt(sidebar.style.width));
-            };
+            window.QnexResponsive?.bindPanel(resizer,sidebar,this);
         }
 
         // Sync with Toolbar Position
@@ -2494,6 +2477,7 @@ export default class DungeonBase {
     }
 
     highlightTextRange(range, root, colorClass) {
+        if (!range.toString().trim()) return 0;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         const parts = [];
         while (walker.nextNode()) {
@@ -2501,27 +2485,77 @@ export default class DungeonBase {
             if (!range.intersectsNode(node)) continue;
             let start = node === range.startContainer ? range.startOffset : 0;
             let end = node === range.endContainer ? range.endOffset : node.length;
-            while (start < end && /\s/.test(node.data[start])) start++;
-            while (end > start && /\s/.test(node.data[end - 1])) end--;
             if (end > start) parts.push({ node, start, end });
         }
-        const spans = [];
+        // Trim only the outer edges, preserving spaces across inline elements.
+        while (parts.length) {
+            const part = parts[0];
+            while (part.start < part.end && /\s/.test(part.node.data[part.start])) part.start++;
+            if (part.start < part.end) break;
+            parts.shift();
+        }
+        while (parts.length) {
+            const part = parts[parts.length - 1];
+            while (part.end > part.start && /\s/.test(part.node.data[part.end - 1])) part.end--;
+            if (part.start < part.end) break;
+            parts.pop();
+        }
+        const spans = [], group = 'hl-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
         for (const { node, start, end } of parts.reverse()) {
             if (end < node.length) node.splitText(end);
             const text = start ? node.splitText(start) : node;
             const span = document.createElement('span'); span.className = colorClass;
+            span.dataset.qnexHighlight = group;
             text.replaceWith(span); span.append(text); spans.unshift(span);
+            // Split an existing mark around this fragment instead of nesting colors.
+            while (span.parentElement && /^highlight(?:-[a-z]+)?$/.test(span.parentElement.className)) {
+                const old = span.parentElement;
+                const before = old.cloneNode(false), after = old.cloneNode(false);
+                while (old.firstChild !== span) before.append(old.firstChild);
+                while (span.nextSibling) after.append(span.nextSibling);
+                old.replaceWith(...(before.hasChildNodes() ? [before] : []), span, ...(after.hasChildNodes() ? [after] : []));
+            }
         }
         if (spans.length) {
-            const selected = document.createRange();
-            selected.setStart(spans[0].firstChild, 0);
-            selected.setEnd(spans[spans.length - 1].firstChild, spans[spans.length - 1].firstChild.length);
-            const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(selected);
+            window.getSelection().removeAllRanges();
         }
         return spans.length;
     }
 
+    removeHighlightPassage(target, root) {
+        const mark = target.closest?.('span.highlight,span[class^="highlight-"]');
+        if (!mark || !root.contains(mark)) return false;
+        let marks;
+        if (mark.dataset.qnexHighlight) marks = [...root.querySelectorAll('[data-qnex-highlight]')].filter(el => el.dataset.qnexHighlight === mark.dataset.qnexHighlight);
+        else {
+            // Older saved highlights have no group ID; include adjoining same-color fragments.
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            const index = nodes.findIndex(node => mark.contains(node));
+            const compatible = node => { const parent=node.parentElement?.closest('span.highlight,span[class^="highlight-"]');return parent?.className === mark.className || !node.data.trim(); };
+            let left=index,right=index;while(left>0&&compatible(nodes[left-1]))left--;while(right+1<nodes.length&&compatible(nodes[right+1]))right++;
+            marks = [...new Set(nodes.slice(left,right+1).map(node=>node.parentElement?.closest('span.highlight,span[class^="highlight-"]')).filter(el=>el?.className===mark.className))];
+        }
+        marks.forEach(el=>el.replaceWith(...el.childNodes));root.normalize();return true;
+    }
+
     handleHighlight(e, type, id) {
+        const current = this.state.questions[this.state.currentIndex];
+        if (current?.source?.bank?.startsWith('amboss')) {
+            if (localStorage.getItem('qnex-highlight-enabled') === 'false') return;
+            const selection = window.getSelection();
+            if (selection.toString().trim()) {
+                const gesture=e.currentTarget?._qaSelectionGesture;
+                if (e.currentTarget) e.currentTarget._qaSelectionGesture=null;
+                const moved=gesture && (gesture.dragged || Number.isFinite(e.clientX) && Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>3);
+                if (!moved && !(gesture && e.detail>=2) && !gesture?.keyboard) return;
+            }
+            if (localStorage.getItem('qnex-highlight-instant') === 'false') {
+                if (type === 'main' && selection.rangeCount && selection.toString().trim()) this.showAmbossHighlightColors(selection.getRangeAt(0), e.currentTarget, current, Number.isFinite(e.clientX) ? {x:e.clientX,y:e.clientY} : null);
+                else if (!selection.toString() && e.target.closest?.('span.highlight,span[class^="highlight-"]')) {this.pushHistoryState();this.removeHighlightPassage(e.target,e.currentTarget);window.MedicalLibrary.captureMarkup(current,e.currentTarget);this.saveQuestionsToBackend();}
+                return;
+            }
+        }
         if (!this.state.highlightMode) return;
 
         // Stop highlighting for options entirely (Crossing out is enough)
@@ -2532,18 +2566,12 @@ export default class DungeonBase {
 
         // 1. Un-Highlight (Clicking existing highlight)
         if (selection.toString().length === 0) {
-            const isHighlight = e.target.classList.contains('highlight') || 
-                               Array.from(e.target.classList).some(c => c.startsWith('highlight-'));
+            const isHighlight = e.target.closest?.('span.highlight,span[class^="highlight-"]');
             
             if (isHighlight) {
                 this.pushHistoryState(); // Snapshot before change
                 
-                const content = e.target.textContent;
-                const parent = e.target.parentNode;
-                // replace span with text node
-                const textNode = document.createTextNode(content);
-                parent.replaceChild(textNode, e.target);
-                parent.normalize(); // merge text nodes
+                this.removeHighlightPassage(e.target, e.currentTarget);
 
                 // Persist Removal
                 if (type === 'main') {
@@ -2606,6 +2634,15 @@ export default class DungeonBase {
     // handleHighlightTouch: mirrors handleHighlight but for touch events on iPad.
     // Called via ontouchend on the context box element.
     handleHighlightTouch(e, type) {
+        const current = this.state.questions[this.state.currentIndex];
+        if (current?.source?.bank?.startsWith('amboss')) {
+            if (localStorage.getItem('qnex-highlight-enabled') === 'false') return;
+            if (localStorage.getItem('qnex-highlight-instant') === 'false') {
+                const root = e.currentTarget;
+                setTimeout(() => { const selection=window.getSelection(); if(selection?.rangeCount && selection.toString().trim()) this.showAmbossHighlightColors(selection.getRangeAt(0),root,current); }, 100);
+                return;
+            }
+        }
         if (!this.state.highlightMode) return;
         if (type === 'option') return;
 
@@ -2630,11 +2667,7 @@ export default class DungeonBase {
                     
                     if (isHighlight) {
                         this.pushHistoryState();
-                        const content = target.textContent;
-                        const parent = target.parentNode;
-                        const textNode = document.createTextNode(content);
-                        parent.replaceChild(textNode, target);
-                        parent.normalize();
+                        this.removeHighlightPassage(target, contextBox);
                         if (type === 'main' && contextBox) {
                             if (q.contentFormat === 'medos-html') window.MedicalLibrary.captureMarkup(q, contextBox);
                             else q.text = contextBox.innerHTML;
@@ -2651,8 +2684,8 @@ export default class DungeonBase {
             if (!contextBox || !contextBox.contains(range.commonAncestorContainer)) return;
 
             // Prevent double-highlighting if already highlighted in this block
-            if (range.commonAncestorContainer.nodeType === 1 && range.commonAncestorContainer.classList.contains('highlight')) return;
-            if (range.commonAncestorContainer.parentElement && range.commonAncestorContainer.parentElement.classList.contains('highlight')) return;
+
+
 
             this.pushHistoryState();
             const span = document.createElement('span');
@@ -2674,9 +2707,14 @@ export default class DungeonBase {
 
     // Mobile touch support for highlighting
     initMobileHighlightSupport() {
+        document.addEventListener('contextmenu', event => {
+            if (event.target.closest?.('#dungeonBase .qa-stem, #dungeonBase .dungeon-context-box') && localStorage.getItem('qnex-highlight-enabled') !== 'false') event.preventDefault();
+        });
         // 1. selectionchange: The most reliable way on iPad to detect when selection "settles"
         document.addEventListener('selectionchange', () => {
-            if (!this.state.highlightMode) return;
+            const current=this.state.questions[this.state.currentIndex];
+            const amboss=current?.source?.bank?.startsWith('amboss');
+            if ((!this.state.highlightMode && !amboss) || localStorage.getItem('qnex-highlight-enabled') === 'false') return;
 
             // Debounce so we don't highlight while they are still dragging handles
             clearTimeout(this._selectionTimer);
@@ -2687,7 +2725,7 @@ export default class DungeonBase {
                     // Find context box
                     let node = range.commonAncestorContainer;
                     if (node.nodeType !== 1) node = node.parentElement;
-                    const contextBox = node.closest('.dungeon-context-box');
+                    const contextBox = node.closest('.dungeon-context-box, .qa-stem');
                     
                     if (contextBox) {
                         // Trigger highlight. We pass a fake event since we only need currentTarget
@@ -2989,6 +3027,12 @@ export default class DungeonBase {
 
     handleTimeUp() {
         this.stopTimer();
+        // New AMBOSS blocks use the same finalization/report path as End Block.
+        // That path saves omissions and results before leaving the assessment.
+        if (window.MedicalLibrary?.active?.id === this.state.associatedSessionId && window.MedicalLibrary.active.settings?.builder === 'amboss') {
+            this.submitBlock(true);
+            return;
+        }
         
         // Finalize scoring for unanswered questions
         this.state.questions.forEach(q => {
@@ -3126,6 +3170,8 @@ export default class DungeonBase {
             blockClock.textContent=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
         }
 
+        const nbmeClock=this.el.container?.querySelector('[data-nbme-clock]');
+        if(nbmeClock){nbmeClock.textContent=blockClock?.textContent||'00:00:00';nbmeClock.title=blockClock?.title||'Block time';}
         this.lastTimerMs = ms;
         this.updateAmbossClocks?.(ms);
         const timerEl = document.getElementById('dungeonTimer');
@@ -3370,6 +3416,7 @@ export default class DungeonBase {
     }
 
     clearAnswer() {
+        if (this.state.questions[this.state.currentIndex]?._caseAdvanced) return;
         const q = this.state.questions[this.state.currentIndex];
         if (!q) return;
         const answer = this.state.answers.get(q.id);
@@ -3509,121 +3556,7 @@ export default class DungeonBase {
 
 
     initResizer() {
-        // Safety check
-        if (!this.el.sidebar) return;
-
-        // Load saved width
-        const savedWidth = localStorage.getItem("dungeonSidebarWidth");
-        if (savedWidth) {
-            this.el.sidebar.style.width = savedWidth + "px";
-        }
-        // Ensure layout is synced on load
-        this.updateMainPosition();
-
-        // Create handle if not exists
-        if (!this.el.sidebar.querySelector('.dungeon-resizer-handle')) {
-            const handle = document.createElement('div');
-            handle.className = 'dungeon-resizer-handle';
-            // Make grip area wider but keep visual invisible (or slight hint)
-            handle.style.cssText = "position: absolute; right: -4px; top: 0; width: 10px; height: 100%; cursor: col-resize; z-index: 99; background: transparent;";
-
-            handle.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                const startX = e.clientX;
-                const startWidth = this.el.sidebar.offsetWidth;
-                document.body.style.cursor = "col-resize"; // Force cursor on body during drag
-
-                // Disable transitions during drag for responsiveness
-                this.el.sidebar.style.transition = 'none';
-                const main = document.querySelector('.dungeon-main');
-                if (main) main.style.transition = 'none';
-                const toolbar = document.getElementById('dungeonToolbar');
-                if (toolbar) toolbar.style.transition = 'none';
-
-                const onMouseMove = (ev) => {
-                    const newWidth = startWidth + (ev.clientX - startX);
-                    const amboss=this.el.container?.classList.contains('amboss-dungeon');
-                    if (newWidth >= (amboss?220:50) && newWidth <= (amboss?Math.min(680,window.innerWidth-320):300)) {
-                        this.el.sidebar.style.width = newWidth + 'px';
-                        if(amboss)this.el.container.style.setProperty('--qa-sidebar-width',newWidth+'px');
-
-                        // Update Main Content Position
-                        if (main) {
-                            if (this.state.toolbarPosition === 'left') {
-                                main.style.left = (newWidth + 50) + 'px';
-                            } else {
-                                main.style.left = newWidth + 'px';
-                            }
-                        }
-
-                        // Update Toolbar Position if docked left
-                        if (this.state.toolbarPosition === 'left' && toolbar) {
-                            toolbar.style.left = newWidth + 'px';
-                        }
-                    }
-                };
-
-                const onMouseUp = () => {
-                    localStorage.setItem("dungeonSidebarWidth", parseInt(this.el.sidebar.style.width)); // Save
-                    if(this.el.container?.classList.contains('amboss-dungeon'))localStorage.setItem('qnex-amboss-sidebar-width',String(this.el.sidebar.offsetWidth));
-                    document.body.style.cursor = ""; // Reset cursor
-
-                    // Re-enable transitions
-                    this.el.sidebar.style.transition = '';
-                    if (main) main.style.transition = '';
-                    if (toolbar) toolbar.style.transition = '';
-
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                };
-
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
-
-            // Touch support for iPad sidebar resizing
-            handle.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                const touch = e.touches[0];
-                const startX = touch.clientX;
-                const startWidth = this.el.sidebar.offsetWidth;
-                this.el.sidebar.style.transition = 'none';
-                const main = document.querySelector('.dungeon-main');
-                if (main) main.style.transition = 'none';
-                const toolbar = document.getElementById('dungeonToolbar');
-                if (toolbar) toolbar.style.transition = 'none';
-
-                const onTouchMove = (ev) => {
-                    ev.preventDefault();
-                    const newWidth = startWidth + (ev.touches[0].clientX - startX);
-                    if (newWidth >= 50 && newWidth <= 300) {
-                        this.el.sidebar.style.width = newWidth + 'px';
-                        if (main) {
-                            main.style.left = (this.state.toolbarPosition === 'left')
-                                ? (newWidth + 50) + 'px'
-                                : newWidth + 'px';
-                        }
-                        if (this.state.toolbarPosition === 'left' && toolbar) {
-                            toolbar.style.left = newWidth + 'px';
-                        }
-                    }
-                };
-
-                const onTouchEnd = () => {
-                    localStorage.setItem("dungeonSidebarWidth", parseInt(this.el.sidebar.style.width));
-                    this.el.sidebar.style.transition = '';
-                    if (main) main.style.transition = '';
-                    if (toolbar) toolbar.style.transition = '';
-                    document.removeEventListener('touchmove', onTouchMove);
-                    document.removeEventListener('touchend', onTouchEnd);
-                };
-
-                document.addEventListener('touchmove', onTouchMove, { passive: false });
-                document.addEventListener('touchend', onTouchEnd);
-            }, { passive: false });
-
-            this.el.sidebar.appendChild(handle);
-        }
+        window.QnexResponsive?.bindSidebar('exam',this);
     }
 
     // Helper to sync main content with sidebar on load/toggle
@@ -3922,7 +3855,7 @@ export default class DungeonBase {
 
         this.state.questions.forEach(q => {
             const ans = this.state.answers.get(q.id);
-            if (ans) {
+            if (ans && ans.selectedId != null) {
                 if (ans.isCorrect) correct++;
                 else wrong++;
             } else {
@@ -4007,14 +3940,16 @@ export default class DungeonBase {
     }
 
     renderSidebar() {
+        // Choose the active provider before creating sidebar markup, not afterwards.
+        const sidebarLayout=this.questionLayout(this.state.questions[this.state.currentIndex]);
+        this.el.container?.classList.toggle('amboss-dungeon',sidebarLayout==='amboss');
+        this._sidebarLayout=sidebarLayout;
         // Save current scroll position
         const questionsContainer = this.el.sidebar.querySelector('.dungeon-sidebar-questions');
         const savedScrollTop = questionsContainer ? questionsContainer.scrollTop : 0;
 
         // Clear sidebar but preserve resizer handle
         const handle = this.el.sidebar.querySelector('.dungeon-resizer-handle');
-
-        this.el.sidebar.innerHTML = "";
 
         this.el.sidebar.innerHTML = "";
 
@@ -4050,7 +3985,7 @@ export default class DungeonBase {
             let content = `<span class="q-number" style="font-size: 0.9rem;">${index + 1}</span>`;
 
             if (answer && answer.submitted) {
-                if (this.state.isBlockRevealed || q._tutorMode !== false) {
+                if (this.state.isBlockRevealed || (q._tutorMode !== false && this.caseFeedbackAllowed(q))) {
                     if (answer.isCorrect) {
                         box.classList.add("correct");
                     } else {
@@ -4101,9 +4036,7 @@ export default class DungeonBase {
 
             box.onclick = () => {
                 // this.saveCurrentSelection(); // Not needed or undefined
-                this.state.currentIndex = index;
-                this.state.selectedOption = null; // Reset temp selection on switch
-                this.render();
+                this.jumpToQuestion(index);
             };
 
             // DIRECT double-click for starring - Most robust way
@@ -4505,7 +4438,7 @@ export default class DungeonBase {
         const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const index=this.state.currentIndex,answer=this.state.answers.get(q.id),review=this.state.isBlockRevealed;
         q._bauReached=Math.max(index,Number(q._bauReached)||0);
-        const show=review || (q._tutorMode!==false && answer?.submitted);
+        const show=review || (this.caseFeedbackAllowed(q)&&q._tutorMode!==false && answer?.submitted);
         const flag='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h9l1 3h7v12h-9l-1-3H6v7H4z"/></svg>';
         const course=q.tags?.subject?.join(' / ')||'BAU Qbank';
         const session=window.MedicalLibrary?.active;
@@ -4519,7 +4452,7 @@ export default class DungeonBase {
         const values=String(answer?.selectedId ?? q.matchingDraft ?? '').split(',');
         const disabled=review || (show && q._tutorMode!==false) || q._timedOut || answer?.locked;
         const matchingMarkup=matching?`<p>Choose an answer for each part. The same list is available in every dropdown.</p><div class="bau-matching">${q.matching.map((part,i)=>`<label><span>${esc(part.prompt)}</span><select data-bau-match="${i}" aria-label="${esc(part.prompt)}" ${disabled?'disabled':''}><option value="">Choose…</option>${q.options.map(opt=>`<option value="${esc(opt.id)}" ${values[i]===String(opt.id)?'selected':''}>${esc(opt.text)}</option>`).join('')}</select>${show?`<small>${feedbackIcon(values[i]===String(part.correct))} ${esc(String.fromCharCode(96+Number(part.correct))+'. '+q.options.find(opt=>String(opt.id)===String(part.correct))?.text)}</small>`:''}</label>`).join('')}</div>`:'';
-        this.el.main.innerHTML=`<div class="bau-quiz"><div class="bau-course">${esc(course)} <span>/</span> ${esc(title)}</div><h1>${esc(title)}</h1><button class="bau-back" data-bau-close>Back</button><div class="bau-layout"><section><div class="bau-time" hidden><button data-bau-time-toggle>${this._bauTimerHidden?'Show':'Hide'}</button><span data-bau-clock ${this._bauTimerHidden?'hidden':''}>${q._timerMode==='down'?'Time left':'Time elapsed'} <strong>00:00</strong></span></div><div class="bau-question-row"><aside class="bau-info"><strong>Question ${index+1}</strong><p>${answer?.submitted?'Answer saved':'Not yet answered'}</p><p>Marked out of 1</p><button data-bau-flag aria-pressed="${Boolean(q.starred||q.isStarred)}">${flag}${q.starred||q.isStarred?'Flagged':'Flag question'}</button></aside><div><div class="bau-question">${render(q,'question')}<p>Select one:</p><div class="bau-options">${q.options.map((opt,i)=>`<label><input type="radio" name="bau-answer" value="${esc(opt.id)}" ${String(answer?.selectedId || this.state.selectedOption)===String(opt.id)?'checked':''} ${review || (show && q._tutorMode!==false)?'disabled':''}><span>${String.fromCharCode(97+i)}.</span><div>${render(q,'option',opt)}</div>${show&&(opt.isCorrect||String(answer?.selectedId)===String(opt.id))?feedbackIcon(Boolean(opt.isCorrect)):''}</label>`).join('')}</div></div>${show?`<div class="bau-explanation"><p>${answer?.isCorrect?'Your answer is correct.':'Your answer is incorrect.'}</p><p>The correct answer is: ${esc(correctLabel)}</p>${render(q,'explanation')}</div>`:''}<div class="bau-actions">${q._tutorMode!==false&&!show?'<button data-bau-submit>Check answer</button>':''}${index>0&&this.bauCanNavigate(index-1)?'<button data-bau-prev>Previous page</button>':''}<button data-bau-next>${index===this.state.questions.length-1?'Finish attempt …':'Next page'}</button></div></div></div></section><aside class="bau-navigation"><h2>Quiz navigation</h2><div class="bau-squares">${this.state.questions.map((item,i)=>`<button data-bau-index="${i}" class="${i===index?'current ':''}${this.state.answers.has(item.id)?'answered':''}" ${!this.bauCanNavigate(i)?'disabled':''} aria-label="Question ${i+1}${item.starred||item.isStarred?', flagged':''}" ${i===index?'aria-current="step"':''}>${i+1}${item.starred||item.isStarred?flag:''}</button>`).join('')}</div><button class="bau-finish" data-bau-finish>Finish attempt …</button></aside></div></div>`;
+        this.el.main.innerHTML=`<div class="bau-quiz"><div class="bau-course">${esc(course)} <span>/</span> ${esc(title)}</div><h1>${esc(title)}</h1><button class="bau-back" data-bau-close>Back</button><div class="bau-layout"><section><div class="bau-time" hidden><button data-bau-time-toggle>${this._bauTimerHidden?'Show':'Hide'}</button><span data-bau-clock ${this._bauTimerHidden?'hidden':''}>${q._timerMode==='down'?'Time left':'Time elapsed'} <strong>00:00</strong></span></div><div class="bau-question-row"><aside class="bau-info"><strong>Question ${index+1}</strong><p>${answer?.submitted?'Answer saved':'Not yet answered'}</p><p>Marked out of 1</p><button data-bau-flag aria-pressed="${Boolean(q.starred||q.isStarred)}">${flag}${q.starred||q.isStarred?'Flagged':'Flag question'}</button></aside><div><div class="bau-question">${this.caseContext(q)}${render(q,'question')}<p>Select one:</p><div class="bau-options">${q.options.map((opt,i)=>`<label><input type="radio" name="bau-answer" value="${esc(opt.id)}" ${String(answer?.selectedId || this.state.selectedOption)===String(opt.id)?'checked':''} ${review || q._caseAdvanced || (show && q._tutorMode!==false)?'disabled':''}><span>${String.fromCharCode(97+i)}.</span><div>${render(q,'option',opt)}</div>${show&&(opt.isCorrect||String(answer?.selectedId)===String(opt.id))?feedbackIcon(Boolean(opt.isCorrect)):''}</label>`).join('')}</div></div>${show?`<div class="bau-explanation"><p>${answer?.isCorrect?'Your answer is correct.':'Your answer is incorrect.'}</p><p>The correct answer is: ${esc(correctLabel)}</p>${render(q,'explanation')}</div>`:''}<div class="bau-actions">${q._tutorMode!==false&&!show?'<button data-bau-submit>Check answer</button>':''}${index>0&&this.bauCanNavigate(index-1)?'<button data-bau-prev>Previous page</button>':''}<button data-bau-next>${index===this.state.questions.length-1?'Finish attempt …':'Next page'}</button></div></div></div></section><aside class="bau-navigation"><h2>Quiz navigation</h2><div class="bau-squares">${this.state.questions.map((item,i)=>`<button data-bau-index="${i}" class="${i===index?'current ':''}${this.state.answers.has(item.id)?'answered':''}" ${!this.bauCanNavigate(i)?'disabled':''} aria-label="Question ${i+1}${item.starred||item.isStarred?', flagged':''}" ${i===index?'aria-current="step"':''}>${i+1}${item.starred||item.isStarred?flag:''}</button>`).join('')}</div><button class="bau-finish" data-bau-finish>Finish attempt …</button></aside></div></div>`;
         const mount=this.el.main;
         if(matching){
             const question=mount.querySelector('.bau-question');
@@ -4558,30 +4491,44 @@ export default class DungeonBase {
         this.updateTimerDisplay(this.lastTimerMs||0);
     }
 
+    questionLayout(q) {
+        const preference=localStorage.getItem('qnex-dungeon-layout');
+        if(['uw','amboss','bau','nbme','nbme-secondary'].includes(preference))return preference;
+        if(q.source?.bank?.startsWith('nbme'))return 'nbme';
+        return q.source?.bank?.startsWith('bau-')?'bau':q.contentFormat==='medos-html'&&q.source?.bank?.startsWith('amboss')?'amboss':'uw';
+    }
+
     renderQuestion() {
+        queueMicrotask(()=>window.QnexResponsive?.refreshExam(this));
         const q = this.state.questions[this.state.currentIndex];
-        const bau=q.source?.bank?.startsWith('bau-');
-        this.el.container?.classList.toggle('bau-dungeon',Boolean(bau));
-        if(this.el.container) this.el.container.dataset.qbankTheme=bau?'BAU':(q.contentFormat==='medos-html'&&q.source?.bank?.startsWith('amboss')?'AMBOSS':'UW');
-        const amboss=q.contentFormat==='medos-html' && q.source?.bank?.startsWith('amboss');
-        this.el.container?.classList.toggle('amboss-dungeon',Boolean(amboss));
+        this.el.main?.classList.toggle('qa-highlights-hidden',localStorage.getItem('qnex-highlight-enabled')==='false');
+        const layout=this.questionLayout(q),bau=layout==='bau',amboss=layout==='amboss';
+        this.el.container?.classList.toggle('nbme-dungeon',layout.startsWith('nbme'));
+        this.el.container?.classList.toggle('nbme-secondary',layout==='nbme-secondary');
+        if(!layout.startsWith('nbme'))this.el.container?.querySelectorAll('.nbme-header,.nbme-footer').forEach(node=>node.remove());
+        this.el.container?.classList.toggle('bau-dungeon',bau);
+        this.el.container?.classList.toggle('amboss-dungeon',amboss);
+        if(this.el.container)this.el.container.dataset.qbankTheme=layout.toUpperCase();
+        if(this._sidebarLayout!==layout)this.renderSidebar();
+        if(!amboss){this.el.container?.querySelector(':scope > .qa-navigation')?.remove();this.el.container?.querySelector('.qa-header')?.remove();this.el.container?.querySelector('#dungeonTopbar')?.style.removeProperty('left');}
         if(amboss) {this.renderAmbossQuestion(q);return;}
         if(bau) {this.renderBauQuestion(q);return;}
         const answer = this.state.answers.get(q.id);
         const isTimedOut = q._timedOut === true;
         const isSubmitted = answer && answer.submitted;
-        const isLocked = isTimedOut || (answer && answer.locked);
+        const isLocked = isTimedOut || q._caseAdvanced || (answer && answer.locked);
         const isRevealed = q.revealed || false;
 
         // Tutor Mode respect
         // Show explanation if revealed OR (submitted AND tutor mode is ON)
         // IN EXAM MODE: Hide feedback until block is revealed
         const isExamMode = q._tutorMode === false;
-        const showFeedback = !isExamMode || this.state.isBlockRevealed;
-        const showExplanation = isRevealed || (isSubmitted && showFeedback);
+        const showFeedback = (!isExamMode && this.caseFeedbackAllowed(q)) || this.state.isBlockRevealed;
+        const showExplanation = showFeedback && (isRevealed || isSubmitted);
 
         let html = `
     <!-- Context Box (Image/Code) -->
+    ${this.caseContext(q)}
     <div class="dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event, 'main')" ontouchend="window.DungeonBase.handleHighlightTouch(event, 'main')">
            ${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'question') : (window.Markdown ? window.Markdown.render(q.text || q.body || q.content || "No question details.") : (q.text || q.body || q.content || "No question details."))}
     </div>
@@ -4635,7 +4582,7 @@ export default class DungeonBase {
             html += `
         <div class="${classes}">
             <div class="dungeon-radio-circle" onclick="${isLocked ? '' : `window.DungeonBase.handleSelectOption('${opt.id}')`}" style="${isLocked ? 'cursor:default;opacity:0.6;' : ''}"></div>
-            <div class="dungeon-radio-text" onclick="${isLocked ? '' : `window.DungeonBase.handleStrikeOption(event, this)`}" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')" style="${isLocked ? 'user-select:none;' : ''}">
+            <div class="dungeon-radio-text" onclick="${isLocked && !layout.startsWith('nbme') ? '' : `window.DungeonBase.handleStrikeOption(event, this)`}" onmouseup="window.DungeonBase.handleHighlight(event, 'option', '${opt.id}')" style="${isLocked ? 'user-select:none;' : ''}">
                 <span class="dungeon-option-letter">${letter}.</span>${q.contentFormat === 'medos-html' ? window.MedicalLibrary.renderContent(q, 'option', opt) : (window.Markdown ? window.Markdown.render(opt.text || "Option") : (opt.text || "Option"))}
             </div>
         </div>
@@ -4736,6 +4683,7 @@ export default class DungeonBase {
         });
 
         this.renderToolbarState(); // Sync toolbar with current question state
+        if(layout.startsWith('nbme'))window.QnexNbmeLayout?.render(this,q,layout);
 
         // Re-apply search highlights if active
         if (this.state.search) {
@@ -4784,7 +4732,8 @@ export default class DungeonBase {
             box.querySelector('.dungeon-result-icon')?.remove();
             const recordedAnswer=this.state.answers.get(item.id)||item.submittedAnswer;
             const hadWrongAttempt=(item.ambossAttemptedOptionIds||[]).some(id=>item.options?.some(option=>String(option.id)===String(id)&&!option.isCorrect));
-            const incorrect=hadWrongAttempt||Boolean(recordedAnswer?.submitted&&!recordedAnswer.isCorrect);
+            const feedbackAllowed=this.caseFeedbackAllowed(item)&&(item._tutorMode!==false||this.state.isBlockRevealed);
+            const incorrect=feedbackAllowed&&(hadWrongAttempt||Boolean(recordedAnswer?.submitted&&!recordedAnswer.isCorrect));
             if(incorrect){box.classList.remove('correct');box.classList.add('wrong');}
             const hasStatus=item.revealed||box.classList.contains('correct')||box.classList.contains('wrong');
             if(hasStatus){
@@ -4795,6 +4744,8 @@ export default class DungeonBase {
                 status.setAttribute('aria-label',wrong?'Incorrect answer':hinted?'Hint used':'Correct answer');
                 status.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16" focusable="false" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="${path}" clip-rule="evenodd"></path></svg>`;
                 box.querySelector('.dungeon-box-status')?.prepend(status);
+            }else if(recordedAnswer?.submitted){
+                const status=document.createElement('span');status.className='dungeon-result-icon qa-solved-icon';status.setAttribute('aria-label','Answered; result hidden');status.innerHTML='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="m4 8 3 3 5-6"/></svg>';box.querySelector('.dungeon-box-status')?.prepend(status);
             }else if(item._ambossVisited||Number(item.timerElapsed)>0){
                 const status=document.createElement('span');status.className='dungeon-result-icon qa-unanswered-icon';status.setAttribute('aria-label','Unanswered question');status.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" focusable="false" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle></svg>';box.querySelector('.dungeon-box-status')?.prepend(status);
             }
@@ -4802,9 +4753,21 @@ export default class DungeonBase {
             const visited=item._ambossVisited||hasStatus||this.state.answers.get(item.id)?.submitted||Number(item.timerElapsed)>0;
             if(visited){
                 const preview=document.createElement('template');preview.innerHTML=item.richText||'';const stem=preview.content;stem.querySelectorAll('details,script,style').forEach(el=>el.remove());
-                const label=document.createElement('span');label.className='qa-sidebar-label';label.textContent=(item.text||stem.textContent||item.title||'Question').replace(/\s+/g,' ').trim();box.append(label);
+                const label=document.createElement('span');label.className='qa-sidebar-label';label.textContent=(stem.textContent||item.text||item.title||'Question').replace(/\s+/g,' ').trim();box.append(label);
             }
             box.removeAttribute('title');
+            box.querySelector('.qa-case-outline')?.remove();
+            box.classList.remove('qa-case-member','qa-case-first','qa-case-last');
+            if(this.caseIsContiguous(item)){
+                box.classList.add('qa-case-member');
+                box.classList.toggle('qa-case-first',item.caseGroup.index===0);
+                box.classList.toggle('qa-case-last',item.caseGroup.index===item.caseGroup.total-1);
+                const outline=document.createElement('span');outline.className='qa-case-outline';outline.setAttribute('aria-hidden','true');box.append(outline);
+                const status=box.querySelector('.dungeon-result-icon');
+                if(!status){const dot=document.createElement('span');dot.className='dungeon-result-icon qa-unanswered-icon';dot.innerHTML='<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="8" r="4"/></svg>';box.querySelector('.dungeon-box-status')?.prepend(dot);}
+                const icon=box.querySelector('.dungeon-result-icon'),rowRect=box.getBoundingClientRect(),iconRect=icon?.getBoundingClientRect();
+                if(iconRect&&rowRect.width&&box.offsetWidth){const scale=rowRect.width/box.offsetWidth;outline.style.left=((iconRect.left+iconRect.width/2-rowRect.left)/scale-13)+'px';}
+            }
             const flag=box.querySelector('.dungeon-flagged-indicator');
             if(flag)flag.innerHTML=this.ambossFlagIcon(true);
         });
@@ -4995,7 +4958,40 @@ export default class DungeonBase {
         if(!panel.querySelector('.qa-lab-close')){const button=document.createElement('button');button.type='button';button.className='qa-lab-close';button.innerHTML='<span aria-hidden="true">×</span> Close';button.onclick=close;panel.append(button);}
     }
 
+    showAmbossHighlightColors(range, root, q, pointer = null) {
+        if (!root.contains(range.commonAncestorContainer) || !range.toString().trim()) return;
+        this._highlightPaletteClose?.();
+        const savedRange = range.cloneRange(), selectedText = range.toString();
+        const selection=window.getSelection(), caret=document.createRange();
+        caret.setStart(selection.focusNode && root.contains(selection.focusNode) ? selection.focusNode : range.endContainer, selection.focusNode && root.contains(selection.focusNode) ? selection.focusOffset : range.endOffset);caret.collapse(true);
+        const caretRect=caret.getBoundingClientRect(), fallback=range.getBoundingClientRect();
+        const rect={left:pointer?.x ?? (caretRect.height ? caretRect.left : fallback.right),top:caretRect.height ? caretRect.top : (pointer?.y ?? fallback.top),width:0};
+        const palette = document.createElement('div');palette.className = 'qa-highlight-palette';palette.setAttribute('role','toolbar');palette.setAttribute('aria-label','Qbank highlight colors');
+        palette.innerHTML = '<div role="radiogroup" aria-label="Highlight color">'+[['yellow','Yellow'],['green','Neon green'],['blue','Light blue'],['pink','Neon pink']].map(([color,label])=>`<button type="button" data-color="${color}" role="radio" aria-checked="${this.state.activeHighlightColor===color}" aria-label="${label}" title="${label}"><span></span></button>`).join('')+'</div><button type="button" data-erase aria-label="Remove highlight" title="Remove highlight"><svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M7.613 1.719a2.36 2.36 0 0 1 3.444-.017l3.787 4.01c.86.91.857 2.334-.005 3.242L10.995 13h3.672a1 1 0 0 1 0 2H4.933a2.36 2.36 0 0 1-1.744-.771L1.1 11.928a2.36 2.36 0 0 1 .014-3.188zm-5.032 8.379a.36.36 0 0 0-.002.484l2.09 2.301a.36.36 0 0 0 .264.117h3.15c.099 0 .192-.04.26-.111l1.707-1.797-4.221-4.503zm7.022-7.023a.36.36 0 0 0-.523.003l-1.89 2.04 4.24 4.522 1.96-2.063a.36.36 0 0 0 0-.492z"/></svg></button><span class="qa-palette-divider"></span><button type="button" data-copy aria-label="Copy text" title="Copy text"><svg viewBox="0 0 16 16" fill="none"><g stroke="currentColor" stroke-linejoin="round" stroke-width="2"><path stroke-linecap="round" d="M6 8a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M3.077 10h-.692C1.62 10 1 9.38 1 8.615v-6.23C1 1.62 1.62 1 2.385 1h6.23C9.38 1 10 1.62 10 2.385v.692"/></g></svg></button>';
+        palette.onpointerdown = event => event.preventDefault();
+        const close = () => {palette.remove();document.removeEventListener('pointerdown',outside,true);document.removeEventListener('scroll',close,true);};
+        const outside = event => {if(!palette.contains(event.target))close();};
+        this._highlightPaletteClose=close;
+        palette.querySelectorAll('[data-color]').forEach(button=>button.onclick=()=>{
+            if (this.state.questions[this.state.currentIndex] !== q || !root.isConnected) {palette.remove();return;}
+            this.pushHistoryState();this.state.activeHighlightColor=button.dataset.color;localStorage.setItem('qnex-highlight-color',button.dataset.color);
+            if(this.highlightTextRange(savedRange,root,button.dataset.color==='yellow'?'highlight':'highlight-'+button.dataset.color)){window.MedicalLibrary.captureMarkup(q,root);this.updateSaveStatus('unsaved');this.saveQuestionsToBackend();}
+            close();
+        });
+        const existing = [...root.querySelectorAll('span.highlight,span[class^="highlight-"]')].filter(mark=>savedRange.intersectsNode(mark));
+        palette.querySelector('[data-erase]').disabled=!existing.length;
+        palette.querySelector('[data-erase]').onclick=()=>{this.pushHistoryState();existing.forEach(mark=>{if(mark.isConnected)this.removeHighlightPassage(mark,root);});window.MedicalLibrary.captureMarkup(q,root);this.saveQuestionsToBackend();window.getSelection().removeAllRanges();close();};
+        palette.querySelector('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(selectedText);close();}catch{window.showToast?.('Could not copy text.','error');}};
+        palette.onkeydown=event=>{if(event.key==='Escape'){close();window.getSelection().removeAllRanges();}};
+        document.body.append(palette);this._highlightPalette=palette;
+        const scale=Number(document.documentElement.style.zoom)||1, box=palette.getBoundingClientRect();
+        palette.style.left=Math.max(6,Math.min(rect.left+rect.width/2-box.width/2,window.innerWidth-box.width-6))/scale+'px';
+        palette.style.top=Math.max(6,rect.top-box.height-6)/scale+'px';
+        document.addEventListener('pointerdown',outside,true);document.addEventListener('scroll',close,true);
+    }
+
     renderAmbossQuestion(q) {
+        this._highlightPaletteClose?.();this._highlightSettingsClose?.();
         this.renderAmbossHeader(q);
         this.el.container?.querySelector(':scope > .qa-navigation')?.remove();
         const lib=window.MedicalLibrary;
@@ -5003,12 +4999,24 @@ export default class DungeonBase {
         const doctors=['3ab2389014dea442','044cb46fd2d38580','13741dd475cea158','f7be05f97d56c118','a69fa336ff5178fa','7b6df07905703110'];
         if(!q._ambossDoctor)q._ambossDoctor=doctors[Math.floor(Math.random()*doctors.length)];
         const answer=this.state.answers.get(q.id);
-        const show=Boolean(q.revealed || (answer?.submitted && (q._tutorMode!==false || this.state.isBlockRevealed)));
-        const fullAnswer=Boolean(q.revealed||this.state.isBlockRevealed||(show&&answer?.isCorrect));
-        const locked=q._timedOut || answer?.locked;
+        const show=Boolean(this.state.isBlockRevealed || (this.caseFeedbackAllowed(q) && (q.revealed || (answer?.submitted && q._tutorMode!==false))));
+        const fullAnswer=Boolean(this.state.isBlockRevealed||(show&&(q.revealed||answer?.isCorrect)));
+        const locked=q._timedOut || answer?.locked || q._caseAdvanced;
         const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const stem=document.createElement('div');stem.innerHTML=lib.renderContent(q,'question');
-        const hints=[...stem.querySelectorAll('details.qbank-hint')];hints.forEach(hint=>hint.remove());
+        let hints=[...stem.querySelectorAll('details.qbank-hint')];
+        if (!hints.length && q._ambossHintHtml) {
+            const restored=document.createElement('div');restored.innerHTML=lib.renderContent({...q,richText:q._ambossHintHtml},'question');hints=[...restored.querySelectorAll('details.qbank-hint')];
+        }
+        if (hints.length) q._ambossHintHtml=hints.map(hint=>hint.outerHTML).join('');
+        else if (!q._ambossHintSourceChecked) {
+            q._ambossHintSourceChecked=true;
+            lib.api(`/question-detail?bank=${encodeURIComponent(q.source.bank)}&qid=${q.source.questionId}`).then(data=>{
+                const restored=document.createElement('div');restored.innerHTML=lib.renderContent({...q,richText:data.question.stem_html},'question');
+                const sourceHints=[...restored.querySelectorAll('details.qbank-hint')];if(sourceHints.length){q._ambossHintHtml=sourceHints.map(hint=>hint.outerHTML).join('');if(this.state.questions[this.state.currentIndex]===q)this.renderQuestion();}
+            }).catch(()=>{q._ambossHintSourceChecked=false;});
+        }
+        hints.forEach(hint=>hint.remove());
         const pictures=[...stem.querySelectorAll('img')].filter(img=>!img.closest('table'));
         if(pictures.length){
             const layout=document.createElement('div');layout.className='qa-stem-layout';
@@ -5067,14 +5075,14 @@ export default class DungeonBase {
               <button type="button" class="qa-strike" aria-label="${feedback?'Toggle explanation for':'Cross out answer'} ${letter}" ${locked&&!show?'disabled':''}>${feedback?'−':'×'}</button></div>
               ${feedback&&part?`<div class="qa-answer-explanation" ${!opt.isCorrect&&!active?'hidden':''}>${part.html}</div>`:''}</div>`;
         }).join('');
-        this.el.main.innerHTML=`<article class="qa-card"><div class="qa-reading-bar"><span class="qa-question-position">Question ID: ${escape(q.source?.qid ?? q.source?.questionId ?? q.id)}</span><button type="button" data-qa="font" aria-label="Change text size">${icons.font||'AA'}</button></div>
-          <div class="qa-stem dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event,'main')">${stem.innerHTML}</div>
+        this.el.main.innerHTML=`<article class="qa-card"><div class="qa-reading-bar"><span class="qa-question-position">Question ID: ${escape(q.source?.qid ?? q.source?.questionId ?? q.id)}</span><button type="button" data-qa="highlight-settings" aria-label="Configure personal highlighting in Qbank questions" aria-haspopup="dialog" aria-expanded="false"><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M14 15h-2v-3H4v3H2v-4l3-5V4l6-3v5l3 5v4ZM5 10h6L9 7H7L5 10ZM7 4v1h2V3L7 4Z"/></svg></button><button type="button" data-qa="font" aria-label="Change text size">${icons.font||'AA'}</button></div>
+          ${this.caseContext(q)}<div class="qa-stem dungeon-context-box" onmouseup="window.DungeonBase.handleHighlight(event,'main')">${stem.innerHTML}</div>
           <div class="qa-tools">${hasKey?`<button data-qa="key" aria-pressed="false">${icons.key||'☰'} Key info</button>`:''}${hints.length?`<button data-qa="hint" aria-expanded="false">${icons.hint||'ⓘ'} Attending tip</button>`:''}<button data-qa="labs">${icons.labs||'▤'} Labs</button><span></span><button data-qa="notes">${icons.notes||'✎'} Add notes</button><button data-qa="mark" aria-pressed="${Boolean(q.starred)}">${icons.mark||'⚑'} ${q.starred?'Marked':'Mark'}</button></div>
           ${hints.length?`<div class="qa-hint" hidden>${this.ambossHintBadge()}<div class="qa-attending-content"><img src="assets/amboss/doctor-${q._ambossDoctor}.svg" alt="" class="qa-doctor"><div>${hints.map(hint=>hint.querySelector('.qbank-hint-body')?.innerHTML||hint.innerHTML).join('')}</div></div></div>`:''}
           <div class="qa-options">${options}</div></article>
-          <div class="qa-bottom-actions"><button data-qa="answer"><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><g stroke="currentColor" stroke-width="2"><path d="M4 2a1 1 0 0 0-1 1v3.222L1.5 7.817a.2.2 0 0 0 0 .366L3 9.778V13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/><path stroke-linecap="round" stroke-linejoin="round" d="m12 6-4.125 4L6 8.182"/></g></svg>${fullAnswer?'Show all explanations':'Show answer'}</button><div class="qa-bottom-right"><button data-qa="reset" ${!answer?.submitted&&!q.revealed&&!this.state.selectedOption?'disabled':''}><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a7 7 0 1 1-7 7 1 1 0 0 1 2 0 5.002 5.002 0 0 0 5.976 4.904A5 5 0 0 0 8 3a5.5 5.5 0 0 0-3.564 1.333h.896a1 1 0 0 1 0 2H2q-.085-.001-.166-.016-.015-.001-.031-.005l-.047-.01-.049-.013a1 1 0 0 1-.257-.121 1 1 0 0 1-.33-.36l-.02-.042a1 1 0 0 1-.1-.433V2a1 1 0 0 1 2 0v.934A7.5 7.5 0 0 1 7.996 1z"/></svg>Reset question</button><button data-qa="stats" ${!show?'disabled':''}><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="m12.3 12.57 2.286 2.344L16 13.5 2.914.086 1.5 1.5l2.013 2.063c-.537.396-1.007.827-1.407 1.246a13.3 13.3 0 0 0-1.65 2.135 2 2 0 0 0 0 2.112q.079.126.176.275c.332.505.826 1.18 1.474 1.86C3.387 12.531 5.381 14 8 14c1.707 0 3.148-.623 4.3-1.43m-1.42-1.455-.868-.89a3 3 0 0 1-4.187-4.292l-.899-.92A8.6 8.6 0 0 0 3.553 6.19 11.3 11.3 0 0 0 2.155 8l.148.232c.284.432.705 1.007 1.25 1.577C4.66 10.97 6.165 12 8 12c1.078 0 2.043-.355 2.88-.884zM7.225 7.368A1 1 0 0 0 8.613 8.79zm-.016-5.323 2.146 2.146c1.231.35 2.271 1.14 3.092 2A11.3 11.3 0 0 1 13.845 8a11 11 0 0 1-.269.412l1.435 1.435a14 14 0 0 0 .533-.791 2 2 0 0 0 0-2.112 13.3 13.3 0 0 0-1.65-2.135C12.613 3.467 10.619 2 8 2q-.405.001-.79.046z" clip-rule="evenodd"/></svg><span>${q._ambossStatsHidden?'Show stats':'Hide stats'}</span></button></div></div>
+          <div class="qa-bottom-actions"><button data-qa="answer" ${q._tutorMode===false&&!this.state.isBlockRevealed?'disabled title="Answers are available after ending the Exam block"':""}><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><g stroke="currentColor" stroke-width="2"><path d="M4 2a1 1 0 0 0-1 1v3.222L1.5 7.817a.2.2 0 0 0 0 .366L3 9.778V13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/><path stroke-linecap="round" stroke-linejoin="round" d="m12 6-4.125 4L6 8.182"/></g></svg>${fullAnswer?'Show all explanations':'Show answer'}</button><div class="qa-bottom-right"><button data-qa="reset" ${!answer?.submitted&&!q.revealed&&!this.state.selectedOption?'disabled':''}><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a7 7 0 1 1-7 7 1 1 0 0 1 2 0 5.002 5.002 0 0 0 5.976 4.904A5 5 0 0 0 8 3a5.5 5.5 0 0 0-3.564 1.333h.896a1 1 0 0 1 0 2H2q-.085-.001-.166-.016-.015-.001-.031-.005l-.047-.01-.049-.013a1 1 0 0 1-.257-.121 1 1 0 0 1-.33-.36l-.02-.042a1 1 0 0 1-.1-.433V2a1 1 0 0 1 2 0v.934A7.5 7.5 0 0 1 7.996 1z"/></svg>Reset question</button><button data-qa="stats" ${!show?'disabled':''}><svg width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="m12.3 12.57 2.286 2.344L16 13.5 2.914.086 1.5 1.5l2.013 2.063c-.537.396-1.007.827-1.407 1.246a13.3 13.3 0 0 0-1.65 2.135 2 2 0 0 0 0 2.112q.079.126.176.275c.332.505.826 1.18 1.474 1.86C3.387 12.531 5.381 14 8 14c1.707 0 3.148-.623 4.3-1.43m-1.42-1.455-.868-.89a3 3 0 0 1-4.187-4.292l-.899-.92A8.6 8.6 0 0 0 3.553 6.19 11.3 11.3 0 0 0 2.155 8l.148.232c.284.432.705 1.007 1.25 1.577C4.66 10.97 6.165 12 8 12c1.078 0 2.043-.355 2.88-.884zM7.225 7.368A1 1 0 0 0 8.613 8.79zm-.016-5.323 2.146 2.146c1.231.35 2.271 1.14 3.092 2A11.3 11.3 0 0 1 13.845 8a11 11 0 0 1-.269.412l1.435 1.435a14 14 0 0 0 .533-.791 2 2 0 0 0 0-2.112 13.3 13.3 0 0 0-1.65-2.135C12.613 3.467 10.619 2 8 2q-.405.001-.79.046z" clip-rule="evenodd"/></svg><span>${q._ambossStatsHidden?'Show stats':'Hide stats'}</span></button></div></div>
           ${fullAnswer&&(explanation.textContent.trim()||explanation.querySelector("img,video,audio"))?`<section class="qa-extra">${explanation.innerHTML}</section>`:''}
-          <nav class="qa-navigation" aria-label="Question navigation"><button data-qa="exit">Exit session</button><button data-qa="prev" ${this.state.currentIndex===0?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>Previous</button><button data-qa="next">${this.state.currentIndex===this.state.questions.length-1?'See analysis':answer?.submitted?'Next':'Skip'}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button></nav>`;
+          <nav class="qa-navigation" aria-label="Question navigation"><button data-qa="exit">Exit session</button><button data-qa="prev" ${this.state.currentIndex===0?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>Previous</button><button data-qa="next">${this.state.currentIndex===this.state.questions.length-1?'See analysis':(q.caseGroup||answer?.submitted)?'Next':'Skip'}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button></nav>`;
         document.getElementById('dungeonExplanationPanel')?.classList.add('hidden');
         document.getElementById('dungeonSplitResizer')?.classList.add('hidden');
         const mount=this.el.main;
@@ -5100,6 +5108,8 @@ export default class DungeonBase {
                 else if(count<columns&&cells.length)cells[cells.length-1].colSpan=(cells[cells.length-1].colSpan||1)+(columns-count);
             });
         });
+        lib.layoutLabTables?.(mount.querySelector('.qa-stem'));
+        lib.layoutClinicalNotes?.(mount.querySelector('.qa-stem'));
         mount.querySelectorAll('.qa-answer-explanation').forEach(body=>{
             const images=[...body.querySelectorAll('img')].filter(img=>!img.closest('table'));
             if(!images.length)return;
@@ -5115,6 +5125,11 @@ export default class DungeonBase {
         });
         mount.querySelectorAll('.qa-picture-expand').forEach(button=>button.onclick=event=>{event.stopPropagation();this.openImageViewer(button.parentElement.querySelector('img').src);});
         mount.dataset.qaFullAnswer=String(fullAnswer);
+        const selectionRoot=mount.querySelector('.qa-stem');
+        selectionRoot.onpointerdown=event=>{selectionRoot._qaSelectionGesture={x:event.clientX,y:event.clientY,dragged:false};};
+        selectionRoot.onpointermove=event=>{const gesture=selectionRoot._qaSelectionGesture;if(gesture&&Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)>3)gesture.dragged=true;};
+        selectionRoot.onpointercancel=()=>{selectionRoot._qaSelectionGesture=null;};
+        selectionRoot.onkeyup=event=>{if(event.shiftKey&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key)){selectionRoot._qaSelectionGesture={keyboard:true};this.handleHighlight({currentTarget:selectionRoot,target:selectionRoot},'main');}};
         if(q._ambossAnimateAnswer&&show){
             delete q._ambossAnimateAnswer;
             if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
@@ -5146,6 +5161,11 @@ export default class DungeonBase {
         mount.querySelector('[data-qa="key"]')?.addEventListener('click',event=>{const active=mount.classList.toggle('qa-show-key');q._ambossKeyVisible=active;event.currentTarget.setAttribute('aria-pressed',active);if(active){q._ambossKeyUsed=true;q._ambossHintUsed=true;this.renderAmbossSidebar();}this.saveQuestionsToBackend();});
         if(q._ambossHintOpen){const hint=mount.querySelector('.qa-hint');if(hint)hint.hidden=false;mount.querySelector('[data-qa="hint"]')?.setAttribute('aria-expanded','true');}
         mount.querySelector('[data-qa="hint"]')?.addEventListener('click',event=>{const hint=mount.querySelector('.qa-hint'),open=event.currentTarget.getAttribute('aria-expanded')!=='true';q._ambossHintOpen=open;this.transitionAmbossPanel(hint,open);event.currentTarget.setAttribute('aria-expanded',open);if(open){q._ambossHintUsed=true;this.renderAmbossSidebar();this.saveQuestionsToBackend();}});
+        if(q.caseGroup&&!this.caseFeedbackAllowed(q)){
+            mount.querySelectorAll('[data-qa="hint"],[data-qa="key"]').forEach(button=>{button.disabled=true;button.title='Hints are available after completing this case';});
+            const hint=mount.querySelector('.qa-hint');if(hint)hint.hidden=true;
+            mount.classList.remove('qa-show-key');
+        }
         mount.querySelector('[data-qa="labs"]').onclick=()=>{this.styleAmbossLabs();document.getElementById('dungeonLabBtn')?.click();};
         this.updateToolbarPush();
         mount.querySelector('[data-qa="notes"]').onclick=()=>this.editAmbossNote();
@@ -5153,10 +5173,30 @@ export default class DungeonBase {
         mount.querySelector('[data-qa="mark"]').innerHTML=this.ambossFlagIcon(Boolean(q.starred||q.isStarred))+' Mark';
         mount.querySelector('[data-qa="mark"]').setAttribute('aria-pressed',Boolean(q.starred||q.isStarred));
         mount.querySelector('[data-qa="mark"]').onclick=()=>{this.toggleStar();this.renderQuestion();};
+        const highlightButton=mount.querySelector('[data-qa="highlight-settings"]');
+        const syncHighlightIcon=()=>{
+            const on=localStorage.getItem('qnex-highlight-enabled')!=='false';
+            highlightButton.innerHTML='<svg viewBox="0 0 16 16" fill="none" aria-hidden="true">'+(on?'<path fill="currentColor" fill-rule="evenodd" d="M14 15h-2v-3H4v3H2v-3.852a2 2 0 0 1 .297-1.049l2.42-3.932L4.7 4.602a2 2 0 0 1 1.21-1.86L11.17.478l-.026 5.674 2.536 3.922c.209.322.321.698.321 1.085zm-9.293-5h6.543L9.464 7.238A2 2 0 0 1 9.332 7H6.536a2 2 0 0 1-.115.216zm4.448-6.478L9.148 5H6.704L6.7 4.58z" clip-rule="evenodd"/>':'<path fill="currentColor" d="M11 .383v6.625l-2-2.05v-1.34l-.878.44-1.466-1.503z"/><path fill="currentColor" fill-rule="evenodd" d="M5 6.443 1 2.415l1.414-1.414 12.5 12.586L13.5 15H12v-1.51L10.52 12H4v3H2v-3.793a2 2 0 0 1 .42-1.226L5 6.658zm1.515 1.525-1.578 2.033h3.597z" clip-rule="evenodd"/>')+'</svg>';
+        };syncHighlightIcon();
+        mount.classList.toggle('qa-highlights-hidden',localStorage.getItem('qnex-highlight-enabled')==='false');
+        highlightButton.onclick=()=>{
+            const existing=mount.querySelector('.qa-highlight-settings');if(existing){this._highlightSettingsClose?.();return;}
+            const menu=document.createElement('div');menu.className='qa-highlight-settings';menu.setAttribute('role','dialog');menu.setAttribute('aria-label','Qbank highlighting');
+            menu.innerHTML='<label><span><strong>Highlighting on</strong><small>Show and create highlights</small></span><input type="checkbox" role="switch" data-enabled><span class="qa-highlight-switch"></span></label><label><span>Highlight instantly on selection</span><input type="checkbox" role="switch" data-instant><span class="qa-highlight-switch"></span></label>';
+            const enabled=menu.querySelector('[data-enabled]'),instant=menu.querySelector('[data-instant]');enabled.checked=localStorage.getItem('qnex-highlight-enabled')!=='false';instant.checked=localStorage.getItem('qnex-highlight-instant')!=='false';
+            enabled.onchange=()=>{localStorage.setItem('qnex-highlight-enabled',String(enabled.checked));mount.classList.toggle('qa-highlights-hidden',!enabled.checked);syncHighlightIcon();this._highlightPaletteClose?.();};
+            instant.onchange=()=>{localStorage.setItem('qnex-highlight-instant',String(instant.checked));this.state.highlightMode=instant.checked;this._highlightPaletteClose?.();};
+            const close=()=>{menu.remove();highlightButton.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);};
+            const outside=event=>{if(!menu.contains(event.target)&&!highlightButton.contains(event.target))close();};this._highlightSettingsClose=close;
+            menu.onkeydown=event=>{if(event.key==='Escape'){close();highlightButton.focus();}};
+            mount.querySelector('.qa-reading-bar').append(menu);highlightButton.setAttribute('aria-expanded','true');document.addEventListener('pointerdown',outside,true);
+        };
         mount.querySelector('[data-qa="font"]').onclick=()=>{const sizes=['font-small','font-medium','font-large'];const index=sizes.findIndex(size=>mount.classList.contains(size));sizes.forEach(size=>mount.classList.remove(size));mount.classList.add(sizes[(index+1)%3]);};
-        mount.querySelector('[data-qa="answer"]').onclick=()=>{if(fullAnswer){const bodies=[...mount.querySelectorAll('.qa-answer-explanation')],open=bodies.some(el=>el.dataset.qaOpen?el.dataset.qaOpen!=='true':el.hidden);bodies.forEach(el=>{this.transitionAmbossPanel(el,open);el.closest('.qa-option').querySelector('.qa-answer-line').setAttribute('aria-expanded',String(open));});this.syncAmbossExplanationToggle(mount);}else this.toggleReveal();};
+        mount.querySelector('[data-qa="answer"]').disabled=(q._tutorMode===false&&!this.state.isBlockRevealed)||!this.caseFeedbackAllowed(q);
+        mount.querySelector('[data-qa="answer"]').onclick=()=>{if(!this.caseFeedbackAllowed(q)||(q._tutorMode===false&&!this.state.isBlockRevealed))return;if(fullAnswer){const bodies=[...mount.querySelectorAll('.qa-answer-explanation')],open=bodies.some(el=>el.dataset.qaOpen?el.dataset.qaOpen!=='true':el.hidden);bodies.forEach(el=>{this.transitionAmbossPanel(el,open);el.closest('.qa-option').querySelector('.qa-answer-line').setAttribute('aria-expanded',String(open));});this.syncAmbossExplanationToggle(mount);}else this.toggleReveal();};
         if(show)this.syncAmbossExplanationToggle(mount);
         mount.querySelector('[data-qa="reset"]').onclick=()=>document.getElementById('dungeonClearBtn')?.click();
+        if(q._caseAdvanced)mount.querySelector('[data-qa="reset"]').disabled=true;
         mount.classList.toggle('qa-stats-hidden',Boolean(q._ambossStatsHidden));
         mount.querySelector('[data-qa="stats"]').onclick=event=>{q._ambossStatsHidden=!q._ambossStatsHidden;mount.classList.toggle('qa-stats-hidden',q._ambossStatsHidden);event.currentTarget.querySelector('span').textContent=q._ambossStatsHidden?'Show stats':'Hide stats';};
         mount.querySelector('[data-qa="prev"]').onclick=()=>this.navPrev();
@@ -5235,10 +5275,11 @@ export default class DungeonBase {
 
     handleSelectOption(optionId) {
         const q = this.state.questions[this.state.currentIndex];
+        if (this.state.isBlockRevealed || q.isBlockRevealed || q._caseAdvanced) return;
         if (q.crossedOutOptionIds && q.crossedOutOptionIds.includes(String(optionId))) return; // Prevent selection if crossed out
         const answer = this.state.answers.get(q.id);
 
-        const retryAmboss=q.contentFormat==='medos-html'&&q.source?.bank?.startsWith('amboss')&&!answer?.isCorrect&&!q.revealed&&!this.state.isBlockRevealed;
+        const retryAmboss=!q.caseGroup&&q.contentFormat==='medos-html'&&q.source?.bank?.startsWith('amboss')&&!answer?.isCorrect&&!q.revealed&&!this.state.isBlockRevealed;
         if(retryAmboss&&answer?.submitted&&String(answer.selectedId)===String(optionId))return;
         if (answer && answer.submitted && q._tutorMode !== false && !retryAmboss) return;
 
@@ -5256,6 +5297,11 @@ export default class DungeonBase {
 
         if (this.state.selectedOption === optionId) {
             this.state.selectedOption = null;
+            if (q._tutorMode === false) {
+                this.state.answers.delete(q.id);
+                delete q.submittedAnswer;
+                this.renderSidebar();
+            }
         } else {
             this.state.selectedOption = optionId;
             // Exam Mode Persistence: Silently record the choice — timer keeps running
@@ -5275,14 +5321,18 @@ export default class DungeonBase {
             }
         }
         this.renderQuestion();
+        if (q._tutorMode === false && this.state.associatedSessionId?.startsWith('medos-')) window.MedicalLibrary.saveDungeonSession(this).catch(error => console.error('Could not save exam choice', error));
     }
 
     handleStrikeOption(e, el) {
+        if (this.state.questions[this.state.currentIndex]?._caseAdvanced) return;
         if (this.state.highlightMode) {
             if (window.getSelection().toString().length > 0) return;
         }
 
-        const optionId = el.closest('.dungeon-radio-option').querySelector('.dungeon-radio-circle').getAttribute('onclick').match(/'([^']+)'/)[1];
+        const row = el.closest('.dungeon-radio-option');
+        const optionId = row.dataset.optionId || row.querySelector('.dungeon-radio-circle').getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        if (!optionId) return;
         const q = this.state.questions[this.state.currentIndex];
 
         // Initialize if missing
@@ -5358,6 +5408,7 @@ export default class DungeonBase {
 
     async handleSubmit() {
         const q = this.state.questions[this.state.currentIndex];
+        if (q._caseAdvanced || this.state.isBlockRevealed) return;
         if(q.questionType==='matching'){
             this.state.selectedOption=q.matchingDraft || this.state.answers.get(q.id)?.selectedId;
             if(!this.state.selectedOption || String(this.state.selectedOption).split(',').length!==q.matching.length || String(this.state.selectedOption).split(',').some(value=>!value)){
@@ -5390,6 +5441,10 @@ export default class DungeonBase {
 
         // Persist to question object
         q.submittedAnswer = answerData;
+
+        if (q.caseGroup && q.caseGroup.index===q.caseGroup.total-1 && q._tutorMode!==false) {
+            q._caseAdvanced=true;answerData.locked=true;
+        }
 
         const timeSpent = this.timerStart ? Math.floor((Date.now() - this.timerStart) / 1000) : 0;
 
@@ -5439,6 +5494,8 @@ export default class DungeonBase {
     async toggleReveal() {
         const q = this.state.questions[this.state.currentIndex];
         if (!q) return;
+        if (!this.caseFeedbackAllowed(q)) return;
+        if (q._tutorMode === false && !this.state.isBlockRevealed) return;
 
         const revealBtn = document.getElementById('dungeonRevealBtn');
         const answer = this.state.answers.get(q.id);
@@ -5494,8 +5551,8 @@ export default class DungeonBase {
         this.saveQuestionsToBackend();
 
         // Re-render to show/hide the answer and update sidebar
-        this.renderQuestion();
         this.renderSidebar();
+        this.renderQuestion();
         
         // Stop timer when revealing
         if (q.revealed) {
@@ -5503,9 +5560,62 @@ export default class DungeonBase {
         }
     }
 
+    caseMembers(q) {
+        return q?.caseGroup ? this.state.questions.filter(item=>item.caseGroup?.id===q.caseGroup.id) : [];
+    }
+
+    caseIsContiguous(q) {
+        const group=q?.caseGroup;if(!group||group.contextOnly)return false;
+        const members=this.caseMembers(q);
+        if(members.length!==group.total)return false;
+        const start=this.state.questions.indexOf(members[0]);
+        return members.every((item,index)=>item.caseGroup.index===index && this.state.questions[start+index]===item);
+    }
+
+    caseFeedbackAllowed(q) {
+        if (this.state.isBlockRevealed || !q?.caseGroup || q.caseGroup.contextOnly) return true;
+        const members=this.caseMembers(q);
+        return members.length===q.caseGroup.total && members.every(item=>Boolean(this.state.answers.get(item.id)?.submitted));
+    }
+
+    caseContext(q) {
+        if (!q?.caseGroup) return '';
+        const group=q.caseGroup;
+        const context=group.context_html ? window.MedicalLibrary.renderContent({...q,richText:group.context_html,media:[],source:{...q.source,questionId:group.parentId}},'question') : '';
+        const ordered= !q.source?.bank?.startsWith('amboss');
+        return `<section class="qnex-case-context" data-ml-extra><small>${group.contextOnly?'Case context ·':'Case item'} ${group.index+1} of ${group.total}${group.contextOnly?'':ordered?' · Answer in order. Earlier answers lock when you proceed.':' · Linked questions. Use Next or Previous to navigate.'}</small>${context?`<details open><summary>Previous case context</summary>${context}</details>`:''}</section>`;
+    }
+
+    caseCanNavigate(index) {
+        if (this.state.isBlockRevealed || index===this.state.currentIndex) return true;
+        const current=this.state.questions[this.state.currentIndex],target=this.state.questions[index];
+        if (!target) return false;
+        const amboss=current?.source?.bank?.startsWith('amboss');
+        if (amboss && current.caseGroup && !current.caseGroup.contextOnly) {
+            const answer=this.state.answers.get(current.id);
+            if(index>this.state.currentIndex && answer?.submitted){current._caseAdvanced=true;answer.locked=true;if(this.state.associatedSessionId?.startsWith('medos-'))window.MedicalLibrary.saveDungeonSession(this).catch(console.error);}
+            return true;
+        }
+        if (target.caseGroup&&!target.caseGroup.contextOnly) {
+            const members=this.caseMembers(target), reached=members.findIndex(item=>!item._caseAdvanced);
+            const advancing=target.caseGroup.id===current?.caseGroup?.id && index===this.state.currentIndex+1 && Boolean(this.state.answers.get(current.id)?.submitted);
+            if (reached>=0 && target.caseGroup.index>reached && !advancing) {this.showNotification('Answer the case items in order.');return false;}
+        }
+        if (current?.caseGroup && !current.caseGroup.contextOnly && !current._caseAdvanced && index>this.state.currentIndex) {
+            const answer=this.state.answers.get(current.id);
+            if (!answer?.submitted || (current.caseGroup.index<current.caseGroup.total-1 && index!==this.state.currentIndex+1)) {
+                this.showNotification('Submit this case item, then use Next.');return false;
+            }
+            current._caseAdvanced=true;
+            if(answer)answer.locked=true;
+            if(this.state.associatedSessionId?.startsWith('medos-'))window.MedicalLibrary.saveDungeonSession(this).catch(console.error);
+        }
+        return true;
+    }
+
     jumpToQuestion(index) {
         if (index >= 0 && index < this.state.questions.length) {
-            if(!this.bauCanNavigate(index))return;
+            if(!this.bauCanNavigate(index)||!this.caseCanNavigate(index))return;
             this.stopTimer();
             this.state.currentIndex = index;
             this.state.selectedOption = null;
@@ -5517,6 +5627,7 @@ export default class DungeonBase {
 
     navNext() {
         if (this.state.currentIndex < this.state.questions.length - 1) {
+            if(!this.caseCanNavigate(this.state.currentIndex+1))return;
             this.stopTimer();
             this.state.currentIndex++;
             this.state.selectedOption = null;
@@ -5577,54 +5688,15 @@ export default class DungeonBase {
         const expPanel = document.getElementById('dungeonExplanationPanel');
         if (!resizer || !wrapper || !expPanel) return;
 
-        let isResizing = false;
-
-        const startResize = () => {
-            isResizing = true;
-            resizer.classList.add('active');
-            document.body.style.cursor = 'col-resize';
-        };
-
-        const doResize = (clientX) => {
-            if (!isResizing) return;
-            const wrapperRect = wrapper.getBoundingClientRect();
-            const offsetRight = wrapperRect.right - clientX;
-            const percentage = (offsetRight / wrapperRect.width) * 100;
-            if (percentage >= 20 && percentage <= 70) {
-                expPanel.style.width = `${percentage}%`;
-            }
-        };
-
-        const stopResize = () => {
-            if (isResizing) {
-                isResizing = false;
-                resizer.classList.remove('active');
-                document.body.style.cursor = '';
-            }
-        };
-
-        // Mouse events
-        resizer.addEventListener('mousedown', (e) => {
-            startResize();
-            e.preventDefault();
+        resizer.classList.add('qr-split-grip');
+        resizer.setAttribute('aria-label','Resize explanation panel');
+        window.QnexResponsive?.bindGrip(resizer,{
+            read:()=>expPanel.offsetWidth,
+            write:value=>{expPanel.style.width=(100*value/wrapper.clientWidth)+'%';},
+            bounds:()=>({min:wrapper.clientWidth*.2,max:wrapper.clientWidth*.7}),
+            save:()=>{},direction:-1,
+            enabled:()=>!window.QnexResponsive.compact&&this.state.splitView
         });
-        document.addEventListener('mousemove', (e) => doResize(e.clientX));
-        document.addEventListener('mouseup', stopResize);
-
-        // Touch events (iPad / touchscreen)
-        resizer.addEventListener('touchstart', (e) => {
-            startResize();
-            e.preventDefault();
-        }, { passive: false });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!isResizing) return;
-            doResize(e.touches[0].clientX);
-            e.preventDefault();
-        }, { passive: false });
-
-        document.addEventListener('touchend', stopResize);
-        document.addEventListener('touchcancel', stopResize);
     }
 
     initImageViewer() {
@@ -5833,19 +5905,7 @@ export default class DungeonBase {
         viewer.querySelector('.qa-media-footer-close').onclick=closeMedia;
         if(!viewer.querySelector('.qa-media-resizer')) {
             const grip=document.createElement('div');grip.className='qa-media-resizer';grip.setAttribute('role','separator');grip.setAttribute('aria-label','Resize image panel');grip.setAttribute('aria-orientation','vertical');viewer.append(grip);
-            grip.onmousedown=event=>{
-                event.preventDefault();event.stopPropagation();
-                this.el.container.classList.add('qa-lab-resizing');
-                const move=event=>{
-                    const scale=viewer.getBoundingClientRect().width/viewer.offsetWidth || 1;
-                    const sidebar=this.state.sidebarCollapsed?56:parseInt(getComputedStyle(this.el.container).getPropertyValue('--qa-sidebar-width'))||320;
-                    const width=Math.max(310,Math.min((window.innerWidth-event.clientX)/scale,Math.max(310,window.innerWidth/scale-sidebar-320)));
-                    this.el.container.style.setProperty('--qa-lab-panel-width',width+'px');
-                    this.updateToolbarPush();
-                };
-                const end=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',end);this.el.container.classList.remove('qa-lab-resizing');localStorage.setItem('dungeonLabWidth',parseInt(getComputedStyle(viewer).width));};
-                document.addEventListener('mousemove',move);document.addEventListener('mouseup',end);
-            };
+            window.QnexResponsive?.bindPanel(grip,viewer,this);
         }
         const image=[...this.el.main.querySelectorAll('img')].find(img=>img.src===src);
         const caption=image?.closest('figure')?.querySelector('figcaption')?.textContent||((image?.alt&&image.alt!=='Question illustration')?image.alt:'');
@@ -5943,3 +6003,8 @@ export default class DungeonBase {
         if (zoomLevel) zoomLevel.innerText = `${Math.round(v.zoom * 100)}%`;
     }
 }
+
+
+
+
+

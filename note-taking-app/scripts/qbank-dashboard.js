@@ -9,11 +9,18 @@
   };
   const Dashboard = {
     mainRevision: 0, statsRevision: 0, brandTimer: null, updateObserver: null, updateMutationObserver: null,
-    withTimeout(promise, ms = (window.innerWidth < 900 ? 8000 : 30000)) {
+    withTimeout(promise, ms = 45000) {
       let timer;
       return Promise.race([promise, new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error('The question-bank service took too long to respond. Check the MedOS folder or restart Qnex.')), ms);
       })]).finally(() => clearTimeout(timer));
+    },
+    isTemporary(error) { return /abort|timeout|took too long|fetch|network|connect|still starting|unavailable|502|503|504/i.test(error?.name+' '+error?.message); },
+    retryView(owner, valid, retry) {
+      clearTimeout(owner.retryTimer);
+      owner.retryCount=(owner.retryCount || 0)+1;
+      const delay=Math.min(15000,2000*Math.pow(2,Math.min(owner.retryCount-1,3)));
+      owner.retryTimer=setTimeout(()=>{owner.retryTimer=null;if(valid())retry();},delay);
     },
     metrics(stats) {
       const attempted = stats.correct + stats.incorrect;
@@ -49,6 +56,7 @@
       return `<article class="qd-card"><div><div class="qd-card-label">${label}</div><div class="qd-card-value"><strong>${escape(percent)}%</strong> <span>${detail}</span></div></div><span class="qd-card-icon">${icons[symbol]}</span></article>`;
     },
     async renderMain() {
+      clearTimeout(this.retryTimer);
       const mount = document.getElementById('qbankMainDashboard'); if (!mount) return;
       if (this.brandTimer) { clearInterval(this.brandTimer); this.brandTimer = null; }
       this.updateObserver?.disconnect();
@@ -58,16 +66,27 @@
       try {
         const { bank, stats } = await this.context();
         if (revision !== this.mainRevision) return;
+        this.retryCount=0;
         const m = stats && this.metrics(stats);
         mount.innerHTML = `<header class="qd-main-header"><div class="qd-welcome"><h2>Welcome ${escape(window.QbankProfile?.read()?.username || "doctor")}</h2><span>${escape(bank?.label || 'Your study dashboard')}</span></div><div class="qd-actions"><button id="qdBrowse" class="ml-library-btn qd-icon-action" title="Browse Qbank library" aria-label="Browse Qbank library">${icon('<path d="M4 6H3v14a1 1 0 0 0 1 1h14"/><rect x="7" y="3" width="14" height="14" rx="1"/><path d="M12.1 8a1.9 1.9 0 0 1 3.8 0c0 1.3-1.9 1.5-1.9 2.8" stroke-width="1.4"/><circle cx="14" cy="13.4" r=".55" fill="currentColor" stroke="none"/>')}</button><button id="qdMedical" class="ml-library-btn qd-icon-action" title="Medical Library — Coming soon" aria-label="Medical Library">${icon('<path d="M4 6H3v14a1 1 0 0 0 1 1h14"/><rect x="7" y="3" width="14" height="14" rx="1"/><path d="M10.5 7h7M10.5 10h7M10.5 13h4.5" stroke-width="1.4"/>')}</button>${bank ? '<button id="qdPractice" class="ml-library-btn qd-icon-action" title="Create test" aria-label="Create test">'+icon('<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M12 8v8M8 12h8"/>')+'</button><button id="qdStats" class="ml-library-btn qd-icon-action" title="View Performance" aria-label="View Performance">'+icon('<path d="M5 20v-6M12 20V4M19 20V10"/>')+'</button>' : ''}</div></header>
           <p id="qdMessage" class="qd-message" role="status" hidden></p>
           ${stats ? `<div class="qd-cards">${this.card('Question Score', m.score, 'Correct', 'score')}${this.card('QBank Usage', m.usageLabel, `${stats.used.toLocaleString()} / ${stats.totalQuestions.toLocaleString()} Used`, 'usage')}${this.card('Test Count', m.completion, `${stats.completed} / ${stats.created} Completed`, 'tests')}</div>` : '<div class="ml-library-empty">Choose a bank in the sidebar to see your study activity.</div>'}`;
-        mount.insertAdjacentHTML('beforeend','<section class="qd-brand-panel" aria-label="Qnex visual rotation"><div class="qd-brand-copy"><span class="qd-brand-credit">© 2026 · Qnex X.50</span></div><div class="qd-brand-art"><img class="qd-brand-slide active" src="assets/qnex-brand/artwork-hd.png" alt="Abstract Qnex artwork" width="2048" height="1024" loading="lazy"><img class="qd-brand-slide" src="assets/qnex-brand/xray.png" alt="Chest X-ray" width="2048" height="1024" loading="lazy"><img class="qd-brand-slide" src="assets/qnex-brand/mri.png" alt="MRI scan" width="2048" height="1024" loading="lazy"></div></section>');
+        if (bank) {
+          const bankName = mount.querySelector('.qd-welcome > span');
+          const bankLine = document.createElement('div');
+          bankLine.className = 'qw-heading-title';
+          bankName.replaceWith(bankLine);
+          bankLine.append(bankName);
+          bankLine.insertAdjacentHTML('beforeend', '<button type="button" class="qw-bank-switch" title="Change question bank" aria-label="Change question bank">'+icon('<path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>')+'</button>');
+          bankLine.querySelector('button').onclick = () => window.QBankWorkspace.openBankPicker();
+        }
+        // Banner retained for later use; kept as an HTML comment.
+        mount.insertAdjacentHTML('beforeend','<!-- <section class="qd-brand-panel" aria-label="Qnex visual rotation"><div class="qd-brand-copy"><span class="qd-brand-credit">© 2026 · Qnex X.50</span></div><div class="qd-brand-art"><img class="qd-brand-slide active" src="assets/qnex-brand/artwork-hd.png" alt="Abstract Qnex artwork" width="2048" height="1024" loading="lazy"><img class="qd-brand-slide" src="assets/qnex-brand/xray.png" alt="Chest X-ray" width="2048" height="1024" loading="lazy"><img class="qd-brand-slide" src="assets/qnex-brand/mri.png" alt="MRI scan" width="2048" height="1024" loading="lazy"></div></section> -->');
         mount.insertAdjacentHTML('beforeend','<section class="qd-update-batch" aria-labelledby="qdUpdateBatchTitle"><h3 id="qdUpdateBatchTitle">Update batch</h3></section>');
         mount.querySelector('.qd-update-batch').insertAdjacentHTML('beforeend','<p class="qd-update-current" role="status">The app is up to date!</p>');
         const recent = document.createElement('section'); recent.className='qd-recent';
         recent.innerHTML='<h3>Recent sessions</h3><div class="qd-recent-list">Loading sessions…</div>';
-        mount.querySelector('.qd-brand-panel').before(recent);
+        mount.querySelector('.qd-update-batch').before(recent);
         recent.after(mount.querySelector('.qd-update-batch'));
         const updateList = document.createElement('div'); updateList.className = 'qd-update-list';
         updateList.setAttribute('aria-label', 'Update notes'); updateList.tabIndex = 0;
@@ -100,8 +119,10 @@
             list.append(button);
           });
         }).catch(()=>{if(recent.isConnected)recent.querySelector('.qd-recent-list').innerHTML='<p class="qd-section-status">Unable to load recent sessions.</p>';});
+        /* Banner rotation retained with its commented markup.
         const brandSlides = [...mount.querySelectorAll('.qd-brand-slide')]; let brandIndex = 0;
         this.brandTimer = setInterval(() => { brandSlides[brandIndex]?.classList.remove('active'); brandIndex = (brandIndex + 1) % brandSlides.length; brandSlides[brandIndex]?.classList.add('active'); }, 7000);
+        */
         document.getElementById('qdMedical').onclick = () => window.QuestionBase.switchTab('medical-reference');
         document.getElementById('qdBrowse').onclick = () => window.QuestionBase.switchTab('medical-library');
         if (bank) {
@@ -114,7 +135,12 @@
         }
       } catch (error) {
         if (revision === this.mainRevision) mount.innerHTML = `<div class="qw-feedback"><p class="qd-message qd-error" role="alert">${escape(error.message)}</p><button class="ml-library-btn qd-icon-action" id="qdRetry" title="Retry" aria-label="Retry">${icon('<path d="M20 11a8 8 0 0 0-14-5L3 9m0-6v6h6M4 13a8 8 0 0 0 14 5l3-3m0 6v-6h-6"/>')}</button></div>`;
+        if(revision !== this.mainRevision)return;
         const retry = document.getElementById('qdRetry'); if (retry) retry.onclick = () => this.renderMain();
+        if(this.isTemporary(error)){
+          mount.querySelector('[role=alert]').textContent='Connecting to your question bank… Retrying automatically.';
+          this.retryView(this,()=>revision===this.mainRevision && mount.isConnected && !!mount.closest('[data-tab-content].active'),()=>this.renderMain());
+        }
       }
     },
     mainError(error) {

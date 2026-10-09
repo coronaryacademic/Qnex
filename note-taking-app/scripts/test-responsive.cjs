@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const frames=new Map();let frameID=0;
+const context={window:{},document:{readyState:'loading',addEventListener(){}},requestAnimationFrame:fn=>{frames.set(++frameID,fn);return frameID;},cancelAnimationFrame:id=>frames.delete(id)};
+vm.createContext(context);vm.runInContext(fs.readFileSync(__dirname+'/qnex-responsive.js','utf8'),context);const R=context.window.QnexResponsive;
+for(const [w,h,mode] of [[375,812,'drawer'],[430,932,'drawer'],[768,1024,'drawer'],[820,1180,'drawer'],[960,700,'tablet'],[1024,1366,'drawer'],[1199,800,'tablet'],[1200,800,'desktop']])assert.equal(R.viewportMode(w,h),mode);
+assert.equal(R.sidebarBounds('app',960,'tablet').max,288);assert.equal(R.sidebarBounds('app',1200,'desktop').max,360);assert.equal(R.sidebarBounds('app',375,'drawer').max,320);assert.equal(R.clamp(480,220,340),340);assert.equal(R.sidebarBounds('exam',1200,'desktop','uw').min,120);
+const listeners={},attrs={},classes=new Set();let captured=false,width=240,saves=0;
+const handle={parentElement:{offsetWidth:240,getBoundingClientRect:()=>({width:240})},setAttribute:(k,v)=>attrs[k]=v,classList:{add:v=>classes.add(v),remove:v=>classes.delete(v)},addEventListener:(name,fn)=>listeners[name]=fn,setPointerCapture:()=>captured=true,hasPointerCapture:()=>captured,releasePointerCapture:()=>captured=false};
+R.bindGrip(handle,{read:()=>width,write:v=>width=v,bounds:()=>({min:220,max:340}),save:()=>saves++});
+const event=extra=>({pointerId:1,clientX:0,button:0,preventDefault(){},stopPropagation(){},...extra});
+listeners.pointerdown(event());listeners.pointermove(event({clientX:150}));assert.equal(width,240,'movement is batched');for(const fn of frames.values())fn();frames.clear();assert.equal(width,340);listeners.pointercancel(event());assert.equal(width,240);assert.equal(saves,0);assert.equal(captured,false);
+listeners.pointerdown(event());listeners.pointermove(event({clientX:30}));listeners.pointerup(event());assert.equal(width,270);assert.equal(saves,1);assert.equal(captured,false);
+listeners.keydown(event({key:'End'}));assert.equal(width,340);listeners.keydown(event({key:'ArrowLeft',shiftKey:true}));assert.equal(width,300);
+let calls=0;R.forwardAction({isConnected:true,click:()=>calls++});R.forwardAction({disabled:true,isConnected:true,click:()=>calls++});assert.equal(calls,1);
+console.log('PASS responsive breakpoints, width limits, batched pointer lifecycle/cancellation, keyboard and action forwarding.');

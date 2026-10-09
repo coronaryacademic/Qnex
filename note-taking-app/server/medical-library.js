@@ -58,20 +58,27 @@ class MedosReader {
 }
 
 function sessionCompleted(session) {
+  if (session.settings?.builder === 'amboss') return !!session.completed;
   return !!session.completed || (session.questions.length > 0 && session.questions.every(q => q._tutorMode !== false && q.submittedAnswer?.submitted));
 }
 
 function bankStatistics(sessions, bank, totalQuestions = 0, includePerformance = true) {
   const selected = sessions.filter(session => session.bank === bank);
-  const latest = new Map();
+  const latest = new Map(), attemptProgress = {};
   for (const session of selected) for (const question of session.questions) {
+    if (session.settings?.builder === 'amboss' && question._tutorMode === false && !sessionCompleted(session)) continue;
     if (!question.submittedAnswer?.submitted) continue;
     const id = String(question.source.questionId);
     const time = question.progressUpdatedAt || session.date;
+    if (question.submittedAnswer.selectedId != null) {
+      const outcome = !question.submittedAnswer.isCorrect ? 'incorrect' : question._ambossHintUsed || question._ambossKeyUsed ? 'hint' : 'correct';
+      const outcomes = attemptProgress[id] ||= [];
+      if (!outcomes.includes(outcome)) outcomes.push(outcome);
+    }
     if (!latest.has(id) || time >= latest.get(id).time) latest.set(id, { question, time });
   }
   let correct = 0, incorrect = 0, omitted = 0, totalTime = 0;
-  const progress = {}, reports = { subject: {}, system: {} }, changes = { C2I: 0, I2C: 0, I2I: 0 };
+  const progress = {}, ambossProgress = {}, reports = { subject: {}, system: {} }, changes = { C2I: 0, I2C: 0, I2I: 0 };
   const marked = new Map();
   for (const session of selected) for (const q of session.questions) {
     const id = String(q.source.questionId), time = q.markUpdatedAt || session.date;
@@ -86,6 +93,7 @@ function bankStatistics(sessions, bank, totalQuestions = 0, includePerformance =
     totalTime += Math.max(0, Number(question.timerElapsed) || 0) / 1000;
     const outcome = answer.selectedId == null ? 'omitted' : answer.isCorrect ? 'correct' : 'incorrect';
     progress[question.source.questionId] = outcome;
+    ambossProgress[question.source.questionId] = outcome === 'omitted' ? 'new' : outcome === 'correct' && (question._ambossHintUsed || question._ambossKeyUsed) ? 'hint' : outcome;
     for (const field of Object.keys(reports)) for (const name of question.tags?.[field] || ['General']) {
       const row = reports[field][name] ||= { name, correct: 0, incorrect: 0, omitted: 0, used: 0 };
       row[outcome]++; row.used++;
@@ -96,7 +104,7 @@ function bankStatistics(sessions, bank, totalQuestions = 0, includePerformance =
     totalTime, created: selected.length, completed: selected.filter(sessionCompleted).length,
     suspended: selected.filter(s => !sessionCompleted(s)).length,
     usedIds: [...latest.keys()].map(Number), progress, markedIds: [...marked].filter(([, q]) => q.value).map(([id]) => Number(id)),
-    reports, changes,
+    reports, changes, ambossProgress, attemptProgress,
     tests: selected.filter(sessionCompleted).map(s => ({ id: s.id, title: s.title, date: s.date,
       score: Math.round(100 * s.questions.filter(q => q.submittedAnswer?.isCorrect).length / s.questions.length) })).sort((a,b) => a.date.localeCompare(b.date)) };
 }
@@ -146,6 +154,7 @@ function mountMedicalLibrary(app, dataDir) {
       subjects: [...new Set(session.questions.flatMap(q => q.tags?.subject || []))],
       systems: [...new Set(session.questions.flatMap(q => q.tags?.system || []))],
       usedIds: answered.map(q => q.source.questionId), completed: sessionCompleted(session),
+      questionIds: session.questions.map(q => q.source.questionId),
       generation: session.generation || 0 };
   }
   const generation = bank => profile.generations[bank] || 0;
@@ -169,6 +178,12 @@ function mountMedicalLibrary(app, dataDir) {
     try { await init(); await fn(req, res); }
     catch (error) { res.status(Number.isInteger(error.status) && error.status>=400 && error.status<=599 ? error.status : 400).json({ error: error.message }); }
   };
+  for (const prefix of ['/amboss', '/uworld-library', '/utd']) {
+    app.get(prefix + '/*', route(async (req, res) => {
+      const result = await reader.request({action:'reference',path:req.originalUrl});
+      res.status(result.status).type(result.type).send(Buffer.from(result.body, 'base64'));
+    }));
+  }
   app.get('/api/medical-library/catalog', route(async (req, res) => {
     catalog = await reader.request({ action: 'catalog' });
     res.json({ ...catalog, root });

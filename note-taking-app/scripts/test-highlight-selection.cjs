@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const selection={rangeCount:1,toString:()=> 'selected words',getRangeAt:()=>({})};
+const context={window:{getSelection:()=>selection},localStorage:{getItem:key=>key==='qnex-highlight-instant'?'false':null},console};vm.createContext(context);
+vm.runInContext(fs.readFileSync(path.join(__dirname,'dungeon-base.js'),'utf8').replace('export default class DungeonBase','class DungeonBase')+';window.Class=DungeonBase',context);
+const engine=Object.create(context.window.Class.prototype);engine.state={questions:[{source:{bank:'amboss2'}}],currentIndex:0};let opened=0;engine.showAmbossHighlightColors=()=>opened++;
+const root={};const click={currentTarget:root,target:root,clientX:50,clientY:50,detail:1};
+engine.handleHighlight(click,'main');assert.equal(opened,0,'Stale selection without a gesture must not open menu');
+root._qaSelectionGesture={x:50,y:50,dragged:false};engine.handleHighlight(click,'main');assert.equal(opened,0,'Ordinary stationary click must not open menu');
+root._qaSelectionGesture={x:10,y:50,dragged:true};engine.handleHighlight(click,'main');assert.equal(opened,1,'Finished selection drag opens menu');
+engine.handleHighlight(click,'main');assert.equal(opened,1,'Consumed gesture cannot reopen menu');
+root._qaSelectionGesture={x:50,y:50,dragged:false};engine.handleHighlight({...click,detail:2},'main');assert.equal(opened,2,'Double-click word selection opens menu');
+root._qaSelectionGesture={keyboard:true};engine.handleHighlight({currentTarget:root,target:root},'main');assert.equal(opened,3,'Keyboard extension opens menu');
+console.log('PASS: ordinary clicks and stale selections suppressed; drag, word and keyboard selection accepted; no duplicate reopen.');

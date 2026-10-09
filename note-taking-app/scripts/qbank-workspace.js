@@ -18,7 +18,8 @@
   const W = {
     revision: 0, drafts: new Map(), page: 0, statsTab: 'overall', reportBy: 'subject', graphBy: 'test',
     applyAppScale(value) {
-      const scale=Number(value) || 1;
+      if(window.QnexResponsive)return window.QnexResponsive.applyScale(value);
+      const scale=window.innerWidth<1200?1:Number(value) || 1;
       document.documentElement.style.zoom=String(scale);
       document.documentElement.style.setProperty('--qnex-app-scale',String(scale));
     },
@@ -117,26 +118,6 @@
       this.syncSidebar();
       if(document.body.classList.contains("qbank-only")) window.QuestionBase?.open();
     },
-    organizeSettings(mount) {
-      const cards=[...mount.querySelectorAll(':scope > .qw-card')];
-      mount.classList.add('qw-settings');
-      mount.innerHTML='<header class="qw-heading"><h2>Settings</h2></header><div class="settings-view"><div class="settings-container"><aside class="settings-sidebar" aria-label="Settings categories"></aside><main class="settings-content"></main></div></div>';
-      const nav=mount.querySelector('.settings-sidebar'),content=mount.querySelector('.settings-content');
-      const sections={};
-      for(const [key,label,icon] of [['general','General','<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'],['appearance','Appearance','<path d="M12 3 6 10a8 8 0 1 0 12 0Z"/>'],['data','Data Management','<path d="M6 3h9l4 4v14H6zM9 12h7M9 16h7"/>'],['about','About the app','<path d="m12 3 10 5-10 5L2 8zM2 12l10 5 10-5M2 16l10 5 10-5"/>']]) {
-        const button=document.createElement('button');button.type='button';button.className='settings-nav-btn';button.innerHTML=svg(icon)+label;nav.append(button);
-        const section=document.createElement('section');section.className='settings-section';section.innerHTML='<h2>'+label+'</h2>';content.append(section);sections[key]=section;
-        button.onclick=()=>{nav.querySelectorAll('.settings-nav-btn').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-pressed',String(b===button));});Object.values(sections).forEach(s=>s.classList.toggle('active',s===section));};
-      }
-      for(const card of cards){const title=card.querySelector('h3')?.textContent;const key=title==='Appearance'||title==='Reading'?'appearance':title==='Library location'||title==='Reset progress'?'data':'general';card.classList.remove('qw-card');card.classList.add('setting-group');sections[key].append(card);}
-      sections.general.insertAdjacentHTML('beforeend','<div class="setting-group"><h3>Maintenance</h3><div class="setting-row"><div><strong>Safe Refresh</strong><p class="qw-muted">Reload the application interface.</p></div><button class="settings-btn" data-reload>Reload Interface</button></div><div class="setting-row"><div><strong>Startup Logs</strong><p class="qw-muted">View application logs for troubleshooting.</p></div><button class="settings-btn" data-logs>View Logs</button></div></div>');
-      sections.general.querySelector('[data-reload]').onclick=()=>window.location.reload();
-      sections.general.querySelector('[data-logs]').onclick=()=>{const dialog=document.createElement('dialog');dialog.className='qw-log-dialog';const title=document.createElement('h3');title.textContent='Application Logs';const logs=document.createElement('textarea');logs.readOnly=true;logs.value=(window.appLogs||[]).join('\n')||'No startup logs available.';const close=document.createElement('button');close.className='settings-btn';close.textContent='Close';close.onclick=()=>dialog.close();dialog.append(title,logs,close);dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();};
-      sections.appearance.insertAdjacentHTML('beforeend','<div class="setting-group"><h3>Dungeon themes</h3><p>UW · AMBOSS · BAU</p><p class="qw-muted">The question bank determines the Dungeon layout.</p></div>');
-      sections.about.insertAdjacentHTML('beforeend','<div class="setting-group"><h3>Qnex</h3><p>Your question bank and Dungeon study workspace.</p></div>');
-      const quit=document.createElement('button');quit.type='button';quit.className='settings-nav-btn qw-settings-quit';quit.textContent='Quit App';quit.onclick=()=>{if(window.electronAPI?.confirmAppClose)window.electronAPI.confirmAppClose();else if(window.electronAPI?.closeApp)window.electronAPI.closeApp();else window.close();};nav.append(quit);
-      nav.querySelector('button').click();
-    },
     syncSidebar() {
       const active=window.QuestionBase?.state.lastActiveTab;
       document.body.dataset.qnexTab=active || 'main';
@@ -153,29 +134,14 @@
     loadingLogo() { return '<div class="qnex-loading-mark qnex-knock-logo" aria-hidden="true"><span class="qnex-knock-word">Qnex</span><span class="qnex-knock-dot">.</span></div>'; },
     loading(label='Loading your bank…') { return `<div class="qw-loader qnex-branded-loader" role="status" aria-live="polite">${this.loadingLogo()}<span>${esc(label)}</span></div>`; },
     async render(tab) {
+      clearTimeout(this.retryTimer);
       if(tab === 'recent-sessions' && /^test-(analysis|results)\//.test(window.QnexRouter?.current || '')) return;
       const revision = ++this.revision;
       const panel = document.querySelector(`[data-tab-content="${tab}"]`); if (!panel) return;
-      panel.innerHTML = '<div class="qw-page ml-library">'+this.loading(tab==='notebook' ? 'Opening your notebook…' : 'Loading your bank…')+'</div>';
+      panel.setAttribute('aria-busy','true');
+      panel.innerHTML = '<div class="qw-page ml-library">'+this.loading(tab==='notebook' ? 'Opening your notebook…' : tab==='create-test' && String(lib()?.currentBank || lib()?.profile?.currentBank || '').startsWith('amboss') ? 'Loading your bank… It may take a little while.' : 'Loading your bank…')+'</div>';
       try {
-        if(tab==='qbank-settings'){
-          const mount=panel.firstChild;
-          mount.innerHTML='<header class="qw-heading"><h2>Qbank Settings</h2></header><section class="qw-card"><h3>Reading</h3><label class="qw-field">Question and explanation text size<select id="qwReadingSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label></section><section class="qw-card"><h3>Timed tests</h3><label class="qw-field">Time accommodation<select id="qwDefaultTime"><option value="0">Standard</option><option value="25">Extra (1.25x)</option><option value="50">Extended (1.5x)</option><option value="100">Double (2x)</option></select></label><p class="qw-muted">Applies to future tests. Tests already started keep their time allowance.</p></section>';
-          mount.querySelector('header').insertAdjacentHTML('afterend','<section class="qw-card"><h3>Appearance</h3><label class="qw-field">Theme<select id="qwTheme"><option value="dark">Qnex Dark</option><option value="light">Qnex Light</option></select></label><label class="qw-field">App text &amp; interface size<select id="qwAppScale"><option value="0.9">Small · 90%</option><option value="1">Default · 100%</option><option value="1.1">Large · 110%</option><option value="1.25">Extra large · 125%</option></select></label><p class="qw-muted">Scales text and controls together throughout Qnex.</p></section>');
-          lib().renderLocationSettings(mount);
-          mount.insertAdjacentHTML('beforeend','<section class="qw-card"><h3>Reset progress</h3><p class="qw-muted">Reset the current question bank or all question banks. Type RESET to confirm.</p><button type="button" id="qwSettingsReset" class="ml-library-btn qd-icon-action" title="Reset progress" aria-label="Reset progress"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg></button></section>');
-          mount.querySelector('#qwSettingsReset').onclick=()=>document.getElementById('qwResetBank')?.click();
-
-          const theme=mount.querySelector('#qwTheme'),scale=mount.querySelector('#qwAppScale');theme.value=document.body.classList.contains('theme-light') ? 'light' : 'dark';scale.value=localStorage.getItem('qnex-app-scale') || '1';
-          mount.querySelector('header').insertAdjacentHTML('afterend','<section class="qw-card"><h3>Study profile</h3><p class="qw-muted" id="qwProfileSummary"></p><button type="button" id="qwEditProfile" class="ml-library-btn">Edit name and objective</button></section>');
-          const updateProfile=()=>{const profile=window.QbankProfile?.read();mount.querySelector('#qwProfileSummary').textContent=profile?`${profile.username} · ${profile.objective}`:'Set your name and study objective.';};updateProfile();
-          mount.querySelector('#qwEditProfile').onclick=()=>{window.QbankProfile?.open();document.getElementById('qbankProfileIntro')?.addEventListener('close',updateProfile,{once:true});};
-          theme.onchange=async()=>{try{const settings=window.Storage?.loadSettings ? await window.Storage.loadSettings() : {};settings.theme=theme.value;if(window.Storage?.saveSettings)await window.Storage.saveSettings(settings);if(window.state?.settings)window.state.settings.theme=theme.value;document.body.classList.toggle('theme-light',theme.value==='light');localStorage.setItem('theme',theme.value);window.dispatchEvent(new CustomEvent('theme-changed',{detail:{theme:theme.value}}));document.querySelectorAll('[data-theme]').forEach(card=>card.classList.toggle('active',card.dataset.theme===theme.value));window.showToast('Theme saved.','success');}catch(error){window.showToast(esc('Could not save theme: '+error.message),'error');}};
-          scale.onchange=()=>{localStorage.setItem('qnex-app-scale',scale.value);this.applyAppScale(scale.value);window.showToast('App size saved.','success');};
-          const size=mount.querySelector('#qwReadingSize'),time=mount.querySelector('#qwDefaultTime');size.value=localStorage.getItem('dungeonFontSize') || 'medium';time.value=localStorage.getItem('qnex-time-accommodation') || '0';
-          size.onchange=()=>{localStorage.setItem('dungeonFontSize',size.value);window.DungeonBase?.setFontSize?.(size.value);window.showToast('Reading size saved.','success');};
-          time.onchange=()=>{localStorage.setItem('qnex-time-accommodation',time.value);this.drafts.forEach(d=>d.adjustment=Number(time.value));window.showToast('Time accommodation saved.','success');};this.organizeSettings(mount);return;
-        }
+        if(tab==='qbank-settings'){await window.QnexSettings.render(panel.firstChild,this);return;}
         if (tab === 'notebook') {
           const notes = await this.loadNotes();
           if (revision !== this.revision) return;
@@ -184,6 +150,7 @@
         }
         const context = await window.QBankDashboard.context();
         if (revision !== this.revision) return;
+        this.retryCount=0;
         this.syncSidebar();
         if (!context.bank && tab === 'flagged') {
           const mount=document.createElement('div');mount.className='qw-page ml-library';panel.replaceChildren(mount);
@@ -224,12 +191,21 @@
         if (revision !== this.revision) return;
         panel.innerHTML = `<div class="qw-page ml-library"><div class="qw-feedback"><p class="qd-message qd-error" role="alert">${esc(error.message)}</p><button class="ml-library-btn qd-icon-action" title="Retry" aria-label="Retry"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-5L3 9m0-6v6h6M4 13a8 8 0 0 0 14 5l3-3m0 6v-6h-6"/></svg></button></div></div>`;
         panel.querySelector('button').onclick = () => this.render(tab);
+        if(window.QBankDashboard.isTemporary(error)){
+          panel.querySelector('[role=alert]').textContent='Connecting to your question bank… Retrying automatically.';
+          window.QBankDashboard.retryView(this,()=>revision===this.revision && panel.isConnected && panel.classList.contains('active'),()=>this.render(tab));
+        }
+      } finally {
+        if (revision === this.revision) panel.removeAttribute('aria-busy');
       }
     },
-    heading(title, bank) { return `<header class="qw-heading"><div><h2>${title}</h2><p>${esc(bank.label)}</p></div><button type="button" class="ml-library-btn qd-icon-action" data-change-bank title="Change bank" aria-label="Change bank">${svg('<path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>')}</button></header>`; },
+    heading(title, bank) { return `<header class="qw-heading"><div><h2>${title}</h2><div class="qw-heading-title"><p>${esc(bank.label)}</p><button type="button" class="qw-bank-switch" data-change-bank title="Change question bank" aria-label="Change question bank">${svg('<path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>')}</button></div></div></header>`; },
     wireHeading(mount) { mount.querySelector('[data-change-bank]').onclick = () => this.openBankPicker(); },
     openBankPicker() { window.QuestionBase.switchTab('medical-library'); },
     builder(mount, { bank, stats, profile }, taxonomy) {
+      const provider = bank.category || (bank.key.startsWith('amboss') ? 'amboss' : '');
+      const customBuilder = window.QnexTestBuilders?.[provider];
+      if (customBuilder) return customBuilder(mount, { bank, stats, profile }, taxonomy, this);
       let draft = this.drafts.get(bank.key);
       if (!draft) {
         draft = { subjects: [], systems: [], pools: [], count: 40, tutor: true, timed: false, name: '', custom: false, ids: '', timingBasis:'question', timingScope:'session', seconds:90, minutes:60, adjustment:Number(localStorage.getItem('qnex-time-accommodation') || 0) };
@@ -403,7 +379,7 @@
           const session = { id: 'medos-' + window.QnexCompat.uuid(), library: true, bank: bank.key, generation: profile.generations[bank.key] || 0, title: draft.name.trim() || lib().defaultSessionTitle(), date: new Date().toISOString(), questions, completed: false, settings: { pools: [...draft.pools], custom: draft.custom, timing:draft.timed ? {...timing,scope:draft.timingScope,basis:draft.timingBasis,adjustment:draft.adjustment} : null } };
           lib().updateSummary(await lib().api('/sessions/' + session.id, { method: 'PUT', body: JSON.stringify(session) }));
           lib().active = session;
-          status.textContent = `${questions.length} questions ready.${result.skipped ? ` Skipped ${result.skipped} incomplete or linked questions.` : ''}`;
+          status.textContent = `${questions.length} questions ready.${result.skipped ? ` Skipped ${result.skipped} incomplete source items.` : ''}`;
           window.DungeonBase.open(questions, session.id);
           document.getElementById('dungeonLoadingScreen')?.classList.add('hidden');
         } catch (error) { status.textContent = error.message; }
@@ -464,7 +440,7 @@
       }).map(q => q.id));
     },
     sessionTable(sessions, withDelete = false) {
-      return `<div class="qw-table-scroll"><table class="qw-table qw-session-table"><thead><tr><th>Date</th><th>Test / ID</th><th>Mode</th><th>Subjects</th><th>Systems</th><th>Score</th><th>Progress</th><th>Actions</th></tr></thead><tbody>${sessions.map(s => `<tr><td>${esc(new Date(s.date).toLocaleDateString())}</td><td><strong>${esc(s.title)}</strong><small>${esc(s.id.slice(-8))}</small></td><td>${esc(s.mode || 'Tutor')}<small>${s.timed ? 'Timed' : 'Untimed'}</small></td><td>${this.chips(s.subjects || [])}</td><td>${this.chips(s.systems || [])}</td><td>${s.completed ? percent(s.correct,s.count)+'%' : '—'}</td><td>${s.answered} / ${s.count}<small>${s.completed ? 'Completed' : 'In progress'}</small></td><td><div class="qw-inline"><button class="qw-icon" data-rename="${esc(s.id)}" title="Rename test" aria-label="Rename test">${icons.edit}</button><button class="qw-icon" data-result="${esc(s.id)}" title="Results and analysis" aria-label="Results and analysis">${icons.results}</button><button class="qw-icon" data-resume="${esc(s.id)}" title="${s.completed ? 'Review' : 'Resume'}" aria-label="${s.completed ? 'Review' : 'Resume'}">${s.completed ? svg('<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>') : icons.play}</button><button class="qw-icon qw-unsee" data-unsee="${esc(s.id)}" title="Unsee — Reset questions to New" aria-label="Unsee — Reset questions to New">${svg('<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/><path d="M18 20h.01M21 17h.01"/>')}</button>${withDelete ? `<button class="qw-icon" data-delete-session="${esc(s.id)}" title="Delete session" aria-label="Delete session">${svg('<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>')}</button>` : ''}</div></td></tr>`).join('') || '<tr><td colspan="8" class="qw-empty-sessions">No sessions yet. Create a test to get started.</td></tr>'}</tbody></table></div>`;
+      return `<div class="qw-table-scroll"><table class="qw-table qw-session-table"><thead><tr><th>Date / Time</th><th>Test / ID</th><th>Mode</th><th>Subjects</th><th>Systems</th><th>Score</th><th>Progress</th><th>Actions</th></tr></thead><tbody>${sessions.map(s => `<tr><td>${esc(new Date(s.date).toLocaleDateString())}<small>${esc(new Date(s.date).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}))}</small></td><td><strong>${esc(s.title)}</strong><small>${esc(s.id.slice(-8))}</small></td><td>${esc(s.mode || 'Tutor')}<small>${s.timed ? 'Timed' : 'Untimed'}</small></td><td>${this.chips(s.subjects || [])}</td><td>${this.chips(s.systems || [])}</td><td>${s.completed ? percent(s.correct,s.count)+'%' : '—'}</td><td>${s.answered} / ${s.count}<small>${s.completed ? 'Completed' : 'In progress'}</small></td><td><div class="qw-inline"><button class="qw-icon" data-rename="${esc(s.id)}" title="Rename test" aria-label="Rename test">${icons.edit}</button><button class="qw-icon" data-result="${esc(s.id)}" title="Results and analysis" aria-label="Results and analysis">${icons.results}</button><button class="qw-icon" data-resume="${esc(s.id)}" title="${s.completed ? 'Review' : 'Resume'}" aria-label="${s.completed ? 'Review' : 'Resume'}">${s.completed ? svg('<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>') : icons.play}</button><button class="qw-icon qw-unsee" data-unsee="${esc(s.id)}" title="Unsee — Reset questions to New" aria-label="Unsee — Reset questions to New">${svg('<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/><path d="M18 20h.01M21 17h.01"/>')}</button>${withDelete ? `<button class="qw-icon" data-delete-session="${esc(s.id)}" title="Delete session" aria-label="Delete session">${svg('<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>')}</button>` : ''}</div></td></tr>`).join('') || '<tr><td colspan="8" class="qw-empty-sessions">No sessions yet. Create a test to get started.</td></tr>'}</tbody></table></div>`;
     },
     history(mount, { bank }, sessions) {
       mount.innerHTML = this.heading('Recent Sessions', bank) + '<label class="qw-field">Find a test<input id="qwFindTest" type="search" placeholder="Search test names"></label><div id="qwHistory"></div>';
@@ -474,7 +450,7 @@
         const filtered = sessions.filter(s => s.title.toLowerCase().includes(term));
         this.page = Math.min(this.page, Math.max(0, Math.ceil(filtered.length/10)-1));
         const rows = filtered.slice(this.page*10,this.page*10+10);
-        mount.querySelector('#qwHistory').innerHTML = `<h3>Current Qbank sessions</h3>${this.sessionTable(filtered.filter(s => s.bank === bank.key))}<h3>All sessions</h3>${this.sessionTable(rows)}<div class="qw-pagination"><button class="ml-library-btn qd-icon-action" id="qwPrev" ${this.page === 0 ? 'disabled' : ''} title="Previous" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span>${filtered.length ? this.page*10+1 : 0}–${this.page*10+rows.length} of ${filtered.length}</span><button class="ml-library-btn" id="qwNext" ${(this.page+1)*10 >= filtered.length ? 'disabled' : ''}>Next</button></div>`;
+        mount.querySelector('#qwHistory').innerHTML = `<h3>Current Qbank sessions</h3>${this.sessionTable(filtered.filter(s => s.bank === bank.key))}<h3>All Qbank sessions</h3>${this.sessionTable(rows)}<div class="qw-pagination"><button class="ml-library-btn qd-icon-action" id="qwPrev" ${this.page === 0 ? 'disabled' : ''} title="Previous" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span>${filtered.length ? this.page*10+1 : 0}–${this.page*10+rows.length} of ${filtered.length}</span><button class="ml-library-btn" id="qwNext" ${(this.page+1)*10 >= filtered.length ? 'disabled' : ''}>Next</button></div>`;
         mount.querySelector('#qwPrev')?.addEventListener('click', () => { this.page--; draw(); });
         mount.querySelector('#qwNext')?.addEventListener('click', () => { this.page++; draw(); });
         mount.querySelectorAll('#qwHistory td:nth-child(2) small').forEach(b => b.onclick = async () => { try { const row=b.closest('tr');const id=row.querySelector('[data-resume]')?.dataset.resume;if(!id)throw Error('Test ID unavailable');await navigator.clipboard.writeText(id); if (typeof window.showToast === 'function') window.showToast('Test ID copied to clipboard.', 'success', 2200); else window.notifCenter?.add('Test ID copied to clipboard.', 'success'); b.title='Copied'; setTimeout(() => b.title='Copy test ID', 1200); } catch { if (typeof window.showToast === 'function') window.showToast('Could not copy the test ID.', 'error', 2200); else window.notifCenter?.add('Could not copy the test ID.', 'error'); } });

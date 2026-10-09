@@ -9,7 +9,7 @@ vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'dungeon-base.js'),'utf8').replace('export default class DungeonBase','class DungeonBase')+';window.TimerClass=DungeonBase;',context);
 const proto=context.window.TimerClass.prototype;
 const questions=[1,2].map(id=>({id,contentFormat:'medos-html',_timerMode:'down',_timerScope:'session',_timerSecs:60}));
-const d=Object.create(proto);d.state={questions,currentIndex:0,answers:new Map()};
+const d=Object.create(proto);d.el={};d.state={questions,currentIndex:0,answers:new Map()};
 d.updateTimerDisplay=ms=>{d.displayed=ms;};
 d.startTimer();assert.equal(d.displayed,60000);
 now+=5000;tick();assert.equal(d.displayed,55000);
@@ -24,9 +24,20 @@ context.document.getElementById=lookup;
 d.stopTimer();d.startTimer();assert.equal(d.displayed,45000,'Resume preserves remaining block time');
 let expired=0;d.handleTimeUp=()=>{expired++;d.stopTimer();};now+=50000;tick();assert.equal(d.displayed,0);assert.equal(expired,1);assert.equal(tick,null);
 // Per-question allowances form one remaining block budget; untimed clocks count up.
-const perQuestion={state:{questions:[{_timerMode:'down',_timerScope:'question',_timerSecs:60,_remainingMs:30000},{_timerMode:'down',_timerScope:'question',_timerSecs:60}],currentIndex:0},lastTimerMs:0};
+const perQuestion={el:{},state:{questions:[{_timerMode:'down',_timerScope:'question',_timerSecs:60,_remainingMs:30000},{_timerMode:'down',_timerScope:'question',_timerSecs:60}],currentIndex:0},lastTimerMs:0};
 context.document.getElementById=id=>id==='dungeonBlockElapsed'?clock:null;
 proto.updateTimerDisplay.call(perQuestion,20000);assert.equal(clock.textContent,'00:01:20');
-const untimed={state:{questions:[{_timerMode:'up',timerElapsed:5000}],currentIndex:0},lastTimerMs:0};
+const untimed={el:{},state:{questions:[{_timerMode:'up',timerElapsed:5000}],currentIndex:0},lastTimerMs:0};
 proto.updateTimerDisplay.call(untimed,5000);assert.equal(clock.textContent,'00:00:05');
 console.log('PASS: timed block countdown, question switches, resume, zero expiry, per-question budget and untimed elapsed clock.');
+
+// Finalization uses the real engine: save first, then show analysis; omissions remain distinct.
+(async()=>{
+let saved=false,reported=false;
+context.window.MedicalLibrary={active:{id:'medos-test',settings:{builder:'amboss'}},saveDungeonSession:async engine=>{assert.equal(engine.state.isBlockRevealed,true);saved=true;}};
+context.window.QnexRouter={report:async()=>{assert.equal(saved,true);reported=true;}};
+const block=Object.create(proto);block.state={associatedSessionId:'medos-test',questions:[{id:1},{id:2}],answers:new Map([[1,{submitted:true,selectedId:'A',isCorrect:true}]]),isBlockRevealed:false};block.stopTimer=()=>{};block.updateSidebarStats=()=>{};block.render=()=>{};
+await block.submitBlock(true);assert.equal(reported,true);assert.equal(block.state.answers.get(2).selectedId,null);assert.equal(block.calculateStats().correct,1);assert.equal(block.calculateStats().unanswered,1);
+let finalized=false;block.submitBlock=skip=>{assert.equal(skip,true);finalized=true;};block.handleTimeUp();assert.equal(finalized,true);
+console.log('PASS: block finalization saves before results, distinguishes omissions and uses the same path on expiry.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

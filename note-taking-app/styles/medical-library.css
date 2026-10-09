@@ -78,7 +78,7 @@ body.theme-light .ml-library { --ml-muted: #000; --ml-surface: #fff; --ml-text: 
 .ml-collection-heading h3 { font-size: 16px; color: var(--ml-text); }
 .ml-bank-tree { border: 1px solid var(--border, #333); border-radius: 12px; overflow: hidden; background: var(--ml-surface); }
 .ml-tree-node + .ml-tree-node { border-top: 1px solid var(--border, #333); }
-.ml-tree-node > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 16px; box-sizing: border-box; cursor: pointer; list-style: none; color: var(--ml-text); user-select: none; }
+.ml-tree-node > summary { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 11px 17px; box-sizing: border-box; cursor: pointer; list-style: none; color: var(--ml-text); user-select: none; }
 .ml-tree-node > summary::-webkit-details-marker { display: none; }
 .ml-tree-node > summary:hover { background: var(--panel-hover, rgba(255,255,255,.05)); }
 .ml-tree-node > summary:focus-visible { outline: 2px solid var(--accent, #5677ee); outline-offset: -3px; }
@@ -86,7 +86,7 @@ body.theme-light .ml-library { --ml-muted: #000; --ml-surface: #fff; --ml-text: 
 .ml-category-icon.ml-uw-icon { color: var(--ml-text); }
 .ml-tree-caret { flex-shrink: 0; color: var(--ml-muted); display: inline-flex; align-items: center; justify-content: center; transition: transform .2s cubic-bezier(0.4, 0, 0.2, 1), color .15s ease; }
 .ml-tree-node[open] > summary > .ml-tree-caret { transform: rotate(90deg); color: var(--ml-text); }
-.ml-tree-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; }
+.ml-tree-name { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; }
 .ml-tree-total { color: var(--ml-muted); font-size: 12px; white-space: nowrap; }
 .ml-tree-children { padding: 0 10px 10px 38px; }
 .ml-library .ml-tree-children .ml-bau-year-note { margin: 6px 12px 2px; color: var(--ml-muted); font-size: 11px; font-weight: 400; line-height: 1.4; }
@@ -135,7 +135,7 @@ body.theme-light .ml-library { --ml-muted: #000; --ml-surface: #fff; --ml-text: 
 .ml-tree-leaf:hover .ml-leaf-icon {
   color: var(--accent, #7894ff);
 }
-.ml-tree-leaf-name { flex: 1; min-width: 0; font-size: 14px; }
+.ml-tree-leaf-name { flex: 1; min-width: 0; font-size: 15px; }
 .ml-tree-count { color: var(--ml-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ml-leaf-arrow {
   display: inline-flex;
